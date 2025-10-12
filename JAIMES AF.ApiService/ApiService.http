@@ -15,5 +15,5 @@ GET {{ApiService_HostAddress}}/games/
 Accept: application/json
 
 ### Get the specific game
-GET {{ApiService_HostAddress}}/games/abc123
+GET {{ApiService_HostAddress}}/games/6e613ac2-c898-464d-8b45-9b1a3410cc8f
 Content-Type: application/json
