@@ -121,7 +121,8 @@ public class EndpointTests : IAsyncLifetime
         var response = await _client.GetAsync("/games/not-a-guid");
 
         // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        // FastEndpoints routing with {gameId:guid} constraint returns NotFound for invalid GUIDs
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
