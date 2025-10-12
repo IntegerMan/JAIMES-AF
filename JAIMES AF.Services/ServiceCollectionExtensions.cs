@@ -6,7 +6,13 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddJaimesServices(this IServiceCollection services)
     {
-        services.AddScoped<IGameService, GameService>();
+        // Use Scrutor for automatic service registration by convention
+        services.Scan(scan => scan
+            .FromAssemblyOf<IGameService>()
+            .AddClasses(classes => classes.AssignableTo<IGameService>())
+            .AsImplementedInterfaces()
+            .WithScopedLifetime());
+
         return services;
     }
 }

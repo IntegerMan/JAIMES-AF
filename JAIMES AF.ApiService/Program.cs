@@ -17,7 +17,7 @@ builder.Services.AddOpenApi();
 builder.Services.AddFastEndpoints();
 
 // Add Jaimes repositories and services
-builder.Services.AddJaimesRepositories();
+builder.Services.AddJaimesRepositories(builder.Configuration);
 builder.Services.AddJaimesServices();
 
 WebApplication app = builder.Build();
