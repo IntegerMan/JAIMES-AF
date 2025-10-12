@@ -1,6 +1,6 @@
-var builder = DistributedApplication.CreateBuilder(args);
+IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
-var apiService = builder.AddProject<Projects.JAIMES_AF_ApiService>("apiservice")
+IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIMES_AF_ApiService>("apiservice")
     .WithHttpHealthCheck("/health");
 
 builder.AddProject<Projects.JAIMES_AF_Web>("webfrontend")
