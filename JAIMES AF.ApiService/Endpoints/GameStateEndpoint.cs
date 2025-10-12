@@ -24,8 +24,7 @@ public class GameStateEndpoint : EndpointWithoutRequest<GameStateResponse>
         string? gameIdStr = Route<string>("gameId", isRequired: true);
         if (!Guid.TryParse(gameIdStr, out Guid gameId))
         {
-            await SendAsync(null, StatusCodes.Status400BadRequest, ct);
-            return;
+            ThrowError("Invalid game ID format");
         }
         GameDto? gameDto = await GameService.GetGameAsync(gameId, ct);
 
