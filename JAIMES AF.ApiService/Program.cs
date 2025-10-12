@@ -37,3 +37,6 @@ app.MapDefaultEndpoints();
 app.UseFastEndpoints();
 
 app.Run();
+
+// Make Program accessible for testing
+public partial class Program { }
