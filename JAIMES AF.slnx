@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="JAIMES AF.ApiService/JAIMES AF.ApiService.csproj" />
+  <Project Path="JAIMES AF.AppHost/JAIMES AF.AppHost.csproj" />
+  <Project Path="JAIMES AF.ServiceDefaults/JAIMES AF.ServiceDefaults.csproj" />
+  <Project Path="JAIMES AF.Tests/JAIMES AF.Tests.csproj" />
+  <Project Path="JAIMES AF.Web/JAIMES AF.Web.csproj" />
+</Solution>
