@@ -1,4 +1,8 @@
+using System.Collections.Generic;
+using System.Net.Http;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 
 namespace MattEland.Jaimes.Tests.Endpoints;
 
@@ -12,9 +16,16 @@ public abstract class EndpointTestBase : IAsyncLifetime
         Factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
-                builder.ConfigureServices(services =>
+                // Inject configuration values that Program will read during startup.
+                // Set the app's database provider to InMemory for tests.
+                builder.ConfigureAppConfiguration((context, configBuilder) =>
                 {
-                    services.AddJaimesRepositories("test.db", DatabaseProvider.Sqlite);
+                    var inMemorySettings = new Dictionary<string, string?>
+                    {
+                        ["Jaimes:DatabaseProvider"] = "WEIRD"
+                    };
+
+                    configBuilder.AddInMemoryCollection(inMemorySettings);
                 });
             });
 

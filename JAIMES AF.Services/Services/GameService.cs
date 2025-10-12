@@ -3,7 +3,7 @@ using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.Services.Models;
 
-namespace MattEland.Jaimes.Services;
+namespace MattEland.Jaimes.ServiceLayer.Services;
 
 public class GameService(JaimesDbContext context) : IGameService
 {

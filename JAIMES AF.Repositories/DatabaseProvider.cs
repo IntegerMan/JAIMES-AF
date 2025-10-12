@@ -3,5 +3,6 @@ namespace MattEland.Jaimes.Repositories;
 public enum DatabaseProvider
 {
     Sqlite,
-    SqlServer
+    SqlServer,
+    InMemory
 }

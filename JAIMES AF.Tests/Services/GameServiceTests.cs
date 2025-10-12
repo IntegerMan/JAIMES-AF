@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
-using MattEland.Jaimes.Services;
+using MattEland.Jaimes.ServiceLayer.Services;
 using MattEland.Jaimes.Services.Models;
 using Shouldly;
 

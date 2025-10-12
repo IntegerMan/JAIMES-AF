@@ -1,6 +1,6 @@
 using MattEland.Jaimes.Services.Models;
 
-namespace MattEland.Jaimes.Services;
+namespace MattEland.Jaimes.ServiceLayer.Services;
 
 public interface IGameService
 {

@@ -1,26 +1,25 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace MattEland.Jaimes.Repositories;
 
 public static class RepositoryServiceCollectionExtensions
 {
-    public static IServiceCollection AddJaimesRepositories(
-        this IServiceCollection services, 
-        string connectionString,
-        DatabaseProvider provider)
+    public static IServiceCollection AddJaimesRepositories(this IServiceCollection services, DatabaseProvider provider, string? connectionString = null)
     {
-        // Skip if we have a DbContext already registered
-        if (services.Any(s => s.ServiceType == typeof(DbContextOptions<JaimesDbContext>)))
-        {
-            return services;
-        }
-
         services.AddDbContext<JaimesDbContext>(options =>
         {
             switch (provider)
             {
+                case DatabaseProvider.InMemory:
+                    options.UseInMemoryDatabase("InMemory", sqlOpts =>
+                    {
+                        sqlOpts.EnableNullChecks();
+                    });
+                    break;
                 case DatabaseProvider.SqlServer:
                     options.UseSqlServer(connectionString, sqlOpts =>
                     {
@@ -29,7 +28,7 @@ public static class RepositoryServiceCollectionExtensions
                     });
                     break;
                 case DatabaseProvider.Sqlite:
-                    options.UseSqlite($"Data Source={connectionString}", dbOpts =>
+                    options.UseSqlite(connectionString, dbOpts =>
                     {
                         dbOpts.MaxBatchSize(500);
                     });
@@ -42,6 +41,7 @@ public static class RepositoryServiceCollectionExtensions
         return services;
     }
 
+    [SuppressMessage("ReSharper", "StringLiteralTypo")]
     public static IServiceCollection AddJaimesRepositories(
         this IServiceCollection services,
         IConfiguration configuration)
@@ -53,10 +53,11 @@ public static class RepositoryServiceCollectionExtensions
         {
             "sqlserver" => DatabaseProvider.SqlServer,
             "sqlite" => DatabaseProvider.Sqlite,
+            "inmemory" => DatabaseProvider.InMemory,
             _ => throw new NotSupportedException($"Database provider {providerString} is not yet supported")
         };
 
-        return services.AddJaimesRepositories(connectionString, provider);
+        return services.AddJaimesRepositories(provider, connectionString);
     }
 
     public static async Task InitializeDatabaseAsync(this IServiceProvider serviceProvider)
