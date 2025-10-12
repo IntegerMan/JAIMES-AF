@@ -1,5 +1,7 @@
 using FastEndpoints;
 using MattEland.Jaimes.ServiceDefaults;
+using MattEland.Jaimes.Repositories;
+using MattEland.Jaimes.Services;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -14,7 +16,14 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddFastEndpoints();
 
+// Add Jaimes repositories and services
+builder.Services.AddJaimesRepositories();
+builder.Services.AddJaimesServices();
+
 WebApplication app = builder.Build();
+
+// Initialize database
+await app.Services.InitializeDatabaseAsync();
 
 // Configure the HTTP request pipeline.
 app.UseExceptionHandler();

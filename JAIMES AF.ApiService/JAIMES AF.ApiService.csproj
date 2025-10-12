@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>MattEland.Jaimes.ApiService</RootNamespace>
@@ -9,11 +9,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\JAIMES AF.ServiceDefaults\JAIMES AF.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\JAIMES AF.Services\JAIMES AF.Services.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FastEndpoints" Version="7.0.1" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0-preview.5.25277.114" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
   </ItemGroup>
 
 </Project>
