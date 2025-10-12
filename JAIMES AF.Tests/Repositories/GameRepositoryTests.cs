@@ -9,7 +9,7 @@ public class GameRepositoryTests : RepositoryTestBase
     public async Task CanCreateAndRetrieveGame()
     {
         // Arrange
-        var game = new Game
+        Game game = new Game
         {
             Id = Guid.NewGuid(),
             RulesetId = "test-ruleset",
@@ -22,7 +22,7 @@ public class GameRepositoryTests : RepositoryTestBase
         Context.Games.Add(game);
         await Context.SaveChangesAsync();
 
-        var retrievedGame = await Context.Games.FindAsync(game.Id);
+        Game? retrievedGame = await Context.Games.FindAsync(game.Id);
 
         // Assert
         retrievedGame.ShouldNotBeNull();
@@ -36,7 +36,7 @@ public class GameRepositoryTests : RepositoryTestBase
     public async Task DeletingGameCascadesDeleteToMessages()
     {
         // Arrange
-        var game = new Game
+        Game game = new Game
         {
             Id = Guid.NewGuid(),
             RulesetId = "test-ruleset",
@@ -46,7 +46,7 @@ public class GameRepositoryTests : RepositoryTestBase
         };
         Context.Games.Add(game);
 
-        var message = new Message
+        Message message = new Message
         {
             GameId = game.Id,
             Text = "Test message",
@@ -55,14 +55,14 @@ public class GameRepositoryTests : RepositoryTestBase
         Context.Messages.Add(message);
         await Context.SaveChangesAsync();
 
-        var messageId = message.Id;
+        int messageId = message.Id;
 
         // Act
         Context.Games.Remove(game);
         await Context.SaveChangesAsync();
 
         // Assert
-        var deletedMessage = await Context.Messages.FindAsync(messageId);
+        Message? deletedMessage = await Context.Messages.FindAsync(messageId);
         deletedMessage.ShouldBeNull();
     }
 }

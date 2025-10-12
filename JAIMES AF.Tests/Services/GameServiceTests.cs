@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.Services;
+using MattEland.Jaimes.Services.Models;
 using Shouldly;
 
 namespace MattEland.Jaimes.Tests.Services;
@@ -14,7 +15,7 @@ public class GameServiceTests : IAsyncLifetime
     public async ValueTask InitializeAsync()
     {
         // Create an in-memory database for testing
-        var options = new DbContextOptionsBuilder<JaimesDbContext>()
+        DbContextOptions<JaimesDbContext> options = new DbContextOptionsBuilder<JaimesDbContext>()
             .UseSqlite("DataSource=:memory:")
             .Options;
 
@@ -35,12 +36,12 @@ public class GameServiceTests : IAsyncLifetime
     public async Task CreateGameAsync_CreatesGameWithInitialMessage()
     {
         // Arrange
-        var rulesetId = "test-ruleset";
-        var scenarioId = "test-scenario";
-        var playerId = "test-player";
+        string rulesetId = "test-ruleset";
+        string scenarioId = "test-scenario";
+        string playerId = "test-player";
 
         // Act
-        var gameDto = await _gameService.CreateGameAsync(rulesetId, scenarioId, playerId);
+        GameDto gameDto = await _gameService.CreateGameAsync(rulesetId, scenarioId, playerId);
 
         // Assert
         gameDto.GameId.ShouldNotBe(Guid.Empty);
@@ -51,12 +52,12 @@ public class GameServiceTests : IAsyncLifetime
         gameDto.Messages[0].Text.ShouldBe("Hello World");
 
         // Verify game is in database
-        var gameInDb = await _context.Games.FindAsync(gameDto.GameId);
+        Game? gameInDb = await _context.Games.FindAsync(gameDto.GameId);
         gameInDb.ShouldNotBeNull();
         gameInDb.RulesetId.ShouldBe(rulesetId);
 
         // Verify message is in database
-        var messageInDb = await _context.Messages.FirstOrDefaultAsync(m => m.GameId == gameDto.GameId);
+        Message? messageInDb = await _context.Messages.FirstOrDefaultAsync(m => m.GameId == gameDto.GameId);
         messageInDb.ShouldNotBeNull();
         messageInDb.Text.ShouldBe("Hello World");
     }
@@ -65,10 +66,10 @@ public class GameServiceTests : IAsyncLifetime
     public async Task GetGameAsync_ReturnsNull_WhenGameDoesNotExist()
     {
         // Arrange
-        var nonExistentGameId = Guid.NewGuid();
+        Guid nonExistentGameId = Guid.NewGuid();
 
         // Act
-        var result = await _gameService.GetGameAsync(nonExistentGameId);
+        GameDto? result = await _gameService.GetGameAsync(nonExistentGameId);
 
         // Assert
         result.ShouldBeNull();
@@ -78,7 +79,7 @@ public class GameServiceTests : IAsyncLifetime
     public async Task GetGameAsync_ReturnsGame_WhenGameExists()
     {
         // Arrange
-        var game = new Game
+        Game game = new Game
         {
             Id = Guid.NewGuid(),
             RulesetId = "test-ruleset",
@@ -88,7 +89,7 @@ public class GameServiceTests : IAsyncLifetime
         };
         _context.Games.Add(game);
 
-        var message = new Message
+        Message message = new Message
         {
             GameId = game.Id,
             Text = "Test message",
@@ -98,7 +99,7 @@ public class GameServiceTests : IAsyncLifetime
         await _context.SaveChangesAsync();
 
         // Act
-        var result = await _gameService.GetGameAsync(game.Id);
+        GameDto? result = await _gameService.GetGameAsync(game.Id);
 
         // Assert
         result.ShouldNotBeNull();
@@ -114,7 +115,7 @@ public class GameServiceTests : IAsyncLifetime
     public async Task GetGameAsync_ReturnsMessagesInOrder()
     {
         // Arrange
-        var game = new Game
+        Game game = new Game
         {
             Id = Guid.NewGuid(),
             RulesetId = "test-ruleset",
@@ -124,19 +125,19 @@ public class GameServiceTests : IAsyncLifetime
         };
         _context.Games.Add(game);
 
-        var message1 = new Message
+        Message message1 = new Message
         {
             GameId = game.Id,
             Text = "First message",
             CreatedAt = DateTime.UtcNow
         };
-        var message2 = new Message
+        Message message2 = new Message
         {
             GameId = game.Id,
             Text = "Second message",
             CreatedAt = DateTime.UtcNow.AddSeconds(1)
         };
-        var message3 = new Message
+        Message message3 = new Message
         {
             GameId = game.Id,
             Text = "Third message",
@@ -146,7 +147,7 @@ public class GameServiceTests : IAsyncLifetime
         await _context.SaveChangesAsync();
 
         // Act
-        var result = await _gameService.GetGameAsync(game.Id);
+        GameDto? result = await _gameService.GetGameAsync(game.Id);
 
         // Assert
         result.ShouldNotBeNull();

@@ -10,7 +10,7 @@ public class MessageRepositoryTests : RepositoryTestBase
     public async Task CanCreateAndRetrieveMessage()
     {
         // Arrange
-        var game = new Game
+        Game game = new Game
         {
             Id = Guid.NewGuid(),
             RulesetId = "test-ruleset",
@@ -21,7 +21,7 @@ public class MessageRepositoryTests : RepositoryTestBase
         Context.Games.Add(game);
         await Context.SaveChangesAsync();
 
-        var message = new Message
+        Message message = new Message
         {
             GameId = game.Id,
             Text = "Test message",
@@ -32,7 +32,7 @@ public class MessageRepositoryTests : RepositoryTestBase
         Context.Messages.Add(message);
         await Context.SaveChangesAsync();
 
-        var retrievedMessage = await Context.Messages.FindAsync(message.Id);
+        Message? retrievedMessage = await Context.Messages.FindAsync(message.Id);
 
         // Assert
         retrievedMessage.ShouldNotBeNull();
@@ -44,7 +44,7 @@ public class MessageRepositoryTests : RepositoryTestBase
     public async Task GameIncludesMessages()
     {
         // Arrange
-        var game = new Game
+        Game game = new Game
         {
             Id = Guid.NewGuid(),
             RulesetId = "test-ruleset",
@@ -54,13 +54,13 @@ public class MessageRepositoryTests : RepositoryTestBase
         };
         Context.Games.Add(game);
 
-        var message1 = new Message
+        Message message1 = new Message
         {
             GameId = game.Id,
             Text = "First message",
             CreatedAt = DateTime.UtcNow
         };
-        var message2 = new Message
+        Message message2 = new Message
         {
             GameId = game.Id,
             Text = "Second message",
@@ -70,7 +70,7 @@ public class MessageRepositoryTests : RepositoryTestBase
         await Context.SaveChangesAsync();
 
         // Act
-        var retrievedGame = await Context.Games
+        Game? retrievedGame = await Context.Games
             .Include(g => g.Messages)
             .FirstOrDefaultAsync(g => g.Id == game.Id);
 

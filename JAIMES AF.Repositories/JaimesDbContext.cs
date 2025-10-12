@@ -3,12 +3,8 @@ using MattEland.Jaimes.Repositories.Entities;
 
 namespace MattEland.Jaimes.Repositories;
 
-public class JaimesDbContext : DbContext
+public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbContext(options)
 {
-    public JaimesDbContext(DbContextOptions<JaimesDbContext> options) : base(options)
-    {
-    }
-
     public DbSet<Game> Games { get; set; }
     public DbSet<Message> Messages { get; set; }
 

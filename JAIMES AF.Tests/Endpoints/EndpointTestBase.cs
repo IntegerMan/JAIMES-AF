@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc.Testing;
-using MattEland.Jaimes.ApiService;
 
 namespace MattEland.Jaimes.Tests.Endpoints;
 
@@ -15,8 +14,7 @@ public abstract class EndpointTestBase : IAsyncLifetime
             {
                 builder.ConfigureServices(services =>
                 {
-                    // Use in-memory database for testing
-                    services.AddJaimesRepositories("DataSource=:memory:;Cache=Shared");
+                    services.AddJaimesRepositories("test.db", DatabaseProvider.Sqlite);
                 });
             });
 

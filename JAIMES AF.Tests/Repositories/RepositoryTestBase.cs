@@ -10,7 +10,7 @@ public abstract class RepositoryTestBase : IAsyncLifetime
     public virtual async ValueTask InitializeAsync()
     {
         // Create an in-memory database for testing
-        var options = new DbContextOptionsBuilder<JaimesDbContext>()
+        DbContextOptions<JaimesDbContext> options = new DbContextOptionsBuilder<JaimesDbContext>()
             .UseSqlite("DataSource=:memory:")
             .Options;
 

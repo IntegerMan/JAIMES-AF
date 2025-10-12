@@ -11,7 +11,7 @@ public class NewGameEndpointTests : EndpointTestBase
     public async Task NewGameEndpoint_CreatesGame_ReturnsCreated()
     {
         // Arrange
-        var request = new NewGameRequest
+        NewGameRequest request = new NewGameRequest
         {
             RulesetId = "test-ruleset",
             ScenarioId = "test-scenario",
@@ -19,12 +19,12 @@ public class NewGameEndpointTests : EndpointTestBase
         };
 
         // Act
-        var response = await Client.PostAsJsonAsync("/games/", request);
+        HttpResponseMessage response = await Client.PostAsJsonAsync("/games/", request);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
 
-        var game = await response.Content.ReadFromJsonAsync<NewGameResponse>();
+        NewGameResponse? game = await response.Content.ReadFromJsonAsync<NewGameResponse>();
         game.ShouldNotBeNull();
         game.GameId.ShouldNotBe(Guid.Empty);
         game.Messages.ShouldNotBeNull();
@@ -39,7 +39,7 @@ public class NewGameEndpointTests : EndpointTestBase
         var request = new { }; // Empty request
 
         // Act
-        var response = await Client.PostAsJsonAsync("/games/", request);
+        HttpResponseMessage response = await Client.PostAsJsonAsync("/games/", request);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
