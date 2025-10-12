@@ -21,7 +21,12 @@ public class GameStateEndpoint : EndpointWithoutRequest<GameStateResponse>
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        Guid gameId = Route<Guid>("gameId", isRequired: true);
+        string? gameIdStr = Route<string>("gameId", isRequired: true);
+        if (!Guid.TryParse(gameIdStr, out Guid gameId))
+        {
+            await SendAsync(null, StatusCodes.Status400BadRequest, ct);
+            return;
+        }
         GameDto? gameDto = await GameService.GetGameAsync(gameId, ct);
 
         if (gameDto == null)
