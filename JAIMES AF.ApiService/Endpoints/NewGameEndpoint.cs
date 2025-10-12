@@ -2,6 +2,7 @@
 using MattEland.Jaimes.ApiService.Requests;
 using MattEland.Jaimes.ApiService.Responses;
 using MattEland.Jaimes.Services;
+using MattEland.Jaimes.Services.Models;
 
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
@@ -14,14 +15,14 @@ public class NewGameEndpoint : Endpoint<NewGameRequest, NewGameResponse>
         Post("/games/");
         AllowAnonymous();
         Description(b => b
-            .Produces<NewGameResponse>(201)
-            .Produces(400)
+            .Produces<NewGameResponse>(StatusCodes.Status201Created)
+            .Produces(StatusCodes.Status400BadRequest)
             .WithTags("Games"));
     }
 
     public override async Task HandleAsync(NewGameRequest req, CancellationToken ct)
     {
-        var gameDto = await GameService.CreateGameAsync(req.RulesetId, req.ScenarioId, req.PlayerId, ct);
+        GameDto gameDto = await GameService.CreateGameAsync(req.RulesetId, req.ScenarioId, req.PlayerId, ct);
 
         NewGameResponse game = new()
         {

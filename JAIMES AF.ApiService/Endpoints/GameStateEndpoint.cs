@@ -1,6 +1,7 @@
 ﻿using FastEndpoints;
 using MattEland.Jaimes.ApiService.Responses;
 using MattEland.Jaimes.Services;
+using MattEland.Jaimes.Services.Models;
 
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
@@ -13,14 +14,15 @@ public class GameStateEndpoint : EndpointWithoutRequest<GameStateResponse>
         Get("/games/{gameId:guid}");
         AllowAnonymous();
         Description(b => b
-            .Produces<GameStateResponse>(200)
-            .Produces(404)
+            .Produces<GameStateResponse>()
+            .Produces(StatusCodes.Status404NotFound)
             .WithTags("Games"));
     }
+
     public override async Task HandleAsync(CancellationToken ct)
     {
         Guid gameId = Route<Guid>("gameId", isRequired: true);
-        var gameDto = await GameService.GetGameAsync(gameId, ct);
+        GameDto? gameDto = await GameService.GetGameAsync(gameId, ct);
 
         if (gameDto == null)
         {
