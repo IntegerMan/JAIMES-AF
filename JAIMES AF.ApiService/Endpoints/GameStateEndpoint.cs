@@ -19,7 +19,7 @@ public class GameStateEndpoint : EndpointWithoutRequest<GameStateResponse>
     }
     public override async Task HandleAsync(CancellationToken ct)
     {
-        Guid gameId = Query<Guid>("gameId", isRequired: true);
+        Guid gameId = Route<Guid>("gameId", isRequired: true);
         var gameDto = await GameService.GetGameAsync(gameId, ct);
 
         if (gameDto == null)
