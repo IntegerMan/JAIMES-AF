@@ -22,15 +22,7 @@ public class Program
         builder.Services.AddFastEndpoints();
 
         // Add Jaimes repositories and services
-        // Allow tests to skip database registration by setting "SkipDatabaseRegistration" in configuration
-        var skipDbRegValue = builder.Configuration["SkipDatabaseRegistration"];
-        var skipDbRegistration = !string.IsNullOrWhiteSpace(skipDbRegValue) && bool.TryParse(skipDbRegValue, out var sdr) && sdr;
-
-        if (!skipDbRegistration)
-        {
-            builder.Services.AddJaimesRepositories(builder.Configuration);
-        }
-
+        builder.Services.AddJaimesRepositories(builder.Configuration);
         builder.Services.AddJaimesServices();
 
         WebApplication app = builder.Build();
