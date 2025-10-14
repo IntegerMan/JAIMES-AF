@@ -9,4 +9,12 @@ builder.AddProject<Projects.JAIMES_AF_Web>("webfrontend")
     .WithReference(apiService)
     .WaitFor(apiService);
 
-builder.Build().Run();
+try {
+    builder.Build().Run();
+}
+catch (Exception ex)
+{
+    Console.WriteLine(ex.Message);
+
+    // "One or more errors occurred. (Failed to configure dashboard resource because ASPNETCORE_URLS environment variable was not set.; Failed to configure dashboard resource because ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL and ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL environment variables are not set. At least one OTLP endpoint must be provided.)"
+}

@@ -1,0 +1,5 @@
+---
+alwaysApply: false
+description: Governs usage of the C# var keyword
+---
+The C# var keyword is only acceptable in foreach statements. For all other variable declarations, always specify the created type. Use the C# target-typed new feature when possible to reduce repetition in code.

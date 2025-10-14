@@ -1,0 +1,11 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "C#: Aspire Debug",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/JAIMES AF.AppHost/JAIMES AF.AppHost.csproj"
+        }
+    ]
+}
