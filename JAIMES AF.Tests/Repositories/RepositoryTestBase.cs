@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MattEland.Jaimes.Repositories;
+using MattEland.Jaimes.Repositories.Entities;
 
 namespace MattEland.Jaimes.Tests.Repositories;
 
@@ -16,6 +17,13 @@ public abstract class RepositoryTestBase : IAsyncLifetime
 
         Context = new JaimesDbContext(options);
         await Context.Database.EnsureCreatedAsync();
+
+        // Add test data for validation
+        Context.Rulesets.Add(new Ruleset { Id = "test-ruleset", Name = "Test Ruleset" });
+        Context.Players.Add(new Player { Id = "test-player", RulesetId = "test-ruleset" });
+        Context.Scenarios.Add(new Scenario { Id = "test-scenario", RulesetId = "test-ruleset" });
+        await Context.SaveChangesAsync();
+        Context.ChangeTracker.Clear();
     }
 
     public virtual async ValueTask DisposeAsync()

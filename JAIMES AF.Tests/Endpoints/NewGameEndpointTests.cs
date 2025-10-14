@@ -44,4 +44,58 @@ public class NewGameEndpointTests : EndpointTestBase
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     }
+
+    [Fact]
+    public async Task NewGameEndpoint_WithNonexistentRuleset_ReturnsBadRequest()
+    {
+        // Arrange
+        NewGameRequest request = new NewGameRequest
+        {
+            RulesetId = "nonexistent-ruleset",
+            ScenarioId = "test-scenario",
+            PlayerId = "test-player"
+        };
+
+        // Act
+        HttpResponseMessage response = await Client.PostAsJsonAsync("/games/", request);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task NewGameEndpoint_WithNonexistentPlayer_ReturnsBadRequest()
+    {
+        // Arrange
+        NewGameRequest request = new NewGameRequest
+        {
+            RulesetId = "test-ruleset",
+            ScenarioId = "test-scenario",
+            PlayerId = "nonexistent-player"
+        };
+
+        // Act
+        HttpResponseMessage response = await Client.PostAsJsonAsync("/games/", request);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task NewGameEndpoint_WithNonexistentScenario_ReturnsBadRequest()
+    {
+        // Arrange
+        NewGameRequest request = new NewGameRequest
+        {
+            RulesetId = "test-ruleset",
+            ScenarioId = "nonexistent-scenario",
+            PlayerId = "test-player"
+        };
+
+        // Act
+        HttpResponseMessage response = await Client.PostAsJsonAsync("/games/", request);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
 }

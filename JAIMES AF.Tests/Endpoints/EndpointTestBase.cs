@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using MattEland.Jaimes.Repositories;
+using MattEland.Jaimes.Repositories.Entities;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -14,7 +16,7 @@ public abstract class EndpointTestBase : IAsyncLifetime
     protected WebApplicationFactory<Program> Factory = null!;
     protected HttpClient Client = null!;
 
-    public virtual ValueTask InitializeAsync()
+    public virtual async ValueTask InitializeAsync()
     {
         Factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
@@ -33,7 +35,22 @@ public abstract class EndpointTestBase : IAsyncLifetime
             });
 
         Client = Factory.CreateClient();
-        return ValueTask.CompletedTask;
+
+        // Seed test data
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<JaimesDbContext>();
+            await SeedTestDataAsync(context);
+        }
+    }
+
+    protected virtual async Task SeedTestDataAsync(JaimesDbContext context)
+    {
+        // Add default test data
+        context.Rulesets.Add(new Ruleset { Id = "test-ruleset", Name = "Test Ruleset" });
+        context.Players.Add(new Player { Id = "test-player", RulesetId = "test-ruleset" });
+        context.Scenarios.Add(new Scenario { Id = "test-scenario", RulesetId = "test-ruleset" });
+        await context.SaveChangesAsync();
     }
 
     public virtual async ValueTask DisposeAsync()

@@ -9,6 +9,35 @@ public class GameService(JaimesDbContext context) : IGameService
 {
     public async Task<GameDto> CreateGameAsync(string rulesetId, string scenarioId, string playerId, CancellationToken cancellationToken = default)
     {
+        // Validate that the ruleset exists
+        var ruleset = await context.Rulesets.FindAsync([rulesetId], cancellationToken);
+        if (ruleset == null)
+        {
+            throw new ArgumentException($"Ruleset '{rulesetId}' does not exist.", nameof(rulesetId));
+        }
+
+        // Validate that the player exists and has the correct ruleset
+        var player = await context.Players.FindAsync([playerId], cancellationToken);
+        if (player == null)
+        {
+            throw new ArgumentException($"Player '{playerId}' does not exist.", nameof(playerId));
+        }
+        if (player.RulesetId != rulesetId)
+        {
+            throw new ArgumentException($"Player '{playerId}' uses ruleset '{player.RulesetId}' but game requires ruleset '{rulesetId}'.", nameof(playerId));
+        }
+
+        // Validate that the scenario exists and has the correct ruleset
+        var scenario = await context.Scenarios.FindAsync([scenarioId], cancellationToken);
+        if (scenario == null)
+        {
+            throw new ArgumentException($"Scenario '{scenarioId}' does not exist.", nameof(scenarioId));
+        }
+        if (scenario.RulesetId != rulesetId)
+        {
+            throw new ArgumentException($"Scenario '{scenarioId}' uses ruleset '{scenario.RulesetId}' but game requires ruleset '{rulesetId}'.", nameof(scenarioId));
+        }
+
         Game game = new Game
         {
             Id = Guid.NewGuid(),

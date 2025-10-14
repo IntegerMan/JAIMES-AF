@@ -22,13 +22,20 @@ public class NewGameEndpoint : Endpoint<NewGameRequest, NewGameResponse>
 
     public override async Task HandleAsync(NewGameRequest req, CancellationToken ct)
     {
-        GameDto gameDto = await GameService.CreateGameAsync(req.RulesetId, req.ScenarioId, req.PlayerId, ct);
-
-        NewGameResponse game = new()
+        try
         {
-            GameId = gameDto.GameId,
-            Messages = gameDto.Messages.Select(m => new MessageResponse(m.Text)).ToArray()
-        };
-        await Send.CreatedAtAsync<GameStateEndpoint>(game, responseBody: game, verb: Http.GET, cancellation: ct);
+            GameDto gameDto = await GameService.CreateGameAsync(req.RulesetId, req.ScenarioId, req.PlayerId, ct);
+
+            NewGameResponse game = new()
+            {
+                GameId = gameDto.GameId,
+                Messages = gameDto.Messages.Select(m => new MessageResponse(m.Text)).ToArray()
+            };
+            await Send.CreatedAtAsync<GameStateEndpoint>(game, responseBody: game, verb: Http.GET, cancellation: ct);
+        }
+        catch (ArgumentException ex)
+        {
+            ThrowError(ex.Message);
+        }
     }
 }
