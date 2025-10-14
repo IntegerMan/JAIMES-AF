@@ -18,47 +18,16 @@ public abstract class EndpointTestBase : IAsyncLifetime
 
     public virtual async ValueTask InitializeAsync()
     {
+        // Use a unique database name per test instance
+        string dbName = $"TestDb_{Guid.NewGuid()}";
+        
         Factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
-                // Override configuration for testing
-                builder.ConfigureAppConfiguration((context, configBuilder) =>
-                {
-                    // Add our test configuration with highest priority
-                    var inMemorySettings = new Dictionary<string, string?>
-                    {
-                        ["DatabaseProvider"] = "InMemory",
-                        ["ConnectionStrings:DefaultConnection"] = string.Empty,
-                        ["SkipDatabaseInitialization"] = "true"
-                    };
-
-                    configBuilder.AddInMemoryCollection(inMemorySettings);
-                });
-
-                // Replace the DbContext registration to ensure InMemory is used
-                builder.ConfigureServices(services =>
-                {
-                    // Remove existing DbContext registration
-                    var contextDescriptor = services.SingleOrDefault(
-                        d => d.ServiceType == typeof(JaimesDbContext));
-                    if (contextDescriptor != null)
-                    {
-                        services.Remove(contextDescriptor);
-                    }
-
-                    var optionsDescriptor = services.SingleOrDefault(
-                        d => d.ServiceType == typeof(DbContextOptions<JaimesDbContext>));
-                    if (optionsDescriptor != null)
-                    {
-                        services.Remove(optionsDescriptor);
-                    }
-
-                    // Add InMemory DbContext
-                    services.AddDbContext<JaimesDbContext>(options =>
-                    {
-                        options.UseInMemoryDatabase("TestDatabase");
-                    });
-                });
+                // Override settings for testing - use environment variable style which takes precedence
+                builder.UseSetting("DatabaseProvider", "InMemory");
+                builder.UseSetting("ConnectionStrings:DefaultConnection", dbName);
+                builder.UseSetting("SkipDatabaseInitialization", "true");
             });
 
         Client = Factory.CreateClient();
