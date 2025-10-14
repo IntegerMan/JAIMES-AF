@@ -15,11 +15,10 @@ public class GameServiceTests : IAsyncLifetime
     {
         // Create an in-memory database for testing
         DbContextOptions<JaimesDbContext> options = new DbContextOptionsBuilder<JaimesDbContext>()
-            .UseSqlite("DataSource=:memory:")
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
 
         _context = new JaimesDbContext(options);
-        await _context.Database.OpenConnectionAsync();
         await _context.Database.EnsureCreatedAsync();
 
         _gameService = new GameService(_context);
@@ -27,7 +26,6 @@ public class GameServiceTests : IAsyncLifetime
 
     public async ValueTask DisposeAsync()
     {
-        await _context.Database.CloseConnectionAsync();
         await _context.DisposeAsync();
     }
 
