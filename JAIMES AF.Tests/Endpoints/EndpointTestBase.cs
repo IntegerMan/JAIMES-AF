@@ -21,8 +21,10 @@ public abstract class EndpointTestBase : IAsyncLifetime
         Factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                // Override configuration for testing
                 builder.ConfigureAppConfiguration((context, configBuilder) =>
                 {
+                    // Add our test configuration with highest priority
                     var inMemorySettings = new Dictionary<string, string?>
                     {
                         ["DatabaseProvider"] = "InMemory",
@@ -32,14 +34,40 @@ public abstract class EndpointTestBase : IAsyncLifetime
 
                     configBuilder.AddInMemoryCollection(inMemorySettings);
                 });
+
+                // Replace the DbContext registration to ensure InMemory is used
+                builder.ConfigureServices(services =>
+                {
+                    // Remove existing DbContext registration
+                    var contextDescriptor = services.SingleOrDefault(
+                        d => d.ServiceType == typeof(JaimesDbContext));
+                    if (contextDescriptor != null)
+                    {
+                        services.Remove(contextDescriptor);
+                    }
+
+                    var optionsDescriptor = services.SingleOrDefault(
+                        d => d.ServiceType == typeof(DbContextOptions<JaimesDbContext>));
+                    if (optionsDescriptor != null)
+                    {
+                        services.Remove(optionsDescriptor);
+                    }
+
+                    // Add InMemory DbContext
+                    services.AddDbContext<JaimesDbContext>(options =>
+                    {
+                        options.UseInMemoryDatabase("TestDatabase");
+                    });
+                });
             });
 
         Client = Factory.CreateClient();
 
-        // Seed test data
+        // Seed test data after initialization
         using (var scope = Factory.Services.CreateScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<JaimesDbContext>();
+            await context.Database.EnsureCreatedAsync();
             await SeedTestDataAsync(context);
         }
     }
