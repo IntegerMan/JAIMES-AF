@@ -21,6 +21,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.0" />
+    <PackageReference Include="Shouldly" Version="4.3.0" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -31,7 +32,7 @@
   <ItemGroup>
     <ProjectReference Include="..\JAIMES AF.AppHost\JAIMES AF.AppHost.csproj" />
     <ProjectReference Include="..\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj" />
-    <ProjectReference Include="..\JAIMES AF.Services\JAIMES AF.Services.csproj" />
+    <ProjectReference Include="..\JAIMES AF.Services\JAIMES AF.ServiceLayer.csproj" />
     <ProjectReference Include="..\JAIMES AF.ApiService\JAIMES AF.ApiService.csproj" />
   </ItemGroup>
 

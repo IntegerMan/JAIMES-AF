@@ -1,9 +1,10 @@
 using Microsoft.EntityFrameworkCore;
-using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
-using MattEland.Jaimes.Services;
+using MattEland.Jaimes.ServiceLayer.Services;
+using MattEland.Jaimes.Services.Models;
+using Shouldly;
 
-namespace MattEland.Jaimes.Tests;
+namespace MattEland.Jaimes.Tests.Services;
 
 public class GameServiceTests : IAsyncLifetime
 {
@@ -13,7 +14,7 @@ public class GameServiceTests : IAsyncLifetime
     public async ValueTask InitializeAsync()
     {
         // Create an in-memory database for testing
-        var options = new DbContextOptionsBuilder<JaimesDbContext>()
+        DbContextOptions<JaimesDbContext> options = new DbContextOptionsBuilder<JaimesDbContext>()
             .UseSqlite("DataSource=:memory:")
             .Options;
 
@@ -34,50 +35,50 @@ public class GameServiceTests : IAsyncLifetime
     public async Task CreateGameAsync_CreatesGameWithInitialMessage()
     {
         // Arrange
-        var rulesetId = "test-ruleset";
-        var scenarioId = "test-scenario";
-        var playerId = "test-player";
+        string rulesetId = "test-ruleset";
+        string scenarioId = "test-scenario";
+        string playerId = "test-player";
 
         // Act
-        var gameDto = await _gameService.CreateGameAsync(rulesetId, scenarioId, playerId);
+        GameDto gameDto = await _gameService.CreateGameAsync(rulesetId, scenarioId, playerId);
 
         // Assert
-        Assert.NotEqual(Guid.Empty, gameDto.GameId);
-        Assert.Equal(rulesetId, gameDto.RulesetId);
-        Assert.Equal(scenarioId, gameDto.ScenarioId);
-        Assert.Equal(playerId, gameDto.PlayerId);
-        Assert.Single(gameDto.Messages);
-        Assert.Equal("Hello World", gameDto.Messages[0].Text);
+        gameDto.GameId.ShouldNotBe(Guid.Empty);
+        gameDto.RulesetId.ShouldBe(rulesetId);
+        gameDto.ScenarioId.ShouldBe(scenarioId);
+        gameDto.PlayerId.ShouldBe(playerId);
+        gameDto.Messages.ShouldHaveSingleItem();
+        gameDto.Messages[0].Text.ShouldBe("Hello World");
 
         // Verify game is in database
-        var gameInDb = await _context.Games.FindAsync(gameDto.GameId);
-        Assert.NotNull(gameInDb);
-        Assert.Equal(rulesetId, gameInDb.RulesetId);
+        Game? gameInDb = await _context.Games.FindAsync(gameDto.GameId);
+        gameInDb.ShouldNotBeNull();
+        gameInDb.RulesetId.ShouldBe(rulesetId);
 
         // Verify message is in database
-        var messageInDb = await _context.Messages.FirstOrDefaultAsync(m => m.GameId == gameDto.GameId);
-        Assert.NotNull(messageInDb);
-        Assert.Equal("Hello World", messageInDb.Text);
+        Message? messageInDb = await _context.Messages.FirstOrDefaultAsync(m => m.GameId == gameDto.GameId);
+        messageInDb.ShouldNotBeNull();
+        messageInDb.Text.ShouldBe("Hello World");
     }
 
     [Fact]
     public async Task GetGameAsync_ReturnsNull_WhenGameDoesNotExist()
     {
         // Arrange
-        var nonExistentGameId = Guid.NewGuid();
+        Guid nonExistentGameId = Guid.NewGuid();
 
         // Act
-        var result = await _gameService.GetGameAsync(nonExistentGameId);
+        GameDto? result = await _gameService.GetGameAsync(nonExistentGameId);
 
         // Assert
-        Assert.Null(result);
+        result.ShouldBeNull();
     }
 
     [Fact]
     public async Task GetGameAsync_ReturnsGame_WhenGameExists()
     {
         // Arrange
-        var game = new Game
+        Game game = new Game
         {
             Id = Guid.NewGuid(),
             RulesetId = "test-ruleset",
@@ -87,7 +88,7 @@ public class GameServiceTests : IAsyncLifetime
         };
         _context.Games.Add(game);
 
-        var message = new Message
+        Message message = new Message
         {
             GameId = game.Id,
             Text = "Test message",
@@ -97,23 +98,23 @@ public class GameServiceTests : IAsyncLifetime
         await _context.SaveChangesAsync();
 
         // Act
-        var result = await _gameService.GetGameAsync(game.Id);
+        GameDto? result = await _gameService.GetGameAsync(game.Id);
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Equal(game.Id, result.GameId);
-        Assert.Equal("test-ruleset", result.RulesetId);
-        Assert.Equal("test-scenario", result.ScenarioId);
-        Assert.Equal("test-player", result.PlayerId);
-        Assert.Single(result.Messages);
-        Assert.Equal("Test message", result.Messages[0].Text);
+        result.ShouldNotBeNull();
+        result.GameId.ShouldBe(game.Id);
+        result.RulesetId.ShouldBe("test-ruleset");
+        result.ScenarioId.ShouldBe("test-scenario");
+        result.PlayerId.ShouldBe("test-player");
+        result.Messages.ShouldHaveSingleItem();
+        result.Messages[0].Text.ShouldBe("Test message");
     }
 
     [Fact]
     public async Task GetGameAsync_ReturnsMessagesInOrder()
     {
         // Arrange
-        var game = new Game
+        Game game = new Game
         {
             Id = Guid.NewGuid(),
             RulesetId = "test-ruleset",
@@ -123,19 +124,19 @@ public class GameServiceTests : IAsyncLifetime
         };
         _context.Games.Add(game);
 
-        var message1 = new Message
+        Message message1 = new Message
         {
             GameId = game.Id,
             Text = "First message",
             CreatedAt = DateTime.UtcNow
         };
-        var message2 = new Message
+        Message message2 = new Message
         {
             GameId = game.Id,
             Text = "Second message",
             CreatedAt = DateTime.UtcNow.AddSeconds(1)
         };
-        var message3 = new Message
+        Message message3 = new Message
         {
             GameId = game.Id,
             Text = "Third message",
@@ -145,13 +146,13 @@ public class GameServiceTests : IAsyncLifetime
         await _context.SaveChangesAsync();
 
         // Act
-        var result = await _gameService.GetGameAsync(game.Id);
+        GameDto? result = await _gameService.GetGameAsync(game.Id);
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Equal(3, result.Messages.Length);
-        Assert.Equal("First message", result.Messages[0].Text);
-        Assert.Equal("Second message", result.Messages[1].Text);
-        Assert.Equal("Third message", result.Messages[2].Text);
+        result.ShouldNotBeNull();
+        result.Messages.Length.ShouldBe(3);
+        result.Messages[0].Text.ShouldBe("First message");
+        result.Messages[1].Text.ShouldBe("Second message");
+        result.Messages[2].Text.ShouldBe("Third message");
     }
 }
