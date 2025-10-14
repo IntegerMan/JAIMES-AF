@@ -1,0 +1,33 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch .NET Aspire AppHost",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/JAIMES AF.AppHost/JAIMES AF.AppHost.csproj",
+            "program": "${workspaceFolder}/JAIMES AF.AppHost/bin/Debug/net9.0/JAIMES AF.AppHost.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "stopAtEntry": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
+        },
+        {
+            "name": "Launch .NET Aspire AppHost (Release)",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/JAIMES AF.AppHost/JAIMES AF.AppHost.csproj",
+            "program": "${workspaceFolder}/JAIMES AF.AppHost/bin/Release/net9.0/JAIMES AF.AppHost.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "stopAtEntry": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Production"
+            }
+        }
+    ]
+}

@@ -1,0 +1,6 @@
+{
+    "dotnet.defaultSolution": "JAIMES AF.slnx",
+    "omnisharp.defaultLaunchSolution": "JAIMES AF.slnx",
+    "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
+    "dotnet.server.useOmnisharp": false
+}
