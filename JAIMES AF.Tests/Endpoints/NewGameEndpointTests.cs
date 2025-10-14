@@ -13,7 +13,6 @@ public class NewGameEndpointTests : EndpointTestBase
         // Arrange
         NewGameRequest request = new NewGameRequest
         {
-            RulesetId = "test-ruleset",
             ScenarioId = "test-scenario",
             PlayerId = "test-player"
         };
@@ -37,6 +36,40 @@ public class NewGameEndpointTests : EndpointTestBase
     {
         // Arrange
         var request = new { }; // Empty request
+
+        // Act
+        HttpResponseMessage response = await Client.PostAsJsonAsync("/games/", request);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task NewGameEndpoint_WithNonexistentPlayer_ReturnsBadRequest()
+    {
+        // Arrange
+        NewGameRequest request = new NewGameRequest
+        {
+            ScenarioId = "test-scenario",
+            PlayerId = "nonexistent-player"
+        };
+
+        // Act
+        HttpResponseMessage response = await Client.PostAsJsonAsync("/games/", request);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task NewGameEndpoint_WithNonexistentScenario_ReturnsBadRequest()
+    {
+        // Arrange
+        NewGameRequest request = new NewGameRequest
+        {
+            ScenarioId = "nonexistent-scenario",
+            PlayerId = "test-player"
+        };
 
         // Act
         HttpResponseMessage response = await Client.PostAsJsonAsync("/games/", request);

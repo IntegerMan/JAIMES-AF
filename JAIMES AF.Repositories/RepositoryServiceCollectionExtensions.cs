@@ -15,7 +15,8 @@ public static class RepositoryServiceCollectionExtensions
             switch (provider)
             {
                 case DatabaseProvider.InMemory:
-                    options.UseInMemoryDatabase("InMemory", sqlOpts =>
+                    string dbName = string.IsNullOrWhiteSpace(connectionString) ? "InMemory" : connectionString;
+                    options.UseInMemoryDatabase(dbName, sqlOpts =>
                     {
                         sqlOpts.EnableNullChecks();
                     });
@@ -62,18 +63,13 @@ public static class RepositoryServiceCollectionExtensions
             _ => throw new NotSupportedException($"Database provider {providerString} is not yet supported")
         };
 
-        string? connectionString = null;
+        string? connectionString = configuration.GetConnectionString("DefaultConnection")
+                           ?? configuration["ConnectionStrings:DefaultConnection"]
+                           ?? configuration["Jaimes:ConnectionStrings:DefaultConnection"];
 
-        if (provider != DatabaseProvider.InMemory)
+        if (provider != DatabaseProvider.InMemory && string.IsNullOrWhiteSpace(connectionString))
         {
-            connectionString = configuration.GetConnectionString("DefaultConnection")
-                               ?? configuration["ConnectionStrings:DefaultConnection"]
-                               ?? configuration["Jaimes:ConnectionStrings:DefaultConnection"];
-
-            if (string.IsNullOrWhiteSpace(connectionString))
-            {
-                throw new InvalidOperationException("DefaultConnection is required for non-InMemory database providers");
-            }
+            throw new InvalidOperationException("DefaultConnection is required for non-InMemory database providers");
         }
 
         return services.AddJaimesRepositories(provider, connectionString);

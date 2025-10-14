@@ -21,6 +21,12 @@ public class GameServiceTests : IAsyncLifetime
         _context = new JaimesDbContext(options);
         await _context.Database.EnsureCreatedAsync();
 
+        // Add test data for validation
+        _context.Rulesets.Add(new Ruleset { Id = "test-ruleset", Name = "Test Ruleset" });
+        _context.Players.Add(new Player { Id = "test-player", RulesetId = "test-ruleset" });
+        _context.Scenarios.Add(new Scenario { Id = "test-scenario", RulesetId = "test-ruleset" });
+        await _context.SaveChangesAsync();
+
         _gameService = new GameService(_context);
     }
 
@@ -33,16 +39,15 @@ public class GameServiceTests : IAsyncLifetime
     public async Task CreateGameAsync_CreatesGameWithInitialMessage()
     {
         // Arrange
-        string rulesetId = "test-ruleset";
         string scenarioId = "test-scenario";
         string playerId = "test-player";
 
         // Act
-        GameDto gameDto = await _gameService.CreateGameAsync(rulesetId, scenarioId, playerId);
+        GameDto gameDto = await _gameService.CreateGameAsync(scenarioId, playerId);
 
         // Assert
         gameDto.GameId.ShouldNotBe(Guid.Empty);
-        gameDto.RulesetId.ShouldBe(rulesetId);
+        gameDto.RulesetId.ShouldBe("test-ruleset");
         gameDto.ScenarioId.ShouldBe(scenarioId);
         gameDto.PlayerId.ShouldBe(playerId);
         gameDto.Messages.ShouldHaveSingleItem();
@@ -51,7 +56,7 @@ public class GameServiceTests : IAsyncLifetime
         // Verify game is in database
         Game? gameInDb = await _context.Games.FindAsync(gameDto.GameId);
         gameInDb.ShouldNotBeNull();
-        gameInDb.RulesetId.ShouldBe(rulesetId);
+        gameInDb.RulesetId.ShouldBe("test-ruleset");
 
         // Verify message is in database
         Message? messageInDb = await _context.Messages.FirstOrDefaultAsync(m => m.GameId == gameDto.GameId);
@@ -94,6 +99,7 @@ public class GameServiceTests : IAsyncLifetime
         };
         _context.Messages.Add(message);
         await _context.SaveChangesAsync();
+        _context.ChangeTracker.Clear();
 
         // Act
         GameDto? result = await _gameService.GetGameAsync(game.Id);
@@ -142,6 +148,7 @@ public class GameServiceTests : IAsyncLifetime
         };
         _context.Messages.AddRange(message1, message2, message3);
         await _context.SaveChangesAsync();
+        _context.ChangeTracker.Clear();
 
         // Act
         GameDto? result = await _gameService.GetGameAsync(game.Id);
@@ -152,5 +159,52 @@ public class GameServiceTests : IAsyncLifetime
         result.Messages[0].Text.ShouldBe("First message");
         result.Messages[1].Text.ShouldBe("Second message");
         result.Messages[2].Text.ShouldBe("Third message");
+    }
+
+    [Fact]
+    public async Task CreateGameAsync_ThrowsException_WhenPlayerDoesNotExist()
+    {
+        // Arrange
+        string scenarioId = "test-scenario";
+        string playerId = "nonexistent-player";
+
+        // Act & Assert
+        var exception = await Should.ThrowAsync<ArgumentException>(
+            async () => await _gameService.CreateGameAsync(scenarioId, playerId)
+        );
+        exception.Message.ShouldContain("Player 'nonexistent-player' does not exist");
+    }
+
+    [Fact]
+    public async Task CreateGameAsync_ThrowsException_WhenScenarioDoesNotExist()
+    {
+        // Arrange
+        string scenarioId = "nonexistent-scenario";
+        string playerId = "test-player";
+
+        // Act & Assert
+        var exception = await Should.ThrowAsync<ArgumentException>(
+            async () => await _gameService.CreateGameAsync(scenarioId, playerId)
+        );
+        exception.Message.ShouldContain("Scenario 'nonexistent-scenario' does not exist");
+    }
+
+    [Fact]
+    public async Task CreateGameAsync_ThrowsException_WhenPlayerAndScenarioRulesetMismatch()
+    {
+        // Arrange
+        _context.Rulesets.Add(new Ruleset { Id = "different-ruleset", Name = "Different Ruleset" });
+        _context.Players.Add(new Player { Id = "player-different-ruleset", RulesetId = "different-ruleset" });
+        await _context.SaveChangesAsync();
+
+        string scenarioId = "test-scenario";
+        string playerId = "player-different-ruleset";
+
+        // Act & Assert
+        var exception = await Should.ThrowAsync<ArgumentException>(
+            async () => await _gameService.CreateGameAsync(scenarioId, playerId)
+        );
+        exception.Message.ShouldContain("uses ruleset 'different-ruleset'");
+        exception.Message.ShouldContain("uses ruleset 'test-ruleset'");
     }
 }
