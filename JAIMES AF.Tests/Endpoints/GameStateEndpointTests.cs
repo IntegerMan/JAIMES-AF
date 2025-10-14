@@ -13,7 +13,6 @@ public class GameStateEndpointTests : EndpointTestBase
         // Arrange - Create a game first
         NewGameRequest createRequest = new NewGameRequest
         {
-            RulesetId = "test-ruleset",
             ScenarioId = "test-scenario",
             PlayerId = "test-player"
         };
@@ -62,21 +61,19 @@ public class GameStateEndpointTests : EndpointTestBase
     [Fact]
     public async Task MultipleGames_CanBeCreatedAndRetrieved()
     {
-        // Arrange & Act - Create multiple games
+        // Arrange & Act - Create multiple games using the default test data
         NewGameRequest game1Request = new NewGameRequest
         {
-            RulesetId = "ruleset-1",
-            ScenarioId = "scenario-1",
-            PlayerId = "player-1"
+            ScenarioId = "test-scenario",
+            PlayerId = "test-player"
         };
         HttpResponseMessage game1Response = await Client.PostAsJsonAsync("/games/", game1Request);
         NewGameResponse? game1 = await game1Response.Content.ReadFromJsonAsync<NewGameResponse>();
 
         NewGameRequest game2Request = new NewGameRequest
         {
-            RulesetId = "ruleset-2",
-            ScenarioId = "scenario-2",
-            PlayerId = "player-2"
+            ScenarioId = "test-scenario",
+            PlayerId = "test-player"
         };
         HttpResponseMessage game2Response = await Client.PostAsJsonAsync("/games/", game2Request);
         NewGameResponse? game2 = await game2Response.Content.ReadFromJsonAsync<NewGameResponse>();

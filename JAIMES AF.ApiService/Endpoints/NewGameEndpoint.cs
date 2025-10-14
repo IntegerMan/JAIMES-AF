@@ -24,7 +24,7 @@ public class NewGameEndpoint : Endpoint<NewGameRequest, NewGameResponse>
     {
         try
         {
-            GameDto gameDto = await GameService.CreateGameAsync(req.RulesetId, req.ScenarioId, req.PlayerId, ct);
+            GameDto gameDto = await GameService.CreateGameAsync(req.ScenarioId, req.PlayerId, ct);
 
             NewGameResponse game = new()
             {

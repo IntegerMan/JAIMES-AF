@@ -39,16 +39,15 @@ public class GameServiceTests : IAsyncLifetime
     public async Task CreateGameAsync_CreatesGameWithInitialMessage()
     {
         // Arrange
-        string rulesetId = "test-ruleset";
         string scenarioId = "test-scenario";
         string playerId = "test-player";
 
         // Act
-        GameDto gameDto = await _gameService.CreateGameAsync(rulesetId, scenarioId, playerId);
+        GameDto gameDto = await _gameService.CreateGameAsync(scenarioId, playerId);
 
         // Assert
         gameDto.GameId.ShouldNotBe(Guid.Empty);
-        gameDto.RulesetId.ShouldBe(rulesetId);
+        gameDto.RulesetId.ShouldBe("test-ruleset");
         gameDto.ScenarioId.ShouldBe(scenarioId);
         gameDto.PlayerId.ShouldBe(playerId);
         gameDto.Messages.ShouldHaveSingleItem();
@@ -57,7 +56,7 @@ public class GameServiceTests : IAsyncLifetime
         // Verify game is in database
         Game? gameInDb = await _context.Games.FindAsync(gameDto.GameId);
         gameInDb.ShouldNotBeNull();
-        gameInDb.RulesetId.ShouldBe(rulesetId);
+        gameInDb.RulesetId.ShouldBe("test-ruleset");
 
         // Verify message is in database
         Message? messageInDb = await _context.Messages.FirstOrDefaultAsync(m => m.GameId == gameDto.GameId);
@@ -163,31 +162,15 @@ public class GameServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task CreateGameAsync_ThrowsException_WhenRulesetDoesNotExist()
-    {
-        // Arrange
-        string rulesetId = "nonexistent-ruleset";
-        string scenarioId = "test-scenario";
-        string playerId = "test-player";
-
-        // Act & Assert
-        var exception = await Should.ThrowAsync<ArgumentException>(
-            async () => await _gameService.CreateGameAsync(rulesetId, scenarioId, playerId)
-        );
-        exception.Message.ShouldContain("Ruleset 'nonexistent-ruleset' does not exist");
-    }
-
-    [Fact]
     public async Task CreateGameAsync_ThrowsException_WhenPlayerDoesNotExist()
     {
         // Arrange
-        string rulesetId = "test-ruleset";
         string scenarioId = "test-scenario";
         string playerId = "nonexistent-player";
 
         // Act & Assert
         var exception = await Should.ThrowAsync<ArgumentException>(
-            async () => await _gameService.CreateGameAsync(rulesetId, scenarioId, playerId)
+            async () => await _gameService.CreateGameAsync(scenarioId, playerId)
         );
         exception.Message.ShouldContain("Player 'nonexistent-player' does not exist");
     }
@@ -196,52 +179,32 @@ public class GameServiceTests : IAsyncLifetime
     public async Task CreateGameAsync_ThrowsException_WhenScenarioDoesNotExist()
     {
         // Arrange
-        string rulesetId = "test-ruleset";
         string scenarioId = "nonexistent-scenario";
         string playerId = "test-player";
 
         // Act & Assert
         var exception = await Should.ThrowAsync<ArgumentException>(
-            async () => await _gameService.CreateGameAsync(rulesetId, scenarioId, playerId)
+            async () => await _gameService.CreateGameAsync(scenarioId, playerId)
         );
         exception.Message.ShouldContain("Scenario 'nonexistent-scenario' does not exist");
     }
 
     [Fact]
-    public async Task CreateGameAsync_ThrowsException_WhenPlayerRulesetMismatch()
+    public async Task CreateGameAsync_ThrowsException_WhenPlayerAndScenarioRulesetMismatch()
     {
         // Arrange
         _context.Rulesets.Add(new Ruleset { Id = "different-ruleset", Name = "Different Ruleset" });
         _context.Players.Add(new Player { Id = "player-different-ruleset", RulesetId = "different-ruleset" });
         await _context.SaveChangesAsync();
 
-        string rulesetId = "test-ruleset";
         string scenarioId = "test-scenario";
         string playerId = "player-different-ruleset";
 
         // Act & Assert
         var exception = await Should.ThrowAsync<ArgumentException>(
-            async () => await _gameService.CreateGameAsync(rulesetId, scenarioId, playerId)
+            async () => await _gameService.CreateGameAsync(scenarioId, playerId)
         );
-        exception.Message.ShouldContain("uses ruleset 'different-ruleset' but game requires ruleset 'test-ruleset'");
-    }
-
-    [Fact]
-    public async Task CreateGameAsync_ThrowsException_WhenScenarioRulesetMismatch()
-    {
-        // Arrange
-        _context.Rulesets.Add(new Ruleset { Id = "different-ruleset", Name = "Different Ruleset" });
-        _context.Scenarios.Add(new Scenario { Id = "scenario-different-ruleset", RulesetId = "different-ruleset" });
-        await _context.SaveChangesAsync();
-
-        string rulesetId = "test-ruleset";
-        string scenarioId = "scenario-different-ruleset";
-        string playerId = "test-player";
-
-        // Act & Assert
-        var exception = await Should.ThrowAsync<ArgumentException>(
-            async () => await _gameService.CreateGameAsync(rulesetId, scenarioId, playerId)
-        );
-        exception.Message.ShouldContain("uses ruleset 'different-ruleset' but game requires ruleset 'test-ruleset'");
+        exception.Message.ShouldContain("uses ruleset 'different-ruleset'");
+        exception.Message.ShouldContain("uses ruleset 'test-ruleset'");
     }
 }
