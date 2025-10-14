@@ -1,0 +1,8 @@
+{
+    "dotnet.defaultSolution": "JAIMES AF.slnx",
+    "omnisharp.defaultLaunchSolution": "JAIMES AF.slnx",
+    "files.exclude": {
+        "**/bin": true,
+        "**/obj": true
+    }
+}
