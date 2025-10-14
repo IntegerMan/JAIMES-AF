@@ -2,6 +2,7 @@ using FastEndpoints;
 using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.ServiceLayer.Services;
+using Microsoft.Extensions.Configuration;
 
 public class Program
 {
@@ -21,13 +22,25 @@ public class Program
         builder.Services.AddFastEndpoints();
 
         // Add Jaimes repositories and services
-        builder.Services.AddJaimesRepositories(builder.Configuration);
+        // Allow tests to skip database registration by setting "SkipDatabaseRegistration" in configuration
+        var skipDbRegValue = builder.Configuration["SkipDatabaseRegistration"];
+        var skipDbRegistration = !string.IsNullOrWhiteSpace(skipDbRegValue) && bool.TryParse(skipDbRegValue, out var sdr) && sdr;
+
+        if (!skipDbRegistration)
+        {
+            builder.Services.AddJaimesRepositories(builder.Configuration);
+        }
+
         builder.Services.AddJaimesServices();
 
         WebApplication app = builder.Build();
 
-        // Initialize database
-        await app.Services.InitializeDatabaseAsync();
+        // Initialize database unless the configuration explicitly requests skipping initialization (useful for tests)
+        bool skipDbInit = app.Configuration.GetValue<bool>("SkipDatabaseInitialization");
+        if (!skipDbInit)
+        {
+            await app.Services.InitializeDatabaseAsync();
+        }
 
         // Configure the HTTP request pipeline.
         app.UseExceptionHandler();
