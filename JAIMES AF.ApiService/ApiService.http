@@ -17,3 +17,12 @@ Accept: application/json
 ### Get the specific game
 GET {{ApiService_HostAddress}}/games/d23436d7-1525-43ec-9a99-9f43458d9a54
 Content-Type: application/json
+
+### Chat in a specific game
+POST {{ApiService_HostAddress}}/games/d23436d7-1525-43ec-9a99-9f43458d9a54
+Content-Type: application/json
+
+{
+  "gameId": "d23436d7-1525-43ec-9a99-9f43458d9a54",
+  "message": "Hello from the API!"
+}
