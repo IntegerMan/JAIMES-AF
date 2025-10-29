@@ -14,6 +14,10 @@ Content-Type: application/json
 GET {{ApiService_HostAddress}}/games/
 Accept: application/json
 
+### GET All Scenarios
+GET {{ApiService_HostAddress}}/scenarios
+Accept: application/json
+
 ### Get the specific game
 GET {{ApiService_HostAddress}}/games/d23436d7-1525-43ec-9a99-9f43458d9a54
 Content-Type: application/json
