@@ -79,6 +79,17 @@ public static class RepositoryServiceCollectionExtensions
     {
         using IServiceScope scope = serviceProvider.CreateScope();
         JaimesDbContext context = scope.ServiceProvider.GetRequiredService<JaimesDbContext>();
-        await context.Database.EnsureCreatedAsync();
+
+        // Prefer applying EF Core migrations on startup for relational databases.
+        // If migrations aren't supported (e.g. InMemory provider) fall back to EnsureCreated.
+        try
+        {
+            await context.Database.MigrateAsync();
+        }
+        catch (InvalidOperationException)
+        {
+            // In-memory provider and some others will throw when Migrate is used; fall back.
+            await context.Database.EnsureCreatedAsync();
+        }
     }
 }
