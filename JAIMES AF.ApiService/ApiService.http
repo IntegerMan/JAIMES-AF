@@ -6,7 +6,7 @@ Content-Type: application/json
 
 {
   "rulesetId": "dnd5e",
-  "scenarioId": "islandTest",
+  "scenarioId": "default",
   "playerId": "emcee"
 }
 
@@ -16,6 +16,14 @@ Accept: application/json
 
 ### GET All Scenarios
 GET {{ApiService_HostAddress}}/scenarios
+Accept: application/json
+
+### GET All Rulesets
+GET {{ApiService_HostAddress}}/rulesets
+Accept: application/json
+
+### GET All Players
+GET {{ApiService_HostAddress}}/players
 Accept: application/json
 
 ### Get the specific game
