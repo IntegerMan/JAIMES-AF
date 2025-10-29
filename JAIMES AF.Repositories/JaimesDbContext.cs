@@ -83,17 +83,17 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Seed data
+        // Seed data - use lowercase ids for new defaults
         modelBuilder.Entity<Ruleset>().HasData(
-            new Ruleset { Id = "DND5E", Name = "Dungeons and Dragons 5th Edition" }
+            new Ruleset { Id = "dnd5e", Name = "Dungeons and Dragons5th Edition" }
         );
 
         modelBuilder.Entity<Player>().HasData(
-            new Player { Id = "emcee", RulesetId = "DND5E", Description = "Default player" }
+            new Player { Id = "emcee", RulesetId = "dnd5e", Description = "Default player" }
         );
 
         modelBuilder.Entity<Scenario>().HasData(
-            new Scenario { Id = "default", RulesetId = "DND5E", Description = "Default scenario" }
+            new Scenario { Id = "islandTest", RulesetId = "dnd5e", Description = "Island test scenario" }
         );
     }
 }

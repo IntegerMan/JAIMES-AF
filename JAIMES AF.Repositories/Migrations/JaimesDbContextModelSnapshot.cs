@@ -102,7 +102,7 @@ namespace MattEland.Jaimes.Repositories.Migrations
                         {
                             Id = "emcee",
                             Description = "Default player",
-                            RulesetId = "DND5E"
+                            RulesetId = "dnd5e"
                         });
                 });
 
@@ -122,7 +122,7 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.HasData(
                         new
                         {
-                            Id = "DND5E",
+                            Id = "dnd5e",
                             Name = "Dungeons and Dragons 5th Edition"
                         });
                 });
@@ -148,9 +148,9 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.HasData(
                         new
                         {
-                            Id = "default",
-                            Description = "Default scenario",
-                            RulesetId = "DND5E"
+                            Id = "islandTest",
+                            Description = "Island test scenario",
+                            RulesetId = "dnd5e"
                         });
                 });
 
