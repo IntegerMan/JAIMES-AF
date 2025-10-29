@@ -1,6 +1,6 @@
 ﻿namespace MattEland.Jaimes.ApiService.Responses;
 
-public class ListGamesResponse
+public record ListGamesResponse
 {
     public GameInfoResponse[] Games { get; init; } = [];
 }
