@@ -1,9 +1,9 @@
 using FastEndpoints;
 using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.Repositories;
-using MattEland.Jaimes.ServiceLayer.Services;
 using Microsoft.Extensions.Configuration;
 using Swashbuckle.AspNetCore;
+using MattEland.Jaimes.ServiceLayer;
 
 public class Program
 {
