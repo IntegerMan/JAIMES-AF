@@ -20,9 +20,9 @@ public class GameRepositoryTests : RepositoryTestBase
 
         // Act
         Context.Games.Add(game);
-        await Context.SaveChangesAsync();
+        await Context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        Game? retrievedGame = await Context.Games.FindAsync(game.Id);
+        Game? retrievedGame = await Context.Games.FindAsync(new object[] { game.Id }, TestContext.Current.CancellationToken);
 
         // Assert
         retrievedGame.ShouldNotBeNull();
@@ -53,16 +53,16 @@ public class GameRepositoryTests : RepositoryTestBase
             CreatedAt = DateTime.UtcNow
         };
         Context.Messages.Add(message);
-        await Context.SaveChangesAsync();
+        await Context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         int messageId = message.Id;
 
         // Act
         Context.Games.Remove(game);
-        await Context.SaveChangesAsync();
+        await Context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Assert
-        Message? deletedMessage = await Context.Messages.FindAsync(messageId);
+        Message? deletedMessage = await Context.Messages.FindAsync(new object[] { messageId }, TestContext.Current.CancellationToken);
         deletedMessage.ShouldBeNull();
     }
 }

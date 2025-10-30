@@ -6,15 +6,16 @@ namespace MattEland.Jaimes.Tests.Endpoints;
 
 public class ListPlayersEndpointTests : EndpointTestBase
 {
- [Fact]
- public async Task ListPlayersEndpoint_ReturnsPlayers()
- {
- HttpResponseMessage response = await Client.GetAsync("/players");
- response.StatusCode.ShouldBe(System.Net.HttpStatusCode.OK);
+    [Fact]
+    public async Task ListPlayersEndpoint_ReturnsPlayers()
+    {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        HttpResponseMessage response = await Client.GetAsync("/players", ct);
+        response.StatusCode.ShouldBe(System.Net.HttpStatusCode.OK);
 
- PlayerListResponse? payload = await response.Content.ReadFromJsonAsync<PlayerListResponse>();
- payload.ShouldNotBeNull();
- payload.Players.ShouldNotBeNull();
- payload.Players.Length.ShouldBeGreaterThan(0);
- }
+        PlayerListResponse? payload = await response.Content.ReadFromJsonAsync<PlayerListResponse>(cancellationToken: ct);
+        payload.ShouldNotBeNull();
+        payload.Players.ShouldNotBeNull();
+        payload.Players.Length.ShouldBeGreaterThan(0);
+    }
 }

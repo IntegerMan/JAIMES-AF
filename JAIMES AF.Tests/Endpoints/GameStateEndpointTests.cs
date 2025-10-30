@@ -11,22 +11,24 @@ public class GameStateEndpointTests : EndpointTestBase
     public async Task GameStateEndpoint_ReturnsGame_WhenGameExists()
     {
         // Arrange - Create a game first
+        CancellationToken ct = TestContext.Current.CancellationToken;
+
         NewGameRequest createRequest = new NewGameRequest
         {
             ScenarioId = "test-scenario",
             PlayerId = "test-player"
         };
-        HttpResponseMessage createResponse = await Client.PostAsJsonAsync("/games/", createRequest);
-        NewGameResponse? createdGame = await createResponse.Content.ReadFromJsonAsync<NewGameResponse>();
+        HttpResponseMessage createResponse = await Client.PostAsJsonAsync("/games/", createRequest, ct);
+        NewGameResponse? createdGame = await createResponse.Content.ReadFromJsonAsync<NewGameResponse>(cancellationToken: ct);
         createdGame.ShouldNotBeNull();
 
         // Act - Retrieve the game
-        HttpResponseMessage response = await Client.GetAsync($"/games/{createdGame.GameId}");
+        HttpResponseMessage response = await Client.GetAsync($"/games/{createdGame.GameId}", ct);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
 
-        GameStateResponse? game = await response.Content.ReadFromJsonAsync<GameStateResponse>();
+        GameStateResponse? game = await response.Content.ReadFromJsonAsync<GameStateResponse>(cancellationToken: ct);
         game.ShouldNotBeNull();
         game.GameId.ShouldBe(createdGame.GameId);
         game.Messages.ShouldNotBeNull();
@@ -38,10 +40,11 @@ public class GameStateEndpointTests : EndpointTestBase
     public async Task GameStateEndpoint_ReturnsNotFound_WhenGameDoesNotExist()
     {
         // Arrange
+        CancellationToken ct = TestContext.Current.CancellationToken;
         Guid nonExistentGameId = Guid.NewGuid();
 
         // Act
-        HttpResponseMessage response = await Client.GetAsync($"/games/{nonExistentGameId}");
+        HttpResponseMessage response = await Client.GetAsync($"/games/{nonExistentGameId}", ct);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
@@ -50,8 +53,11 @@ public class GameStateEndpointTests : EndpointTestBase
     [Fact]
     public async Task GameStateEndpoint_ReturnsBadRequest_WithInvalidGuid()
     {
+        // Arrange
+        CancellationToken ct = TestContext.Current.CancellationToken;
+
         // Act
-        HttpResponseMessage response = await Client.GetAsync("/games/not-a-guid");
+        HttpResponseMessage response = await Client.GetAsync("/games/not-a-guid", ct);
 
         // Assert
         // FastEndpoints routing with {gameId:guid} constraint returns NotFound for invalid GUIDs
@@ -62,34 +68,36 @@ public class GameStateEndpointTests : EndpointTestBase
     public async Task MultipleGames_CanBeCreatedAndRetrieved()
     {
         // Arrange & Act - Create multiple games using the default test data
+        CancellationToken ct = TestContext.Current.CancellationToken;
+
         NewGameRequest game1Request = new NewGameRequest
         {
             ScenarioId = "test-scenario",
             PlayerId = "test-player"
         };
-        HttpResponseMessage game1Response = await Client.PostAsJsonAsync("/games/", game1Request);
-        NewGameResponse? game1 = await game1Response.Content.ReadFromJsonAsync<NewGameResponse>();
+        HttpResponseMessage game1Response = await Client.PostAsJsonAsync("/games/", game1Request, ct);
+        NewGameResponse? game1 = await game1Response.Content.ReadFromJsonAsync<NewGameResponse>(cancellationToken: ct);
 
         NewGameRequest game2Request = new NewGameRequest
         {
             ScenarioId = "test-scenario",
             PlayerId = "test-player"
         };
-        HttpResponseMessage game2Response = await Client.PostAsJsonAsync("/games/", game2Request);
-        NewGameResponse? game2 = await game2Response.Content.ReadFromJsonAsync<NewGameResponse>();
+        HttpResponseMessage game2Response = await Client.PostAsJsonAsync("/games/", game2Request, ct);
+        NewGameResponse? game2 = await game2Response.Content.ReadFromJsonAsync<NewGameResponse>(cancellationToken: ct);
 
         game1.ShouldNotBeNull();
         game2.ShouldNotBeNull();
         game1.GameId.ShouldNotBe(game2.GameId);
 
         // Assert - Both games can be retrieved independently
-        HttpResponseMessage retrieveGame1Response = await Client.GetAsync($"/games/{game1.GameId}");
-        GameStateResponse? retrievedGame1 = await retrieveGame1Response.Content.ReadFromJsonAsync<GameStateResponse>();
+        HttpResponseMessage retrieveGame1Response = await Client.GetAsync($"/games/{game1.GameId}", ct);
+        GameStateResponse? retrievedGame1 = await retrieveGame1Response.Content.ReadFromJsonAsync<GameStateResponse>(cancellationToken: ct);
         retrievedGame1.ShouldNotBeNull();
         retrievedGame1.GameId.ShouldBe(game1.GameId);
 
-        HttpResponseMessage retrieveGame2Response = await Client.GetAsync($"/games/{game2.GameId}");
-        GameStateResponse? retrievedGame2 = await retrieveGame2Response.Content.ReadFromJsonAsync<GameStateResponse>();
+        HttpResponseMessage retrieveGame2Response = await Client.GetAsync($"/games/{game2.GameId}", ct);
+        GameStateResponse? retrievedGame2 = await retrieveGame2Response.Content.ReadFromJsonAsync<GameStateResponse>(cancellationToken: ct);
         retrievedGame2.ShouldNotBeNull();
         retrievedGame2.GameId.ShouldBe(game2.GameId);
     }

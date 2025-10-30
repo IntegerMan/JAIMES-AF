@@ -20,6 +20,7 @@ public abstract class EndpointTestBase : IAsyncLifetime
     {
         // Use a unique database name per test instance
         string dbName = $"TestDb_{Guid.NewGuid()}";
+        CancellationToken ct = TestContext.Current.CancellationToken;
         
         Factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
@@ -36,23 +37,23 @@ public abstract class EndpointTestBase : IAsyncLifetime
         using (var scope = Factory.Services.CreateScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<JaimesDbContext>();
-            await context.Database.EnsureCreatedAsync();
-            await SeedTestDataAsync(context);
+            await context.Database.EnsureCreatedAsync(ct);
+            await SeedTestDataAsync(context, ct);
         }
     }
 
-    protected virtual async Task SeedTestDataAsync(JaimesDbContext context)
+    protected virtual async Task SeedTestDataAsync(JaimesDbContext context, CancellationToken cancellationToken)
     {
         // Add default test data
         context.Rulesets.Add(new Ruleset { Id = "test-ruleset", Name = "Test Ruleset" });
         context.Players.Add(new Player { Id = "test-player", RulesetId = "test-ruleset" });
         context.Scenarios.Add(new Scenario { Id = "test-scenario", RulesetId = "test-ruleset" });
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(cancellationToken);
     }
 
     public virtual async ValueTask DisposeAsync()
     {
-        Client.Dispose();
+        Client?.Dispose();
         await Factory.DisposeAsync();
     }
 }

@@ -16,14 +16,15 @@ public class NewGameEndpointTests : EndpointTestBase
             ScenarioId = "test-scenario",
             PlayerId = "test-player"
         };
+        CancellationToken ct = TestContext.Current.CancellationToken;
 
         // Act
-        HttpResponseMessage response = await Client.PostAsJsonAsync("/games/", request);
+        HttpResponseMessage response = await Client.PostAsJsonAsync("/games/", request, ct);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
 
-        NewGameResponse? game = await response.Content.ReadFromJsonAsync<NewGameResponse>();
+        NewGameResponse? game = await response.Content.ReadFromJsonAsync<NewGameResponse>(cancellationToken: ct);
         game.ShouldNotBeNull();
         game.GameId.ShouldNotBe(Guid.Empty);
         game.Messages.ShouldNotBeNull();
@@ -36,9 +37,10 @@ public class NewGameEndpointTests : EndpointTestBase
     {
         // Arrange
         var request = new { }; // Empty request
+        CancellationToken ct = TestContext.Current.CancellationToken;
 
         // Act
-        HttpResponseMessage response = await Client.PostAsJsonAsync("/games/", request);
+        HttpResponseMessage response = await Client.PostAsJsonAsync("/games/", request, ct);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
@@ -53,9 +55,10 @@ public class NewGameEndpointTests : EndpointTestBase
             ScenarioId = "test-scenario",
             PlayerId = "nonexistent-player"
         };
+        CancellationToken ct = TestContext.Current.CancellationToken;
 
         // Act
-        HttpResponseMessage response = await Client.PostAsJsonAsync("/games/", request);
+        HttpResponseMessage response = await Client.PostAsJsonAsync("/games/", request, ct);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
@@ -70,9 +73,10 @@ public class NewGameEndpointTests : EndpointTestBase
             ScenarioId = "nonexistent-scenario",
             PlayerId = "test-player"
         };
+        CancellationToken ct = TestContext.Current.CancellationToken;
 
         // Act
-        HttpResponseMessage response = await Client.PostAsJsonAsync("/games/", request);
+        HttpResponseMessage response = await Client.PostAsJsonAsync("/games/", request, ct);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);

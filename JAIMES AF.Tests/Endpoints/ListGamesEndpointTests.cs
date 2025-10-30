@@ -11,15 +11,16 @@ public class ListGamesEndpointTests : EndpointTestBase
     {
         // Arrange - Create a game first
         var createRequest = new { ScenarioId = "test-scenario", PlayerId = "test-player" };
-        await Client.PostAsJsonAsync("/games/", createRequest);
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        await Client.PostAsJsonAsync("/games/", createRequest, ct);
 
         // Act - Retrieve all games
-        HttpResponseMessage response = await Client.GetAsync("/games/");
+        HttpResponseMessage response = await Client.GetAsync("/games/", ct);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
 
-        ListGamesResponse? gamesResponse = await response.Content.ReadFromJsonAsync<ListGamesResponse>();
+        ListGamesResponse? gamesResponse = await response.Content.ReadFromJsonAsync<ListGamesResponse>(cancellationToken: ct);
         gamesResponse.ShouldNotBeNull();
         gamesResponse.Games.ShouldNotBeNull();
         gamesResponse.Games.Length.ShouldBeGreaterThan(0);

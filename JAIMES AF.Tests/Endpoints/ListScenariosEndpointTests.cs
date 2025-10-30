@@ -9,10 +9,11 @@ public class ListScenariosEndpointTests : EndpointTestBase
  [Fact]
  public async Task ListScenariosEndpoint_ReturnsScenarios()
  {
- HttpResponseMessage response = await Client.GetAsync("/scenarios");
+ CancellationToken ct = TestContext.Current.CancellationToken;
+ HttpResponseMessage response = await Client.GetAsync("/scenarios", ct);
  response.StatusCode.ShouldBe(System.Net.HttpStatusCode.OK);
 
- ScenarioListResponse? payload = await response.Content.ReadFromJsonAsync<ScenarioListResponse>();
+ ScenarioListResponse? payload = await response.Content.ReadFromJsonAsync<ScenarioListResponse>(cancellationToken: ct);
  payload.ShouldNotBeNull();
  payload.Scenarios.ShouldNotBeNull();
  payload.Scenarios.Length.ShouldBeGreaterThan(0);
