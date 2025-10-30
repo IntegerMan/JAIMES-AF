@@ -1,9 +1,16 @@
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
 IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIMES_AF_ApiService>("apiservice")
+    .WithIconName("DocumentGlobe", IconVariant.Regular)
+    .WithUrlForEndpoint("http", static _ => new()
+    {
+        Url = "/swagger",
+        DisplayText = "Swagger UI"
+    })
     .WithHttpHealthCheck("/health");
 
 builder.AddProject<Projects.JAIMES_AF_Web>("webfrontend")
+    .WithIconName("AppGeneric", IconVariant.Filled)
     .WithExternalHttpEndpoints()
     .WithHttpHealthCheck("/health")
     .WithReference(apiService)
