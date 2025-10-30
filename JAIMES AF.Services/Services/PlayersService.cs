@@ -12,11 +12,6 @@ public class PlayersService(JaimesDbContext context) : IPlayersService
         .AsNoTracking()
         .ToArrayAsync(cancellationToken);
 
-        return players.Select(p => new PlayerDto
-        {
-            Id = p.Id,
-            RulesetId = p.RulesetId,
-            Description = p.Description
-        }).ToArray();
+        return PlayerMapper.ToDto(players);
     }
 }
