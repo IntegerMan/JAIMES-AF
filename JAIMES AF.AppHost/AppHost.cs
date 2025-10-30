@@ -1,22 +1,38 @@
-IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
+﻿IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
 IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIMES_AF_ApiService>("apiservice")
     .WithIconName("DocumentGlobe", IconVariant.Regular)
+    .WithExternalHttpEndpoints()
+    .WithUrlForEndpoint("http", static url => url.DisplayText = "🏠 Home")
+    .WithUrlForEndpoint("https", static url => url.DisplayText = "🔑 Home (HTTPS)")
+    .WithHttpHealthCheck("/health")
+    .WithUrlForEndpoint("http", static _ => new()
+    {
+        Url = "/health",
+        DisplayText = "👨‍⚕️ Health Check"
+    })
     .WithUrlForEndpoint("http", static _ => new()
     {
         Url = "/swagger",
-        DisplayText = "Swagger UI"
-    })
-    .WithHttpHealthCheck("/health");
+        DisplayText = "📄 Swagger UI"
+    });
 
 builder.AddProject<Projects.JAIMES_AF_Web>("webfrontend")
     .WithIconName("AppGeneric", IconVariant.Filled)
     .WithExternalHttpEndpoints()
+    .WithUrlForEndpoint("http", static url => url.DisplayText = "🏠 Home")
+    .WithUrlForEndpoint("https", static url => url.DisplayText = "🔑 Home (HTTPS)")
     .WithHttpHealthCheck("/health")
+    .WithUrlForEndpoint("http", static _ => new()
+    {
+        Url = "/health",
+        DisplayText = "👨‍⚕️ Health Check"
+    })
     .WithReference(apiService)
     .WaitFor(apiService);
 
-try {
+try
+{
     builder.Build().Run();
 }
 catch (Exception ex)
