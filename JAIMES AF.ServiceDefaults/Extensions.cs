@@ -62,9 +62,9 @@ public static class Extensions
             .WithTracing(tracing =>
             {
                 tracing.AddSource(builder.Environment.ApplicationName)
-                    .AddAspNetCoreInstrumentation(tracing =>
+                    .AddAspNetCoreInstrumentation(options =>
                         // Exclude health check requests from tracing
-                        tracing.Filter = context =>
+                        options.Filter = context =>
                             !context.Request.Path.StartsWithSegments(HealthEndpointPath)
                             && !context.Request.Path.StartsWithSegments(AlivenessEndpointPath)
                     )
@@ -72,7 +72,7 @@ public static class Extensions
                     {
                         options.EnrichWithIDbCommand = (activity, command) =>
                         {
-                            string stateDisplayName = $"{command.CommandType} main";
+                            string stateDisplayName = $"{command.CommandType}";
                             activity.DisplayName = stateDisplayName;
                             activity.SetTag("db.name", stateDisplayName);
                         };
