@@ -68,6 +68,15 @@ public static class Extensions
                             !context.Request.Path.StartsWithSegments(HealthEndpointPath)
                             && !context.Request.Path.StartsWithSegments(AlivenessEndpointPath)
                     )
+                    .AddEntityFrameworkCoreInstrumentation(options =>
+                    {
+                        options.EnrichWithIDbCommand = (activity, command) =>
+                        {
+                            string stateDisplayName = $"{command.CommandType} main";
+                            activity.DisplayName = stateDisplayName;
+                            activity.SetTag("db.name", stateDisplayName);
+                        };
+                    })
                     // Uncomment the following line to enable gRPC instrumentation (requires the OpenTelemetry.Instrumentation.GrpcNetClient package)
                     //.AddGrpcClientInstrumentation()
                     .AddHttpClientInstrumentation();
@@ -84,7 +93,8 @@ public static class Extensions
 
         if (useOtlpExporter)
         {
-            builder.Services.AddOpenTelemetry().UseOtlpExporter();
+            builder.Services.AddOpenTelemetry()
+                .UseOtlpExporter();
         }
 
         // Uncomment the following lines to enable the Azure Monitor exporter (requires the Azure.Monitor.OpenTelemetry.AspNetCore package)
