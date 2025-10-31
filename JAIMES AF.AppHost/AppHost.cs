@@ -3,31 +3,30 @@
 IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIMES_AF_ApiService>("apiservice")
     .WithIconName("DocumentGlobe", IconVariant.Regular)
     .WithExternalHttpEndpoints()
-    .WithUrlForEndpoint("http", static url => url.DisplayText = "🏠 Home")
-    .WithUrlForEndpoint("https", static url => url.DisplayText = "🔑 Home (HTTPS)")
-    .WithHttpHealthCheck("/health")
-    .WithUrlForEndpoint("http", static _ => new()
-    {
-        Url = "/health",
-        DisplayText = "👨‍⚕️ Health Check"
-    })
+    .WithUrls(u => u.Urls.Clear())
     .WithUrlForEndpoint("http", static _ => new()
     {
         Url = "/swagger",
         DisplayText = "📄 Swagger UI"
+    })
+    .WithHttpHealthCheck("/health")
+    .WithUrlForEndpoint("http", static _ => new()
+    {
+        Url = "/health",
+        DisplayText = "👨‍⚕️ Health"
     });
 
 builder.AddProject<Projects.JAIMES_AF_Web>("webfrontend")
     .WithIconName("AppGeneric", IconVariant.Filled)
     .WithExternalHttpEndpoints()
-    .WithUrlForEndpoint("http", static url => url.DisplayText = "🏠 Home")
-    .WithUrlForEndpoint("https", static url => url.DisplayText = "🔑 Home (HTTPS)")
     .WithHttpHealthCheck("/health")
     .WithUrlForEndpoint("http", static _ => new()
     {
         Url = "/health",
-        DisplayText = "👨‍⚕️ Health Check"
+        DisplayText = "👨‍⚕️ Health"
     })
+    .WithUrlForEndpoint("http", static url => url.DisplayText = "🏠 Home")
+    .WithUrlForEndpoint("https", static url => url.DisplayText = "🔑 Home (HTTPS)")
     .WithReference(apiService)
     .WaitFor(apiService);
 
