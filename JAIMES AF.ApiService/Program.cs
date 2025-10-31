@@ -1,8 +1,7 @@
 using FastEndpoints;
+using FastEndpoints.Swagger;
 using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.Repositories;
-using Microsoft.Extensions.Configuration;
-using Swashbuckle.AspNetCore;
 using MattEland.Jaimes.ServiceLayer;
 
 public class Program
@@ -22,9 +21,8 @@ public class Program
         
         // Add Swagger services
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen();
 
-        builder.Services.AddFastEndpoints();
+        builder.Services.AddFastEndpoints().SwaggerDocument();
 
         // Add Jaimes repositories and services
         builder.Services.AddJaimesRepositories(builder.Configuration);
@@ -45,12 +43,10 @@ public class Program
         if (app.Environment.IsDevelopment())
         {
             app.MapOpenApi();
-            app.UseSwagger();
-            app.UseSwaggerUI();
         }
 
         app.MapDefaultEndpoints();
-        app.UseFastEndpoints();
+        app.UseFastEndpoints().UseSwaggerGen();
 
         await app.RunAsync();
     }
