@@ -61,7 +61,8 @@ public static class Extensions
             })
             .WithTracing(tracing =>
             {
-                tracing.AddSource(builder.Environment.ApplicationName)
+                tracing
+                    .AddSource(builder.Environment.ApplicationName, "agent-framework-source")
                     .AddAspNetCoreInstrumentation(options =>
                         // Exclude health check requests from tracing
                         options.Filter = context =>

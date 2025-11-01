@@ -37,7 +37,7 @@ Goal: Tell a compelling interactive story with core gameplay mechanics, have bas
 - [ ] Local AI Agent Integration
 - [ ] Persist Agent Thread as JSON
 - [ ] Tool Calls
-- [ ] Agent Observability
+- [x] Agent Observability
 
 ### Phase 2: Observability, Measurability, and Analytics
 

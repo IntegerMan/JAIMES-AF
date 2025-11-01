@@ -18,7 +18,10 @@ public class ChatService(ChatOptions options) : IChatService
                 new Uri(_options.Endpoint),
                 new ApiKeyCredential(_options.ApiKey))
             .GetChatClient(_options.Deployment)
-            .CreateAIAgent(instructions: "You are a dungeon master working with a human player for a solo adventure."); // TODO: From game
+            .CreateAIAgent(instructions: "You are a dungeon master working with a human player for a solo adventure.") // TODO: From game
+            .AsBuilder()
+            .UseOpenTelemetry(sourceName: "agent-framework-source")
+            .Build();
 
         AgentRunResponse response = await agent.RunAsync(message, cancellationToken: cancellationToken);
 
