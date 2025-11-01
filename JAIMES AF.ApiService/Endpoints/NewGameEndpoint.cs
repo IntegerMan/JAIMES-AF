@@ -1,8 +1,8 @@
 ﻿using FastEndpoints;
 using MattEland.Jaimes.ApiService.Requests;
 using MattEland.Jaimes.ApiService.Responses;
-using MattEland.Jaimes.ServiceLayer.Services;
-using MattEland.Jaimes.Services.Models;
+using MattEland.Jaimes.Domain;
+using MattEland.Jaimes.ServiceDefinitions;
 
 namespace MattEland.Jaimes.ApiService.Endpoints;
 

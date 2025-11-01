@@ -1,3 +1,4 @@
+using MattEland.Jaimes.ServiceDefinitions;
 using MattEland.Jaimes.ServiceLayer.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -9,8 +10,8 @@ public static class ServiceCollectionExtensions
     {
         // Use Scrutor for automatic service registration by convention
         services.Scan(scan => scan
-            .FromAssemblyOf<IGameService>()
-            .AddClasses(classes => classes.InNamespaceOf<IGameService>())
+            .FromAssemblyOf<GameService>()
+            .AddClasses(classes => classes.InNamespaceOf<GameService>())
             .AsSelfWithInterfaces()
             .WithScopedLifetime());
 

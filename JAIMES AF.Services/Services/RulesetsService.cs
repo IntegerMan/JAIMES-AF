@@ -1,6 +1,7 @@
+using MattEland.Jaimes.Domain;
 using Microsoft.EntityFrameworkCore;
 using MattEland.Jaimes.Repositories;
-using MattEland.Jaimes.Services.Models;
+using MattEland.Jaimes.ServiceDefinitions;
 
 namespace MattEland.Jaimes.ServiceLayer.Services;
 

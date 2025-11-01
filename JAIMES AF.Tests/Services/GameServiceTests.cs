@@ -1,7 +1,7 @@
+using MattEland.Jaimes.Domain;
 using Microsoft.EntityFrameworkCore;
 using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceLayer.Services;
-using MattEland.Jaimes.Services.Models;
 using Shouldly;
 
 namespace MattEland.Jaimes.Tests.Services;

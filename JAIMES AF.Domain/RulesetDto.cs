@@ -1,4 +1,4 @@
-namespace MattEland.Jaimes.Services.Models;
+namespace MattEland.Jaimes.Domain;
 
 public class RulesetDto
 {

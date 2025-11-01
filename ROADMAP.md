@@ -10,10 +10,32 @@ The roadmap below outlines planned features, improvements, and milestones to gui
 
 Goal: Tell a compelling interactive story with core gameplay mechanics, have basic tool calling, persistence, and a Web UI.
 
+#### Web Front End
+
 - [ ] Web UI
+- [ ] Chat Control
+- [ ] Game Selection UI
+- [ ] New Game Selection UI
+- [ ] Resume Game UI
+- [ ] Player Creation UI
+
+#### API and Services
+
+- [ ] Scenario CRUD
+- [ ] Player CRUD
+- [ ] RuleSet CRUD
+
+#### AI Agents
+
 - [ ] Azure AI Agent Integration
 - [ ] Local AI Agent Integration
 - [ ] Persist Agent Thread as JSON
+- [ ] Agents Project
+- [ ] Tools Project
+- [ ] Tool Calls
+- [ ] Agent Observability
+- [ ] Multi-Turn Conversations
+- [ ] Game Scenario as System Prompt
 
 ### Phase 2: Observability, Measurability, and Analytics
 

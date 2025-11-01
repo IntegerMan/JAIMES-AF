@@ -1,8 +1,10 @@
 using FastEndpoints;
 using FastEndpoints.Swagger;
-using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.Repositories;
+using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.ServiceLayer;
+
+namespace MattEland.Jaimes.ApiService;
 
 public class Program
 {

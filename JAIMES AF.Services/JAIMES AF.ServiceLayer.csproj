@@ -8,7 +8,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="NewFolder\**" />
+    <EmbeddedResource Remove="NewFolder\**" />
+    <None Remove="NewFolder\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JAIMES AF.Domain\JAIMES AF.Domain.csproj" />
     <ProjectReference Include="..\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj" />
+    <ProjectReference Include="..\JAIMES AF.ServiceDefinitions\JAIMES AF.ServiceDefinitions.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -16,10 +24,6 @@
     <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="10.0.0-rc.2.25502.107" />
     <PackageReference Include="Riok.Mapperly" Version="4.3.0" />
     <PackageReference Include="Scrutor" Version="6.1.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Mappings\" />
   </ItemGroup>
 
 </Project>

@@ -1,6 +1,6 @@
-using MattEland.Jaimes.Services.Models;
+using MattEland.Jaimes.Domain;
 
-namespace MattEland.Jaimes.ServiceLayer.Services;
+namespace MattEland.Jaimes.ServiceDefinitions;
 
 public interface IGameService
 {

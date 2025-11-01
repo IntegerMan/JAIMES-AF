@@ -1,9 +1,8 @@
-using Riok.Mapperly.Abstractions;
+using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.Repositories.Entities;
-using MattEland.Jaimes.Services.Models;
-using System.Collections.Generic;
+using Riok.Mapperly.Abstractions;
 
-namespace MattEland.Jaimes.ServiceLayer.Services;
+namespace MattEland.Jaimes.ServiceLayer.Mapping;
 
 [Mapper]
 public static partial class PlayerMapper

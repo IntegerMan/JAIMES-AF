@@ -1,4 +1,5 @@
-﻿using MattEland.Jaimes.Services.Models;
+﻿using MattEland.Jaimes.Domain;
+using MattEland.Jaimes.ServiceDefinitions;
 
 namespace MattEland.Jaimes.ServiceLayer.Services;
 
