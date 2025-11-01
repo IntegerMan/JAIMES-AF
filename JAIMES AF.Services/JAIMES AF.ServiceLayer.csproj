@@ -14,6 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\JAIMES AF.Agents\JAIMES AF.Agents.csproj" />
     <ProjectReference Include="..\JAIMES AF.Domain\JAIMES AF.Domain.csproj" />
     <ProjectReference Include="..\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj" />
     <ProjectReference Include="..\JAIMES AF.ServiceDefinitions\JAIMES AF.ServiceDefinitions.csproj" />

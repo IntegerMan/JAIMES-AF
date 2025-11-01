@@ -3,6 +3,7 @@ using FastEndpoints.Swagger;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.ServiceLayer;
+using MattEland.Jaimes.ServiceDefinitions;
 
 namespace MattEland.Jaimes.ApiService;
 
@@ -25,6 +26,10 @@ public class Program
         builder.Services.AddEndpointsApiExplorer();
 
         builder.Services.AddFastEndpoints().SwaggerDocument();
+
+        // Configure ChatOptions from configuration and register instance for DI
+        ChatOptions chatOptions = builder.Configuration.GetSection("ChatService").Get<ChatOptions>() ?? throw new InvalidOperationException("ChatService configuration is required");
+        builder.Services.AddSingleton(chatOptions);
 
         // Add Jaimes repositories and services
         builder.Services.AddJaimesRepositories(builder.Configuration);

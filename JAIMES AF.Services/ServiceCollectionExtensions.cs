@@ -1,3 +1,4 @@
+using MattEland.Jaimes.Agents.Services;
 using MattEland.Jaimes.ServiceDefinitions;
 using MattEland.Jaimes.ServiceLayer.Services;
 using Microsoft.Extensions.DependencyInjection;

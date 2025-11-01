@@ -27,15 +27,17 @@ Goal: Tell a compelling interactive story with core gameplay mechanics, have bas
 
 #### AI Agents
 
-- [ ] Azure AI Agent Integration
-- [ ] Local AI Agent Integration
-- [ ] Persist Agent Thread as JSON
-- [ ] Agents Project
-- [ ] Tools Project
-- [ ] Tool Calls
-- [ ] Agent Observability
+- [x] Agents Project
+- [x] Tools Project
+- [x] Azure AI Agent Integration
 - [ ] Multi-Turn Conversations
 - [ ] Game Scenario as System Prompt
+- [ ] Character Info as System Prompt
+- [ ] Ruleset as System Prompt
+- [ ] Local AI Agent Integration
+- [ ] Persist Agent Thread as JSON
+- [ ] Tool Calls
+- [ ] Agent Observability
 
 ### Phase 2: Observability, Measurability, and Analytics
 

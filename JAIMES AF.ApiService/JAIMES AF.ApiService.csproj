@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>MattEland.Jaimes.ApiService</RootNamespace>
+    <UserSecretsId>dd352b9d-9795-4804-bc85-3e9b6a92e1dc</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
