@@ -14,6 +14,11 @@ public static class ServiceCollectionExtensions
             .AddClasses(classes => classes.InNamespaceOf<GameService>())
             .AsSelfWithInterfaces()
             .WithScopedLifetime());
+        services.Scan(scan => scan
+            .FromAssemblyOf<ChatService>()
+            .AddClasses(classes => classes.InNamespaceOf<ChatService>())
+            .AsSelfWithInterfaces()
+            .WithScopedLifetime());
 
         return services;
     }

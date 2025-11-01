@@ -34,10 +34,10 @@ GET {{ApiService_HostAddress}}/games/{{gameId}}
 Content-Type: application/json
 
 ### Chat in a specific game
-POST {{ApiService_HostAddress}}/games/{{gameId}}
+POST {{ApiService_HostAddress}}/games/95d26a53-5b62-43f2-bc19-3c64ff013c4f
 Content-Type: application/json
 
 {
- "gameId": "{{gameId}}",
+ "gameId": "95d26a53-5b62-43f2-bc19-3c64ff013c4f",
  "message": "Hello from the API!"
 }
