@@ -1,4 +1,11 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="DEVELOPMENT_GUIDELINES.md" />
+    <File Path="LICENSE.txt" />
+    <File Path="README.md" />
+    <File Path="ROADMAP.md" />
+    <File Path="TECHNICAL_OVERVIEW.md" />
+  </Folder>
   <Project Path="JAIMES AF.ApiService/JAIMES AF.ApiService.csproj" />
   <Project Path="JAIMES AF.AppHost/JAIMES AF.AppHost.csproj" />
   <Project Path="JAIMES AF.Repositories/JAIMES AF.Repositories.csproj" />

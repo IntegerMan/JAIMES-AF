@@ -40,6 +40,7 @@ Code Style
 - Use clear, expressive names for classes, methods, and parameters.
 - Keep methods short (under ~40-60 lines) where possible.
 - Favor immutability for DTOs where applicable.
+- Favor target-typed new over var, except for foreach loops which should always use var
 
 Dependency Injection
 

@@ -1,6 +1,7 @@
 # JAIMES AF
+**Join AI in Making Epic Stories - Agent Framework** Edition
 
-A .NET 9 Aspire application for managing games and scenarios.
+A .NET 10 Aspire application for managing roleplaying games and scenarios using Microsoft Agent Framework and with a focus on observability and testing.
 
 ## Architecture
 

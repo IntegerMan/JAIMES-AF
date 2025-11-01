@@ -6,8 +6,13 @@ IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIME
     .WithUrls(u => u.Urls.Clear())
     .WithUrlForEndpoint("http", static _ => new()
     {
+        Url = "/openapi/v1.json",
+        DisplayText = "🌐 OpenAPI"
+    })
+    .WithUrlForEndpoint("http", static _ => new()
+    {
         Url = "/swagger",
-        DisplayText = "📄 Swagger UI"
+        DisplayText = "📃 Swagger"
     })
     .WithHttpHealthCheck("/health")
     .WithUrlForEndpoint("http", static _ => new()
