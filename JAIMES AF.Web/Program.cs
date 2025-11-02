@@ -1,6 +1,7 @@
 using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.Web;
 using MattEland.Jaimes.Web.Components;
+using MudBlazor.Services;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +11,8 @@ builder.AddServiceDefaults();
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddMudServices();
 
 builder.Services.AddOutputCache();
 
