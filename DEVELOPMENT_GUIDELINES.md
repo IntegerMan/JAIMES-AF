@@ -73,3 +73,6 @@ To help AI assistants and new contributors quickly orient:
 - Keep `TECHNICAL_OVERVIEW.md` and `DEVELOPMENT_GUIDELINES.md` up to date.
 - Add README snippets in project roots if a project has unique conventions.
 
+Handy Commands
+
+dotnet ef migrations has-pending-model-changes --project '.\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj'
