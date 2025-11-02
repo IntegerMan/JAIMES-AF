@@ -8,6 +8,20 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 // Add service defaults & Aspire client integrations.
 builder.AddServiceDefaults();
 
+// Register a named HttpClient that targets the Aspire API resource name 'apiservice'.
+// Service discovery handlers added by AddServiceDefaults will resolve this logical host to the real address at runtime.
+builder.Services.AddHttpClient("Api", client =>
+{
+    // Allow configuring an override in configuration if needed; otherwise use the Aspire project reference name
+    client.BaseAddress = new Uri(builder.Configuration["ApiService:BaseAddress"] ?? "http://apiservice/");
+})
+// Ensure service discovery is added on IHttpClientBuilder, then add resilience pipeline
+.AddServiceDiscovery()
+.AddStandardResilienceHandler();
+
+// Make the named client the default HttpClient that's injected with `@inject HttpClient Http`
+builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api"));
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();

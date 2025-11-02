@@ -1,15 +1,75 @@
 @page "/games"
 
+@using System.Net.Http.Json
 @using MudBlazor
+
+@inject HttpClient Http
+@inject NavigationManager Nav
 
 <PageTitle>Games</PageTitle>
 
 <MudPaper Class="pa-4">
- <MudText Typo="Typo.h4">Games</MudText>
+	<MudText Typo="Typo.h4">Games</MudText>
 
- <MudText>This page lists your current in-progress games and allows you to start a new game.</MudText>
+	<MudText>This page lists your current in-progress games and allows you to start a new game.</MudText>
 
- <MudList T="string">
- <MudListItem T="string">(No games loaded yet)</MudListItem>
- </MudList>
+	@if (isLoading)
+	{
+		<MudProgressCircular Indeterminate="true" Class="my-4" />
+	} else if (!string.IsNullOrEmpty(errorMessage))
+	{
+		<MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
+	} else if (games is null || games.Length == 0)
+	{
+		<MudList T="string">
+			<MudListItem T="string">(No games loaded yet)</MudListItem>
+		</MudList>
+	} else
+	{
+		<MudList T="Guid" Dense="true">
+			@foreach (var g in games)
+			{
+				<MudListItem T="Guid" Value="@g.GameId" OnClick="() => OpenGame(g.GameId.ToString())">@g.GameId</MudListItem>
+			}
+		</MudList>
+	}
 </MudPaper>
+
+@code {
+	private GameInfo[]? games;
+	private bool isLoading = true;
+	private string? errorMessage;
+
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadGamesAsync();
+	}
+
+	private async Task LoadGamesAsync()
+	{
+		isLoading = true;
+		errorMessage = null;
+		try
+		{
+			var resp = await Http.GetFromJsonAsync<ListGamesResponse>("/games");
+			games = resp?.Games ?? Array.Empty<GameInfo>();
+		}
+		catch (Exception ex)
+		{
+			errorMessage = "Failed to load games: " + ex.Message;
+		}
+		finally
+		{
+			isLoading = false;
+			StateHasChanged();
+		}
+	}
+
+	private void OpenGame(string gameId)
+	{
+		Nav.NavigateTo($"/games/{gameId}");
+	}
+
+	private record GameInfo(Guid GameId);
+	private record ListGamesResponse(GameInfo[] Games);
+}
