@@ -1,12 +1,15 @@
 @page "/games"
-@rendermode InteractiveServer
+
+@using MudBlazor
 
 <PageTitle>Games</PageTitle>
 
-<h1>Games</h1>
+<MudPaper Class="pa-4">
+ <MudText Typo="Typo.h4">Games</MudText>
 
-<p>This page lists your current in-progress games and allows you to start a new game.</p>
+ <MudText>This page lists your current in-progress games and allows you to start a new game.</MudText>
 
-<ul class="list-group">
- <li class="list-group-item">(No games loaded yet)</li>
-</ul>
+ <MudList T="string">
+ <MudListItem T="string">(No games loaded yet)</MudListItem>
+ </MudList>
+</MudPaper>

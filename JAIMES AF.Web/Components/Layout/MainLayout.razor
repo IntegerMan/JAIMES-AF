@@ -1,28 +1,33 @@
-﻿@inherits LayoutComponentBase
+﻿@using MudBlazor
+@inherits LayoutComponentBase
 
 <MudThemeProvider />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+<MudLayout>
+	<MudAppBar Elevation="1">
+		<MudText Typo="Typo.h6">JAIMES AF</MudText>
+	</MudAppBar>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
+	<MudDrawer Open="true" ClipMode="DrawerClipMode.Always" Elevation="1" Variant="DrawerVariant.Responsive" Anchor="Anchor.Start">
+		<NavMenu />
+	</MudDrawer>
 
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
+	<MudMainContent>
+		<div class="top-row px-4">
+			<MudLink Href="https://learn.microsoft.com/aspnet/core/" Target="_blank">About</MudLink>
+		</div>
+
+		<article class="content px-4">
+			@Body
+		</article>
+	</MudMainContent>
+</MudLayout>
 
 <div id="blazor-error-ui">
-    An unhandled error has occurred.
-    <a href="" class="reload">Reload</a>
-    <a class="dismiss">🗙</a>
+	An unhandled error has occurred.
+	<a href="" class="reload">Reload</a>
+	<a class="dismiss">🗙</a>
 </div>
