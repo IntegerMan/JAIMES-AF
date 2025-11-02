@@ -27,6 +27,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.HasKey(p => p.Id);
             entity.Property(p => p.Id).IsRequired();
             entity.Property(p => p.RulesetId).IsRequired();
+            entity.Property(p => p.Name).IsRequired();
             
             entity.HasOne(p => p.Ruleset)
                 .WithMany(r => r.Players)
@@ -39,6 +40,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.HasKey(s => s.Id);
             entity.Property(s => s.Id).IsRequired();
             entity.Property(s => s.RulesetId).IsRequired();
+            entity.Property(s => s.Name).IsRequired();
             
             entity.HasOne(s => s.Ruleset)
                 .WithMany(r => r.Scenarios)
@@ -89,11 +91,11 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
         );
 
         modelBuilder.Entity<Player>().HasData(
-            new Player { Id = "emcee", RulesetId = "dnd5e", Description = "Default player" }
+            new Player { Id = "emcee", RulesetId = "dnd5e", Description = "Default player", Name = "Emcee" }
         );
 
         modelBuilder.Entity<Scenario>().HasData(
-            new Scenario { Id = "islandTest", RulesetId = "dnd5e", Description = "Island test scenario" }
+            new Scenario { Id = "islandTest", RulesetId = "dnd5e", Description = "Island test scenario", Name = "Island Test" }
         );
     }
 }

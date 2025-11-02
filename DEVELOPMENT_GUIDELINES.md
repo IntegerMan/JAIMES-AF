@@ -75,4 +75,5 @@ To help AI assistants and new contributors quickly orient:
 
 Handy Commands
 
-dotnet ef migrations has-pending-model-changes --project '.\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj'
+dotnet ef migrations has-pending-model-changes --project '.\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj' --startup-project '.\JAIMES AF.ApiService\JAIMES AF.ApiService.csproj'
+dotnet ef migrations add adding-names --project '.\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj' --startup-project '.\JAIMES AF.ApiService\JAIMES AF.ApiService.csproj'

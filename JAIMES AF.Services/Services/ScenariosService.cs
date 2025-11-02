@@ -18,7 +18,8 @@ public class ScenariosService(JaimesDbContext context) : IScenariosService
         {
             Id = s.Id,
             RulesetId = s.RulesetId,
-            Description = s.Description
+            Description = s.Description,
+            Name = s.Name
         }).ToArray();
     }
 }

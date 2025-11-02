@@ -37,10 +37,18 @@ public class Program
 
         WebApplication app = builder.Build();
 
+        // Obtain logger for startup messages
+        var logger = app.Services.GetService<ILogger<Program>>();
+
         // Initialize database unless the configuration explicitly requests skipping initialization (useful for tests)
         bool skipDbInit = app.Configuration.GetValue<bool>("SkipDatabaseInitialization");
-        if (!skipDbInit)
+        if (skipDbInit)
         {
+            logger?.LogInformation("Database initialization skipped via configuration (SkipDatabaseInitialization=true).");
+        }
+        else
+        {
+            logger?.LogInformation("Database initialization running now.");
             await app.Services.InitializeDatabaseAsync();
         }
 

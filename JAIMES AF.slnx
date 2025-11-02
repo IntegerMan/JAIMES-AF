@@ -1,7 +1,6 @@
 <Solution>
   <Folder Name="/Back End/">
     <Project Path="JAIMES AF.Agents/JAIMES AF.Agents.csproj" Id="f08964d1-edd3-4c1d-aef2-d5e6129e364e" />
-    <Project Path="JAIMES AF.ApiService/JAIMES AF.ApiService.csproj" />
     <Project Path="JAIMES AF.Domain/JAIMES AF.Domain.csproj" Id="c46266ca-38a9-4209-b17e-e04b4870908a" />
     <Project Path="JAIMES AF.Repositories/JAIMES AF.Repositories.csproj" />
     <Project Path="JAIMES AF.ServiceDefinitions/JAIMES AF.ServiceDefinitions.csproj" Id="efec61d0-f157-46c2-b12a-5af870465231" />
@@ -16,6 +15,7 @@
     <File Path="TECHNICAL_OVERVIEW.md" />
   </Folder>
   <Folder Name="/Front End/">
+    <Project Path="JAIMES AF.ApiService/JAIMES AF.ApiService.csproj" />
     <Project Path="JAIMES AF.AppHost/JAIMES AF.AppHost.csproj" />
     <Project Path="JAIMES AF.Web/JAIMES AF.Web.csproj" />
   </Folder>

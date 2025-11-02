@@ -26,7 +26,8 @@ public class ListPlayersEndpoint : Ep.NoReq.Res<PlayerListResponse>
             {
                 Id = p.Id,
                 RulesetId = p.RulesetId,
-                Description = p.Description
+                Description = p.Description,
+                Name = p.Name
             }).ToArray()
         }, cancellation: ct);
     }

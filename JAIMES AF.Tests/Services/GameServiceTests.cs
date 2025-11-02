@@ -23,8 +23,8 @@ public class GameServiceTests : IAsyncLifetime
 
         // Add test data for validation
         _context.Rulesets.Add(new Ruleset { Id = "test-ruleset", Name = "Test Ruleset" });
-        _context.Players.Add(new Player { Id = "test-player", RulesetId = "test-ruleset" });
-        _context.Scenarios.Add(new Scenario { Id = "test-scenario", RulesetId = "test-ruleset" });
+        _context.Players.Add(new Player { Id = "test-player", RulesetId = "test-ruleset", Name = "Unspecified" });
+        _context.Scenarios.Add(new Scenario { Id = "test-scenario", RulesetId = "test-ruleset", Name = "Unspecified" });
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         _gameService = new GameService(_context);
@@ -194,7 +194,7 @@ public class GameServiceTests : IAsyncLifetime
     {
         // Arrange
         _context.Rulesets.Add(new Ruleset { Id = "different-ruleset", Name = "Different Ruleset" });
-        _context.Players.Add(new Player { Id = "player-different-ruleset", RulesetId = "different-ruleset" });
+        _context.Players.Add(new Player { Id = "player-different-ruleset", RulesetId = "different-ruleset", Name = "Unspecified" });
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         string scenarioId = "test-scenario";
