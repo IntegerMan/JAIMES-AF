@@ -7,8 +7,13 @@
 <MudSnackbarProvider />
 
 <MudLayout>
-	<MudAppBar Elevation="1">
-		<MudText Typo="Typo.h6">JAIMES AF</MudText>
+	<MudAppBar Elevation="1" Color="Color.Primary">
+		<MudText Typo="Typo.h6" Class="ml-2">JAIMES AF</MudText>
+		<MudText Typo="Typo.subtitle2" Class="ml-4">Join AI in Making Epic Stories — Agent Framework</MudText>
+		<MudSpacer />
+		<MudLink Href="/" Class="mud-link-white">Home</MudLink>
+		<MudLink Href="/games" Class="ml-4 mud-link-white">Games</MudLink>
+		<MudLink Href="https://github.com/IntegerMan/JAIMES-AF" Target="_blank" Class="ml-4 mud-link-white">GitHub</MudLink>
 	</MudAppBar>
 
 	<MudDrawer Open="true" ClipMode="DrawerClipMode.Always" Elevation="1" Variant="DrawerVariant.Responsive" Anchor="Anchor.Start">
