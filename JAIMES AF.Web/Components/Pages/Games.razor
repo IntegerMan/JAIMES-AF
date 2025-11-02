@@ -5,6 +5,7 @@
 
 @inject HttpClient Http
 @inject NavigationManager Nav
+@inject ILoggerFactory LoggerFactory
 
 <PageTitle>Games</PageTitle>
 
@@ -19,7 +20,7 @@
 	} else if (!string.IsNullOrEmpty(errorMessage))
 	{
 		<MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
-	} else if (games is null || games.Length == 0)
+	} else if (games is null || games.Length ==0)
 	{
 		<MudList T="string">
 			<MudListItem T="string">(No games loaded yet)</MudListItem>
@@ -56,6 +57,8 @@
 		}
 		catch (Exception ex)
 		{
+			// Log the exception so it is captured by Aspire/OpenTelemetry
+			LoggerFactory.CreateLogger("Games").LogError(ex, "Failed to load games from API");
 			errorMessage = "Failed to load games: " + ex.Message;
 		}
 		finally
