@@ -1,14 +1,6 @@
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
-using System.Threading.Tasks;
 using MattEland.Jaimes.ApiService;
-using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace MattEland.Jaimes.Tests.Endpoints;
 

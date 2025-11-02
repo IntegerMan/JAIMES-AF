@@ -1,5 +1,5 @@
 using FastEndpoints;
-using MattEland.Jaimes.ApiService.Responses;
+using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions;
 
 namespace MattEland.Jaimes.ApiService.Endpoints;

@@ -1,4 +1,4 @@
-namespace MattEland.Jaimes.ApiService.Responses;
+namespace MattEland.Jaimes.ServiceDefinitions.Responses;
 
 public record PlayerListResponse
 {

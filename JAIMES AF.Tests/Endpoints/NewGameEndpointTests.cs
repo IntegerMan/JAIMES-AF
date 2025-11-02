@@ -1,6 +1,6 @@
 using System.Net.Http.Json;
-using MattEland.Jaimes.ApiService.Requests;
-using MattEland.Jaimes.ApiService.Responses;
+using MattEland.Jaimes.ServiceDefinitions.Requests;
+using MattEland.Jaimes.ServiceDefinitions.Responses;
 using Shouldly;
 
 namespace MattEland.Jaimes.Tests.Endpoints;

@@ -53,7 +53,7 @@
 		try
 		{
 			var resp = await Http.GetFromJsonAsync<ListGamesResponse>("/games");
-			games = resp?.Games ?? Array.Empty<GameInfo>();
+			games = resp?.Games ?? [];
 		}
 		catch (Exception ex)
 		{
