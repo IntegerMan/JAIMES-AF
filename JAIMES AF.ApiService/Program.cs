@@ -6,6 +6,7 @@ using MattEland.Jaimes.ServiceLayer;
 using MattEland.Jaimes.ServiceDefinitions;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
+using MattEland.Jaimes.ApiService.Helpers;
 
 namespace MattEland.Jaimes.ApiService;
 
@@ -45,27 +46,7 @@ public class Program
 
         WebApplication app = builder.Build();
 
-        // Schedule database initialization to run after the host has started so OpenTelemetry TracerProviders
-        // and any ActivityListeners are active and will capture the activities produced during initialization.
-        app.Lifetime.ApplicationStarted.Register(() =>
-        {
-            // Run in background to avoid blocking the ApplicationStarted callback
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    DatabaseInitializer dbInit = app.Services.GetRequiredService<DatabaseInitializer>();
-                    await dbInit.InitializeAsync(app);
-                }
-                catch (Exception ex)
-                {
-                    ILogger<Program> logger = app.Services.GetRequiredService<ILogger<Program>>();
-                    logger.LogError(ex, "Database initialization failed during ApplicationStarted.");
-
-                    throw;
-                }
-            });
-        });
+        app.ScheduleDatabaseInitialization();
 
         // Configure the HTTP request pipeline.
         app.UseExceptionHandler();
