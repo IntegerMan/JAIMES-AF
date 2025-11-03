@@ -4,6 +4,8 @@ using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.ServiceLayer;
 using MattEland.Jaimes.ServiceDefinitions;
+using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace MattEland.Jaimes.ApiService;
 
@@ -27,6 +29,9 @@ public class Program
 
         builder.Services.AddFastEndpoints().SwaggerDocument();
 
+        // Register a shared ActivitySource instance with the same name used by OpenTelemetry
+        builder.Services.AddSingleton(new ActivitySource(builder.Environment.ApplicationName ?? "Jaimes.ApiService"));
+
         // Configure ChatOptions from configuration and register instance for DI
         ChatOptions chatOptions = builder.Configuration.GetSection("ChatService").Get<ChatOptions>() ?? throw new InvalidOperationException("ChatService configuration is required");
         builder.Services.AddSingleton(chatOptions);
@@ -35,22 +40,32 @@ public class Program
         builder.Services.AddJaimesRepositories(builder.Configuration);
         builder.Services.AddJaimesServices();
 
+        // Register DatabaseInitializer for DI
+        builder.Services.AddSingleton<DatabaseInitializer>();
+
         WebApplication app = builder.Build();
 
-        // Obtain logger for startup messages
-        var logger = app.Services.GetService<ILogger<Program>>();
+        // Schedule database initialization to run after the host has started so OpenTelemetry TracerProviders
+        // and any ActivityListeners are active and will capture the activities produced during initialization.
+        app.Lifetime.ApplicationStarted.Register(() =>
+        {
+            // Run in background to avoid blocking the ApplicationStarted callback
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    DatabaseInitializer dbInit = app.Services.GetRequiredService<DatabaseInitializer>();
+                    await dbInit.InitializeAsync(app);
+                }
+                catch (Exception ex)
+                {
+                    ILogger<Program> logger = app.Services.GetRequiredService<ILogger<Program>>();
+                    logger.LogError(ex, "Database initialization failed during ApplicationStarted.");
 
-        // Initialize database unless the configuration explicitly requests skipping initialization (useful for tests)
-        bool skipDbInit = app.Configuration.GetValue<bool>("SkipDatabaseInitialization");
-        if (skipDbInit)
-        {
-            logger?.LogInformation("Database initialization skipped via configuration (SkipDatabaseInitialization=true).");
-        }
-        else
-        {
-            logger?.LogInformation("Database initialization running now.");
-            await app.Services.InitializeDatabaseAsync();
-        }
+                    throw;
+                }
+            });
+        });
 
         // Configure the HTTP request pipeline.
         app.UseExceptionHandler();

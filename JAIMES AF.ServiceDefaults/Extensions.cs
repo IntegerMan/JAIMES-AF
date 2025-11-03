@@ -18,6 +18,9 @@ public static class Extensions
     private const string HealthEndpointPath = "/health";
     private const string AlivenessEndpointPath = "/alive";
 
+    // Ensure a stable ActivitySource name that other parts of the app can use to create activities
+    private const string DefaultActivitySourceName = "Jaimes.ApiService";
+
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
         builder.ConfigureOpenTelemetry();
@@ -61,8 +64,10 @@ public static class Extensions
             })
             .WithTracing(tracing =>
             {
+                // Register the default activity source(s) so activities created elsewhere are captured.
+                // Include the application name, an explicit default name, and the agent-framework source.
                 tracing
-                    .AddSource(builder.Environment.ApplicationName, "agent-framework-source")
+                    .AddSource(builder.Environment.ApplicationName ?? DefaultActivitySourceName, DefaultActivitySourceName, "agent-framework-source")
                     .AddAspNetCoreInstrumentation(options =>
                         // Exclude health check requests from tracing
                         options.Filter = context =>
