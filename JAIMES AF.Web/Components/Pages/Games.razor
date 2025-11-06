@@ -19,7 +19,7 @@
 	} else if (!string.IsNullOrEmpty(errorMessage))
 	{
 		<MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
-	} else if (games is null || games.Length == 0)
+	} else if (games is null || games.Length ==0)
 	{
 		<MudList T="string">
 			<MudListItem T="string">(No games loaded yet)</MudListItem>
@@ -36,7 +36,7 @@
 			<RowTemplate>
 				<MudTd>
 					<MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-					           OnClick="() => OpenGame(context.GameId.ToString())">
+						Href="@($"/games/{context.GameId}")">
 						Load
 					</MudButton>
 				</MudTd>

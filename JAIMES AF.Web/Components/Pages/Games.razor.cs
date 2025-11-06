@@ -33,9 +33,4 @@ public partial class Games
             StateHasChanged();
         }
     }
-
-    private void OpenGame(string gameId)
-    {
-        Nav.NavigateTo($"/games/{gameId}");
-    }
 }
