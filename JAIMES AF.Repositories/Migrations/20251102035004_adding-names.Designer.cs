@@ -131,7 +131,7 @@ namespace MattEland.Jaimes.Repositories.Migrations
                         new
                         {
                             Id = "dnd5e",
-                            Name = "Dungeons and Dragons5th Edition"
+                            Name = "Dungeons and Dragons 5th Edition"
                         });
                 });
 

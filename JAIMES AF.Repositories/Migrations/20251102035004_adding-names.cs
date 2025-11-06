@@ -36,7 +36,7 @@ namespace MattEland.Jaimes.Repositories.Migrations
                 keyColumn: "Id",
                 keyValue: "dnd5e",
                 column: "Name",
-                value: "Dungeons and Dragons5th Edition");
+                value: "Dungeons and Dragons 5th Edition");
 
             migrationBuilder.UpdateData(
                 table: "Scenarios",

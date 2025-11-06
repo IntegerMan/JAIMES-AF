@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions;
+using MattEland.Jaimes.ServiceLayer.Mapping;
 
 namespace MattEland.Jaimes.ServiceLayer.Services;
 
@@ -59,7 +60,10 @@ public class GameService(JaimesDbContext context) : IGameService
             RulesetId = game.RulesetId,
             ScenarioId = game.ScenarioId,
             PlayerId = game.PlayerId,
-            Messages = [new MessageDto(message.Text)]
+            Messages = [new MessageDto(message.Text)],
+            ScenarioName = scenario.Name,
+            RulesetName = (await context.Rulesets.FindAsync(new object[] { rulesetId }, cancellationToken))?.Name ?? rulesetId,
+            PlayerName = player.Name
         };
     }
 
@@ -68,6 +72,9 @@ public class GameService(JaimesDbContext context) : IGameService
         Game? game = await context.Games
             .AsNoTracking()
             .Include(g => g.Messages)
+            .Include(g => g.Scenario)
+            .Include(g => g.Player)
+            .Include(g => g.Ruleset)
             .FirstOrDefaultAsync(g => g.Id == gameId, cancellationToken);
 
         if (game == null)
@@ -84,7 +91,10 @@ public class GameService(JaimesDbContext context) : IGameService
             Messages = game.Messages
                 .OrderBy(m => m.CreatedAt)
                 .Select(m => new MessageDto(m.Text))
-                .ToArray()
+                .ToArray(),
+            ScenarioName = game.Scenario?.Name ?? game.ScenarioId,
+            RulesetName = game.Ruleset?.Name ?? game.RulesetId,
+            PlayerName = game.Player?.Name ?? game.PlayerId
         };
     }
 
@@ -92,6 +102,9 @@ public class GameService(JaimesDbContext context) : IGameService
     {
         Game[] games = await context.Games
             .AsNoTracking()
+            .Include(g => g.Scenario)
+            .Include(g => g.Player)
+            .Include(g => g.Ruleset)
             .ToArrayAsync(cancellationToken: cancellationToken);
 
         return games.Select(g => new GameDto()
@@ -100,7 +113,10 @@ public class GameService(JaimesDbContext context) : IGameService
             PlayerId = g.PlayerId,
             RulesetId = g.RulesetId,
             ScenarioId = g.ScenarioId,
-            Messages = null
+            Messages = null,
+            ScenarioName = g.Scenario?.Name ?? g.ScenarioId,
+            RulesetName = g.Ruleset?.Name ?? g.RulesetId,
+            PlayerName = g.Player?.Name ?? g.PlayerId
         }).ToArray();
     }
 }

@@ -31,7 +31,7 @@ namespace MattEland.Jaimes.Repositories.Migrations
  migrationBuilder.InsertData(
  table: "Rulesets",
  columns: new[] { "Id", "Name" },
- values: new object[] { "dnd5e", "Dungeons and Dragons5th Edition" });
+ values: new object[] { "dnd5e", "Dungeons and Dragons 5th Edition" });
 
  migrationBuilder.InsertData(
  table: "Players",
@@ -65,7 +65,7 @@ namespace MattEland.Jaimes.Repositories.Migrations
  migrationBuilder.InsertData(
  table: "Rulesets",
  columns: new[] { "Id", "Name" },
- values: new object[] { "DND5E", "Dungeons and Dragons5th Edition" });
+ values: new object[] { "DND5E", "Dungeons and Dragons 5th Edition" });
 
  migrationBuilder.InsertData(
  table: "Players",

@@ -87,7 +87,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
 
         // Seed data - use lowercase ids for new defaults
         modelBuilder.Entity<Ruleset>().HasData(
-            new Ruleset { Id = "dnd5e", Name = "Dungeons and Dragons5th Edition" }
+            new Ruleset { Id = "dnd5e", Name = "Dungeons and Dragons 5th Edition" }
         );
 
         modelBuilder.Entity<Player>().HasData(

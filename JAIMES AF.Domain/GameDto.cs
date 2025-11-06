@@ -7,4 +7,9 @@ public class GameDto
     public required string ScenarioId { get; init; }
     public required string PlayerId { get; init; }
     public MessageDto[]? Messages { get; init; }
+
+    // Names for convenience in responses
+    public required string ScenarioName { get; init; }
+    public required string RulesetName { get; init; }
+    public required string PlayerName { get; init; }
 }
