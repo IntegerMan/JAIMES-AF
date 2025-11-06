@@ -35,7 +35,10 @@
 			</HeaderContent>
 			<RowTemplate>
 				<MudTd>
-					<MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="() => OpenGame(context.GameId.ToString())">Load</MudButton>
+					<MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+					           OnClick="() => OpenGame(context.GameId.ToString())">
+						Load
+					</MudButton>
 				</MudTd>
 				<MudTd>@context.RulesetName</MudTd>
 				<MudTd>@context.ScenarioName</MudTd>
@@ -44,40 +47,3 @@
 		</MudTable>
 	}
 </MudPaper>
-
-@code {
-	private GameInfoResponse[]? games;
-	private bool isLoading = true;
-	private string? errorMessage;
-
-	protected override async Task OnInitializedAsync()
-	{
-		await LoadGamesAsync();
-	}
-
-	private async Task LoadGamesAsync()
-	{
-		isLoading = true;
-		errorMessage = null;
-		try
-		{
-			var resp = await Http.GetFromJsonAsync<ListGamesResponse>("/games");
-			games = resp?.Games ?? [];
-		}
-		catch (Exception ex)
-		{
-			LoggerFactory.CreateLogger("Games").LogError(ex, "Failed to load games from API");
-			errorMessage = "Failed to load games: " + ex.Message;
-		}
-		finally
-		{
-			isLoading = false;
-			StateHasChanged();
-		}
-	}
-
-	private void OpenGame(string gameId)
-	{
-		Nav.NavigateTo($"/games/{gameId}");
-	}
-}
