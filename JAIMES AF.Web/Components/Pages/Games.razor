@@ -1,7 +1,6 @@
 @page "/games"
 
-@using System.Net.Http.Json
-@using MudBlazor
+@using MattEland.Jaimes.ServiceDefinitions.Responses
 
 @inject HttpClient Http
 @inject NavigationManager Nav
@@ -12,7 +11,7 @@
 <MudPaper Class="pa-4">
 	<MudText Typo="Typo.h4">Games</MudText>
 
-	<MudText>This page lists your current in-progress games and allows you to start a new game.</MudText>
+	<MudText Class="mb-4">This page lists your current in-progress games and allows you to start a new game.</MudText>
 
 	@if (isLoading)
 	{
@@ -20,24 +19,34 @@
 	} else if (!string.IsNullOrEmpty(errorMessage))
 	{
 		<MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
-	} else if (games is null || games.Length ==0)
+	} else if (games is null || games.Length == 0)
 	{
 		<MudList T="string">
 			<MudListItem T="string">(No games loaded yet)</MudListItem>
 		</MudList>
 	} else
 	{
-		<MudList T="Guid" Dense="true">
-			@foreach (var g in games)
-			{
-				<MudListItem T="Guid" Value="@g.GameId" OnClick="() => OpenGame(g.GameId.ToString())">@g.GameId</MudListItem>
-			}
-		</MudList>
+		<MudTable Items="games" Dense="true" Hover="true">
+			<HeaderContent>
+				<MudTh></MudTh>
+				<MudTh>Ruleset</MudTh>
+				<MudTh>Scenario</MudTh>
+				<MudTh>Player</MudTh>
+			</HeaderContent>
+			<RowTemplate>
+				<MudTd>
+					<MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="() => OpenGame(context.GameId.ToString())">Load</MudButton>
+				</MudTd>
+				<MudTd>@context.RulesetName</MudTd>
+				<MudTd>@context.ScenarioName</MudTd>
+				<MudTd>@context.PlayerName</MudTd>
+			</RowTemplate>
+		</MudTable>
 	}
 </MudPaper>
 
 @code {
-	private GameInfo[]? games;
+	private GameInfoResponse[]? games;
 	private bool isLoading = true;
 	private string? errorMessage;
 
@@ -57,7 +66,6 @@
 		}
 		catch (Exception ex)
 		{
-			// Log the exception so it is captured by Aspire/OpenTelemetry
 			LoggerFactory.CreateLogger("Games").LogError(ex, "Failed to load games from API");
 			errorMessage = "Failed to load games: " + ex.Message;
 		}
@@ -72,7 +80,4 @@
 	{
 		Nav.NavigateTo($"/games/{gameId}");
 	}
-
-	private record GameInfo(Guid GameId);
-	private record ListGamesResponse(GameInfo[] Games);
 }
