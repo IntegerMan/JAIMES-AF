@@ -8,49 +8,46 @@
 <PageTitle>Game Details</PageTitle>
 
 <MudPaper Class="pa-4">
- <MudText Typo="Typo.h5">Game details</MudText>
+	<MudText Typo="Typo.h5">Game details</MudText>
 
- @if (isLoading)
- {
- <MudProgressCircular Indeterminate="true" Class="my-4" />
- }
- else if (!string.IsNullOrEmpty(errorMessage))
- {
- <MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
- }
- else if (game is null)
- {
- <MudText>(No game loaded)</MudText>
- }
- else
- {
- <MudText><b>Game ID:</b> @game.GameId</MudText>
- <MudText><b>Messages:</b> @((game.Messages?.Length) ??0)</MudText>
+	@if (isLoading)
+	{
+		<MudProgressCircular Indeterminate="true" Class="my-4" />
+	} else if (!string.IsNullOrEmpty(errorMessage))
+	{
+		<MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
+	} else if (game is null)
+	{
+		<MudText>(No game loaded)</MudText>
+	} else
+	{
+		<MudText><b>Game ID:</b> @game.GameId</MudText>
+		<MudText><b>Messages:</b> @((game.Messages?.Length) ?? 0)</MudText>
 
- <MudDivider Class="my-2" />
+		<MudDivider Class="my-2" />
 
- <MudText Typo="Typo.h6" Class="mb-2">Chat</MudText>
+		<MudText Typo="Typo.h6" Class="mb-2">Chat</MudText>
 
- <MudPaper Class="pa-2" Style="max-height:400px; overflow:auto; background-color:var(--mud-palette-background);">
- <MudChat>
- @foreach (var m in game.Messages ?? Array.Empty<MessageResponse>())
- {
- <MudChatBubble>
- @m.Text
- </MudChatBubble>
- }
- </MudChat>
- </MudPaper>
+		<MudPaper Class="pa-2" Style="max-height:400px; overflow:auto; background-color:var(--mud-palette-background);">
+			<MudChat>
+				@foreach (var m in game.Messages ?? [])
+				{
+					<MudChatBubble>
+						@m.Text
+					</MudChatBubble>
+				}
+			</MudChat>
+		</MudPaper>
 
- <MudDivider Class="my-2" />
+		<MudDivider Class="my-2" />
 
- <MudGrid>
- <MudItem xs="10">
- <MudTextField @bind-Value="newMessage" Placeholder="Type a message..." FullWidth="true" Immediate="true" OnKeyDown="OnKeyDown" />
- </MudItem>
- <MudItem xs="2">
- <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SendMessageAsync">Send</MudButton>
- </MudItem>
- </MudGrid>
- }
+		<MudGrid>
+			<MudItem xs="10">
+				<MudTextField @bind-Value="newMessage" Placeholder="Type a message..." FullWidth="true" Immediate="true" OnKeyDown="OnKeyDown" />
+			</MudItem>
+			<MudItem xs="2">
+				<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SendMessageAsync">Send</MudButton>
+			</MudItem>
+		</MudGrid>
+	}
 </MudPaper>
