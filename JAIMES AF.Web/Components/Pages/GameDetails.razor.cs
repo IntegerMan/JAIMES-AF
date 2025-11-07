@@ -1,47 +1,46 @@
-﻿using MattEland.Jaimes.ServiceDefinitions.Responses;
 using Microsoft.AspNetCore.Components;
+using System.Net.Http.Json;
+using MattEland.Jaimes.ServiceDefinitions.Responses;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 
 public partial class GameDetails
 {
-    [Parameter] public Guid GameId { get; set; }
+ [Inject]
+ public HttpClient Http { get; set; } = null!;
 
-    private GameInfoResponse? game;
-    private bool isLoading = true;
-    private string? errorMessage;
+ [Inject]
+ public ILoggerFactory LoggerFactory { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadGameAsync();
-    }
+ [Parameter]
+ public Guid GameId { get; set; }
 
-    private async Task LoadGameAsync()
-    {
-        isLoading = true;
-        errorMessage = null;
-        try
-        {
-            var resp = await Http.GetFromJsonAsync<ListGamesResponse>("/games");
-            game = resp?.Games?.FirstOrDefault(g => g.GameId == GameId);
-            if (game == null)
-            {
-                game = new GameInfoResponse
-                {
-                    GameId = GameId, ScenarioId = "unknown", ScenarioName = "(Unknown)", RulesetId = "unknown",
-                    RulesetName = "(Unknown)", PlayerId = "unknown", PlayerName = "(Unknown)"
-                };
-            }
-        }
-        catch (Exception ex)
-        {
-            LoggerFactory.CreateLogger("GameDetails").LogError(ex, "Failed to load game info");
-            errorMessage = "Failed to load game: " + ex.Message;
-        }
-        finally
-        {
-            isLoading = false;
-            StateHasChanged();
-        }
-    }
+ private GameStateResponse? game;
+ private bool isLoading = true;
+ private string? errorMessage;
+
+ protected override async Task OnParametersSetAsync()
+ {
+ await LoadGameAsync();
+ }
+
+ private async Task LoadGameAsync()
+ {
+ isLoading = true;
+ errorMessage = null;
+ try
+ {
+ game = await Http.GetFromJsonAsync<GameStateResponse>($"/games/{GameId}");
+ }
+ catch (Exception ex)
+ {
+ LoggerFactory.CreateLogger("GameDetails").LogError(ex, "Failed to load game from API");
+ errorMessage = "Failed to load game: " + ex.Message;
+ }
+ finally
+ {
+ isLoading = false;
+ StateHasChanged();
+ }
+ }
 }
