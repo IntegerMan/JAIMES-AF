@@ -3,6 +3,7 @@
 @using System.Net.Http.Json
 @using MudBlazor
 @using MattEland.Jaimes.ServiceDefinitions.Responses
+@using Microsoft.AspNetCore.Components.Web
 
 <PageTitle>Game Details</PageTitle>
 
@@ -27,12 +28,29 @@
  <MudText><b>Messages:</b> @((game.Messages?.Length) ??0)</MudText>
 
  <MudDivider Class="my-2" />
- <MudText Typo="Typo.h6">Messages</MudText>
- <ul class="mud-list">
+
+ <MudText Typo="Typo.h6" Class="mb-2">Chat</MudText>
+
+ <MudPaper Class="pa-2" Style="max-height:400px; overflow:auto; background-color:var(--mud-palette-background);">
+ <MudChat>
  @foreach (var m in game.Messages ?? Array.Empty<MessageResponse>())
  {
- <li>@m.Text</li>
+ <MudChatBubble>
+ @m.Text
+ </MudChatBubble>
  }
- </ul>
+ </MudChat>
+ </MudPaper>
+
+ <MudDivider Class="my-2" />
+
+ <MudGrid>
+ <MudItem xs="10">
+ <MudTextField @bind-Value="newMessage" Placeholder="Type a message..." FullWidth="true" Immediate="true" OnKeyDown="OnKeyDown" />
+ </MudItem>
+ <MudItem xs="2">
+ <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SendMessageAsync">Send</MudButton>
+ </MudItem>
+ </MudGrid>
  }
 </MudPaper>

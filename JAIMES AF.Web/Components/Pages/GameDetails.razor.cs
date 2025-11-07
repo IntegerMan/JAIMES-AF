@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Components;
 using System.Net.Http.Json;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
+using MattEland.Jaimes.ServiceDefinitions.Requests;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 
@@ -18,6 +20,10 @@ public partial class GameDetails
  private GameStateResponse? game;
  private bool isLoading = true;
  private string? errorMessage;
+
+ // New fields for chat input
+ private string newMessage = string.Empty;
+ private bool isSending = false;
 
  protected override async Task OnParametersSetAsync()
  {
@@ -41,6 +47,45 @@ public partial class GameDetails
  {
  isLoading = false;
  StateHasChanged();
+ }
+ }
+
+ private async Task SendMessageAsync()
+ {
+ if (string.IsNullOrWhiteSpace(newMessage) || isSending) return;
+ isSending = true;
+ try
+ {
+ var request = new ChatRequest { GameId = GameId, Message = newMessage };
+ var resp = await Http.PostAsJsonAsync("/chat", request);
+ if (!resp.IsSuccessStatusCode)
+ {
+ errorMessage = $"Failed to send message: {resp.ReasonPhrase}";
+ }
+ else
+ {
+ // Clear the input and reload game state to get messages
+ newMessage = string.Empty;
+ await LoadGameAsync();
+ }
+ }
+ catch (Exception ex)
+ {
+ LoggerFactory.CreateLogger("GameDetails").LogError(ex, "Failed to send chat message");
+ errorMessage = "Failed to send message: " + ex.Message;
+ }
+ finally
+ {
+ isSending = false;
+ StateHasChanged();
+ }
+ }
+
+ private async Task OnKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs args)
+ {
+ if (args.Key == "Enter")
+ {
+ await SendMessageAsync();
  }
  }
 }
