@@ -55,17 +55,40 @@ public partial class GameDetails
         if (string.IsNullOrWhiteSpace(newMessage) || isSending)
             return;
         isSending = true;
+        errorMessage = null;
         try
         {
             var request = new ChatRequest { GameId = GameId, Message = newMessage };
             var resp = await Http.PostAsJsonAsync($"/games/{GameId}", request);
+
             if (!resp.IsSuccessStatusCode)
             {
-                errorMessage = $"Failed to send message: {resp.ReasonPhrase}";
-            } else
+                // Try to read response body for more details
+                string? body = null;
+                try { body = await resp.Content.ReadAsStringAsync(); } catch { }
+                errorMessage = $"Failed to send message: {resp.ReasonPhrase}{(string.IsNullOrEmpty(body) ? string.Empty : " - " + body)}";
+                return;
+            }
+
+            // Read returned game state object from response and update UI directly
+            GameStateResponse? updated = null;
+            try
             {
-                // Clear the input and reload game state to get messages
+                updated = await resp.Content.ReadFromJsonAsync<GameStateResponse?>();
+            }
+            catch (Exception ex)
+            {
+                LoggerFactory.CreateLogger("GameDetails").LogWarning(ex, "Response content could not be parsed as GameStateResponse");
+            }
+
+            if (updated is not null)
+            {
+                game = updated;
                 newMessage = string.Empty;
+            }
+            else
+            {
+                // Fallback: reload full game state
                 await LoadGameAsync();
             }
         }
