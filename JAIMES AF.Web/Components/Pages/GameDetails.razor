@@ -24,21 +24,35 @@
 	} else
 	{
 		<MudText><b>Game ID:</b> @game.GameId</MudText>
-		<MudText><b>Messages:</b> @((messages?.Count) ?? 0)</MudText>
 
 		<MudDivider Class="my-2" />
 
-		<MudText Typo="Typo.h6" Class="mb-2">Chat</MudText>
-
 		<MudPaper Class="pa-2" Style="max-height:400px; overflow:auto; background-color:var(--mud-palette-background);">
-			<MudChat>
-				@foreach (var m in messages ?? [])
+			@foreach (var m in messages ?? [])
+			{
+				@if (m.Participant == ChatParticipant.Player)
 				{
-					<MudChatBubble>
-						@m.Text
-					</MudChatBubble>
+					<MudChat ChatPosition="ChatBubblePosition.End"
+							 Variant="Variant.Filled"
+							 Color="Color.Primary">
+						<MudAvatar>PC</MudAvatar>
+						<MudChatHeader Name="Player" />
+						<MudChatBubble>
+							@m.Text
+						</MudChatBubble>
+					</MudChat>
+				} else {
+					<MudChat ChatPosition="ChatBubblePosition.Start"
+							 Variant="Variant.Filled"
+							 Color="Color.Default">
+						<MudAvatar>GM</MudAvatar>
+						<MudChatHeader Name="Game Master" />
+						<MudChatBubble>
+							@m.Text
+						</MudChatBubble>
+					</MudChat>
 				}
-			</MudChat>
+			}
 		</MudPaper>
 
 		<MudDivider Class="my-2" />
