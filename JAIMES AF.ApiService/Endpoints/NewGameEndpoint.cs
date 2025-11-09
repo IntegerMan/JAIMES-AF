@@ -29,7 +29,7 @@ public class NewGameEndpoint : Endpoint<NewGameRequest, NewGameResponse>
             NewGameResponse game = new()
             {
                 GameId = gameDto.GameId,
-                Messages = gameDto.Messages.Select(m => new MessageResponse(m.Text)).ToArray()
+                Messages = gameDto.Messages.Select(m => new MessageResponse(m.Text, ChatParticipant.GameMaster)).ToArray()
             };
             await Send.CreatedAtAsync<GameStateEndpoint>(game, responseBody: game, verb: Http.GET, cancellation: ct);
         }

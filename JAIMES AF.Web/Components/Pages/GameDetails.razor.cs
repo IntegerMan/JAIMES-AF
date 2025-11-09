@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Components;
-using System.Net.Http.Json;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
-using Microsoft.AspNetCore.Components.Web;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 
@@ -16,6 +14,8 @@ public partial class GameDetails
 
     [Parameter]
     public Guid GameId { get; set; }
+
+    private List<MessageResponse> messages = [];
 
     private GameStateResponse? game;
     private bool isLoading = true;
@@ -37,6 +37,7 @@ public partial class GameDetails
         try
         {
             game = await Http.GetFromJsonAsync<GameStateResponse>($"/games/{GameId}");
+            messages = game?.Messages.ToList() ?? [];
         }
         catch (Exception ex)
         {
@@ -52,40 +53,36 @@ public partial class GameDetails
 
     private async Task SendMessageAsync()
     {
-        if (string.IsNullOrWhiteSpace(newMessage) || isSending)
-            return;
+        if (string.IsNullOrWhiteSpace(newMessage) || isSending) return;
+
         isSending = true;
         errorMessage = null;
         try
         {
-            var request = new ChatRequest { GameId = GameId, Message = newMessage };
-            var resp = await Http.PostAsJsonAsync($"/games/{GameId}", request);
+            ChatRequest request = new()
+            {
+                GameId = GameId, 
+                Message = newMessage
+            };
+
+            messages.Add(new MessageResponse(newMessage, ChatParticipant.Player));
+
+            HttpResponseMessage resp = await Http.PostAsJsonAsync($"/games/{GameId}", request);
 
             if (!resp.IsSuccessStatusCode)
             {
-                // Try to read response body for more details
-                string? body = null;
-                try { body = await resp.Content.ReadAsStringAsync(); } catch { }
-                errorMessage = $"Failed to send message: {resp.ReasonPhrase}{(string.IsNullOrEmpty(body) ? string.Empty : " - " + body)}";
+                await HandleErrorResponseAsync(resp);
                 return;
             }
 
             // Read returned game state object from response and update UI directly
-            GameStateResponse? updated = null;
-            try
-            {
-                updated = await resp.Content.ReadFromJsonAsync<GameStateResponse?>();
-            }
-            catch (Exception ex)
-            {
-                LoggerFactory.CreateLogger("GameDetails").LogWarning(ex, "Response content could not be parsed as GameStateResponse");
-            }
+            GameStateResponse? updated = await resp.Content.ReadFromJsonAsync<GameStateResponse?>();
 
             if (updated is not null)
             {
-                game = updated;
+                messages.AddRange(updated.Messages);
                 newMessage = string.Empty;
-            }
+            } 
             else
             {
                 // Fallback: reload full game state
@@ -95,13 +92,29 @@ public partial class GameDetails
         catch (Exception ex)
         {
             LoggerFactory.CreateLogger("GameDetails").LogError(ex, "Failed to send chat message");
-            errorMessage = "Failed to send message: " + ex.Message;
+            errorMessage = $"Failed to send message: {ex.Message}";
         }
         finally
         {
             isSending = false;
             StateHasChanged();
         }
+    }
+
+    private async Task HandleErrorResponseAsync(HttpResponseMessage resp)
+    {
+        // Try to read response body for more details
+        string? body = null;
+        try
+        {
+            body = await resp.Content.ReadAsStringAsync();
+        }
+        catch
+        {
+            // ignored
+        }
+
+        errorMessage = $"Failed to send message: {resp.ReasonPhrase}{(string.IsNullOrEmpty(body) ? string.Empty : " - " + body)}";
     }
 
     private async Task OnKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs args)
