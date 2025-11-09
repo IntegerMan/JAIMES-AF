@@ -59,34 +59,28 @@ public partial class GameDetails
         errorMessage = null;
         try
         {
+            // Indicate message is being sent
             ChatRequest request = new()
             {
                 GameId = GameId, 
                 Message = newMessage
             };
-
             messages.Add(new MessageResponse(newMessage, ChatParticipant.Player));
+            newMessage = string.Empty;
+            StateHasChanged();
 
+            // Send message to API
             HttpResponseMessage resp = await Http.PostAsJsonAsync($"/games/{GameId}", request);
 
+            // Handle the response
             if (!resp.IsSuccessStatusCode)
             {
                 await HandleErrorResponseAsync(resp);
-                return;
             }
-
-            // Read returned game state object from response and update UI directly
-            GameStateResponse? updated = await resp.Content.ReadFromJsonAsync<GameStateResponse?>();
-
-            if (updated is not null)
-            {
-                messages.AddRange(updated.Messages);
-                newMessage = string.Empty;
-            } 
             else
             {
-                // Fallback: reload full game state
-                await LoadGameAsync();
+                GameStateResponse? updated = await resp.Content.ReadFromJsonAsync<GameStateResponse>();
+                messages.AddRange(updated?.Messages ?? []);
             }
         }
         catch (Exception ex)
