@@ -1,0 +1,37 @@
+.game-details-wrapper {
+	/* Use full viewport height minus potential app bar if needed */
+	min-height: calc(100vh -64px);
+	display: flex;
+	flex-direction: column;
+	/* extra space so sticky bar + its margin are not flush with viewport edge */
+	padding-bottom:2.5rem;
+}
+
+.chat-scroll {
+	flex:11 auto;
+	background-color: var(--mud-palette-background);
+	border:1px solid var(--mud-palette-lines-default);
+	border-radius: var(--mud-default-borderradius);
+	padding: .75rem;
+	margin-bottom:0.75rem;
+	overflow-y: auto;
+}
+
+.message-bar {
+	flex:00 auto;
+	position: sticky;
+	bottom:0;
+	background: var(--mud-palette-surface);
+	border:1px solid var(--mud-palette-lines-default);
+	border-radius: var(--mud-default-borderradius);
+	padding: .5rem .75rem;
+	/* add margin to create visible space from very bottom */
+	margin-bottom:1rem;
+	/* safe-area support for iOS notches */
+	padding-bottom: calc(.5rem + env(safe-area-inset-bottom));
+	box-shadow:02px6px rgba(0,0,0,.12);
+}
+
+@media (min-width:600px) {
+	.game-details-wrapper { min-height: calc(100vh -64px); }
+}

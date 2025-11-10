@@ -9,25 +9,27 @@
 
 <PageTitle>Game Details</PageTitle>
 
-<MudPaper Class="pa-4">
-	<MudText Typo="Typo.h5">Game details</MudText>
+<MudContainer MaxWidth="MaxWidth.Large" Class="game-details-wrapper">
+	<MudText Typo="Typo.h5" Class="mb-2">Game details</MudText>
 
 	@if (isLoading)
 	{
 		<MudProgressCircular Indeterminate="true" Class="my-4" />
-	} else if (!string.IsNullOrEmpty(errorMessage))
+	}
+	else if (!string.IsNullOrEmpty(errorMessage))
 	{
 		<MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
-	} else if (game is null)
+	}
+	else if (game is null)
 	{
 		<MudText>(No game loaded)</MudText>
-	} else
+	}
+	else
 	{
-		<MudText><b>Game ID:</b> @game.GameId</MudText>
-
+		<MudText Class="mb-1"><b>Game ID:</b> @game.GameId</MudText>
 		<MudDivider Class="my-2" />
 
-		<MudPaper Class="pa-2" Style="max-height:400px; overflow:auto; background-color:var(--mud-palette-background);">
+		<div class="chat-scroll">
 			@foreach (var m in messages ?? [])
 			{
 				@if (m.Participant == ChatParticipant.Player)
@@ -41,7 +43,9 @@
 							@m.Text
 						</MudChatBubble>
 					</MudChat>
-				} else {
+				}
+				else
+				{
 					<MudChat ChatPosition="ChatBubblePosition.Start"
 							 Variant="Variant.Filled"
 							 Color="Color.Default">
@@ -53,17 +57,17 @@
 					</MudChat>
 				}
 			}
-		</MudPaper>
+		</div>
 
-		<MudDivider Class="my-2" />
-
-		<MudGrid>
-			<MudItem xs="10">
-				<MudTextField @bind-Value="userMessage.Text" Label="Message" Placeholder="Type a message..." FullWidth="true" Immediate="true" OnKeyDown="OnKeyDown" />
-			</MudItem>
-			<MudItem xs="2">
-				<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SendMessageAsync">Send</MudButton>
-			</MudItem>
-		</MudGrid>
+		<div class="message-bar">
+			<MudGrid Class="align-items-center">
+				<MudItem xs="10" sm="11">
+					<MudTextField @bind-Value="userMessage.Text" Label="Message" Placeholder="Type a message..." FullWidth="true" Immediate="true" OnKeyDown="OnKeyDown" />
+				</MudItem>
+				<MudItem xs="2" sm="1" Class="d-flex justify-end">
+					<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SendMessageAsync">Send</MudButton>
+				</MudItem>
+			</MudGrid>
+		</div>
 	}
-</MudPaper>
+</MudContainer>
