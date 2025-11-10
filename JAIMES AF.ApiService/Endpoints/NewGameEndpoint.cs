@@ -29,12 +29,14 @@ public class NewGameEndpoint : Endpoint<NewGameRequest, NewGameResponse>
             NewGameResponse game = new()
             {
                 GameId = gameDto.GameId,
-                Messages = gameDto.Messages.Select(m => new MessageResponse(
-                    m.Text,
-                    string.IsNullOrEmpty(m.PlayerId) ? ChatParticipant.GameMaster : ChatParticipant.Player,
-                    m.PlayerId,
-                    m.ParticipantName,
-                    m.CreatedAt)).ToArray()
+                Messages = gameDto.Messages.Select(m => new MessageResponse
+                {
+                    Text = m.Text,
+                    Participant = string.IsNullOrEmpty(m.PlayerId) ? ChatParticipant.GameMaster : ChatParticipant.Player,
+                    PlayerId = m.PlayerId,
+                    ParticipantName = m.ParticipantName,
+                    CreatedAt = m.CreatedAt
+                }).ToArray()
             };
             await Send.CreatedAtAsync<GameStateEndpoint>(game, responseBody: game, verb: Http.GET, cancellation: ct);
         }

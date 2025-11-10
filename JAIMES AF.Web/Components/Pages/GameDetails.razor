@@ -59,7 +59,7 @@
 
 		<MudGrid>
 			<MudItem xs="10">
-				<MudTextField @bind-Value="newMessage" Placeholder="Type a message..." FullWidth="true" Immediate="true" OnKeyDown="OnKeyDown" />
+				<MudTextField @bind-Value="userMessage.Text" Label="Message" Placeholder="Type a message..." FullWidth="true" Immediate="true" OnKeyDown="OnKeyDown" />
 			</MudItem>
 			<MudItem xs="2">
 				<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SendMessageAsync">Send</MudButton>

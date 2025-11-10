@@ -24,7 +24,15 @@ public partial class GameDetails
     private string? errorMessage;
 
     // New fields for chat input
-    private string newMessage = string.Empty;
+    private MessageResponse userMessage = new()
+    {
+        Participant = ChatParticipant.Player,
+        ParticipantName = "Player Character",
+        PlayerId = null,
+        Text = string.Empty,
+        CreatedAt = DateTime.UtcNow
+    };
+
     private bool isSending = false;
 
     protected override async Task OnParametersSetAsync()
@@ -55,7 +63,7 @@ public partial class GameDetails
 
     private async Task SendMessageAsync()
     {
-        if (string.IsNullOrWhiteSpace(newMessage) || isSending) return;
+        if (string.IsNullOrWhiteSpace(userMessage.Text) || isSending) return;
 
         isSending = true;
         errorMessage = null;
@@ -65,11 +73,11 @@ public partial class GameDetails
             ChatRequest request = new()
             {
                 GameId = GameId, 
-                Message = newMessage
+                Message = userMessage.Text
             };
-            messages.Add(new MessageResponse(newMessage, ChatParticipant.Player, null, "Player Character", DateTime.UtcNow));
-            newMessage = string.Empty;
-            StateHasChanged();
+            messages.Add(userMessage with {CreatedAt = DateTime.UtcNow});
+            userMessage.Text = string.Empty;
+            await InvokeAsync(StateHasChanged);
 
             // Send message to API
             HttpResponseMessage resp = await Http.PostAsJsonAsync($"/games/{GameId}", request);
@@ -126,7 +134,8 @@ public partial class GameDetails
     private static string GetAvatarInitials(string? name)
     {
         if (string.IsNullOrWhiteSpace(name)) return "?";
-        // Normalize whitespace and split into parts
+
+        // Normalize whitespace and split into parts
         var parts = Regex.Split(name.Trim(), "\\s+")
             .Where(p => !string.IsNullOrWhiteSpace(p))
             .ToList();
