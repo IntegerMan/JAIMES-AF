@@ -35,7 +35,7 @@
 					<MudChat ChatPosition="ChatBubblePosition.End"
 							 Variant="Variant.Filled"
 							 Color="Color.Primary">
-						<MudAvatar>PC</MudAvatar>
+						<MudAvatar>@GetAvatarInitials(m.ParticipantName)</MudAvatar>
 						<MudChatHeader Name="@m.ParticipantName" />
 						<MudChatBubble>
 							@m.Text
@@ -45,7 +45,7 @@
 					<MudChat ChatPosition="ChatBubblePosition.Start"
 							 Variant="Variant.Filled"
 							 Color="Color.Default">
-						<MudAvatar>GM</MudAvatar>
+						<MudAvatar>@GetAvatarInitials(m.ParticipantName)</MudAvatar>
 						<MudChatHeader Name="@m.ParticipantName" />
 						<MudChatBubble>
 							@m.Text
