@@ -65,7 +65,7 @@ public partial class GameDetails
                 GameId = GameId, 
                 Message = newMessage
             };
-            messages.Add(new MessageResponse(newMessage, ChatParticipant.Player));
+            messages.Add(new MessageResponse(newMessage, ChatParticipant.Player, null, "Player", DateTime.UtcNow));
             newMessage = string.Empty;
             StateHasChanged();
 

@@ -24,7 +24,7 @@ public static class GameMapper
             PlayerName = game.Player!.Name,
             Messages = game.Messages?
                             .OrderBy(m => m.CreatedAt)
-                            .Select(m => new MessageDto(m.Text))
+                            .Select(m => new MessageDto(m.Text, m.PlayerId, m.Player?.Name ?? "Game Master", m.CreatedAt))
                             .ToArray()
         };
     }

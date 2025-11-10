@@ -6,5 +6,10 @@ public class Message
     public Guid GameId { get; set; }
     public required string Text { get; set; }
     public DateTime CreatedAt { get; set; }
+
+    // Nullable reference to the player who sent the message. Null means the Game Master.
+    public string? PlayerId { get; set; }
+    public Player? Player { get; set; }
+
     public Game? Game { get; set; }
 }

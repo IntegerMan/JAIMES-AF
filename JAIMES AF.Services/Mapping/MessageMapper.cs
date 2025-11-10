@@ -1,12 +1,23 @@
+using System.Linq;
+using System.Collections.Generic;
 using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.Repositories.Entities;
-using Riok.Mapperly.Abstractions;
 
 namespace MattEland.Jaimes.ServiceLayer.Mapping;
 
-[Mapper]
 public static partial class MessageMapper
 {
-    public static partial MessageDto ToDto(this Message message);
-    public static partial MessageDto[] ToDto(this IEnumerable<Message> messages);
+    public static MessageDto ToDto(this Message message)
+    {
+        return new MessageDto(
+            message.Text,
+            message.PlayerId,
+            message.Player?.Name ?? "Game Master",
+            message.CreatedAt);
+    }
+
+    public static MessageDto[] ToDto(this IEnumerable<Message>? messages)
+    {
+        return messages?.Select(m => m.ToDto()).ToArray() ?? [];
+    }
 }

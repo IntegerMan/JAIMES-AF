@@ -41,7 +41,12 @@ public class ChatEndpoint : Ep.Req<ChatRequest>.Res<GameStateResponse>
         GameStateResponse gameState = new()
         {
             GameId = gameDto.GameId,
-            Messages = responses.Select(r => new MessageResponse(r, ChatParticipant.GameMaster)).ToArray()
+            Messages = gameDto.Messages.Select(m => new MessageResponse(
+                m.Text,
+                string.IsNullOrEmpty(m.PlayerId) ? ChatParticipant.GameMaster : ChatParticipant.Player,
+                m.PlayerId,
+                m.ParticipantName,
+                m.CreatedAt)).Concat(responses.Select(r => new MessageResponse(r, ChatParticipant.GameMaster, null, "Game Master", DateTime.UtcNow))).ToArray()
         };
 
         await Send.OkAsync(gameState, cancellation: ct);

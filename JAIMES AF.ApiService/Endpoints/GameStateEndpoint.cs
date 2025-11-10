@@ -37,7 +37,12 @@ public class GameStateEndpoint : EndpointWithoutRequest<GameStateResponse>
         GameStateResponse gameState = new()
         {
             GameId = gameDto.GameId,
-            Messages = gameDto.Messages.Select(m => new MessageResponse(m.Text, ChatParticipant.GameMaster)).ToArray() // TODO: This should store the participant info as well
+            Messages = gameDto.Messages.Select(m => new MessageResponse(
+                m.Text,
+                string.IsNullOrEmpty(m.PlayerId) ? ChatParticipant.GameMaster : ChatParticipant.Player,
+                m.PlayerId,
+                m.ParticipantName,
+                m.CreatedAt)).ToArray()
         };
         await Send.OkAsync(gameState, cancellation: ct);
     }
