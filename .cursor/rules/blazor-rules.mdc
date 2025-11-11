@@ -1,0 +1,6 @@
+---
+globs: *.razor
+alwaysApply: false
+---
+
+Pages that have interactive components must include a @rendermode InteractiveAuto directive.
