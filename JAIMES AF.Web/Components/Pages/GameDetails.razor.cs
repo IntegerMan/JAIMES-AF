@@ -134,14 +134,9 @@ public partial class GameDetails
 
     private async Task OnKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs args)
     {
-        if (args.Key == "Enter")
+        if (args.Key == "Enter" && !isSending)
         {
-            //string message = userMessage.Text;
-            userMessage.Text = string.Empty;
-            await InvokeAsync(StateHasChanged);
-
-            //await SendMessagePrivateAsync(message);
-            //StateHasChanged();
+            await SendMessageAsync();
         }
     }
 
