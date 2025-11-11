@@ -2,10 +2,10 @@ using FastEndpoints;
 using FastEndpoints.Swagger;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.ServiceDefaults;
-using MattEland.Jaimes.ServiceLayer;
 using System.Diagnostics;
 using MattEland.Jaimes.ApiService.Helpers;
 using MattEland.Jaimes.ServiceDefinitions.Services;
+using MattEland.Jaimes.Services;
 
 namespace MattEland.Jaimes.ApiService;
 
