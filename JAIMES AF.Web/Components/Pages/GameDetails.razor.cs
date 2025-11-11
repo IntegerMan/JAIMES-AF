@@ -84,8 +84,8 @@ public partial class GameDetails
             {
                 Text = messageText,
                 Participant = ChatParticipant.Player,
-                PlayerId = null, // TODO: Get from game
-                ParticipantName = "Player Character",
+                PlayerId = game!.PlayerId,
+                ParticipantName = game.PlayerName,
                 CreatedAt = DateTime.UtcNow
             });
             await InvokeAsync(StateHasChanged);

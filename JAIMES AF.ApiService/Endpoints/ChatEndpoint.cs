@@ -38,17 +38,24 @@ public class ChatEndpoint : Ep.Req<ChatRequest>.Res<GameStateResponse>
 
         string[] responses = await ChatService.GetChatResponseAsync(gameDto, req.Message, ct);
 
-        GameStateResponse gameState = new() 
+        GameStateResponse gameState = new()
         {
             GameId = gameDto.GameId,
             Messages = responses.Select(m => new MessageResponse
-            {
-                Text = m,
-                Participant = ChatParticipant.GameMaster,
-                PlayerId = null,
-                ParticipantName = "Game Master",
-                CreatedAt = DateTime.UtcNow
-            }).ToArray()
+                {
+                    Text = m,
+                    Participant = ChatParticipant.GameMaster,
+                    PlayerId = null,
+                    ParticipantName = "Game Master",
+                    CreatedAt = DateTime.UtcNow
+                })
+                .ToArray(),
+            RulesetId = gameDto.RulesetId,
+            RulesetName = gameDto.RulesetName,
+            ScenarioId = gameDto.ScenarioId,
+            ScenarioName = gameDto.ScenarioName,
+            PlayerId = gameDto.PlayerId,
+            PlayerName = gameDto.PlayerName,
         };
 
         await Send.OkAsync(gameState, cancellation: ct);

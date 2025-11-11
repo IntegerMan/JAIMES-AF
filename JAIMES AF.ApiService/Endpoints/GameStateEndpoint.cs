@@ -38,13 +38,23 @@ public class GameStateEndpoint : EndpointWithoutRequest<GameStateResponse>
         {
             GameId = gameDto.GameId,
             Messages = gameDto.Messages.Select(m => new MessageResponse
-            {
-                Text = m.Text,
-                Participant = string.IsNullOrEmpty(m.PlayerId) ? ChatParticipant.GameMaster : ChatParticipant.Player,
-                PlayerId = m.PlayerId,
-                ParticipantName = m.ParticipantName,
-                CreatedAt = m.CreatedAt
-            }).ToArray()
+                {
+                    Text = m.Text,
+                    Participant = string.IsNullOrEmpty(m.PlayerId)
+                        ? ChatParticipant.GameMaster
+                        : ChatParticipant.Player,
+                    PlayerId = m.PlayerId,
+                    ParticipantName = m.ParticipantName,
+                    CreatedAt = m.CreatedAt
+                })
+                .ToArray(),
+            RulesetId = gameDto.RulesetId,
+            RulesetName = gameDto.RulesetName,
+            ScenarioId = gameDto.ScenarioId,
+            ScenarioName = gameDto.ScenarioName,
+            PlayerId = gameDto.PlayerId,
+            PlayerName = gameDto.PlayerName,
+
         };
         await Send.OkAsync(gameState, cancellation: ct);
     }
