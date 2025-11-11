@@ -57,6 +57,21 @@ public partial class NewGame
         }
     }
 
+    private string GetScenarioDisplayName(ScenarioInfoResponse scenario)
+    {
+        if (!string.IsNullOrWhiteSpace(scenario.Name))
+        {
+            return scenario.Name;
+        }
+        
+        if (!string.IsNullOrWhiteSpace(scenario.Description))
+        {
+            return scenario.Description;
+        }
+        
+        return "Unnamed Scenario";
+    }
+
     private async Task CreateGameAsync()
     {
         if (string.IsNullOrEmpty(selectedScenarioId) || string.IsNullOrEmpty(selectedPlayerId))

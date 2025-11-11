@@ -26,10 +26,10 @@
 				           Disabled="isCreating"
 				           Required="true"
 				           RequiredError="Please select a scenario">
-					@foreach (var scenario in scenarios)
-					{
-						<MudSelectItem Value="@scenario.Id">@scenario.Name</MudSelectItem>
-					}
+				@foreach (var scenario in scenarios)
+				{
+					<MudSelectItem Value="@scenario.Id">@GetScenarioDisplayName(scenario)</MudSelectItem>
+				}
 				</MudSelect>
 
 				<MudSelect T="string"
