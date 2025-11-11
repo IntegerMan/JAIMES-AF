@@ -91,7 +91,7 @@ public class GameService(JaimesDbContext context) : IGameService
             ScenarioId = game.ScenarioId,
             PlayerId = game.PlayerId,
             Messages = game.Messages
-                .OrderBy(m => m.CreatedAt)
+                .OrderBy(m => m.Id)
                 .Select(m => new MessageDto(m.Text, m.PlayerId, m.Player?.Name ?? "Game Master", m.CreatedAt))
                 .ToArray(),
             ScenarioName = game.Scenario?.Name ?? game.ScenarioId,
@@ -109,16 +109,22 @@ public class GameService(JaimesDbContext context) : IGameService
             .Include(g => g.Ruleset)
             .ToArrayAsync(cancellationToken: cancellationToken);
 
-        return games.Select(g => new GameDto()
+        return games.Select(g => new GameDto
         {
             GameId = g.Id,
             PlayerId = g.PlayerId,
             RulesetId = g.RulesetId,
             ScenarioId = g.ScenarioId,
-            Messages = null,
+            Messages = [],
             ScenarioName = g.Scenario?.Name ?? g.ScenarioId,
             RulesetName = g.Ruleset?.Name ?? g.RulesetId,
             PlayerName = g.Player?.Name ?? g.PlayerId
         }).ToArray();
+    }
+
+    public async Task AddMessagesAsync(IEnumerable<Message> messages, CancellationToken cancellationToken = default)
+    {
+        await context.Messages.AddRangeAsync(messages, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
     }
 }

@@ -12,12 +12,15 @@ Goal: Tell a compelling interactive story with core gameplay mechanics, have bas
 
 #### Web Front End
 
-- [ ] Web UI
-- [ ] Chat Control
-- [ ] Game Selection UI
+- [x] Web UI
+- [x] Chat Control
+- [x] Game Selection UI
 - [ ] New Game Selection UI
-- [ ] Resume Game UI
 - [ ] Player Creation UI
+- [ ] Thinking indicator
+
+BUGS:
+- [ ] Chat control is unreliable on enter keypress
 
 #### API and Services
 
@@ -30,7 +33,7 @@ Goal: Tell a compelling interactive story with core gameplay mechanics, have bas
 - [x] Agents Project
 - [x] Tools Project
 - [x] Azure AI Agent Integration
-- [ ] Multi-Turn Conversations
+- [x] Multi-Turn Conversations
 - [ ] Game Scenario as System Prompt
 - [ ] Character Info as System Prompt
 - [ ] Ruleset as System Prompt
@@ -41,6 +44,8 @@ Goal: Tell a compelling interactive story with core gameplay mechanics, have bas
 
 ### Phase 2: Observability, Measurability, and Analytics
 
+- [ ] Thumbs up button on chat responses
+- [ ] Thumbs down button on chat responses
 - [ ] Analytic Logging
 - [ ] Audit Trails
 - [ ] AI Agent Metrics

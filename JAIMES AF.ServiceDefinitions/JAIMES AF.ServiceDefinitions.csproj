@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\JAIMES AF.Domain\JAIMES AF.Domain.csproj" />
+    <ProjectReference Include="..\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj" />
   </ItemGroup>
 
 </Project>
