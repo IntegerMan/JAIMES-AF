@@ -2,9 +2,67 @@
 
 <PageTitle>Create New Game</PageTitle>
 
-<MudPaper Class="pa-4">
-	<MudText Typo="Typo.h4">Create New Game</MudText>
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+	<MudPaper Class="pa-4">
+		<MudText Typo="Typo.h4" Class="mb-4">Create New Game</MudText>
 
-	<MudText Class="mb-4">This page will allow you to create a new game. This feature is coming soon.</MudText>
-</MudPaper>
+		@if (isLoading)
+		{
+			<MudProgressCircular Indeterminate="true" Class="my-4" />
+		}
+		else if (!string.IsNullOrEmpty(errorMessage))
+		{
+			<MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
+		}
+
+		@if (!isLoading)
+		{
+			<MudForm>
+				<MudSelect T="string"
+				           @bind-Value="selectedScenarioId"
+				           Label="Scenario"
+				           Variant="Variant.Outlined"
+				           Class="mb-4"
+				           Disabled="isCreating"
+				           Required="true"
+				           RequiredError="Please select a scenario">
+					@foreach (var scenario in scenarios)
+					{
+						<MudSelectItem Value="@scenario.Id">@scenario.Name</MudSelectItem>
+					}
+				</MudSelect>
+
+				<MudSelect T="string"
+				           @bind-Value="selectedPlayerId"
+				           Label="Player"
+				           Variant="Variant.Outlined"
+				           Class="mb-4"
+				           Disabled="isCreating"
+				           Required="true"
+				           RequiredError="Please select a player">
+					@foreach (var player in players)
+					{
+						<MudSelectItem Value="@player.Id">@player.Name</MudSelectItem>
+					}
+				</MudSelect>
+
+				<MudButton Variant="Variant.Filled" 
+				           Color="Color.Primary" 
+				           OnClick="CreateGameAsync" 
+				           Disabled="isCreating || string.IsNullOrEmpty(selectedScenarioId) || string.IsNullOrEmpty(selectedPlayerId)"
+				           Class="mt-2">
+					@if (isCreating)
+					{
+						<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+						<span class="ms-2">Creating...</span>
+					}
+					else
+					{
+						<span>Create Game</span>
+					}
+				</MudButton>
+			</MudForm>
+		}
+	</MudPaper>
+</MudContainer>
 
