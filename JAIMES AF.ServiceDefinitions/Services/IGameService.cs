@@ -9,4 +9,5 @@ public interface IGameService
     Task<GameDto?> GetGameAsync(Guid gameId, CancellationToken cancellationToken = default);
     Task<GameDto[]> GetGamesAsync(CancellationToken cancellationToken = default);
     Task AddMessagesAsync(IEnumerable<Message> messages, CancellationToken cancellationToken = default);
+    Task DeleteGameAsync(Guid gameId, CancellationToken cancellationToken = default);
 }

@@ -20,6 +20,7 @@ public class ListRulesetsEndpoint : Ep.NoReq.Res<RulesetListResponse>
     public override async Task HandleAsync(CancellationToken ct)
     {
         var rulesets = await RulesetsService.GetRulesetsAsync(ct);
+
         await Send.OkAsync(new RulesetListResponse
         {
             Rulesets = rulesets.Select(r => new RulesetInfoResponse

@@ -127,4 +127,16 @@ public class GameService(JaimesDbContext context) : IGameService
         await context.Messages.AddRangeAsync(messages, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task DeleteGameAsync(Guid gameId, CancellationToken cancellationToken = default)
+    {
+        Game? game = await context.Games.FindAsync([gameId], cancellationToken);
+        if (game == null)
+        {
+            throw new ArgumentException($"Game '{gameId}' does not exist.", nameof(gameId));
+        }
+
+        context.Games.Remove(game);
+        await context.SaveChangesAsync(cancellationToken);
+    }
 }
