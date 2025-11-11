@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using MattEland.Jaimes.Repositories;
-using Microsoft.Extensions.Logging;
 
 namespace MattEland.Jaimes.ApiService;
 

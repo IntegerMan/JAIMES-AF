@@ -1,4 +1,4 @@
-namespace MattEland.Jaimes.ServiceDefinitions;
+namespace MattEland.Jaimes.ServiceDefinitions.Services;
 
 public class ChatOptions
 {

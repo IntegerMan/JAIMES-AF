@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Components;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 using System.Text.RegularExpressions;
-using System.Linq;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 
@@ -23,8 +22,7 @@ public partial class GameDetails
     private bool isLoading = true;
     private string? errorMessage;
 
-    // New fields for chat input
-    private MessageResponse userMessage = new()
+    private readonly MessageResponse userMessage = new()
     {
         Participant = ChatParticipant.Player,
         ParticipantName = "Player Character",
@@ -63,7 +61,14 @@ public partial class GameDetails
 
     private async Task SendMessageAsync()
     {
-        if (string.IsNullOrWhiteSpace(userMessage.Text) || isSending) return;
+        string message = userMessage.Text;
+        userMessage.Text = string.Empty;
+        await SendMessagePrivateAsync(message);
+    }
+
+    private async Task SendMessagePrivateAsync(string messageText)
+    {
+        if (string.IsNullOrWhiteSpace(messageText) || isSending) return;
 
         isSending = true;
         errorMessage = null;
@@ -73,10 +78,16 @@ public partial class GameDetails
             ChatRequest request = new()
             {
                 GameId = GameId, 
-                Message = userMessage.Text
+                Message = messageText
             };
-            messages.Add(userMessage with {CreatedAt = DateTime.UtcNow});
-            userMessage.Text = string.Empty;
+            messages.Add(new MessageResponse
+            {
+                Text = messageText,
+                Participant = ChatParticipant.Player,
+                PlayerId = null, // TODO: Get from game
+                ParticipantName = "Player Character",
+                CreatedAt = DateTime.UtcNow
+            });
             await InvokeAsync(StateHasChanged);
 
             // Send message to API
@@ -125,7 +136,12 @@ public partial class GameDetails
     {
         if (args.Key == "Enter")
         {
-            await SendMessageAsync();
+            //string message = userMessage.Text;
+            userMessage.Text = string.Empty;
+            await InvokeAsync(StateHasChanged);
+
+            //await SendMessagePrivateAsync(message);
+            //StateHasChanged();
         }
     }
 

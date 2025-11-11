@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 
 namespace MattEland.Jaimes.Tests.Repositories;

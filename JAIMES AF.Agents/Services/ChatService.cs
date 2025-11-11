@@ -1,7 +1,7 @@
 ﻿using System.ClientModel;
 using Azure.AI.OpenAI;
 using MattEland.Jaimes.Domain;
-using MattEland.Jaimes.ServiceDefinitions;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.Agents.AI;
 using OpenAI;
 

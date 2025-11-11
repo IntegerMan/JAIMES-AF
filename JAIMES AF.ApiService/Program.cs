@@ -3,10 +3,9 @@ using FastEndpoints.Swagger;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.ServiceLayer;
-using MattEland.Jaimes.ServiceDefinitions;
 using System.Diagnostics;
-using Microsoft.Extensions.Logging;
 using MattEland.Jaimes.ApiService.Helpers;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 
 namespace MattEland.Jaimes.ApiService;
 

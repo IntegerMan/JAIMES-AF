@@ -2,7 +2,7 @@ using MattEland.Jaimes.Domain;
 using Microsoft.EntityFrameworkCore;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
-using MattEland.Jaimes.ServiceDefinitions;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 
 namespace MattEland.Jaimes.ServiceLayer.Services;
 

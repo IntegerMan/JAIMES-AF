@@ -1,5 +1,3 @@
-using System.Linq;
-using System.Collections.Generic;
 using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.Repositories.Entities;
 
