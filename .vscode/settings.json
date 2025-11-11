@@ -6,8 +6,10 @@
         "**/obj": true
     },
     "cSpell.words": [
+        "apiservice",
         "Jaimes",
         "Scrutor",
-        "Shouldly"
+        "Shouldly",
+        "webfrontend"
     ]
 }

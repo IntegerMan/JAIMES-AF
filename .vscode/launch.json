@@ -3,9 +3,26 @@
     "configurations": [
         {
             "name": "C#: Aspire Debug",
-            "type": "dotnet",
+            "type": "coreclr",
             "request": "launch",
-            "projectPath": "${workspaceFolder}/JAIMES AF.AppHost/JAIMES AF.AppHost.csproj"
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/JAIMES AF.AppHost/bin/Debug/net9.0/JAIMES AF.AppHost.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/JAIMES AF.AppHost",
+            "stopAtEntry": false,
+            "console": "integratedTerminal",
+            "logging": {
+                "moduleLoad": false
+            },
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development",
+                "DOTNET_ENVIRONMENT": "Development",
+                "ASPNETCORE_URLS": "http://localhost:15000;https://localhost:15001",
+                "ASPIRE_ALLOW_UNSECURED_TRANSPORT": "true",
+                "ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL": "https://localhost:21188",
+                "ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL": "http://localhost:19287",
+                "ASPIRE_RESOURCE_SERVICE_ENDPOINT_URL": "https://localhost:22267"
+            }
         }
     ]
 }
