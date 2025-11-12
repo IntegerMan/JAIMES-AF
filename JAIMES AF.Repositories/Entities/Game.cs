@@ -11,4 +11,6 @@ public class Game
     public Scenario? Scenario { get; set; }
     public Player? Player { get; set; }
     public ICollection<Message> Messages { get; set; } = new List<Message>();
+    public Guid? MostRecentHistoryId { get; set; }
+    public ChatHistory? MostRecentHistory { get; set; }
 }

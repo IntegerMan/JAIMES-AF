@@ -10,6 +10,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
     public DbSet<Player> Players { get; set; }
     public DbSet<Scenario> Scenarios { get; set; }
     public DbSet<Ruleset> Rulesets { get; set; }
+    public DbSet<ChatHistory> ChatHistories { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -70,6 +71,11 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 .WithMany(p => p.Games)
                 .HasForeignKey(g => g.PlayerId)
                 .OnDelete(DeleteBehavior.Restrict);
+            
+            entity.HasOne(g => g.MostRecentHistory)
+                .WithMany()
+                .HasForeignKey(g => g.MostRecentHistoryId)
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<Message>(entity =>
@@ -83,6 +89,34 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 .WithMany(g => g.Messages)
                 .HasForeignKey(m => m.GameId)
                 .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.HasOne(m => m.ChatHistory)
+                .WithMany()
+                .HasForeignKey(m => m.ChatHistoryId)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
+        
+        modelBuilder.Entity<ChatHistory>(entity =>
+        {
+            entity.HasKey(ch => ch.Id);
+            entity.Property(ch => ch.GameId).IsRequired();
+            entity.Property(ch => ch.ThreadJson).IsRequired();
+            entity.Property(ch => ch.CreatedAt).IsRequired();
+            
+            entity.HasOne(ch => ch.Game)
+                .WithMany()
+                .HasForeignKey(ch => ch.GameId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.HasOne(ch => ch.PreviousHistory)
+                .WithMany()
+                .HasForeignKey(ch => ch.PreviousHistoryId)
+                .OnDelete(DeleteBehavior.NoAction);
+            
+            entity.HasOne(ch => ch.Message)
+                .WithMany()
+                .HasForeignKey(ch => ch.MessageId)
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         // Seed data - use lowercase ids for new defaults

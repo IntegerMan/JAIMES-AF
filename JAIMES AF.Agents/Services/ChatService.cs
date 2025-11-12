@@ -9,11 +9,11 @@ using OpenAI;
 
 namespace MattEland.Jaimes.Agents.Services;
 
-public class ChatService(ChatOptions options, ILogger<ChatService> logger) : IChatService
+public class ChatService(ChatOptions options, ILogger<ChatService> logger, IChatHistoryService chatHistoryService) : IChatService
 {
     private readonly ChatOptions _options = options ?? throw new ArgumentNullException(nameof(options));
 
-    public async Task<string[]> GetChatResponseAsync(GameDto game, string message, CancellationToken cancellationToken = default)
+    public async Task<(string[] Messages, string ThreadJson)> GetChatResponseAsync(GameDto game, string message, CancellationToken cancellationToken = default)
     {
         // Build the Azure OpenAI client from options
         AIAgent agent = new AzureOpenAIClient(
@@ -26,7 +26,14 @@ public class ChatService(ChatOptions options, ILogger<ChatService> logger) : ICh
             .Build();
 
         AgentThread? thread = null;
-        // TODO: Get the thread from the database
+        
+        // Get the thread from the database
+        string? existingThreadJson = await chatHistoryService.GetMostRecentThreadJsonAsync(game.GameId, cancellationToken);
+        if (!string.IsNullOrEmpty(existingThreadJson))
+        {
+            JsonElement jsonElement = JsonSerializer.Deserialize<JsonElement>(existingThreadJson, JsonSerializerOptions.Web);
+            thread = agent.DeserializeThread(jsonElement, JsonSerializerOptions.Web);
+        }
 
         thread ??= agent.GetNewThread();
 
@@ -36,13 +43,11 @@ public class ChatService(ChatOptions options, ILogger<ChatService> logger) : ICh
 
         AgentRunResponse response = await agent.RunAsync(message, thread, cancellationToken: cancellationToken);
 
-        // TODO: Persist the thread
+        // Serialize the thread after the chat
         json = thread.Serialize(JsonSerializerOptions.Web).GetRawText();
         logger.LogInformation("Thread after Chat: {Thread}", json);
 
-        // Return the messages from the response
-        return response.Messages
-            .Select(m => m.Text)
-            .ToArray();
+        // Return the messages and thread JSON
+        return (response.Messages.Select(m => m.Text).ToArray(), json);
     }
 }

@@ -11,6 +11,7 @@ public class ChatEndpoint : Ep.Req<ChatRequest>.Res<GameStateResponse>
 {
     public required IGameService GameService { get; set; }
     public required IChatService ChatService { get; set; }
+    public required IChatHistoryService ChatHistoryService { get; set; }
 
     public override void Configure()
     {
@@ -37,7 +38,7 @@ public class ChatEndpoint : Ep.Req<ChatRequest>.Res<GameStateResponse>
             return;
         }
 
-        string[] responses = await ChatService.GetChatResponseAsync(gameDto, req.Message, ct);
+        (string[] responses, string threadJson) = await ChatService.GetChatResponseAsync(gameDto, req.Message, ct);
 
         MessageResponse[] responseMessages = responses.Select(m => new MessageResponse
         {
@@ -66,6 +67,15 @@ public class ChatEndpoint : Ep.Req<ChatRequest>.Res<GameStateResponse>
         }));
 
         await GameService.AddMessagesAsync(messagesToPersist, ct);
+
+        // Get the last AI message ID (last message where PlayerId == null)
+        // After SaveChangesAsync, EF Core will have populated the Id property
+        int? lastAiMessageId = messagesToPersist
+            .Where(m => m.PlayerId == null)
+            .LastOrDefault()?.Id;
+
+        // Save the thread JSON
+        await ChatHistoryService.SaveThreadJsonAsync(gameDto.GameId, threadJson, lastAiMessageId, ct);
 
         GameStateResponse gameState = new()
         {

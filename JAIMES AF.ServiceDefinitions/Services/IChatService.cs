@@ -4,5 +4,5 @@ namespace MattEland.Jaimes.ServiceDefinitions.Services;
 
 public interface IChatService
 {
-    Task<string[]> GetChatResponseAsync(GameDto game, string message, CancellationToken cancellationToken = default);
+    Task<(string[] Messages, string ThreadJson)> GetChatResponseAsync(GameDto game, string message, CancellationToken cancellationToken = default);
 }

@@ -12,4 +12,6 @@ public class Message
     public Player? Player { get; set; }
 
     public Game? Game { get; set; }
+    public Guid? ChatHistoryId { get; set; }
+    public ChatHistory? ChatHistory { get; set; }
 }
