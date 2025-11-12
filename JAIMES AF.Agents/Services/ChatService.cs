@@ -23,7 +23,12 @@ public class ChatService(ChatOptions options) : IChatService
             .UseOpenTelemetry(sourceName: "agent-framework-source")
             .Build();
 
-        AgentRunResponse response = await agent.RunAsync(message, cancellationToken: cancellationToken);
+        // TODO: Get the thread from the database, or create a new one if it doesn't exist / can't be found
+        AgentThread thread = agent.GetNewThread();
+
+        AgentRunResponse response = await agent.RunAsync(message, thread, cancellationToken: cancellationToken);
+
+        // TODO: Persist the thread
 
         return response.Messages
             .Select(m => m.Text)
