@@ -1,13 +1,15 @@
 ﻿using System.ClientModel;
+using System.Text.Json;
 using Azure.AI.OpenAI;
 using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.Agents.AI;
+using Microsoft.Extensions.Logging;
 using OpenAI;
 
 namespace MattEland.Jaimes.Agents.Services;
 
-public class ChatService(ChatOptions options) : IChatService
+public class ChatService(ChatOptions options, ILogger<ChatService> logger) : IChatService
 {
     private readonly ChatOptions _options = options ?? throw new ArgumentNullException(nameof(options));
 
@@ -23,13 +25,22 @@ public class ChatService(ChatOptions options) : IChatService
             .UseOpenTelemetry(sourceName: "agent-framework-source")
             .Build();
 
-        // TODO: Get the thread from the database, or create a new one if it doesn't exist / can't be found
-        AgentThread thread = agent.GetNewThread();
+        AgentThread? thread = null;
+        // TODO: Get the thread from the database
+
+        thread ??= agent.GetNewThread();
+
+        // Log the thread before the chat for diagnostics
+        string json = thread.Serialize(JsonSerializerOptions.Web).GetRawText();
+        logger.LogInformation("Thread before Chat: {Thread}", json);
 
         AgentRunResponse response = await agent.RunAsync(message, thread, cancellationToken: cancellationToken);
 
         // TODO: Persist the thread
+        json = thread.Serialize(JsonSerializerOptions.Web).GetRawText();
+        logger.LogInformation("Thread after Chat: {Thread}", json);
 
+        // Return the messages from the response
         return response.Messages
             .Select(m => m.Text)
             .ToArray();
