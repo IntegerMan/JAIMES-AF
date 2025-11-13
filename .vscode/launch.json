@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "C#: Aspire Debug",
+            "name": ".NET Core Launch (AppHost)",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
@@ -11,21 +11,19 @@
             "cwd": "${workspaceFolder}/JAIMES AF.AppHost",
             "stopAtEntry": false,
             "console": "integratedTerminal",
-            "logging": {
-                "moduleLoad": false
-            },
             "env": {
                 "ASPNETCORE_ENVIRONMENT": "Development",
                 "DOTNET_ENVIRONMENT": "Development",
-                "ASPNETCORE_URLS": "http://localhost:15000;https://localhost:15001",
+                "ASPNETCORE_URLS": "http://localhost:15000",
                 "ASPIRE_ALLOW_UNSECURED_TRANSPORT": "true",
-                "ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL": "https://localhost:21188",
+                "ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL": "http://localhost:19287",
                 "ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL": "http://localhost:19287",
-                "ASPIRE_RESOURCE_SERVICE_ENDPOINT_URL": "https://localhost:22267"
+                "ASPIRE_RESOURCE_SERVICE_ENDPOINT_URL": "http://localhost:20027"
             },
             "serverReadyAction": {
                 "action": "openExternally",
-                "uri": "http://localhost:15000",
+                "pattern": "Login to the dashboard at (https?://\\S+)",
+                "uriFormat": "%s",
                 "killOnServerStop": false
             }
         }
