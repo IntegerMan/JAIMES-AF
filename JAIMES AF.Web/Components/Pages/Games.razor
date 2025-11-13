@@ -35,7 +35,7 @@
 				<MudTh>Scenario</MudTh>
 				<MudTh>Ruleset</MudTh>
 				<MudTh>Player</MudTh>
-				<MudTh Align="Align.Right">Actions</MudTh>
+				<MudTh align="Align.Right">Actions</MudTh>
 			</HeaderContent>
 			<RowTemplate>
 				<MudTd>
@@ -47,7 +47,7 @@
 				<MudTd>@context.ScenarioName</MudTd>
 				<MudTd>@context.RulesetName</MudTd>
 				<MudTd>@context.PlayerName</MudTd>
-				<MudTd Align="Align.Right">
+				<MudTd align="Align.Right">
 					<MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
 					               OnClick="@(() => DeleteGameAsync(context.GameId))" />
 				</MudTd>

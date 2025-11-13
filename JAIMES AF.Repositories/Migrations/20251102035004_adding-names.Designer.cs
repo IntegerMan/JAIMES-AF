@@ -13,7 +13,7 @@ namespace MattEland.Jaimes.Repositories.Migrations
 {
     [DbContext(typeof(JaimesDbContext))]
     [Migration("20251102035004_adding-names")]
-    partial class addingnames
+    partial class AddingNames
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

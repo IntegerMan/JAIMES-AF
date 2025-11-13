@@ -5,7 +5,7 @@
 namespace MattEland.Jaimes.Repositories.Migrations
 {
     /// <inheritdoc />
-    public partial class addmessageparticipant : Migration
+    public partial class AddMessageParticipant : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
