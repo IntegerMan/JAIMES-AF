@@ -13,7 +13,7 @@ namespace MattEland.Jaimes.Repositories.Migrations
 {
     [DbContext(typeof(JaimesDbContext))]
     [Migration("20251110024845_add-message-participant")]
-    partial class addmessageparticipant
+    partial class AddMessageParticipant
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

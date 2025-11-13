@@ -155,6 +155,7 @@ public class GameServiceTests : IAsyncLifetime
 
         // Assert
         result.ShouldNotBeNull();
+        result!.Messages.ShouldNotBeNull();
         result.Messages.Length.ShouldBe(3);
         result.Messages[0].Text.ShouldBe("First message");
         result.Messages[1].Text.ShouldBe("Second message");

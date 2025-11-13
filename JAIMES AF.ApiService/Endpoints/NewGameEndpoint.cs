@@ -29,7 +29,7 @@ public class NewGameEndpoint : Endpoint<NewGameRequest, NewGameResponse>
             NewGameResponse game = new()
             {
                 GameId = gameDto.GameId,
-                Messages = gameDto.Messages.Select(m => new MessageResponse
+                Messages = (gameDto.Messages ?? Array.Empty<MessageDto>()).Select(m => new MessageResponse
                 {
                     Text = m.Text,
                     Participant = string.IsNullOrEmpty(m.PlayerId) ? ChatParticipant.GameMaster : ChatParticipant.Player,
