@@ -2,7 +2,6 @@
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.Domain;
-using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 
 namespace MattEland.Jaimes.ApiService.Endpoints;
@@ -11,7 +10,6 @@ public class ChatEndpoint : Ep.Req<ChatRequest>.Res<GameStateResponse>
 {
     public required IGameService GameService { get; set; }
     public required IChatService ChatService { get; set; }
-    public required IChatHistoryService ChatHistoryService { get; set; }
 
     public override void Configure()
     {
@@ -38,49 +36,12 @@ public class ChatEndpoint : Ep.Req<ChatRequest>.Res<GameStateResponse>
             return;
         }
 
-        (string[] responses, string threadJson) = await ChatService.GetChatResponseAsync(gameDto, req.Message, ct);
-
-        MessageResponse[] responseMessages = responses.Select(m => new MessageResponse
-        {
-            Text = m,
-            Participant = ChatParticipant.GameMaster,
-            PlayerId = null,
-            ParticipantName = "Game Master",
-            CreatedAt = DateTime.UtcNow
-        })
-            .ToArray();
-
-        List<Message> messagesToPersist = [
-            new() {
-                GameId = gameDto.GameId,
-                Text = req.Message,
-                PlayerId = gameDto.PlayerId,
-                CreatedAt = DateTime.UtcNow
-            }
-        ];
-        messagesToPersist.AddRange(responseMessages.Select(m => new Message
-        {
-            GameId = gameDto.GameId,
-            Text = m.Text,
-            PlayerId = null,
-            CreatedAt = m.CreatedAt
-        }));
-
-        await GameService.AddMessagesAsync(messagesToPersist, ct);
-
-        // Get the last AI message ID (last message where PlayerId == null)
-        // After SaveChangesAsync, EF Core will have populated the Id property
-        int? lastAiMessageId = messagesToPersist
-            .Where(m => m.PlayerId == null)
-            .LastOrDefault()?.Id;
-
-        // Save the thread JSON
-        await ChatHistoryService.SaveThreadJsonAsync(gameDto.GameId, threadJson, lastAiMessageId, ct);
+        ChatResponse chatResponse = await ChatService.ProcessChatMessageAsync(gameId, req.Message, ct);
 
         GameStateResponse gameState = new()
         {
             GameId = gameDto.GameId,
-            Messages = responseMessages,
+            Messages = chatResponse.Messages,
             RulesetId = gameDto.RulesetId,
             RulesetName = gameDto.RulesetName,
             ScenarioId = gameDto.ScenarioId,

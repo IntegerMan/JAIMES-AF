@@ -6,3 +6,4 @@ public interface IChatHistoryService
     Task<Guid> SaveThreadJsonAsync(Guid gameId, string threadJson, int? messageId = null, CancellationToken cancellationToken = default);
 }
 
+
