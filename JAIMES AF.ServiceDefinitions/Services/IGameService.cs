@@ -1,5 +1,6 @@
 using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.Repositories.Entities;
+using MattEland.Jaimes.ServiceDefinitions.Responses;
 
 namespace MattEland.Jaimes.ServiceDefinitions.Services;
 
@@ -9,5 +10,6 @@ public interface IGameService
     Task<GameDto?> GetGameAsync(Guid gameId, CancellationToken cancellationToken = default);
     Task<GameDto[]> GetGamesAsync(CancellationToken cancellationToken = default);
     Task AddMessagesAsync(IEnumerable<Message> messages, CancellationToken cancellationToken = default);
+    Task<ChatResponse> ProcessChatMessageAsync(Guid gameId, string message, CancellationToken cancellationToken = default);
     Task DeleteGameAsync(Guid gameId, CancellationToken cancellationToken = default);
 }
