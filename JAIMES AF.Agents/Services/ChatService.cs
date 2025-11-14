@@ -16,17 +16,22 @@ public class ChatService(ChatOptions options, ILogger<ChatService> logger, IChat
 {
     private readonly ChatOptions _options = options ?? throw new ArgumentNullException(nameof(options));
 
-    public async Task<ChatResponse> ProcessChatMessageAsync(GameDto game, string message, CancellationToken cancellationToken = default)
+    private AIAgent CreateAgent(string systemPrompt)
     {
-        // Build the Azure OpenAI client from options
-        AIAgent agent = new AzureOpenAIClient(
+        return new AzureOpenAIClient(
                 new Uri(_options.Endpoint),
                 new ApiKeyCredential(_options.ApiKey))
             .GetChatClient(_options.Deployment)
-            .CreateAIAgent(instructions: game.SystemPrompt)
+            .CreateAIAgent(instructions: systemPrompt)
             .AsBuilder()
             .UseOpenTelemetry(sourceName: "agent-framework-source")
             .Build();
+    }
+
+    public async Task<ChatResponse> ProcessChatMessageAsync(GameDto game, string message, CancellationToken cancellationToken = default)
+    {
+        // Build the Azure OpenAI client from options
+        AIAgent agent = CreateAgent(game.SystemPrompt);
 
         AgentThread? thread = null;
         
@@ -70,14 +75,7 @@ public class ChatService(ChatOptions options, ILogger<ChatService> logger, IChat
     public async Task<InitialMessageResponse> GenerateInitialMessageAsync(GenerateInitialMessageRequest request, CancellationToken cancellationToken = default)
     {
         // Build the Azure OpenAI client from options with the system prompt
-        AIAgent agent = new AzureOpenAIClient(
-                new Uri(_options.Endpoint),
-                new ApiKeyCredential(_options.ApiKey))
-            .GetChatClient(_options.Deployment)
-            .CreateAIAgent(instructions: request.SystemPrompt)
-            .AsBuilder()
-            .UseOpenTelemetry(sourceName: "agent-framework-source")
-            .Build();
+        AIAgent agent = CreateAgent(request.SystemPrompt);
 
         // Create a new thread for this game
         AgentThread thread = agent.GetNewThread();
