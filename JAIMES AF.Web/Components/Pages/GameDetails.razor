@@ -49,7 +49,7 @@
 						<MudAvatar>@GetAvatarInitials(m.ParticipantName)</MudAvatar>
 						<MudChatHeader Name="@m.ParticipantName" />
 						<MudChatBubble>
-							@m.Text
+							@((MarkupString)RenderMarkdown(m.Text))
 						</MudChatBubble>
 					</MudChat>
 				}

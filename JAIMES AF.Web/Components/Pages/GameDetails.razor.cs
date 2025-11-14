@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 using System.Text.RegularExpressions;
+using Markdig;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 
@@ -173,5 +174,16 @@ public partial class GameDetails
         char first = meaningful.First()[0];
         char last = meaningful.Last()[0];
         return string.Concat(char.ToUpperInvariant(first), char.ToUpperInvariant(last));
+    }
+
+    // Converts markdown text to HTML for rendering in Game Master messages
+    private static string RenderMarkdown(string? markdown)
+    {
+        if (string.IsNullOrWhiteSpace(markdown))
+        {
+            return string.Empty;
+        }
+
+        return Markdown.ToHtml(markdown);
     }
 }
