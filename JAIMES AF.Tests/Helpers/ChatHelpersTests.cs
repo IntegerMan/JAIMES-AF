@@ -23,7 +23,6 @@ public class ChatHelpersTests
     [Theory]
     [InlineData("**bold text**", "<strong>bold text</strong>")]
     [InlineData("*italic text*", "<em>italic text</em>")]
-    [InlineData("# Header 1", "<h1>Header 1</h1>")]
     [InlineData("This is a paragraph.", "<p>This is a paragraph.</p>")]
     public void RenderMarkdown_ConvertsMarkdownToHtml(string markdown, string expectedHtml)
     {
@@ -32,6 +31,41 @@ public class ChatHelpersTests
 
         // Assert
         result.ShouldContain(expectedHtml);
+    }
+
+    [Theory]
+    [InlineData("# Header 1")]
+    [InlineData("## Header 2")]
+    [InlineData("### Header 3")]
+    [InlineData("#### Header 4")]
+    [InlineData("  # Header with spaces")]
+    public void RenderMarkdown_FiltersOutMarkdownHeaders(string markdown)
+    {
+        // Act
+        string result = ChatHelpers.RenderMarkdown(markdown);
+
+        // Assert - Headers should be removed, so result should not contain header tags
+        result.ShouldNotContain("<h1>");
+        result.ShouldNotContain("<h2>");
+        result.ShouldNotContain("<h3>");
+        result.ShouldNotContain("<h4>");
+        result.ShouldNotContain("<h5>");
+        result.ShouldNotContain("<h6>");
+    }
+
+    [Fact]
+    public void RenderMarkdown_PreservesContentAfterRemovingHeaders()
+    {
+        // Arrange
+        string markdown = "# Header\n\nThis is regular text with **bold** formatting.";
+
+        // Act
+        string result = ChatHelpers.RenderMarkdown(markdown);
+
+        // Assert - Header should be removed but content should remain
+        result.ShouldNotContain("<h1>");
+        result.ShouldContain("This is regular text");
+        result.ShouldContain("<strong>bold</strong>");
     }
 
     [Fact]
@@ -182,6 +216,114 @@ public class ChatHelpersTests
         result.Count.ShouldBe(expectedCount);
         result[0].ShouldBe(firstParagraph);
         result[1].ShouldBe(secondParagraph);
+    }
+
+    #endregion
+
+    #region IsHeaderLike Tests
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("Regular paragraph text")]
+    [InlineData("This is **bold text** in a paragraph.")]
+    public void IsHeaderLike_ReturnsFalse_ForRegularText(string? text)
+    {
+        // Act
+        bool result = ChatHelpers.IsHeaderLike(text);
+
+        // Assert
+        result.ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData("# Header 1")]
+    [InlineData("## Header 2")]
+    [InlineData("### Header 3")]
+    [InlineData("  # Header with spaces")]
+    public void IsHeaderLike_ReturnsTrue_ForMarkdownHeaders(string text)
+    {
+        // Act
+        bool result = ChatHelpers.IsHeaderLike(text);
+
+        // Assert
+        result.ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("**Opening Message:**")]
+    [InlineData("**Title**")]
+    [InlineData("**Section Header:**")]
+    [InlineData("  **Label:**  ")]
+    public void IsHeaderLike_ReturnsTrue_ForBoldLabels(string text)
+    {
+        // Act
+        bool result = ChatHelpers.IsHeaderLike(text);
+
+        // Assert
+        result.ShouldBeTrue();
+    }
+
+    #endregion
+
+    #region SplitIntoParagraphs Header Filtering Tests
+
+    [Fact]
+    public void SplitIntoParagraphs_FiltersOutMarkdownHeaders()
+    {
+        // Arrange
+        string text = "# Header\n\nThis is the actual content.";
+
+        // Act
+        List<string> result = ChatHelpers.SplitIntoParagraphs(text).ToList();
+
+        // Assert
+        result.Count.ShouldBe(1);
+        result[0].ShouldBe("This is the actual content.");
+    }
+
+    [Fact]
+    public void SplitIntoParagraphs_FiltersOutBoldLabels()
+    {
+        // Arrange
+        string text = "**Opening Message:**\n\nAs the warm glow of twilight...";
+
+        // Act
+        List<string> result = ChatHelpers.SplitIntoParagraphs(text).ToList();
+
+        // Assert
+        result.Count.ShouldBe(1);
+        result[0].ShouldContain("As the warm glow");
+        result[0].ShouldNotContain("Opening Message");
+    }
+
+    [Fact]
+    public void SplitIntoParagraphs_PreservesBoldTextInContent()
+    {
+        // Arrange
+        string text = "This paragraph has **bold text** in it.\n\nAnd another paragraph.";
+
+        // Act
+        List<string> result = ChatHelpers.SplitIntoParagraphs(text).ToList();
+
+        // Assert
+        result.Count.ShouldBe(2);
+        result[0].ShouldContain("**bold text**");
+        result[1].ShouldBe("And another paragraph.");
+    }
+
+    [Fact]
+    public void SplitIntoParagraphs_ReturnsEmpty_WhenOnlyHeaderLike()
+    {
+        // Arrange
+        string text = "**Opening Message:**";
+
+        // Act
+        List<string> result = ChatHelpers.SplitIntoParagraphs(text).ToList();
+
+        // Assert
+        result.ShouldBeEmpty();
     }
 
     #endregion
