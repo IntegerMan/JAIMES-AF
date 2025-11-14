@@ -1,0 +1,64 @@
+# Repositories Layer Guidelines
+
+## Purpose
+This project contains the data access layer using Entity Framework Core. It defines entities, DbContext, and migrations.
+
+## Key Principles
+- **EF Core Entities**: All database entities are in `Entities/` folder
+- **DbContext**: `JaimesDbContext` is the single source of truth for DbSets
+- **Migrations**: Schema changes must be done via EF Core migrations
+- **Seed Data**: Seed data is defined in `OnModelCreating()` in `JaimesDbContext`
+
+## Entity Design
+- Entities are simple POCOs with properties and navigation properties
+- Use `required` for non-nullable properties
+- Navigation properties should be nullable when optional
+- Use `ICollection<T>` for one-to-many relationships
+
+## DbContext Configuration
+- Entity configuration is in `OnModelCreating()` method
+- Use fluent API for relationships, constraints, and defaults
+- Configure delete behaviors appropriately:
+  - `DeleteBehavior.Restrict` for reference data (Rulesets, Scenarios, Players)
+  - `DeleteBehavior.Cascade` for dependent data (Messages, ChatHistory)
+  - `DeleteBehavior.NoAction` for optional references
+
+## Migrations
+- **CRITICAL**: When modifying seed data (e.g., `SystemPrompt`, `NewGameInstructions`, or any `HasData()` values), you MUST create a new migration
+- Migration command: `dotnet ef migrations add <MigrationName> --project '.\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj' --startup-project '.\JAIMES AF.ApiService\JAIMES AF.ApiService.csproj'`
+- The "potential data loss" warning when updating seed data is expected and safe to ignore
+- Migrations are automatically applied at application startup
+
+## Seed Data
+- Seed data is defined using `HasData()` in `OnModelCreating()`
+- Use lowercase IDs for default seed data (e.g., "dnd5e", "islandTest")
+- Keep seed data minimal - only essential defaults for development/testing
+
+## Common Patterns
+```csharp
+// Entity
+public class ExampleEntity
+{
+    public Guid Id { get; set; }
+    public required string Name { get; set; }
+    public string? OptionalProperty { get; set; }
+    public ICollection<RelatedEntity> RelatedEntities { get; set; } = new List<RelatedEntity>();
+}
+
+// DbContext configuration
+modelBuilder.Entity<ExampleEntity>(entity =>
+{
+    entity.HasKey(e => e.Id);
+    entity.Property(e => e.Name).IsRequired();
+    entity.HasMany(e => e.RelatedEntities)
+        .WithOne(r => r.Example)
+        .HasForeignKey(r => r.ExampleId)
+        .OnDelete(DeleteBehavior.Cascade);
+});
+```
+
+## Testing
+- Repository tests are in `JAIMES AF.Tests/Repositories/`
+- Use in-memory databases for testing
+- Test CRUD operations and query logic
+

@@ -1,0 +1,62 @@
+# API Service Layer Guidelines
+
+## Purpose
+This project contains the HTTP API surface using FastEndpoints. Endpoints are thin wrappers that delegate to services.
+
+## Key Principles
+- **Keep endpoints minimal**: Endpoints should only handle HTTP concerns (routing, validation, status codes)
+- **Delegate to services**: All business logic belongs in `JAIMES AF.Services`
+- **Use FastEndpoints**: Follow FastEndpoints conventions for endpoint classes
+- **Request/Response models**: Define in `Requests/` and `Responses/` folders, not in the service layer
+
+## Endpoint Structure
+- Inherit from `Endpoint<TRequest, TResponse>` where TRequest is in `Requests/` and TResponse is in `Responses/`
+- Use `required` properties for service dependencies (e.g., `public required IGameService GameService { get; set; }`)
+- Configure routes and metadata in `Configure()` method
+- Handle business logic in `HandleAsync()` by calling service methods
+- Return appropriate HTTP status codes (Created, Ok, BadRequest, NotFound, etc.)
+
+## Error Handling
+- Catch `ArgumentException` and use `ThrowError()` for validation errors
+- Let service exceptions bubble up to FastEndpoints' error handling
+- Return meaningful error messages to clients
+
+## Request/Response Models
+- Request models go in `Requests/` folder
+- Response models go in `Responses/` folder
+- Use DTOs from `MattEland.Jaimes.Domain` when mapping between layers
+- Avoid exposing internal entities directly
+
+## Testing
+- Endpoint tests are in `JAIMES AF.Tests/Endpoints/`
+- Use `EndpointTestBase` for common test setup
+- Mock service dependencies using Moq or similar
+
+## Common Patterns
+```csharp
+public class ExampleEndpoint : Endpoint<ExampleRequest, ExampleResponse>
+{
+    public required IExampleService ExampleService { get; set; }
+
+    public override void Configure()
+    {
+        Post("/example");
+        AllowAnonymous(); // or RequireAuthorization() as needed
+        Description(b => b
+            .Produces<ExampleResponse>(StatusCodes.Status200Ok)
+            .Produces(StatusCodes.Status400BadRequest)
+            .WithTags("Example"));
+    }
+
+    public override async Task HandleAsync(ExampleRequest req, CancellationToken ct)
+    {
+        // Delegate to service
+        ExampleDto result = await ExampleService.DoSomethingAsync(req.Parameter, ct);
+        
+        // Map to response
+        ExampleResponse response = new() { /* map from result */ };
+        await SendOkAsync(response, ct);
+    }
+}
+```
+

@@ -1,0 +1,87 @@
+# Blazor Web Client Guidelines
+
+## Purpose
+This project contains the Blazor web client application. It provides the user interface for the JAIMES AF game system.
+
+## Key Principles
+- **Component-based UI**: Use Razor components for UI elements
+- **Interactive Components**: Pages with interactive components must include `@rendermode InteractiveAuto` directive
+- **API Communication**: Use HttpClient or API client services to communicate with the backend
+- **State Management**: Use Blazor's built-in features (CascadingParameters, EventCallbacks) for state
+
+## Component Structure
+- Pages are in `Components/Pages/` folder
+- Shared components can be in `Components/` or `Components/Shared/`
+- Helper classes (e.g., API clients) are at the project root
+- Use code-behind files (`.razor.cs`) for complex logic
+
+## Rendering Modes
+- Use `@rendermode InteractiveAuto` for pages that need interactivity
+- This enables server-side rendering with automatic WebAssembly fallback
+- Static pages don't need render mode directives
+
+## API Integration
+- Create API client services for backend communication
+- Use dependency injection to inject HttpClient or API clients
+- Handle errors gracefully and provide user feedback
+- Use async/await for all API calls
+
+## Common Patterns
+```razor
+@page "/example"
+@rendermode InteractiveAuto
+@inject IExampleApiClient ApiClient
+
+<PageTitle>Example</PageTitle>
+
+<h1>Example Page</h1>
+
+@if (loading)
+{
+    <p>Loading...</p>
+}
+else if (error != null)
+{
+    <p class="text-danger">@error</p>
+}
+else
+{
+    @foreach (var item in items)
+    {
+        <p>@item.Name</p>
+    }
+}
+
+@code {
+    private bool loading = true;
+    private string? error;
+    private ExampleItem[] items = Array.Empty<ExampleItem>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            items = await ApiClient.GetItemsAsync();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+}
+```
+
+## Styling
+- Use CSS files alongside components when needed
+- Follow existing styling patterns
+- Use CSS isolation (`.razor.css`) for component-specific styles
+
+## Testing
+- Web component tests are in `JAIMES AF.Tests/` if applicable
+- Test API client services and helper classes
+- Use browser automation tools for UI testing if needed
+

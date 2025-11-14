@@ -1,0 +1,63 @@
+---
+globs: ["**/ServiceCollectionExtensions.cs", "**/Program.cs", "**/RepositoryServiceCollectionExtensions.cs"]
+alwaysApply: false
+description: Guidelines for dependency injection registration
+---
+
+# Dependency Injection Guidelines
+
+When working with DI registration:
+
+## Registration Location
+- Each project has its own `ServiceCollectionExtensions.cs` (or similar)
+- Services are registered in `Program.cs` using extension methods
+- Keep registration logic organized by layer
+
+## Service Lifetimes
+- **Scoped**: Most application services (created once per request)
+- **Singleton**: Configuration, shared services (created once for application lifetime)
+- **Transient**: Lightweight, stateless services (created each time requested)
+
+## Registration Patterns
+- Register interfaces, not concrete types (when using interfaces)
+- Use extension methods to organize registrations
+- Group related registrations together
+
+## Example Pattern
+```csharp
+// ServiceCollectionExtensions.cs
+public static class ServiceCollectionExtensions
+{
+    public static IServiceCollection AddApplicationServices(this IServiceCollection services)
+    {
+        services.AddScoped<IGameService, GameService>();
+        services.AddScoped<IScenariosService, ScenariosService>();
+        services.AddScoped<IPlayersService, PlayersService>();
+        
+        return services;
+    }
+}
+
+// Program.cs
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddApplicationServices();
+```
+
+## Common Registrations
+- **Repositories**: Scoped lifetime
+- **Services**: Scoped lifetime
+- **DbContext**: Scoped lifetime (EF Core default)
+- **HttpClient**: Use `IHttpClientFactory` or register as transient
+- **Logging**: Built-in, no manual registration needed
+- **Options**: Use `Configure<T>()` or `AddOptions<T>()`
+
+## Options Pattern
+- Use `IOptions<T>`, `IOptionsSnapshot<T>`, or `IOptionsMonitor<T>`
+- Configure options in `Program.cs` or `appsettings.json`
+- Access options via constructor injection
+
+## Best Practices
+- Avoid Service Locator pattern (e.g., `IServiceProvider.GetService<T>()`)
+- Prefer constructor injection over property injection
+- Register all dependencies before building the service provider
+- Use extension methods to keep `Program.cs` clean

@@ -1,0 +1,65 @@
+# Services Layer Guidelines
+
+## Purpose
+This project contains business logic and application services. Services orchestrate between repositories, agents, and other services to implement application features.
+
+## Key Principles
+- **Single Responsibility**: Each service should have a focused, single purpose
+- **Interface-based**: All services expose interfaces (e.g., `IGameService`, `IScenariosService`)
+- **Dependency Injection**: Services receive dependencies via constructor injection
+- **DTOs over Entities**: Services work with DTOs from `MattEland.Jaimes.Domain`, not repository entities directly
+
+## Service Structure
+- Service interfaces are defined in `JAIMES AF.ServiceDefinitions/Services/`
+- Service implementations are in `Services/` folder
+- Register services in `ServiceCollectionExtensions.cs` using DI
+
+## Mappers
+- Mappers convert between repository entities and DTOs
+- Mappers are in `Mapping/` folder (e.g., `GameMapper`, `ScenarioMapper`)
+- Use mappers to keep services decoupled from repository entities
+- Mappers handle null checks and default values
+
+## Service Dependencies
+- Services can depend on:
+  - Repository interfaces (for data access)
+  - Other services (via interfaces)
+  - Agent services (e.g., `IChatService` from `JAIMES AF.Agents`)
+- Avoid circular dependencies - use events or mediator pattern if needed
+
+## Error Handling
+- Throw `ArgumentException` for invalid input parameters
+- Let repository exceptions bubble up (they'll be handled by the API layer)
+- Log important operations and errors using `ILogger<T>`
+
+## Common Patterns
+```csharp
+public class ExampleService : IExampleService
+{
+    private readonly IExampleRepository _repository;
+    private readonly ILogger<ExampleService> _logger;
+
+    public ExampleService(IExampleRepository repository, ILogger<ExampleService> logger)
+    {
+        _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    public async Task<ExampleDto> GetExampleAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        ExampleEntity? entity = await _repository.GetByIdAsync(id, cancellationToken);
+        if (entity == null)
+        {
+            throw new ArgumentException($"Example with id {id} not found");
+        }
+        
+        return ExampleMapper.ToDto(entity);
+    }
+}
+```
+
+## Testing
+- Service tests are in `JAIMES AF.Tests/Services/`
+- Mock repository dependencies and other services
+- Test business logic, validation, and error cases
+

@@ -1,0 +1,56 @@
+---
+globs: ["**/Entities/*.cs", "**/Repositories/Entities/*.cs"]
+alwaysApply: false
+description: Guidelines for EF Core entity classes
+---
+
+# Entity Framework Core Entity Guidelines
+
+When working with EF Core entities:
+
+## Entity Design
+- Entities are simple POCOs (Plain Old CLR Objects)
+- Use `required` keyword for non-nullable properties
+- Navigation properties should be nullable when optional
+- Use `ICollection<T>` for one-to-many relationships
+- Initialize collections with `= new List<T>()` to avoid null reference issues
+
+## Property Types
+- Use `Guid` for primary keys (Id properties)
+- Use `string` for IDs that reference other entities (e.g., `RulesetId`, `ScenarioId`)
+- Use `DateTime` for timestamps (typically `CreatedAt`)
+- Use nullable types (`string?`, `Guid?`) for optional properties
+
+## Navigation Properties
+- One-to-many: `ICollection<RelatedEntity> RelatedEntities { get; set; }`
+- Many-to-one: `RelatedEntity? RelatedEntity { get; set; }`
+- Always make navigation properties nullable when the relationship is optional
+
+## Example Pattern
+```csharp
+public class ExampleEntity
+{
+    public Guid Id { get; set; }
+    public required string Name { get; set; }
+    public required string RelatedEntityId { get; set; }
+    public string? OptionalProperty { get; set; }
+    public DateTime CreatedAt { get; set; }
+    
+    // Navigation properties
+    public RelatedEntity? RelatedEntity { get; set; }
+    public ICollection<ChildEntity> Children { get; set; } = new List<ChildEntity>();
+}
+```
+
+## DbContext Configuration
+- Entity configuration is done in `JaimesDbContext.OnModelCreating()`
+- Use fluent API for relationships, constraints, and defaults
+- Configure delete behaviors appropriately:
+  - `DeleteBehavior.Restrict` for reference data
+  - `DeleteBehavior.Cascade` for dependent data
+  - `DeleteBehavior.NoAction` for optional references
+
+## Important Notes
+- Never modify entities directly in migrations - use migrations for schema changes
+- When adding new entities, add corresponding DbSet to `JaimesDbContext`
+- When modifying seed data, create a new migration

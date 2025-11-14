@@ -30,6 +30,19 @@ When making code changes that affect services, repositories, or endpoints:
 - Create mock implementations for service dependencies (e.g., `IChatService`, `IChatHistoryService`)
 - Update test assertions when behavior changes (e.g., when "Hello World" was replaced with AI-generated initial messages)
 
+## Assertions with Shouldly
+
+- **Always use Shouldly** for assertions - never use `Assert.*` methods
+- Import `using Shouldly;` at the top of test files
+- Common assertions:
+  - `result.ShouldNotBeNull()` / `result.ShouldBeNull()`
+  - `result.ShouldBe(expected)` / `result.ShouldNotBe(expected)`
+  - `result.ShouldContain(item)` / `result.ShouldNotContain(item)`
+  - `result.ShouldHaveSingleItem()` - for collections with exactly one item
+  - `result.Length.ShouldBe(count)` - for collection counts
+  - `await Should.ThrowAsync<T>(action)` - for exception testing
+  - `exception.Message.ShouldContain(text)` - for exception message validation
+
 ## Common Issues
 
 - **Missing dependencies**: When adding constructor parameters to services, update test setup to provide mocks

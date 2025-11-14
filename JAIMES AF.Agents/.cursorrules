@@ -1,0 +1,66 @@
+# AI Agents Layer Guidelines
+
+## Purpose
+This project contains AI agent services that interact with Azure OpenAI and Microsoft Agents AI framework. It handles chat processing and initial message generation.
+
+## Key Principles
+- **Agent Framework**: Uses Microsoft Agents AI framework (`Microsoft.Agents.AI`)
+- **Azure OpenAI**: Connects to Azure OpenAI using `AzureOpenAIClient`
+- **Thread Management**: Maintains conversation threads using `AgentThread` and serializes to JSON
+- **Chat History**: Persists thread state via `IChatHistoryService`
+
+## Service Structure
+- `ChatService` implements `IChatService` from `JAIMES AF.ServiceDefinitions`
+- Uses `ChatOptions` for configuration (endpoint, API key, deployment)
+- Creates `AIAgent` instances with system prompts from game scenarios
+
+## Thread Management
+- Threads are serialized to JSON and stored in `ChatHistory` entities
+- Thread state is retrieved from database before processing messages
+- Thread state is saved after processing messages
+- Use `JsonSerializerOptions.Web` for serialization/deserialization
+
+## Agent Creation
+- Agents are created per request with the game's `SystemPrompt`
+- Use `CreateAgent()` helper method to build agents consistently
+- Configure OpenTelemetry for observability
+
+## Error Handling
+- Log thread state before and after chat operations for diagnostics
+- Handle serialization/deserialization errors gracefully
+- Let Azure OpenAI exceptions bubble up
+
+## Common Patterns
+```csharp
+private AIAgent CreateAgent(string systemPrompt)
+{
+    return new AzureOpenAIClient(
+            new Uri(_options.Endpoint),
+            new ApiKeyCredential(_options.ApiKey))
+        .GetChatClient(_options.Deployment)
+        .CreateAIAgent(instructions: systemPrompt)
+        .AsBuilder()
+        .UseOpenTelemetry(sourceName: "agent-framework-source")
+        .Build();
+}
+
+// Thread retrieval
+string? existingThreadJson = await chatHistoryService.GetMostRecentThreadJsonAsync(gameId, cancellationToken);
+AgentThread? thread = null;
+if (!string.IsNullOrEmpty(existingThreadJson))
+{
+    JsonElement jsonElement = JsonSerializer.Deserialize<JsonElement>(existingThreadJson, JsonSerializerOptions.Web);
+    thread = agent.DeserializeThread(jsonElement, JsonSerializerOptions.Web);
+}
+thread ??= agent.GetNewThread();
+
+// Thread persistence
+string json = thread.Serialize(JsonSerializerOptions.Web).GetRawText();
+await chatHistoryService.SaveThreadJsonAsync(gameId, json, cancellationToken);
+```
+
+## Logging
+- Log thread JSON before and after operations for debugging
+- Use structured logging with appropriate log levels
+- Include game IDs and relevant context in log messages
+

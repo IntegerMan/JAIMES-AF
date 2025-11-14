@@ -1,0 +1,64 @@
+---
+globs: ["**/Mapping/*.cs", "**/Mappers/*.cs", "**/Services/Mapping/*.cs"]
+alwaysApply: false
+description: Guidelines for mapper classes that convert between entities and DTOs
+---
+
+# Mapper Guidelines
+
+When working with mapper classes:
+
+## Purpose
+Mappers convert between:
+- Repository entities (from `JAIMES AF.Repositories/Entities`)
+- DTOs (from `MattEland.Jaimes.Domain`)
+- Response models (from `JAIMES AF.ServiceDefinitions/Responses`)
+
+## Mapper Structure
+- Mappers are static classes with static methods
+- Methods typically named `ToDto()` for entity-to-DTO conversion
+- Methods typically named `ToEntity()` for DTO-to-entity conversion (if needed)
+- Handle null checks and provide default values
+
+## Null Handling
+- Always check for null entities before mapping
+- Return null or throw `ArgumentException` when entity is null
+- Use null-conditional operators (`?.`) for navigation properties
+- Provide sensible defaults for missing optional data
+
+## Collection Mapping
+- Use LINQ `Select()` to map collections
+- Handle null collections by returning empty arrays: `entity.Collection?.Select(ToDto).ToArray() ?? Array.Empty<Dto>()`
+
+## Example Pattern
+```csharp
+public static class ExampleMapper
+{
+    public static ExampleDto ToDto(ExampleEntity? entity)
+    {
+        if (entity == null)
+        {
+            throw new ArgumentNullException(nameof(entity));
+        }
+
+        return new ExampleDto
+        {
+            Id = entity.Id,
+            Name = entity.Name,
+            OptionalProperty = entity.OptionalProperty,
+            RelatedItems = entity.RelatedItems?.Select(RelatedMapper.ToDto).ToArray() ?? Array.Empty<RelatedDto>()
+        };
+    }
+
+    public static ExampleDto[] ToDtoArray(IEnumerable<ExampleEntity> entities)
+    {
+        return entities?.Select(ToDto).ToArray() ?? Array.Empty<ExampleDto>();
+    }
+}
+```
+
+## Best Practices
+- Keep mappers pure (no side effects)
+- Don't include business logic in mappers
+- Reuse other mappers for nested objects
+- Handle all null cases explicitly

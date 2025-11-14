@@ -1,0 +1,60 @@
+---
+globs: ["**/Endpoints/*.cs", "**/ApiService/**/*.cs"]
+alwaysApply: false
+description: Guidelines for API endpoints using FastEndpoints
+---
+
+# FastEndpoints Guidelines
+
+When working with API endpoints:
+
+## Structure
+- Inherit from `Endpoint<TRequest, TResponse>`
+- Use `required` properties for service dependencies
+- Configure routes in `Configure()` method
+- Implement `HandleAsync()` for request processing
+
+## Request/Response Models
+- Request models must be in `Requests/` folder
+- Response models must be in `Responses/` folder
+- Use DTOs from `MattEland.Jaimes.Domain` for mapping
+- Never expose repository entities directly
+
+## Service Delegation
+- Endpoints should be thin - delegate all business logic to services
+- Call service methods from `HandleAsync()`
+- Map service results to response models
+- Handle service exceptions appropriately
+
+## Error Handling
+- Catch `ArgumentException` from services and use `ThrowError()`
+- Return appropriate HTTP status codes:
+  - `201 Created` for resource creation
+  - `200 Ok` for successful operations
+  - `400 BadRequest` for validation errors
+  - `404 NotFound` for missing resources
+  - `500 InternalServerError` for unexpected errors
+
+## Example Pattern
+```csharp
+public class ExampleEndpoint : Endpoint<ExampleRequest, ExampleResponse>
+{
+    public required IExampleService ExampleService { get; set; }
+
+    public override void Configure()
+    {
+        Post("/example");
+        AllowAnonymous();
+        Description(b => b
+            .Produces<ExampleResponse>(StatusCodes.Status200Ok)
+            .WithTags("Example"));
+    }
+
+    public override async Task HandleAsync(ExampleRequest req, CancellationToken ct)
+    {
+        ExampleDto result = await ExampleService.DoSomethingAsync(req.Parameter, ct);
+        ExampleResponse response = new() { /* map from result */ };
+        await SendOkAsync(response, ct);
+    }
+}
+```

@@ -1,0 +1,82 @@
+---
+globs: ["**/ServiceDefinitions/Services/*.cs", "**/Services/*.cs"]
+alwaysApply: false
+description: Guidelines for service interfaces and implementations
+---
+
+# Service Interface Guidelines
+
+When working with service interfaces and implementations:
+
+## Interface Location
+- Service interfaces are defined in `JAIMES AF.ServiceDefinitions/Services/`
+- Service implementations are in `JAIMES AF.Services/Services/` or `JAIMES AF.Agents/Services/`
+- Interface names start with `I` (e.g., `IGameService`, `IChatService`)
+
+## Interface Design
+- Keep interfaces focused and single-purpose
+- Use async methods with `CancellationToken` parameters
+- Return DTOs, not entities
+- Use clear, descriptive method names
+
+## Implementation Patterns
+- Implement interfaces in concrete service classes
+- Use constructor injection for dependencies
+- Validate inputs and throw `ArgumentException` for invalid parameters
+- Use `ILogger<T>` for logging
+- Delegate to repositories for data access
+- Delegate to other services for cross-cutting concerns
+
+## Dependency Injection
+- Register services in `ServiceCollectionExtensions.cs`
+- Use appropriate lifetime (typically `Scoped` for services)
+- Register interfaces, not concrete types (when possible)
+
+## Example Pattern
+```csharp
+// Interface (in ServiceDefinitions)
+public interface IExampleService
+{
+    Task<ExampleDto> GetExampleAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<ExampleDto> CreateExampleAsync(CreateExampleRequest request, CancellationToken cancellationToken = default);
+}
+
+// Implementation (in Services)
+public class ExampleService : IExampleService
+{
+    private readonly IExampleRepository _repository;
+    private readonly ILogger<ExampleService> _logger;
+
+    public ExampleService(IExampleRepository repository, ILogger<ExampleService> logger)
+    {
+        _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    public async Task<ExampleDto> GetExampleAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        if (id == Guid.Empty)
+        {
+            throw new ArgumentException("Id cannot be empty", nameof(id));
+        }
+
+        ExampleEntity? entity = await _repository.GetByIdAsync(id, cancellationToken);
+        if (entity == null)
+        {
+            throw new ArgumentException($"Example with id {id} not found", nameof(id));
+        }
+
+        return ExampleMapper.ToDto(entity);
+    }
+}
+```
+
+## Error Handling
+- Throw `ArgumentException` for invalid input parameters
+- Let repository exceptions bubble up (handled by API layer)
+- Log errors and important operations
+
+## Testing
+- Mock service interfaces in tests
+- Test both success and failure scenarios
+- Verify error handling and validation

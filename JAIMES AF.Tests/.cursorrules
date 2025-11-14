@@ -1,0 +1,146 @@
+# Testing Guidelines
+
+## Purpose
+This project contains unit and integration tests for endpoints, repositories, and services.
+
+## Test Organization
+- **Endpoints**: Tests in `Endpoints/` folder
+- **Repositories**: Tests in `Repositories/` folder
+- **Services**: Tests in `Services/` folder
+- **Helpers**: Test helpers and utilities in `Helpers/` folder
+
+## Test Structure
+- Use xUnit as the testing framework
+- Follow Arrange-Act-Assert pattern
+- Use descriptive test method names: `MethodName_Scenario_ExpectedBehavior`
+
+## Test Base Classes
+- `EndpointTestBase` provides common setup for endpoint tests
+- Use base classes to reduce duplication and ensure consistent test setup
+
+## Mocking
+- Use Moq or similar for mocking dependencies
+- Mock service interfaces (e.g., `IChatService`, `IGameService`)
+- Mock repository interfaces for service tests
+- Create mock implementations for complex dependencies
+
+## Database Testing
+- Use in-memory databases for repository tests
+- Create test databases using `JaimesDbContext` with in-memory provider
+- Clean up test data after each test
+
+## Assertions with Shouldly
+- **Always use Shouldly** for assertions - never use `Assert.*` methods
+- Import `using Shouldly;` at the top of test files
+- Shouldly provides fluent, readable assertions
+
+## Common Patterns
+```csharp
+using Shouldly;
+
+public class ExampleServiceTests
+{
+    private readonly Mock<IExampleRepository> _repositoryMock;
+    private readonly ExampleService _service;
+
+    public ExampleServiceTests()
+    {
+        _repositoryMock = new Mock<IExampleRepository>();
+        _service = new ExampleService(_repositoryMock.Object, Mock.Of<ILogger<ExampleService>>());
+    }
+
+    [Fact]
+    public async Task GetExampleAsync_WhenExists_ReturnsDto()
+    {
+        // Arrange
+        Guid id = Guid.NewGuid();
+        ExampleEntity entity = new() { Id = id, Name = "Test" };
+        _repositoryMock.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(entity);
+
+        // Act
+        ExampleDto result = await _service.GetExampleAsync(id);
+
+        // Assert
+        result.ShouldNotBeNull();
+        result.Id.ShouldBe(id);
+        result.Name.ShouldBe("Test");
+    }
+
+    [Fact]
+    public async Task GetExampleAsync_WhenNotExists_ReturnsNull()
+    {
+        // Arrange
+        Guid id = Guid.NewGuid();
+        _repositoryMock.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ExampleEntity?)null);
+
+        // Act
+        ExampleDto? result = await _service.GetExampleAsync(id);
+
+        // Assert
+        result.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetExamplesAsync_ReturnsAllItems()
+    {
+        // Arrange
+        ExampleEntity[] entities = [
+            new() { Id = Guid.NewGuid(), Name = "First" },
+            new() { Id = Guid.NewGuid(), Name = "Second" }
+        ];
+        _repositoryMock.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(entities);
+
+        // Act
+        ExampleDto[] results = await _service.GetExamplesAsync();
+
+        // Assert
+        results.ShouldNotBeNull();
+        results.Length.ShouldBe(2);
+        results[0].Name.ShouldBe("First");
+        results[1].Name.ShouldBe("Second");
+        results.ShouldContain(r => r.Name == "First");
+    }
+
+    [Fact]
+    public async Task CreateExampleAsync_ThrowsException_WhenInvalid()
+    {
+        // Arrange
+        CreateExampleRequest request = new() { Name = "" };
+
+        // Act & Assert
+        var exception = await Should.ThrowAsync<ArgumentException>(
+            async () => await _service.CreateExampleAsync(request)
+        );
+        exception.Message.ShouldContain("Name cannot be empty");
+    }
+}
+```
+
+## Common Shouldly Assertions
+- `result.ShouldNotBeNull()` - Assert not null
+- `result.ShouldBeNull()` - Assert null
+- `result.ShouldBe(expected)` - Assert equality
+- `result.ShouldNotBe(expected)` - Assert inequality
+- `result.ShouldContain(item)` - Assert collection contains item
+- `result.ShouldNotContain(item)` - Assert collection doesn't contain item
+- `result.ShouldHaveSingleItem()` - Assert collection has exactly one item
+- `result.Length.ShouldBe(count)` - Assert collection count
+- `result.ShouldContain(predicate)` - Assert collection contains matching item
+- `await Should.ThrowAsync<T>(action)` - Assert exception is thrown
+- `exception.Message.ShouldContain(text)` - Assert exception message contains text
+
+## Running Tests
+- Build: `dotnet build "JAIMES AF.Tests/JAIMES AF.Tests.csproj"`
+- Run specific test: `dotnet test --filter "FullyQualifiedName~TestClassName"`
+- Run all tests: `dotnet test "JAIMES AF.Tests/JAIMES AF.Tests.csproj"`
+
+## Best Practices
+- Always run tests after making code changes
+- Update test assertions when behavior changes
+- Fix compilation errors before considering a task complete
+- Keep test data minimal and focused
+- Test both success and failure scenarios
+

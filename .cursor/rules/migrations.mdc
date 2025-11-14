@@ -1,0 +1,71 @@
+---
+globs: ["**/Migrations/*.cs", "**/Repositories/Migrations/*.cs", "**/JaimesDbContext.cs"]
+alwaysApply: false
+description: Guidelines for EF Core migrations and database changes
+---
+
+# EF Core Migrations Guidelines
+
+When working with migrations and database schema:
+
+## Creating Migrations
+
+### Standard Schema Changes
+When modifying entity classes, DbContext configuration, or relationships:
+```bash
+dotnet ef migrations add <MigrationName> --project '.\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj' --startup-project '.\JAIMES AF.ApiService\JAIMES AF.ApiService.csproj'
+```
+
+### Seed Data Changes
+**CRITICAL**: When modifying seed data in `JaimesDbContext.cs`:
+- Any changes to `HasData()` calls
+- Updates to `SystemPrompt` values
+- Updates to `NewGameInstructions` values
+- Changes to any default seed data values
+
+**You MUST create a new migration** - even though EF Core may warn about "potential data loss", this is expected and safe to ignore for seed data updates.
+
+## Migration Naming
+- Use descriptive names: `AddPlayerNameField`, `UpdateIslandTestScenario`, `AddChatHistoryTable`
+- Use PascalCase
+- Be specific about what the migration does
+
+## Migration Files
+- Migration files are in `JAIMES AF.Repositories/Migrations/`
+- Never manually edit migration files after creation
+- Always check migration files into source control
+- Migration files should be idempotent
+
+## Applying Migrations
+- Migrations are automatically applied at application startup via `DatabaseInitializer`
+- For manual application: `dotnet ef database update --project '.\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj' --startup-project '.\JAIMES AF.ApiService\JAIMES AF.ApiService.csproj'`
+
+## Seed Data Guidelines
+- Seed data is defined in `JaimesDbContext.OnModelCreating()`
+- Use lowercase IDs for default seed data (e.g., "dnd5e", "islandTest", "emcee")
+- Keep seed data minimal - only essential defaults
+- Seed data is for development/testing convenience, not production data
+
+## Common Scenarios
+
+### Adding a New Entity
+1. Create entity class in `Entities/` folder
+2. Add DbSet to `JaimesDbContext`
+3. Configure entity in `OnModelCreating()`
+4. Create migration
+5. Update mappers if needed
+
+### Modifying Existing Entity
+1. Update entity class
+2. Create migration
+3. Update mappers if property changes affect DTOs
+
+### Updating Seed Data
+1. Modify `HasData()` calls in `OnModelCreating()`
+2. **Create a new migration** (required!)
+3. Ignore "potential data loss" warning - it's expected for seed data
+
+## Testing Migrations
+- Test migrations in development environment first
+- Verify seed data is correct after migration
+- Check that existing data is preserved (when applicable)
