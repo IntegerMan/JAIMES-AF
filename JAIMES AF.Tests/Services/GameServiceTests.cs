@@ -223,15 +223,6 @@ public class GameServiceTests : IAsyncLifetime
     {
         public const string TestInitialMessage = "Welcome to the test adventure!";
 
-        public Task<ChatThreadResponse> GetChatResponseAsync(GameDto game, string message, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(new ChatThreadResponse
-            {
-                Messages = ["Test response"],
-                ThreadJson = "{}"
-            });
-        }
-
         public Task<ChatResponse> ProcessChatMessageAsync(GameDto game, string message, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(new ChatResponse

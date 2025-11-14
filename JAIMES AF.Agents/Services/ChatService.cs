@@ -16,7 +16,7 @@ public class ChatService(ChatOptions options, ILogger<ChatService> logger, IChat
 {
     private readonly ChatOptions _options = options ?? throw new ArgumentNullException(nameof(options));
 
-    public async Task<ChatThreadResponse> GetChatResponseAsync(GameDto game, string message, CancellationToken cancellationToken = default)
+    public async Task<ChatResponse> ProcessChatMessageAsync(GameDto game, string message, CancellationToken cancellationToken = default)
     {
         // Build the Azure OpenAI client from options
         AIAgent agent = new AzureOpenAIClient(
@@ -50,23 +50,10 @@ public class ChatService(ChatOptions options, ILogger<ChatService> logger, IChat
         json = thread.Serialize(JsonSerializerOptions.Web).GetRawText();
         logger.LogInformation("Thread after Chat: {Thread}", json);
 
-        // Return the messages and thread JSON
-        return new ChatThreadResponse
-        {
-            Messages = response.Messages.Select(m => m.Text).ToArray(),
-            ThreadJson = json
-        };
-    }
-
-    public async Task<ChatResponse> ProcessChatMessageAsync(GameDto game, string message, CancellationToken cancellationToken = default)
-    {
-        // Get AI response
-        ChatThreadResponse chatResponse = await GetChatResponseAsync(game, message, cancellationToken);
-
         // Create MessageResponse array for AI responses
-        MessageResponse[] responseMessages = chatResponse.Messages.Select(m => new MessageResponse
+        MessageResponse[] responseMessages = response.Messages.Select(m => new MessageResponse
         {
-            Text = m,
+            Text = m.Text,
             Participant = ChatParticipant.GameMaster,
             PlayerId = null,
             ParticipantName = "Game Master",
@@ -76,7 +63,7 @@ public class ChatService(ChatOptions options, ILogger<ChatService> logger, IChat
         return new ChatResponse
         {
             Messages = responseMessages,
-            ThreadJson = chatResponse.ThreadJson
+            ThreadJson = json
         };
     }
 

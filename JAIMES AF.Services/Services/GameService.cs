@@ -142,12 +142,6 @@ public class GameService(JaimesDbContext context, IChatService chatService, ICha
         }).ToArray();
     }
 
-    public async Task AddMessagesAsync(IEnumerable<Message> messages, CancellationToken cancellationToken = default)
-    {
-        await context.Messages.AddRangeAsync(messages, cancellationToken);
-        await context.SaveChangesAsync(cancellationToken);
-    }
-
     public async Task<ChatResponse> ProcessChatMessageAsync(Guid gameId, string message, CancellationToken cancellationToken = default)
     {
         // Get the game
@@ -178,7 +172,8 @@ public class GameService(JaimesDbContext context, IChatService chatService, ICha
         }));
 
         // Persist messages
-        await AddMessagesAsync(messagesToPersist, cancellationToken);
+        await context.Messages.AddRangeAsync(messagesToPersist, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
 
         // Get the last AI message ID (last message where PlayerId == null)
         // After SaveChangesAsync, EF Core will have populated the Id property
