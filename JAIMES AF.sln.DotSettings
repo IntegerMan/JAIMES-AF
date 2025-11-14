@@ -1,3 +1,9 @@
 ﻿<wpf:ResourceDictionary xml:space="preserve" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:ss="urn:shemas-jetbrains-com:settings-storage-xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
 	<s:Boolean x:Key="/Default/UserDictionary/Words/=Jaimes/@EntryIndexedValue">True</s:Boolean>
-	<s:Boolean x:Key="/Default/UserDictionary/Words/=Scrutor/@EntryIndexedValue">True</s:Boolean></wpf:ResourceDictionary>
+	<s:Boolean x:Key="/Default/UserDictionary/Words/=Scrutor/@EntryIndexedValue">True</s:Boolean>
+	<!-- Naming Conventions: Private fields with underscore prefix -->
+	<s:String x:Key="/Default/CodeStyle/Naming/CSharpNaming/PrivateInstanceField/@EntryValue">_camelCase</s:String>
+	<s:String x:Key="/Default/CodeStyle/Naming/CSharpNaming/PrivateReadonlyField/@EntryValue">_camelCase</s:String>
+	<s:String x:Key="/Default/CodeStyle/Naming/CSharpNaming/PrivateStaticField/@EntryValue">_camelCase</s:String>
+	<s:String x:Key="/Default/CodeStyle/Naming/CSharpNaming/PrivateReadonlyStaticField/@EntryValue">_camelCase</s:String>
+</wpf:ResourceDictionary>
