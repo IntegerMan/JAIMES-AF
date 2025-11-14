@@ -1,6 +1,9 @@
 using MattEland.Jaimes.Domain;
 using Microsoft.EntityFrameworkCore;
 using MattEland.Jaimes.Repositories.Entities;
+using MattEland.Jaimes.ServiceDefinitions.Requests;
+using MattEland.Jaimes.ServiceDefinitions.Responses;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceLayer.Services;
 using Shouldly;
 
@@ -10,6 +13,8 @@ public class GameServiceTests : IAsyncLifetime
 {
     private JaimesDbContext _context = null!;
     private GameService _gameService = null!;
+    private MockChatService _mockChatService = null!;
+    private MockChatHistoryService _mockChatHistoryService = null!;
 
     public async ValueTask InitializeAsync()
     {
@@ -24,10 +29,12 @@ public class GameServiceTests : IAsyncLifetime
         // Add test data for validation
         _context.Rulesets.Add(new Ruleset { Id = "test-ruleset", Name = "Test Ruleset" });
         _context.Players.Add(new Player { Id = "test-player", RulesetId = "test-ruleset", Name = "Unspecified" });
-        _context.Scenarios.Add(new Scenario { Id = "test-scenario", RulesetId = "test-ruleset", Name = "Unspecified" });
+        _context.Scenarios.Add(new Scenario { Id = "test-scenario", RulesetId = "test-ruleset", Name = "Unspecified", SystemPrompt = "Test System Prompt", NewGameInstructions = "Test New Game Instructions" });
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        _gameService = new GameService(_context);
+        _mockChatService = new MockChatService();
+        _mockChatHistoryService = new MockChatHistoryService();
+        _gameService = new GameService(_context, _mockChatService, _mockChatHistoryService);
     }
 
     public async ValueTask DisposeAsync()
@@ -51,7 +58,8 @@ public class GameServiceTests : IAsyncLifetime
         gameDto.ScenarioId.ShouldBe(scenarioId);
         gameDto.PlayerId.ShouldBe(playerId);
         gameDto.Messages.ShouldHaveSingleItem();
-        gameDto.Messages[0].Text.ShouldBe("Hello World");
+        gameDto.Messages[0].Text.ShouldBe(MockChatService.TestInitialMessage);
+        gameDto.Messages[0].ParticipantName.ShouldBe("Game Master");
 
         // Verify game is in database
         Game? gameInDb = await _context.Games.FindAsync(new object[] { gameDto.GameId }, TestContext.Current.CancellationToken);
@@ -61,7 +69,8 @@ public class GameServiceTests : IAsyncLifetime
         // Verify message is in database
         Message? messageInDb = await _context.Messages.FirstOrDefaultAsync(m => m.GameId == gameDto.GameId, TestContext.Current.CancellationToken);
         messageInDb.ShouldNotBeNull();
-        messageInDb.Text.ShouldBe("Hello World");
+        messageInDb.Text.ShouldBe(MockChatService.TestInitialMessage);
+        messageInDb.PlayerId.ShouldBeNull(); // AI-generated message
     }
 
     [Fact]
@@ -207,5 +216,52 @@ public class GameServiceTests : IAsyncLifetime
         );
         exception.Message.ShouldContain("uses ruleset 'different-ruleset'");
         exception.Message.ShouldContain("uses ruleset 'test-ruleset'");
+    }
+
+    // Mock implementations for testing
+    private class MockChatService : IChatService
+    {
+        public const string TestInitialMessage = "Welcome to the test adventure!";
+
+        public Task<ChatResponse> ProcessChatMessageAsync(GameDto game, string message, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new ChatResponse
+            {
+                Messages = [new MessageResponse
+                {
+                    Text = "Test response",
+                    Participant = ChatParticipant.GameMaster,
+                    PlayerId = null,
+                    ParticipantName = "Game Master",
+                    CreatedAt = DateTime.UtcNow
+                }],
+                ThreadJson = "{}"
+            });
+        }
+
+        public Task<InitialMessageResponse> GenerateInitialMessageAsync(GenerateInitialMessageRequest request, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(new InitialMessageResponse
+            {
+                Message = TestInitialMessage,
+                ThreadJson = "{\"thread\":\"test\"}"
+            });
+        }
+    }
+
+    private class MockChatHistoryService : IChatHistoryService
+    {
+        private readonly Dictionary<Guid, string> _threads = new();
+
+        public Task<string?> GetMostRecentThreadJsonAsync(Guid gameId, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(_threads.TryGetValue(gameId, out string? value) ? value : null);
+        }
+
+        public Task<Guid> SaveThreadJsonAsync(Guid gameId, string threadJson, int? messageId = null, CancellationToken cancellationToken = default)
+        {
+            _threads[gameId] = threadJson;
+            return Task.FromResult(Guid.NewGuid());
+        }
     }
 }

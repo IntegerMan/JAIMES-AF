@@ -9,7 +9,6 @@ namespace MattEland.Jaimes.ApiService.Endpoints;
 public class ChatEndpoint : Ep.Req<ChatRequest>.Res<GameStateResponse>
 {
     public required IGameService GameService { get; set; }
-    public required IChatService ChatService { get; set; }
 
     public override void Configure()
     {
@@ -28,15 +27,17 @@ public class ChatEndpoint : Ep.Req<ChatRequest>.Res<GameStateResponse>
         {
             ThrowError("Invalid game ID format");
         }
-        GameDto? gameDto = await GameService.GetGameAsync(gameId, ct);
+        // ProcessChatMessageAsync will throw if game doesn't exist, so we can get the game after
+        ChatResponse chatResponse = await GameService.ProcessChatMessageAsync(gameId, req.Message, ct);
 
+        // Get the game to populate the response (game exists since ProcessChatMessageAsync succeeded)
+        GameDto? gameDto = await GameService.GetGameAsync(gameId, ct);
         if (gameDto == null)
         {
+            // This shouldn't happen, but handle it gracefully
             await Send.NotFoundAsync(ct);
             return;
         }
-
-        ChatResponse chatResponse = await ChatService.ProcessChatMessageAsync(gameId, req.Message, ct);
 
         GameStateResponse gameState = new()
         {

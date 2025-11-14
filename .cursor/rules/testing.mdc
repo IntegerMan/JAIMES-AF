@@ -1,0 +1,37 @@
+---
+alwaysApply: true
+---
+
+# Testing Guidelines
+
+## Always Run Tests After Code Changes
+
+When making code changes that affect services, repositories, or endpoints:
+
+1. **Build the test project** to check for compilation errors:
+   ```bash
+   dotnet build "JAIMES AF.Tests/JAIMES AF.Tests.csproj"
+   ```
+
+2. **Run the relevant tests** to ensure they pass:
+   ```bash
+   dotnet test "JAIMES AF.Tests/JAIMES AF.Tests.csproj" --filter "FullyQualifiedName~TestClassName"
+   ```
+
+3. **Run all tests** before completing a task:
+   ```bash
+   dotnet test "JAIMES AF.Tests/JAIMES AF.Tests.csproj"
+   ```
+
+## Test Structure
+
+- Tests are organized by layer: `Endpoints/`, `Repositories/`, `Services/`
+- Use in-memory databases for repository tests
+- Create mock implementations for service dependencies (e.g., `IChatService`, `IChatHistoryService`)
+- Update test assertions when behavior changes (e.g., when "Hello World" was replaced with AI-generated initial messages)
+
+## Common Issues
+
+- **Missing dependencies**: When adding constructor parameters to services, update test setup to provide mocks
+- **Changed behavior**: When refactoring service methods, update test expectations to match new behavior
+- **Compilation errors**: Always fix compilation errors before considering a task complete

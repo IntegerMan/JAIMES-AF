@@ -4,6 +4,7 @@ using MattEland.Jaimes.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MattEland.Jaimes.Repositories.Migrations
 {
     [DbContext(typeof(JaimesDbContext))]
-    partial class JaimesDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251114030223_AddScenarioSystemPromptAndNewGameInstructions")]
+    partial class AddScenarioSystemPromptAndNewGameInstructions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
