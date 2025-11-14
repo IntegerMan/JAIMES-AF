@@ -20,7 +20,7 @@ public abstract class RepositoryTestBase : IAsyncLifetime
         // Add test data for validation
         Context.Rulesets.Add(new Ruleset { Id = "test-ruleset", Name = "Test Ruleset" });
         Context.Players.Add(new Player { Id = "test-player", RulesetId = "test-ruleset", Name = "Unspecified" });
-        Context.Scenarios.Add(new Scenario { Id = "test-scenario", RulesetId = "test-ruleset", Name = "Unspecified" });
+        Context.Scenarios.Add(new Scenario { Id = "test-scenario", RulesetId = "test-ruleset", Name = "Unspecified", SystemPrompt = "UPDATE ME", NewGameInstructions = "UPDATE ME" });
         await Context.SaveChangesAsync();
         Context.ChangeTracker.Clear();
     }

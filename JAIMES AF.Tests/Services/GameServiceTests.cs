@@ -24,7 +24,7 @@ public class GameServiceTests : IAsyncLifetime
         // Add test data for validation
         _context.Rulesets.Add(new Ruleset { Id = "test-ruleset", Name = "Test Ruleset" });
         _context.Players.Add(new Player { Id = "test-player", RulesetId = "test-ruleset", Name = "Unspecified" });
-        _context.Scenarios.Add(new Scenario { Id = "test-scenario", RulesetId = "test-ruleset", Name = "Unspecified" });
+        _context.Scenarios.Add(new Scenario { Id = "test-scenario", RulesetId = "test-ruleset", Name = "Unspecified", SystemPrompt = "UPDATE ME", NewGameInstructions = "UPDATE ME" });
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         _gameService = new GameService(_context);

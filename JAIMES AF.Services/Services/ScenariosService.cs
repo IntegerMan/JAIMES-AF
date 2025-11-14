@@ -19,7 +19,9 @@ public class ScenariosService(JaimesDbContext context) : IScenariosService
             Id = s.Id,
             RulesetId = s.RulesetId,
             Description = s.Description,
-            Name = s.Name
+            Name = s.Name,
+            SystemPrompt = s.SystemPrompt,
+            NewGameInstructions = s.NewGameInstructions
         }).ToArray();
     }
 }
