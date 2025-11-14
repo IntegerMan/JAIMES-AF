@@ -12,4 +12,7 @@ public class GameDto
     public required string ScenarioName { get; init; }
     public required string RulesetName { get; init; }
     public required string PlayerName { get; init; }
+    
+    // Scenario information for AI agent
+    public required string SystemPrompt { get; init; }
 }

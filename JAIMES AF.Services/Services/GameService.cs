@@ -84,7 +84,8 @@ public class GameService(JaimesDbContext context, IChatService chatService, ICha
             Messages = [new MessageDto(message.Text, null, "Game Master", message.CreatedAt)],
             ScenarioName = scenario.Name,
             RulesetName = (await context.Rulesets.FindAsync([rulesetId], cancellationToken))?.Name ?? rulesetId,
-            PlayerName = player.Name
+            PlayerName = player.Name,
+            SystemPrompt = scenario.SystemPrompt
         };
     }
 
@@ -116,7 +117,8 @@ public class GameService(JaimesDbContext context, IChatService chatService, ICha
                 .ToArray(),
             ScenarioName = game.Scenario?.Name ?? game.ScenarioId,
             RulesetName = game.Ruleset?.Name ?? game.RulesetId,
-            PlayerName = game.Player?.Name ?? game.PlayerId
+            PlayerName = game.Player?.Name ?? game.PlayerId,
+            SystemPrompt = game.Scenario?.SystemPrompt ?? string.Empty
         };
     }
 
@@ -138,7 +140,8 @@ public class GameService(JaimesDbContext context, IChatService chatService, ICha
             Messages = [],
             ScenarioName = g.Scenario?.Name ?? g.ScenarioId,
             RulesetName = g.Ruleset?.Name ?? g.RulesetId,
-            PlayerName = g.Player?.Name ?? g.PlayerId
+            PlayerName = g.Player?.Name ?? g.PlayerId,
+            SystemPrompt = g.Scenario?.SystemPrompt ?? string.Empty
         }).ToArray();
     }
 

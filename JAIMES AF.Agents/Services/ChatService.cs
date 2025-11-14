@@ -23,7 +23,7 @@ public class ChatService(ChatOptions options, ILogger<ChatService> logger, IChat
                 new Uri(_options.Endpoint),
                 new ApiKeyCredential(_options.ApiKey))
             .GetChatClient(_options.Deployment)
-            .CreateAIAgent(instructions: "You are a dungeon master working with a human player for a solo adventure.") // TODO: From scenario
+            .CreateAIAgent(instructions: game.SystemPrompt)
             .AsBuilder()
             .UseOpenTelemetry(sourceName: "agent-framework-source")
             .Build();

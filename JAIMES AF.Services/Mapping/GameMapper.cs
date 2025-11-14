@@ -23,7 +23,8 @@ public static class GameMapper
             Messages = game.Messages?
                             .OrderBy(m => m.CreatedAt)
                             .Select(m => new MessageDto(m.Text, m.PlayerId, m.Player?.Name ?? "Game Master", m.CreatedAt))
-                            .ToArray()
+                            .ToArray(),
+            SystemPrompt = game.Scenario!.SystemPrompt
         };
     }
 
