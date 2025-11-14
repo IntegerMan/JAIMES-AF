@@ -15,43 +15,50 @@
 		New Game
 	</MudButton>
 
-	@if (isLoading)
-	{
-		<MudProgressCircular Indeterminate="true" Class="my-4"/>
-	}
-	else if (!string.IsNullOrEmpty(errorMessage))
-	{
-		<MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
-	}
-	else if (games is null || games.Length == 0)
-	{
-		<MudText Class="mb-4">No games yet. <MudLink Href="/games/new">Create a new game</MudLink></MudText>
-	}
-	else
-	{
-		<MudTable Items="games" Dense="true" Hover="true">
-			<HeaderContent>
-				<MudTh></MudTh>
-				<MudTh>Scenario</MudTh>
-				<MudTh>Ruleset</MudTh>
-				<MudTh>Player</MudTh>
-				<MudTh align="Align.Right">Actions</MudTh>
-			</HeaderContent>
-			<RowTemplate>
-				<MudTd>
-					<MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-					           Href="@($"/games/{context.GameId}")">
-						Load
-					</MudButton>
-				</MudTd>
-				<MudTd>@context.ScenarioName</MudTd>
-				<MudTd>@context.RulesetName</MudTd>
-				<MudTd>@context.PlayerName</MudTd>
-				<MudTd align="Align.Right">
-					<MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
-					               OnClick="@(() => DeleteGameAsync(context.GameId))" />
-				</MudTd>
-			</RowTemplate>
-		</MudTable>
-	}
+	<div style="position: relative; min-height: 200px;">
+		@if (isLoading)
+		{
+			<div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+				<MudProgressCircular Indeterminate="true"/>
+			</div>
+		}
+		
+		@if (!isLoading && !string.IsNullOrEmpty(errorMessage))
+		{
+			<MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
+		}
+		
+		@if (!isLoading && string.IsNullOrEmpty(errorMessage) && (games is null || games.Length == 0))
+		{
+			<MudText Class="mb-4">No games yet. <MudLink Href="/games/new">Create a new game</MudLink></MudText>
+		}
+		
+		@if (!isLoading && string.IsNullOrEmpty(errorMessage) && games is not null && games.Length > 0)
+		{
+			<MudTable Items="games" Dense="true" Hover="true">
+				<HeaderContent>
+					<MudTh></MudTh>
+					<MudTh>Scenario</MudTh>
+					<MudTh>Ruleset</MudTh>
+					<MudTh>Player</MudTh>
+					<MudTh align="Align.Right">Actions</MudTh>
+				</HeaderContent>
+				<RowTemplate>
+					<MudTd>
+						<MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+						           Href="@($"/games/{context.GameId}")">
+							Load
+						</MudButton>
+					</MudTd>
+					<MudTd>@context.ScenarioName</MudTd>
+					<MudTd>@context.RulesetName</MudTd>
+					<MudTd>@context.PlayerName</MudTd>
+					<MudTd align="Align.Right">
+						<MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+						               OnClick="@(() => DeleteGameAsync(context.GameId))" />
+					</MudTd>
+				</RowTemplate>
+			</MudTable>
+		}
+	</div>
 </MudPaper>
