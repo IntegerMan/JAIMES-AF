@@ -1,6 +1,7 @@
 @page "/games/{GameId:guid}"
 
 @using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Helpers
 
 @rendermode InteractiveServer
 
@@ -29,29 +30,32 @@
 		<div class="chat-scroll">
 			@foreach (var m in messages ?? [])
 			{
-				@if (m.Participant == ChatParticipant.Player)
+				@foreach (var paragraph in ChatHelpers.SplitIntoParagraphs(m.Text))
 				{
-					<MudChat ChatPosition="ChatBubblePosition.End"
-							 Variant="Variant.Filled"
-							 Color="Color.Primary">
-						<MudAvatar>@GetAvatarInitials(m.ParticipantName)</MudAvatar>
-						<MudChatHeader Name="@m.ParticipantName" />
-						<MudChatBubble>
-							@m.Text
-						</MudChatBubble>
-					</MudChat>
-				}
-				else
-				{
-					<MudChat ChatPosition="ChatBubblePosition.Start"
-							 Variant="Variant.Filled"
-							 Color="Color.Default">
-						<MudAvatar>@GetAvatarInitials(m.ParticipantName)</MudAvatar>
-						<MudChatHeader Name="@m.ParticipantName" />
-						<MudChatBubble>
-							@((MarkupString)RenderMarkdown(m.Text))
-						</MudChatBubble>
-					</MudChat>
+					@if (m.Participant == ChatParticipant.Player)
+					{
+						<MudChat ChatPosition="ChatBubblePosition.End"
+								 Variant="Variant.Filled"
+								 Color="Color.Primary">
+							<MudAvatar>@ChatHelpers.GetAvatarInitials(m.ParticipantName)</MudAvatar>
+							<MudChatHeader Name="@m.ParticipantName" />
+							<MudChatBubble>
+								@paragraph
+							</MudChatBubble>
+						</MudChat>
+					}
+					else
+					{
+						<MudChat ChatPosition="ChatBubblePosition.Start"
+								 Variant="Variant.Filled"
+								 Color="Color.Default">
+							<MudAvatar>@ChatHelpers.GetAvatarInitials(m.ParticipantName)</MudAvatar>
+							<MudChatHeader Name="@m.ParticipantName" />
+							<MudChatBubble>
+								@((MarkupString)ChatHelpers.RenderMarkdown(paragraph))
+							</MudChatBubble>
+						</MudChat>
+					}
 				}
 			}
 		</div>

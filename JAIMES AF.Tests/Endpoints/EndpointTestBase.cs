@@ -1,12 +1,12 @@
-using MattEland.Jaimes.ApiService;
 using MattEland.Jaimes.Repositories.Entities;
 using Microsoft.AspNetCore.Mvc.Testing;
+using ApiServiceProgram = MattEland.Jaimes.ApiService.Program;
 
 namespace MattEland.Jaimes.Tests.Endpoints;
 
 public abstract class EndpointTestBase : IAsyncLifetime
 {
-    protected WebApplicationFactory<Program> Factory = null!;
+    protected WebApplicationFactory<ApiServiceProgram> Factory = null!;
     protected HttpClient Client = null!;
 
     public virtual async ValueTask InitializeAsync()
@@ -15,7 +15,7 @@ public abstract class EndpointTestBase : IAsyncLifetime
         string dbName = $"TestDb_{Guid.NewGuid()}";
         CancellationToken ct = TestContext.Current.CancellationToken;
         
-        Factory = new WebApplicationFactory<Program>()
+        Factory = new WebApplicationFactory<ApiServiceProgram>()
             .WithWebHostBuilder(builder =>
             {
                 // Override settings for testing - use environment variable style which takes precedence
@@ -46,7 +46,7 @@ public abstract class EndpointTestBase : IAsyncLifetime
 
     public virtual async ValueTask DisposeAsync()
     {
-        Client?.Dispose();
+        Client.Dispose();
         await Factory.DisposeAsync();
     }
 }
