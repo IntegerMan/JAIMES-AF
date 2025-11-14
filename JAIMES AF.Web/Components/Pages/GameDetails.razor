@@ -30,15 +30,19 @@
 		<div class="chat-scroll">
 			@foreach (var m in messages ?? [])
 			{
-				@foreach (var paragraph in ChatHelpers.SplitIntoParagraphs(m.Text))
+				var paragraphs = ChatHelpers.SplitIntoParagraphs(m.Text).ToList();
+				@foreach (var (paragraph, index) in paragraphs.Select((p, i) => (p, i)))
 				{
+					var isFirstParagraph = index == 0;
 					@if (m.Participant == ChatParticipant.Player)
 					{
 						<MudChat ChatPosition="ChatBubblePosition.End"
 								 Variant="Variant.Filled"
 								 Color="Color.Primary">
-							<MudAvatar>@ChatHelpers.GetAvatarInitials(m.ParticipantName)</MudAvatar>
-							<MudChatHeader Name="@m.ParticipantName" />
+							@if (isFirstParagraph)
+							{
+								<MudChatHeader Name="@m.ParticipantName" />
+							}
 							<MudChatBubble>
 								@paragraph
 							</MudChatBubble>
@@ -49,8 +53,10 @@
 						<MudChat ChatPosition="ChatBubblePosition.Start"
 								 Variant="Variant.Filled"
 								 Color="Color.Default">
-							<MudAvatar>@ChatHelpers.GetAvatarInitials(m.ParticipantName)</MudAvatar>
-							<MudChatHeader Name="@m.ParticipantName" />
+							@if (isFirstParagraph)
+							{
+								<MudChatHeader Name="@m.ParticipantName" />
+							}
 							<MudChatBubble>
 								@((MarkupString)ChatHelpers.RenderMarkdown(paragraph))
 							</MudChatBubble>

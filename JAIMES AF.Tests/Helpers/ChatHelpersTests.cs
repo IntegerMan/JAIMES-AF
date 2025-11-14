@@ -5,56 +5,6 @@ namespace MattEland.Jaimes.Tests.Helpers;
 
 public class ChatHelpersTests
 {
-    #region GetAvatarInitials Tests
-
-    [Theory]
-    [InlineData(null, "?")]
-    [InlineData("", "?")]
-    [InlineData("   ", "?")]
-    public void GetAvatarInitials_ReturnsQuestionMark_ForInvalidInput(string? name, string expected)
-    {
-        // Act
-        string result = ChatHelpers.GetAvatarInitials(name);
-
-        // Assert
-        result.ShouldBe(expected);
-    }
-
-    [Theory]
-    [InlineData("Game Master", "GM")]
-    [InlineData("Player Character", "PC")]
-    [InlineData("Emie von Laurentz", "EL")]
-    [InlineData("Madonna", "MA")]
-    [InlineData("John", "JO")]
-    [InlineData("A", "A")]
-    [InlineData("John    Doe", "JD")]
-    [InlineData("  John Doe  ", "JD")]
-    [InlineData("von der", "VD")]
-    [InlineData("John-Doe123", "JO")]
-    public void GetAvatarInitials_ReturnsExpectedInitials_ForValidNames(string name, string expected)
-    {
-        // Act
-        string result = ChatHelpers.GetAvatarInitials(name);
-
-        // Assert
-        result.ShouldBe(expected);
-    }
-
-    [Theory]
-    [InlineData("John van der Berg", "JB")]
-    [InlineData("Maria de la Cruz", "MC")]
-    [InlineData("Jean le Blanc", "JB")]
-    public void GetAvatarInitials_IgnoresParticles(string name, string expected)
-    {
-        // Act
-        string result = ChatHelpers.GetAvatarInitials(name);
-
-        // Assert
-        result.ShouldBe(expected);
-    }
-
-    #endregion
-
     #region RenderMarkdown Tests
 
     [Theory]
