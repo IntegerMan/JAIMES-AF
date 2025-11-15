@@ -64,6 +64,22 @@
 					}
 				}
 			}
+			
+			@if (isSending)
+			{
+				<MudChat ChatPosition="ChatBubblePosition.Start"
+						 Variant="Variant.Filled"
+						 Color="Color.Default">
+					<MudChatHeader Name="@GetGameMasterName()" />
+					<MudChatBubble>
+						<div class="typing-indicator">
+							<span></span>
+							<span></span>
+							<span></span>
+						</div>
+					</MudChatBubble>
+				</MudChat>
+			}
 		</div>
 
 		<div class="message-bar">

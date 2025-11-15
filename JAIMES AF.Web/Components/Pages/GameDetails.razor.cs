@@ -144,4 +144,10 @@ public partial class GameDetails
             await SendMessageAsync();
         }
     }
+
+    private string GetGameMasterName()
+    {
+        MessageResponse? gameMasterMessage = messages.FirstOrDefault(m => m.Participant == ChatParticipant.GameMaster);
+        return gameMasterMessage?.ParticipantName ?? "Game Master";
+    }
 }
