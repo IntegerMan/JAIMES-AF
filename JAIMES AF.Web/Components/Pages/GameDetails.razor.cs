@@ -44,7 +44,7 @@ public partial class GameDetails
         try
         {
             game = await Http.GetFromJsonAsync<GameStateResponse>($"/games/{GameId}");
-            messages = game?.Messages.ToList() ?? [];
+            messages = (game?.Messages.OrderBy(m => m.CreatedAt).ToList()) ?? [];
         }
         catch (Exception ex)
         {
@@ -100,7 +100,11 @@ public partial class GameDetails
             else
             {
                 GameStateResponse? updated = await resp.Content.ReadFromJsonAsync<GameStateResponse>();
-                messages.AddRange(updated?.Messages ?? []);
+                if (updated?.Messages != null)
+                {
+                    messages.AddRange(updated.Messages);
+                    messages = messages.OrderBy(m => m.CreatedAt).ToList();
+                }
             }
         }
         catch (Exception ex)
