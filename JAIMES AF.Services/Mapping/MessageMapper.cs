@@ -8,7 +8,6 @@ namespace MattEland.Jaimes.ServiceLayer.Mapping;
 public static partial class MessageMapper
 {
     [MapProperty(nameof(Message.Player), nameof(MessageDto.ParticipantName), Use = nameof(MapParticipantNameFromPlayer))]
-    [MapperIgnoreSource(nameof(Message.Id))]
     [MapperIgnoreSource(nameof(Message.GameId))]
     [MapperIgnoreSource(nameof(Message.Game))]
     [MapperIgnoreSource(nameof(Message.ChatHistoryId))]

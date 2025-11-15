@@ -163,7 +163,18 @@ public class GameService(JaimesDbContext context, IChatService chatService, ICha
             await chatHistoryService.SaveThreadJsonAsync(gameDto.GameId, chatResponse.ThreadJson, lastAiMessageId, cancellationToken);
         }
 
-        return chatResponse;
+        // Map the persisted messages (which now have Ids) back to MessageResponse
+        // Only return the AI messages (PlayerId == null), as the player message is added on the client
+        MessageResponse[] messagesWithIds = messagesToPersist
+            .Where(m => m.PlayerId == null)
+            .Select(m => m.ToDto().ToResponse())
+            .ToArray();
+
+        return new JaimesChatResponse
+        {
+            Messages = messagesWithIds,
+            ThreadJson = chatResponse.ThreadJson
+        };
     }
 
     public async Task DeleteGameAsync(Guid gameId, CancellationToken cancellationToken = default)

@@ -33,7 +33,7 @@ public static partial class GameMapper
                 Name = game.PlayerId
             },
             Messages = game.Messages?
-                .OrderBy(m => m.CreatedAt)
+                .OrderBy(m => m.Id)
                 .Select(m => m.ToDto())
                 .ToArray()
         };

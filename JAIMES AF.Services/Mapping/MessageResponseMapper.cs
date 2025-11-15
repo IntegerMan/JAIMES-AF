@@ -7,6 +7,7 @@ namespace MattEland.Jaimes.ServiceLayer.Mapping;
 [Mapper]
 public static partial class MessageResponseMapper
 {
+    [MapProperty(nameof(MessageDto.Id), nameof(MessageResponse.Id))]
     [MapProperty(nameof(MessageDto.ParticipantName), nameof(MessageResponse.ParticipantName))]
     [MapProperty(nameof(MessageDto.PlayerId), nameof(MessageResponse.PlayerId))]
     [MapProperty(nameof(MessageDto.Text), nameof(MessageResponse.Text))]

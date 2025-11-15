@@ -31,6 +31,7 @@ public class ChatEndpoint : Ep.Req<ChatRequest>.Res<GameStateResponse>
         JaimesChatResponse chatResponse = await GameService.ProcessChatMessageAsync(gameId, req.Message, ct);
 
         // Get the game to populate the response (game exists since ProcessChatMessageAsync succeeded)
+        // This will include all messages with proper Ids, ordered by Id
         GameDto? gameDto = await GameService.GetGameAsync(gameId, ct);
         if (gameDto == null)
         {
@@ -39,10 +40,12 @@ public class ChatEndpoint : Ep.Req<ChatRequest>.Res<GameStateResponse>
             return;
         }
 
+        // Return only the newly created messages (the AI responses) with their Ids
+        // The client already has the player message, so we only return the AI messages
         GameStateResponse gameState = new()
         {
             GameId = gameDto.GameId,
-            Messages = chatResponse.Messages,
+            Messages = chatResponse.Messages, // These now have Ids from ProcessChatMessageAsync
             RulesetId = gameDto.Ruleset.Id,
             RulesetName = gameDto.Ruleset.Name,
             ScenarioId = gameDto.Scenario.Id,

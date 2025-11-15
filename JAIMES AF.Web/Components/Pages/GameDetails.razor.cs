@@ -44,7 +44,7 @@ public partial class GameDetails
         try
         {
             game = await Http.GetFromJsonAsync<GameStateResponse>($"/games/{GameId}");
-            messages = (game?.Messages.OrderBy(m => m.CreatedAt).ToList()) ?? [];
+            messages = (game?.Messages.OrderBy(m => m.Id).ToList()) ?? [];
         }
         catch (Exception ex)
         {
@@ -81,6 +81,7 @@ public partial class GameDetails
             };
             messages.Add(new MessageResponse
             {
+                Id = 0, // Temporary ID, will be replaced when we reload or get proper ordering
                 Text = messageText,
                 Participant = ChatParticipant.Player,
                 PlayerId = game!.PlayerId,
@@ -99,11 +100,12 @@ public partial class GameDetails
             }
             else
             {
-                GameStateResponse? updated = await resp.Content.ReadFromJsonAsync<GameStateResponse>();
+                // Reload all messages from the server to get correct Ids for all messages
+                // This ensures the player message we added locally gets its proper Id from the database
+                GameStateResponse? updated = await Http.GetFromJsonAsync<GameStateResponse>($"/games/{GameId}");
                 if (updated?.Messages != null)
                 {
-                    messages.AddRange(updated.Messages);
-                    messages = messages.OrderBy(m => m.CreatedAt).ToList();
+                    messages = updated.Messages.OrderBy(m => m.Id).ToList();
                 }
             }
         }
