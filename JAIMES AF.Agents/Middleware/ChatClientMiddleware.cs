@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 
@@ -11,6 +12,19 @@ namespace MattEland.Jaimes.Agents.Middleware;
 public static class ChatClientMiddleware
 {
     private static readonly ActivitySource ActivitySource = new("Jaimes.Agents.ChatClient");
+    private static readonly Meter Meter = new("Jaimes.Agents.ChatClient");
+    private static readonly Counter<long> ChatClientInvocations = Meter.CreateCounter<long>(
+        "jaimes.chatclient.invocations",
+        "count",
+        "Number of chat client invocations");
+    private static readonly Counter<long> ChatClientTokens = Meter.CreateCounter<long>(
+        "jaimes.chatclient.tokens",
+        "tokens",
+        "Total tokens used in chat client calls");
+    private static readonly Histogram<double> ChatClientDuration = Meter.CreateHistogram<double>(
+        "jaimes.chatclient.duration",
+        "ms",
+        "Duration of chat client invocations in milliseconds");
 
     /// <summary>
     /// Creates an IChatClient middleware that tracks chat client invocations.
@@ -25,6 +39,7 @@ public static class ChatClientMiddleware
         return async (messages, options, innerChatClient, cancellationToken) =>
         {
             int messageCount = messages.Count();
+            long startTime = Stopwatch.GetTimestamp();
             
             // Log that a chat client call is being made
             logger.LogInformation(
@@ -56,20 +71,44 @@ public static class ChatClientMiddleware
                 
                 int responseMessageCount = response.Messages?.Count() ?? 0;
                 
+                // Calculate duration
+                long durationTicks = Stopwatch.GetTimestamp() - startTime;
+                double durationMs = (durationTicks / (double)Stopwatch.Frequency) * 1000.0;
+                
+                // Record metrics
+                ChatClientInvocations.Add(1, new KeyValuePair<string, object?>("status", "success"));
+                ChatClientDuration.Record(durationMs);
+                
+                // Note: Token usage should be captured automatically by the OpenTelemetry instrumentation
+                // configured via UseOpenTelemetry() on the chat client. The metrics will appear under
+                // the Microsoft.Extensions.AI meter if properly configured.
+                
                 // Log successful invocation
                 logger.LogInformation(
-                    "Chat client invocation completed: {ResponseMessageCount} response message(s)",
-                    responseMessageCount);
+                    "Chat client invocation completed: {ResponseMessageCount} response message(s), Duration: {DurationMs}ms",
+                    responseMessageCount,
+                    durationMs);
 
                 if (activity != null)
                 {
                     activity.SetTag("chat.response_message_count", responseMessageCount);
+                    activity.SetTag("chat.duration_ms", durationMs);
+                    // Token usage tags should be added automatically by OpenTelemetry instrumentation
                     activity.SetStatus(ActivityStatusCode.Ok);
                 }
             }
             catch (Exception ex)
             {
                 exception = ex;
+                
+                // Calculate duration even on error
+                long durationTicks = Stopwatch.GetTimestamp() - startTime;
+                double durationMs = (durationTicks / (double)Stopwatch.Frequency) * 1000.0;
+                
+                // Record error metric
+                ChatClientInvocations.Add(1, new KeyValuePair<string, object?>("status", "error"));
+                ChatClientDuration.Record(durationMs);
+                
                 logger.LogError(
                     ex,
                     "Chat client invocation failed");
@@ -77,6 +116,7 @@ public static class ChatClientMiddleware
                 if (activity != null)
                 {
                     activity.SetTag("chat.error", ex.Message);
+                    activity.SetTag("chat.duration_ms", durationMs);
                     activity.SetStatus(ActivityStatusCode.Error, ex.Message);
                 }
                 

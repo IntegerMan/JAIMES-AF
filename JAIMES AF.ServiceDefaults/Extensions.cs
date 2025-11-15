@@ -60,7 +60,18 @@ public static class Extensions
             {
                 metrics.AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
-                    .AddMeter("*Microsoft.Agents.AI")
+                    // Add meters for Agent Framework and Microsoft.Extensions.AI
+                    // Using wildcards to capture all meters from these namespaces
+                    .AddMeter("Microsoft.Agents.AI")
+                    .AddMeter("Microsoft.Extensions.AI")
+                    .AddMeter("Microsoft.Extensions.AI.*")
+                    .AddMeter("Microsoft.Agents.AI.*")
+                    // Also try the genai instrumentation meter if available
+                    .AddMeter("genai")
+                    // Add our custom meters for explicit metric tracking
+                    .AddMeter("Jaimes.Agents.ChatClient")
+                    .AddMeter("Jaimes.Agents.Run")
+                    .AddMeter("Jaimes.Agents.Tools")
                     .AddRuntimeInstrumentation();
             })
             .WithTracing(tracing =>
@@ -74,7 +85,9 @@ public static class Extensions
                         "*Microsoft.Extensions.AI",
                         "*Microsoft.Extensions.Agents*",
                         "agent-framework-source",
-                        "Jaimes.Agents.Tools")
+                        "Jaimes.Agents.Tools",
+                        "Jaimes.Agents.ChatClient",
+                        "Jaimes.Agents.Run")
                     .AddAspNetCoreInstrumentation(options =>
                         // Exclude health check requests from tracing
                         options.Filter = context =>
