@@ -60,6 +60,7 @@ public static class Extensions
             {
                 metrics.AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
+                    .AddMeter("*Microsoft.Agents.AI")
                     .AddRuntimeInstrumentation();
             })
             .WithTracing(tracing =>
@@ -67,7 +68,13 @@ public static class Extensions
                 // Register the default activity source(s) so activities created elsewhere are captured.
                 // Include the application name, an explicit default name, and the agent-framework source.
                 tracing
-                    .AddSource(builder.Environment.ApplicationName ?? DefaultActivitySourceName, DefaultActivitySourceName, "agent-framework-source")
+                    .AddSource(
+                        builder.Environment.ApplicationName,
+                        DefaultActivitySourceName,
+                        "*Microsoft.Extensions.AI",
+                        "*Microsoft.Extensions.Agents*",
+                        "agent-framework-source",
+                        "Jaimes.Agents.Tools")
                     .AddAspNetCoreInstrumentation(options =>
                         // Exclude health check requests from tracing
                         options.Filter = context =>

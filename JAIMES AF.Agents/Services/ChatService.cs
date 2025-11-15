@@ -2,6 +2,7 @@
 using System.Text;
 using System.Text.Json;
 using Azure.AI.OpenAI;
+using MattEland.Jaimes.Agents.Middleware;
 using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
@@ -10,34 +11,90 @@ using MattEland.Jaimes.Tools;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
-using OpenAI;
 
 namespace MattEland.Jaimes.Agents.Services;
 
 public class ChatService(JaimesChatOptions options, ILogger<ChatService> logger, IChatHistoryService chatHistoryService) : IChatService
 {
     private readonly JaimesChatOptions _options = options ?? throw new ArgumentNullException(nameof(options));
+    
+    // Use consistent source name with OpenTelemetry configuration
+    private const string DefaultActivitySourceName = "Jaimes.ApiService";
 
     private AIAgent CreateAgent(string systemPrompt, GameDto? game = null)
     {
         // Register tools if game context is available
         // Based on Microsoft documentation: https://learn.microsoft.com/en-us/agent-framework/user-guide/agents/agent-tools?pivots=programming-language-csharp
-        // The documentation shows using AIFunctionFactory.Create(), but the exact namespace/API needs to be confirmed
         IList<AITool>? tools = null;
         if (game != null)
         {
             PlayerInfoTool playerInfoTool = new(game);
-            tools = [AIFunctionFactory.Create(() => playerInfoTool.GetPlayerInfo())];
+            
+            // Create the tool with explicit name and description to ensure proper registration
+            // Per Microsoft docs: https://learn.microsoft.com/en-us/agent-framework/user-guide/agents/agent-tools?pivots=programming-language-csharp
+            // The Create method has optional parameters for name and description
+            AIFunction function = AIFunctionFactory.Create(
+                () => playerInfoTool.GetPlayerInfo(),
+                name: "GetPlayerInfo",
+                description: "Retrieves detailed information about the current player character in the game, including their name, unique identifier, and character description. Use this tool whenever you need to reference or describe the player character, their background, or their current state in the game world.");
+            tools = [function];
+            
+            // Log detailed information about registered tools for debugging
+            foreach (AITool tool in tools)
+            {
+                logger.LogInformation(
+                    "Tool registered - Name: {ToolName}, Description: {ToolDescription}, Type: {ToolType}",
+                    tool.Name,
+                    tool.Description,
+                    tool.GetType().Name);
+                
+                // Log the full tool object for debugging
+                logger.LogDebug("Full tool details: {ToolDetails}", JsonSerializer.Serialize(tool, new JsonSerializerOptions { WriteIndented = true }));
+            }
+            
+            logger.LogInformation(
+                "Agent created with {ToolCount} tool(s) available. Tool names: {ToolNames}",
+                tools.Count,
+                string.Join(", ", tools.Select(t => t.Name)));
+        }
+        else
+        {
+            logger.LogWarning("Agent created with no tools available");
         }
 
-        return new AzureOpenAIClient(
+        // Per Microsoft docs: https://learn.microsoft.com/en-us/agent-framework/user-guide/agents/agent-observability?pivots=programming-language-csharp
+        // First instrument the chat client, then use it to create the agent
+        
+        IChatClient instrumentedChatClient = new AzureOpenAIClient(
                 new Uri(_options.Endpoint),
                 new ApiKeyCredential(_options.ApiKey))
             .GetChatClient(_options.Deployment)
-            .CreateAIAgent(instructions: systemPrompt, tools: tools)
+            .AsIChatClient()
             .AsBuilder()
-            .UseOpenTelemetry(sourceName: "agent-framework-source")
+            .UseOpenTelemetry(
+                sourceName: DefaultActivitySourceName,
+                configure: cfg => cfg.EnableSensitiveData = true)
             .Build();
+        
+        logger.LogInformation("Chat client instrumented with OpenTelemetry (source: {SourceName})", DefaultActivitySourceName);
+        
+        // Create the agent with the instrumented chat client and enable observability
+        // Per Microsoft docs, use WithOpenTelemetry on the agent (not UseOpenTelemetry on builder)
+        AIAgent agent = new ChatClientAgent(
+                instrumentedChatClient,
+                name: $"JaimesAgent-{game!.GameId}",
+                instructions: systemPrompt,
+                tools: tools)
+            .AsBuilder()
+            .UseOpenTelemetry(
+                sourceName: DefaultActivitySourceName,
+                configure: cfg => cfg.EnableSensitiveData = true)
+            .Use(ToolInvocationMiddleware.Create(logger))
+            .Build();
+        
+        logger.LogInformation("Agent created with OpenTelemetry and tool invocation middleware");
+        
+        return agent;
     }
 
     public async Task<JaimesChatResponse> ProcessChatMessageAsync(GameDto game, string message, CancellationToken cancellationToken = default)
