@@ -1,35 +1,31 @@
 using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.Repositories.Entities;
+using Riok.Mapperly.Abstractions;
 
 namespace MattEland.Jaimes.ServiceLayer.Mapping;
 
-// Manual mapper for Game because DTO property names don't match EF model (Id -> GameId)
-public static class GameMapper
+[Mapper]
+public static partial class GameMapper
 {
-    public static GameDto ToDto(this Game? game)
+    [UserMapping]
+    public static GameDto ToDto(this Game game)
     {
-        if (game == null)
-            return null!;
-
         return new GameDto
         {
             GameId = game.Id,
             RulesetId = game.RulesetId,
-            RulesetName = game.Ruleset!.Name,
+            RulesetName = game.Ruleset?.Name ?? game.RulesetId,
             ScenarioId = game.ScenarioId,
-            ScenarioName = game.Scenario!.Name,
+            ScenarioName = game.Scenario?.Name ?? game.ScenarioId,
             PlayerId = game.PlayerId,
-            PlayerName = game.Player!.Name,
+            PlayerName = game.Player?.Name ?? game.PlayerId,
             Messages = game.Messages?
-                            .OrderBy(m => m.CreatedAt)
-                            .Select(m => new MessageDto(m.Text, m.PlayerId, m.Player?.Name ?? "Game Master", m.CreatedAt))
-                            .ToArray(),
-            SystemPrompt = game.Scenario!.SystemPrompt
+                .OrderBy(m => m.CreatedAt)
+                .Select(m => m.ToDto())
+                .ToArray(),
+            SystemPrompt = game.Scenario?.SystemPrompt ?? string.Empty
         };
     }
 
-    public static GameDto[] ToDto(this IEnumerable<Game>? games)
-    {
-        return games?.Select(g => g.ToDto()).ToArray() ?? [];
-    }
+    public static partial GameDto[] ToDto(this IEnumerable<Game> games);
 }

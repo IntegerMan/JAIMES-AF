@@ -5,6 +5,7 @@ using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Services;
+using MattEland.Jaimes.ServiceLayer.Mapping;
 
 namespace MattEland.Jaimes.ServiceLayer.Services;
 
@@ -75,18 +76,16 @@ public class GameService(JaimesDbContext context, IChatService chatService, ICha
         // Save the thread JSON with the message ID
         await chatHistoryService.SaveThreadJsonAsync(game.Id, initialResponse.ThreadJson, message.Id, cancellationToken);
 
-        return new GameDto
-        {
-            GameId = game.Id,
-            RulesetId = game.RulesetId,
-            ScenarioId = game.ScenarioId,
-            PlayerId = game.PlayerId,
-            Messages = [new MessageDto(message.Text, null, "Game Master", message.CreatedAt)],
-            ScenarioName = scenario.Name,
-            RulesetName = (await context.Rulesets.FindAsync([rulesetId], cancellationToken))?.Name ?? rulesetId,
-            PlayerName = player.Name,
-            SystemPrompt = scenario.SystemPrompt
-        };
+        // Reload game with navigation properties for mapping
+        Game gameWithNav = await context.Games
+            .AsNoTracking()
+            .Include(g => g.Messages)
+            .Include(g => g.Scenario)
+            .Include(g => g.Player)
+            .Include(g => g.Ruleset)
+            .FirstAsync(g => g.Id == game.Id, cancellationToken);
+
+        return gameWithNav.ToDto();
     }
 
     public async Task<GameDto?> GetGameAsync(Guid gameId, CancellationToken cancellationToken = default)
@@ -104,22 +103,7 @@ public class GameService(JaimesDbContext context, IChatService chatService, ICha
             return null;
         }
 
-
-        return new GameDto
-        {
-            GameId = game.Id,
-            RulesetId = game.RulesetId,
-            ScenarioId = game.ScenarioId,
-            PlayerId = game.PlayerId,
-            Messages = game.Messages
-                .OrderBy(m => m.Id)
-                .Select(m => new MessageDto(m.Text, m.PlayerId, m.Player?.Name ?? "Game Master", m.CreatedAt))
-                .ToArray(),
-            ScenarioName = game.Scenario?.Name ?? game.ScenarioId,
-            RulesetName = game.Ruleset?.Name ?? game.RulesetId,
-            PlayerName = game.Player?.Name ?? game.PlayerId,
-            SystemPrompt = game.Scenario?.SystemPrompt ?? string.Empty
-        };
+        return game.ToDto();
     }
 
     public async Task<GameDto[]> GetGamesAsync(CancellationToken cancellationToken = default)
@@ -131,18 +115,7 @@ public class GameService(JaimesDbContext context, IChatService chatService, ICha
             .Include(g => g.Ruleset)
             .ToArrayAsync(cancellationToken: cancellationToken);
 
-        return games.Select(g => new GameDto
-        {
-            GameId = g.Id,
-            PlayerId = g.PlayerId,
-            RulesetId = g.RulesetId,
-            ScenarioId = g.ScenarioId,
-            Messages = [],
-            ScenarioName = g.Scenario?.Name ?? g.ScenarioId,
-            RulesetName = g.Ruleset?.Name ?? g.RulesetId,
-            PlayerName = g.Player?.Name ?? g.PlayerId,
-            SystemPrompt = g.Scenario?.SystemPrompt ?? string.Empty
-        }).ToArray();
+        return games.ToDto();
     }
 
     public async Task<ChatResponse> ProcessChatMessageAsync(Guid gameId, string message, CancellationToken cancellationToken = default)

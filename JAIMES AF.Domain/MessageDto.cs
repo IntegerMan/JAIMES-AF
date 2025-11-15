@@ -1,3 +1,9 @@
 namespace MattEland.Jaimes.Domain;
 
-public record MessageDto(string Text, string? PlayerId, string ParticipantName, DateTime CreatedAt);
+public class MessageDto
+{
+    public required string Text { get; init; }
+    public string? PlayerId { get; init; }
+    public required string ParticipantName { get; init; }
+    public DateTime CreatedAt { get; init; }
+}

@@ -14,51 +14,134 @@ Mappers convert between:
 - DTOs (from `MattEland.Jaimes.Domain`)
 - Response models (from `JAIMES AF.ServiceDefinitions/Responses`)
 
-## Mapper Structure
+## Mapperly (Preferred Approach)
+
+**Always prefer Mapperly** for mapping when possible. Mapperly generates compile-time code that is fast and type-safe.
+
+### When to Use Mapperly
+- When source and target properties have matching names (or can be mapped with `[MapProperty]`)
+- When mapping between classes with similar structures
+- When you need collection mapping (automatically handled)
+
+### When NOT to Use Mapperly
+- Generally, Mapperly can handle most cases, even complex ones, using `[UserMapping]` for custom implementations
+
+**Note**: If a DTO is currently a record with positional parameters, consider converting it to a class to enable Mapperly mapping. This is preferred over maintaining manual mappers.
+
+**Note**: For complex navigation property mappings (e.g., `Game.Ruleset.Name` → `GameDto.RulesetName`), use `[UserMapping]` to provide a custom implementation while still benefiting from Mapperly's collection mapping and other features.
+
+### Mapperly Best Practices
+
+1. **Use `[Mapper]` attribute** on static partial classes
+2. **Use `[MapProperty]`** for property name mismatches:
+   ```csharp
+   [MapProperty(nameof(Source.Id), nameof(Target.SourceId))]
+   ```
+3. **Use `[MapperIgnoreSource]`** to ignore navigation properties and other unmapped properties
+4. **Use `Use` parameter** for custom transformations on individual properties:
+   ```csharp
+   [MapProperty(nameof(Source.PlayerId), nameof(Target.Participant), Use = nameof(MapParticipant))]
+   private static ChatParticipant MapParticipant(string? playerId) => 
+       string.IsNullOrEmpty(playerId) ? ChatParticipant.GameMaster : ChatParticipant.Player;
+   ```
+5. **Use `[UserMapping]`** for complex mappings that need full custom implementation:
+   ```csharp
+   [UserMapping]
+   public static GameDto ToDto(this Game game)
+   {
+       return new GameDto
+       {
+           GameId = game.Id,
+           RulesetName = game.Ruleset?.Name ?? game.RulesetId,
+           // ... other complex mappings
+       };
+   }
+   ```
+6. **Always check linter warnings** - Mapperly analyzer provides warnings for:
+   - Unmapped required properties (errors - must fix)
+   - Unmapped optional properties (warnings - review and ignore if intentional)
+   - Type mismatches in custom mapping methods
+7. **Handle nullability** - Mapperly respects nullable reference types
+
+### Example Mapperly Pattern
+```csharp
+using Riok.Mapperly.Abstractions;
+
+[Mapper]
+public static partial class ExampleMapper
+{
+    [MapProperty(nameof(Entity.Id), nameof(Dto.EntityId))]
+    [MapperIgnoreSource(nameof(Entity.NavigationProperty))]
+    public static partial ExampleDto ToDto(this ExampleEntity entity);
+
+    public static partial ExampleDto[] ToDto(this IEnumerable<ExampleEntity> entities);
+}
+```
+
+## Manual Mappers (Fallback)
+
+Use manual mappers only when Mapperly cannot handle the mapping pattern.
+
+### Manual Mapper Structure
 - Mappers are static classes with static methods
 - Methods typically named `ToDto()` for entity-to-DTO conversion
 - Methods typically named `ToEntity()` for DTO-to-entity conversion (if needed)
 - Handle null checks and provide default values
 
-## Null Handling
+### Null Handling
 - Always check for null entities before mapping
 - Return null or throw `ArgumentException` when entity is null
 - Use null-conditional operators (`?.`) for navigation properties
 - Provide sensible defaults for missing optional data
 
-## Collection Mapping
+### Collection Mapping
 - Use LINQ `Select()` to map collections
 - Handle null collections by returning empty arrays: `entity.Collection?.Select(ToDto).ToArray() ?? Array.Empty<Dto>()`
 
-## Example Pattern
+### Example Manual Mapper Pattern
 ```csharp
+// Use when Mapperly cannot handle complex navigation property mappings
 public static class ExampleMapper
 {
-    public static ExampleDto ToDto(ExampleEntity? entity)
+    public static ExampleDto ToDto(this ExampleEntity? entity)
     {
         if (entity == null)
-        {
-            throw new ArgumentNullException(nameof(entity));
-        }
+            return null!;
 
         return new ExampleDto
         {
             Id = entity.Id,
             Name = entity.Name,
-            OptionalProperty = entity.OptionalProperty,
             RelatedItems = entity.RelatedItems?.Select(RelatedMapper.ToDto).ToArray() ?? Array.Empty<RelatedDto>()
         };
     }
 
-    public static ExampleDto[] ToDtoArray(IEnumerable<ExampleEntity> entities)
+    public static ExampleDto[] ToDto(this IEnumerable<ExampleEntity>? entities)
     {
-        return entities?.Select(ToDto).ToArray() ?? Array.Empty<ExampleDto>();
+        return entities?.Select(ToDto).ToArray() ?? [];
     }
 }
 ```
 
-## Best Practices
+## Linter Warnings and Errors
+
+### Critical: Always Address Mapperly Warnings
+- **RMG013 errors**: Required properties not mapped - MUST fix by adding mappings or using `[MapperIgnoreTarget]`
+- **RMG012 warnings**: Properties not found - Review to ensure intentional (may need `[MapperIgnoreSource]` or `[MapperIgnoreTarget]`)
+- **RMG020 warnings**: Unmapped properties - Review and add `[MapperIgnoreSource]` or `[MapperIgnoreTarget]` if intentional
+- **RMG072 warnings**: Type mismatch in custom mapping methods - Fix method signature to match expected types
+
+### Best Practice
+1. **Build the project** after creating/updating a Mapperly mapper
+2. **Review all RMG warnings and errors** in the build output
+3. **Fix errors immediately** - they indicate required properties aren't mapped
+4. **Review warnings carefully** - ensure unmapped properties are intentionally ignored
+5. **Add ignore attributes** for navigation properties and other properties that shouldn't be mapped
+
+## General Best Practices
 - Keep mappers pure (no side effects)
 - Don't include business logic in mappers
 - Reuse other mappers for nested objects
 - Handle all null cases explicitly
+- **Always use mappers in services** - never manually create DTOs/Responses in service or endpoint code
+- **Prefer extension methods** (`ToDto()`, `ToResponse()`) for fluent usage

@@ -3,6 +3,7 @@ using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.ServiceDefinitions.Services;
+using MattEland.Jaimes.ServiceLayer.Mapping;
 
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
@@ -29,14 +30,7 @@ public class NewGameEndpoint : Endpoint<NewGameRequest, NewGameResponse>
             NewGameResponse game = new()
             {
                 GameId = gameDto.GameId,
-                Messages = (gameDto.Messages ?? Array.Empty<MessageDto>()).Select(m => new MessageResponse
-                {
-                    Text = m.Text,
-                    Participant = string.IsNullOrEmpty(m.PlayerId) ? ChatParticipant.GameMaster : ChatParticipant.Player,
-                    PlayerId = m.PlayerId,
-                    ParticipantName = m.ParticipantName,
-                    CreatedAt = m.CreatedAt
-                }).ToArray()
+                Messages = (gameDto.Messages ?? Array.Empty<MessageDto>()).Select(m => m.ToResponse()).ToArray()
             };
             await Send.CreatedAtAsync<GameStateEndpoint>(game, responseBody: game, verb: Http.GET, cancellation: ct);
         }
