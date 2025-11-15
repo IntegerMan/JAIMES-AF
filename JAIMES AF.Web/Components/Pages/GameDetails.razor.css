@@ -1,20 +1,46 @@
 .game-details-wrapper {
 	/* Use full viewport height minus potential app bar if needed */
-	min-height: calc(100vh -64px);
+	height: calc(100vh - 64px);
+	max-height: calc(100vh - 64px);
 	display: flex;
 	flex-direction: column;
 	/* extra space so sticky bar + its margin are not flush with viewport edge */
-	padding-bottom:2.5rem;
+	padding-bottom: 2.5rem;
+	overflow: hidden;
 }
 
 .chat-scroll {
-	flex:11 auto;
+	flex: 1 1 auto;
 	background-color: var(--mud-palette-background);
-	border:1px solid var(--mud-palette-lines-default);
+	border: 1px solid var(--mud-palette-lines-default);
 	border-radius: var(--mud-default-borderradius);
 	padding: .75rem;
-	margin-bottom:0.75rem;
+	margin-bottom: 0.75rem;
 	overflow-y: auto;
+	overflow-x: hidden;
+	height: 0; /* Force flex item to respect flex constraints */
+	min-height: 200px;
+	/* Ensure scrollbar is always visible when content overflows */
+	scrollbar-width: thin;
+	scrollbar-color: var(--mud-palette-text-secondary) var(--mud-palette-background);
+}
+
+.chat-scroll::-webkit-scrollbar {
+	width: 8px;
+}
+
+.chat-scroll::-webkit-scrollbar-track {
+	background: var(--mud-palette-background);
+	border-radius: 4px;
+}
+
+.chat-scroll::-webkit-scrollbar-thumb {
+	background: var(--mud-palette-text-secondary);
+	border-radius: 4px;
+}
+
+.chat-scroll::-webkit-scrollbar-thumb:hover {
+	background: var(--mud-palette-text-primary);
 }
 
 .message-bar {

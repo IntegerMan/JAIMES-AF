@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 
@@ -11,6 +12,9 @@ public partial class GameDetails
 
     [Inject]
     public ILoggerFactory LoggerFactory { get; set; } = null!;
+
+    [Inject]
+    public IJSRuntime JSRuntime { get; set; } = null!;
 
     [Parameter]
     public Guid GameId { get; set; }
@@ -31,10 +35,22 @@ public partial class GameDetails
     };
 
     private bool isSending = false;
+    private bool shouldScrollToBottom = false;
 
     protected override async Task OnParametersSetAsync()
     {
         await LoadGameAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (shouldScrollToBottom)
+        {
+            shouldScrollToBottom = false;
+            // Use a small delay to ensure DOM is fully updated
+            await Task.Delay(50);
+            await ScrollToBottomAsync();
+        }
     }
 
     private async Task LoadGameAsync()
@@ -54,6 +70,11 @@ public partial class GameDetails
         finally
         {
             isLoading = false;
+            // Scroll to bottom after initial load
+            if (messages.Count > 0)
+            {
+                shouldScrollToBottom = true;
+            }
             StateHasChanged();
         }
     }
@@ -88,6 +109,8 @@ public partial class GameDetails
                 ParticipantName = game.PlayerName,
                 CreatedAt = DateTime.UtcNow
             });
+            // Scroll to bottom after adding user message and showing typing indicator
+            shouldScrollToBottom = true;
             await InvokeAsync(StateHasChanged);
 
             // Send message to API
@@ -106,6 +129,9 @@ public partial class GameDetails
                 if (updated?.Messages != null)
                 {
                     messages = updated.Messages.OrderBy(m => m.Id).ToList();
+                    // Scroll to bottom after receiving reply
+                    shouldScrollToBottom = true;
+                    StateHasChanged();
                 }
             }
         }
@@ -117,6 +143,8 @@ public partial class GameDetails
         finally
         {
             isSending = false;
+            // Scroll after typing indicator disappears
+            shouldScrollToBottom = true;
             StateHasChanged();
         }
     }
@@ -149,5 +177,17 @@ public partial class GameDetails
     {
         MessageResponse? gameMasterMessage = messages.FirstOrDefault(m => m.Participant == ChatParticipant.GameMaster);
         return gameMasterMessage?.ParticipantName ?? "Game Master";
+    }
+
+    private async Task ScrollToBottomAsync()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("scrollToBottom", "chat-scroll-container");
+        }
+        catch (Exception)
+        {
+            // Ignore exceptions - element might not be rendered yet or JS interop might not be available
+        }
     }
 }

@@ -27,7 +27,7 @@
 		<MudText Class="mb-1"><b>Game ID:</b> @game.GameId</MudText>
 		<MudDivider Class="my-2" />
 
-		<div class="chat-scroll">
+		<div id="chat-scroll-container" class="chat-scroll">
 			@foreach (var m in messages ?? [])
 			{
 				var paragraphs = ChatHelpers.SplitIntoParagraphs(m.Text).ToList();
