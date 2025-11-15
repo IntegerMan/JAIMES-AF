@@ -39,12 +39,12 @@ public class GameStateEndpoint : EndpointWithoutRequest<GameStateResponse>
         {
             GameId = gameDto.GameId,
             Messages = (gameDto.Messages ?? Array.Empty<MessageDto>()).Select(m => m.ToResponse()).ToArray(),
-            RulesetId = gameDto.RulesetId,
-            RulesetName = gameDto.RulesetName,
-            ScenarioId = gameDto.ScenarioId,
-            ScenarioName = gameDto.ScenarioName,
-            PlayerId = gameDto.PlayerId,
-            PlayerName = gameDto.PlayerName,
+            RulesetId = gameDto.Ruleset.Id,
+            RulesetName = gameDto.Ruleset.Name,
+            ScenarioId = gameDto.Scenario.Id,
+            ScenarioName = gameDto.Scenario.Name,
+            PlayerId = gameDto.Player.Id,
+            PlayerName = gameDto.Player.Name,
         };
         await Send.OkAsync(gameState, cancellation: ct);
     }

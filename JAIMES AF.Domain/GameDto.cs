@@ -4,15 +4,9 @@ public class GameDto
 {
     public required Guid GameId { get; init; }
     public MessageDto[]? Messages { get; init; }
-    public required string RulesetId { get; init; }
-    public required string ScenarioId { get; init; }
-    public required string PlayerId { get; init; }
-
-    // Names for convenience in responses
-    public required string ScenarioName { get; init; }
-    public required string RulesetName { get; init; }
-    public required string PlayerName { get; init; }
     
-    // Scenario information for AI agent
-    public required string SystemPrompt { get; init; }
+    // Composed DTOs
+    public required RulesetDto Ruleset { get; init; }
+    public required ScenarioDto Scenario { get; init; }
+    public required PlayerDto Player { get; init; }
 }

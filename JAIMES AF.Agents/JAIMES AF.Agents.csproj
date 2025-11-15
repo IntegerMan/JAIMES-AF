@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\JAIMES AF.ServiceDefinitions\JAIMES AF.ServiceDefinitions.csproj" />
+    <ProjectReference Include="..\JAIMES AF.Tools\JAIMES AF.Tools.csproj" />
   </ItemGroup>
 
 </Project>

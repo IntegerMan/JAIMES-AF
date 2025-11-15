@@ -118,7 +118,7 @@ public class GameService(JaimesDbContext context, IChatService chatService, ICha
         return games.ToDto();
     }
 
-    public async Task<ChatResponse> ProcessChatMessageAsync(Guid gameId, string message, CancellationToken cancellationToken = default)
+    public async Task<JaimesChatResponse> ProcessChatMessageAsync(Guid gameId, string message, CancellationToken cancellationToken = default)
     {
         // Get the game
         GameDto? gameDto = await GetGameAsync(gameId, cancellationToken);
@@ -128,14 +128,14 @@ public class GameService(JaimesDbContext context, IChatService chatService, ICha
         }
 
         // Get AI response from chat service
-        ChatResponse chatResponse = await chatService.ProcessChatMessageAsync(gameDto, message, cancellationToken);
+        JaimesChatResponse chatResponse = await chatService.ProcessChatMessageAsync(gameDto, message, cancellationToken);
 
         // Create Message entities for persistence
         List<Message> messagesToPersist = [
             new() {
                 GameId = gameDto.GameId,
                 Text = message,
-                PlayerId = gameDto.PlayerId,
+                PlayerId = gameDto.Player.Id,
                 CreatedAt = DateTime.UtcNow
             }
         ];

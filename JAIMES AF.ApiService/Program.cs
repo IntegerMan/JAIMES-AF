@@ -32,8 +32,8 @@ public class Program
         // Register a shared ActivitySource instance with the same name used by OpenTelemetry
         builder.Services.AddSingleton(new ActivitySource(builder.Environment.ApplicationName ?? "Jaimes.ApiService"));
 
-        // Configure ChatOptions from configuration and register instance for DI
-        ChatOptions chatOptions = builder.Configuration.GetSection("ChatService").Get<ChatOptions>() ?? throw new InvalidOperationException("ChatService configuration is required");
+        // Configure JaimesChatOptions from configuration and register instance for DI
+        JaimesChatOptions chatOptions = builder.Configuration.GetSection("ChatService").Get<JaimesChatOptions>() ?? throw new InvalidOperationException("ChatService configuration is required");
         builder.Services.AddSingleton(chatOptions);
 
         // Add Jaimes repositories and services

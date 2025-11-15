@@ -54,9 +54,9 @@ public class GameServiceTests : IAsyncLifetime
 
         // Assert
         gameDto.GameId.ShouldNotBe(Guid.Empty);
-        gameDto.RulesetId.ShouldBe("test-ruleset");
-        gameDto.ScenarioId.ShouldBe(scenarioId);
-        gameDto.PlayerId.ShouldBe(playerId);
+        gameDto.Ruleset.Id.ShouldBe("test-ruleset");
+        gameDto.Scenario.Id.ShouldBe(scenarioId);
+        gameDto.Player.Id.ShouldBe(playerId);
         gameDto.Messages.ShouldHaveSingleItem();
         gameDto.Messages[0].Text.ShouldBe(MockChatService.TestInitialMessage);
         gameDto.Messages[0].ParticipantName.ShouldBe("Game Master");
@@ -116,9 +116,9 @@ public class GameServiceTests : IAsyncLifetime
         // Assert
         result.ShouldNotBeNull();
         result.GameId.ShouldBe(game.Id);
-        result.RulesetId.ShouldBe("test-ruleset");
-        result.ScenarioId.ShouldBe("test-scenario");
-        result.PlayerId.ShouldBe("test-player");
+        result.Ruleset.Id.ShouldBe("test-ruleset");
+        result.Scenario.Id.ShouldBe("test-scenario");
+        result.Player.Id.ShouldBe("test-player");
         result.Messages.ShouldHaveSingleItem();
         result.Messages[0].Text.ShouldBe("Test message");
     }
@@ -223,9 +223,9 @@ public class GameServiceTests : IAsyncLifetime
     {
         public const string TestInitialMessage = "Welcome to the test adventure!";
 
-        public Task<ChatResponse> ProcessChatMessageAsync(GameDto game, string message, CancellationToken cancellationToken = default)
+        public Task<JaimesChatResponse> ProcessChatMessageAsync(GameDto game, string message, CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(new ChatResponse
+            return Task.FromResult(new JaimesChatResponse
             {
                 Messages = [new MessageResponse
                 {

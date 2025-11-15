@@ -33,6 +33,7 @@
     <ProjectReference Include="..\JAIMES AF.Services\JAIMES AF.ServiceLayer.csproj" />
     <ProjectReference Include="..\JAIMES AF.ApiService\JAIMES AF.ApiService.csproj" />
     <ProjectReference Include="..\JAIMES AF.Web\JAIMES AF.Web.csproj" />
+    <ProjectReference Include="..\JAIMES AF.Tools\JAIMES AF.Tools.csproj" />
   </ItemGroup>
 
   <ItemGroup>

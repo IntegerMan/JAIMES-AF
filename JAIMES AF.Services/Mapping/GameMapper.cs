@@ -13,17 +13,29 @@ public static partial class GameMapper
         return new GameDto
         {
             GameId = game.Id,
-            RulesetId = game.RulesetId,
-            RulesetName = game.Ruleset?.Name ?? game.RulesetId,
-            ScenarioId = game.ScenarioId,
-            ScenarioName = game.Scenario?.Name ?? game.ScenarioId,
-            PlayerId = game.PlayerId,
-            PlayerName = game.Player?.Name ?? game.PlayerId,
+            Ruleset = game.Ruleset?.ToDto() ?? new RulesetDto
+            {
+                Id = game.RulesetId,
+                Name = game.RulesetId
+            },
+            Scenario = game.Scenario?.ToDto() ?? new ScenarioDto
+            {
+                Id = game.ScenarioId,
+                RulesetId = game.RulesetId,
+                Name = game.ScenarioId,
+                SystemPrompt = string.Empty,
+                NewGameInstructions = string.Empty
+            },
+            Player = game.Player?.ToDto() ?? new PlayerDto
+            {
+                Id = game.PlayerId,
+                RulesetId = game.RulesetId,
+                Name = game.PlayerId
+            },
             Messages = game.Messages?
                 .OrderBy(m => m.CreatedAt)
                 .Select(m => m.ToDto())
-                .ToArray(),
-            SystemPrompt = game.Scenario?.SystemPrompt ?? string.Empty
+                .ToArray()
         };
     }
 

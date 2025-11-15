@@ -6,32 +6,44 @@ using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Services;
+using MattEland.Jaimes.Tools;
 using Microsoft.Agents.AI;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using OpenAI;
 
 namespace MattEland.Jaimes.Agents.Services;
 
-public class ChatService(ChatOptions options, ILogger<ChatService> logger, IChatHistoryService chatHistoryService) : IChatService
+public class ChatService(JaimesChatOptions options, ILogger<ChatService> logger, IChatHistoryService chatHistoryService) : IChatService
 {
-    private readonly ChatOptions _options = options ?? throw new ArgumentNullException(nameof(options));
+    private readonly JaimesChatOptions _options = options ?? throw new ArgumentNullException(nameof(options));
 
-    private AIAgent CreateAgent(string systemPrompt)
+    private AIAgent CreateAgent(string systemPrompt, GameDto? game = null)
     {
+        // Register tools if game context is available
+        // Based on Microsoft documentation: https://learn.microsoft.com/en-us/agent-framework/user-guide/agents/agent-tools?pivots=programming-language-csharp
+        // The documentation shows using AIFunctionFactory.Create(), but the exact namespace/API needs to be confirmed
+        IList<AITool>? tools = null;
+        if (game != null)
+        {
+            PlayerInfoTool playerInfoTool = new(game);
+            tools = [AIFunctionFactory.Create(() => playerInfoTool.GetPlayerInfo())];
+        }
+
         return new AzureOpenAIClient(
                 new Uri(_options.Endpoint),
                 new ApiKeyCredential(_options.ApiKey))
             .GetChatClient(_options.Deployment)
-            .CreateAIAgent(instructions: systemPrompt)
+            .CreateAIAgent(instructions: systemPrompt, tools: tools)
             .AsBuilder()
             .UseOpenTelemetry(sourceName: "agent-framework-source")
             .Build();
     }
 
-    public async Task<ChatResponse> ProcessChatMessageAsync(GameDto game, string message, CancellationToken cancellationToken = default)
+    public async Task<JaimesChatResponse> ProcessChatMessageAsync(GameDto game, string message, CancellationToken cancellationToken = default)
     {
-        // Build the Azure OpenAI client from options
-        AIAgent agent = CreateAgent(game.SystemPrompt);
+        // Build the Azure OpenAI client from options with tools
+        AIAgent agent = CreateAgent(game.Scenario.SystemPrompt, game);
 
         AgentThread? thread = null;
         
@@ -65,7 +77,7 @@ public class ChatService(ChatOptions options, ILogger<ChatService> logger, IChat
             CreatedAt = DateTime.UtcNow
         }).ToArray();
 
-        return new ChatResponse
+        return new JaimesChatResponse
         {
             Messages = responseMessages,
             ThreadJson = json
@@ -74,8 +86,36 @@ public class ChatService(ChatOptions options, ILogger<ChatService> logger, IChat
 
     public async Task<InitialMessageResponse> GenerateInitialMessageAsync(GenerateInitialMessageRequest request, CancellationToken cancellationToken = default)
     {
-        // Build the Azure OpenAI client from options with the system prompt
-        AIAgent agent = CreateAgent(request.SystemPrompt);
+        // Create a minimal GameDto for tool registration
+        // Note: Some fields are not available in the request, so we use placeholders
+        GameDto gameForTools = new GameDto
+        {
+            GameId = request.GameId,
+            Player = new PlayerDto
+            {
+                Id = string.Empty, // Not available in request, but tool doesn't need it
+                Name = request.PlayerName,
+                Description = request.PlayerDescription,
+                RulesetId = string.Empty
+            },
+            Scenario = new ScenarioDto
+            {
+                Id = string.Empty, // Not available in request
+                Name = string.Empty,
+                SystemPrompt = request.SystemPrompt,
+                NewGameInstructions = request.NewGameInstructions,
+                RulesetId = string.Empty
+            },
+            Ruleset = new RulesetDto
+            {
+                Id = string.Empty, // Not available in request
+                Name = string.Empty
+            },
+            Messages = null
+        };
+
+        // Build the Azure OpenAI client from options with the system prompt and tools
+        AIAgent agent = CreateAgent(request.SystemPrompt, gameForTools);
 
         // Create a new thread for this game
         AgentThread thread = agent.GetNewThread();

@@ -27,12 +27,12 @@ public class ListGamesEndpoint : Ep.NoReq.Res<ListGamesResponse>
             Games = games.Select(g => new GameInfoResponse
             {
                 GameId = g.GameId,
-                ScenarioId = g.ScenarioId,
-                ScenarioName = g.ScenarioName,
-                RulesetId = g.RulesetId,
-                RulesetName = g.RulesetName,
-                PlayerId = g.PlayerId,
-                PlayerName = g.PlayerName
+                ScenarioId = g.Scenario.Id,
+                ScenarioName = g.Scenario.Name,
+                RulesetId = g.Ruleset.Id,
+                RulesetName = g.Ruleset.Name,
+                PlayerId = g.Player.Id,
+                PlayerName = g.Player.Name
             }).ToArray()
         }, cancellation: ct);
     }

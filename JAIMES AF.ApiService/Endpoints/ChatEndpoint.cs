@@ -28,7 +28,7 @@ public class ChatEndpoint : Ep.Req<ChatRequest>.Res<GameStateResponse>
             ThrowError("Invalid game ID format");
         }
         // ProcessChatMessageAsync will throw if game doesn't exist, so we can get the game after
-        ChatResponse chatResponse = await GameService.ProcessChatMessageAsync(gameId, req.Message, ct);
+        JaimesChatResponse chatResponse = await GameService.ProcessChatMessageAsync(gameId, req.Message, ct);
 
         // Get the game to populate the response (game exists since ProcessChatMessageAsync succeeded)
         GameDto? gameDto = await GameService.GetGameAsync(gameId, ct);
@@ -43,12 +43,12 @@ public class ChatEndpoint : Ep.Req<ChatRequest>.Res<GameStateResponse>
         {
             GameId = gameDto.GameId,
             Messages = chatResponse.Messages,
-            RulesetId = gameDto.RulesetId,
-            RulesetName = gameDto.RulesetName,
-            ScenarioId = gameDto.ScenarioId,
-            ScenarioName = gameDto.ScenarioName,
-            PlayerId = gameDto.PlayerId,
-            PlayerName = gameDto.PlayerName,
+            RulesetId = gameDto.Ruleset.Id,
+            RulesetName = gameDto.Ruleset.Name,
+            ScenarioId = gameDto.Scenario.Id,
+            ScenarioName = gameDto.Scenario.Name,
+            PlayerId = gameDto.Player.Id,
+            PlayerName = gameDto.Player.Name,
         };
 
         await Send.OkAsync(gameState, cancellation: ct);
