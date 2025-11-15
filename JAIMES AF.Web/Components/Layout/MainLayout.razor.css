@@ -76,6 +76,18 @@ main {
     }
 }
 
+/* Global layout: Make main content area use full viewport height */
+.mud-main-content {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - 64px); /* Full viewport minus app bar */
+}
+
+.mud-main-content .top-row {
+    flex: 0 0 auto; /* Fixed height for top row */
+}
+
+
 #blazor-error-ui {
     background: lightyellow;
     bottom: 0;

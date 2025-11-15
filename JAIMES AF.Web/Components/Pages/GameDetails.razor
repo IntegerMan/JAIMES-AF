@@ -7,9 +7,8 @@
 
 <PageTitle>Game Details</PageTitle>
 
+<div class="game-details-page-wrapper">
 <MudContainer MaxWidth="MaxWidth.Large" Class="game-details-wrapper">
-	<MudText Typo="Typo.h5" Class="mb-2">Game details</MudText>
-
 	@if (isLoading)
 	{
 		<MudProgressCircular Indeterminate="true" Class="my-4" />
@@ -24,8 +23,10 @@
 	}
 	else
 	{
-		<MudText Class="mb-1"><b>Game ID:</b> @game.GameId</MudText>
-		<MudDivider Class="my-2" />
+		<div class="game-header">
+			<MudText Typo="Typo.h5" Class="mb-0">Game details</MudText>
+			<MudText Typo="Typo.body2" Class="text-muted">Game ID: @game.GameId</MudText>
+		</div>
 
 		<div id="chat-scroll-container" class="chat-scroll">
 			@foreach (var m in messages ?? [])
@@ -94,3 +95,4 @@
 		</div>
 	}
 </MudContainer>
+</div>
