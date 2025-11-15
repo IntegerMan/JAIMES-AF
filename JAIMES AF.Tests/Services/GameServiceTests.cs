@@ -60,6 +60,7 @@ public class GameServiceTests : IAsyncLifetime
         gameDto.Messages.ShouldHaveSingleItem();
         gameDto.Messages[0].Text.ShouldBe(MockChatService.TestInitialMessage);
         gameDto.Messages[0].ParticipantName.ShouldBe("Game Master");
+        gameDto.Messages[0].Id.ShouldBeGreaterThan(0);
 
         // Verify game is in database
         Game? gameInDb = await _context.Games.FindAsync(new object[] { gameDto.GameId }, TestContext.Current.CancellationToken);
@@ -121,6 +122,7 @@ public class GameServiceTests : IAsyncLifetime
         result.Player.Id.ShouldBe("test-player");
         result.Messages.ShouldHaveSingleItem();
         result.Messages[0].Text.ShouldBe("Test message");
+        result.Messages[0].Id.ShouldBeGreaterThan(0);
     }
 
     [Fact]
@@ -167,8 +169,62 @@ public class GameServiceTests : IAsyncLifetime
         result!.Messages.ShouldNotBeNull();
         result.Messages.Length.ShouldBe(3);
         result.Messages[0].Text.ShouldBe("First message");
+        result.Messages[0].Id.ShouldBeGreaterThan(0);
         result.Messages[1].Text.ShouldBe("Second message");
+        result.Messages[1].Id.ShouldBeGreaterThan(result.Messages[0].Id);
         result.Messages[2].Text.ShouldBe("Third message");
+        result.Messages[2].Id.ShouldBeGreaterThan(result.Messages[1].Id);
+    }
+
+    [Fact]
+    public async Task GetGameAsync_ReturnsMessagesOrderedById_WhenCreatedAtIsSame()
+    {
+        // Arrange - This test verifies that Id ordering works even when CreatedAt timestamps are identical
+        Game game = new Game
+        {
+            Id = Guid.NewGuid(),
+            RulesetId = "test-ruleset",
+            ScenarioId = "test-scenario",
+            PlayerId = "test-player",
+            CreatedAt = DateTime.UtcNow
+        };
+        _context.Games.Add(game);
+
+        DateTime sameTime = DateTime.UtcNow;
+        Message message1 = new Message
+        {
+            GameId = game.Id,
+            Text = "First message",
+            CreatedAt = sameTime
+        };
+        Message message2 = new Message
+        {
+            GameId = game.Id,
+            Text = "Second message",
+            CreatedAt = sameTime
+        };
+        Message message3 = new Message
+        {
+            GameId = game.Id,
+            Text = "Third message",
+            CreatedAt = sameTime
+        };
+        _context.Messages.AddRange(message1, message2, message3);
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        _context.ChangeTracker.Clear();
+
+        // Act
+        GameDto? result = await _gameService.GetGameAsync(game.Id, TestContext.Current.CancellationToken);
+
+        // Assert - Messages should be ordered by Id, not CreatedAt
+        result.ShouldNotBeNull();
+        result!.Messages.ShouldNotBeNull();
+        result.Messages.Length.ShouldBe(3);
+        result.Messages[0].Id.ShouldBeLessThan(result.Messages[1].Id);
+        result.Messages[1].Id.ShouldBeLessThan(result.Messages[2].Id);
+        // Verify all have the same CreatedAt
+        result.Messages[0].CreatedAt.ShouldBe(result.Messages[1].CreatedAt);
+        result.Messages[1].CreatedAt.ShouldBe(result.Messages[2].CreatedAt);
     }
 
     [Fact]
@@ -218,6 +274,48 @@ public class GameServiceTests : IAsyncLifetime
         exception.Message.ShouldContain("uses ruleset 'test-ruleset'");
     }
 
+    [Fact]
+    public async Task ProcessChatMessageAsync_ReturnsMessagesWithIds()
+    {
+        // Arrange
+        Game game = new Game
+        {
+            Id = Guid.NewGuid(),
+            RulesetId = "test-ruleset",
+            ScenarioId = "test-scenario",
+            PlayerId = "test-player",
+            CreatedAt = DateTime.UtcNow
+        };
+        _context.Games.Add(game);
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        _context.ChangeTracker.Clear();
+
+        string playerMessage = "Hello, game master!";
+
+        // Act
+        JaimesChatResponse response = await _gameService.ProcessChatMessageAsync(game.Id, playerMessage, TestContext.Current.CancellationToken);
+
+        // Assert
+        response.Messages.ShouldNotBeNull();
+        response.Messages.Length.ShouldBeGreaterThan(0);
+        // Verify all returned messages have valid Ids (set after persistence)
+        foreach (MessageResponse message in response.Messages)
+        {
+            message.Id.ShouldBeGreaterThan(0);
+            message.Text.ShouldNotBeNullOrEmpty();
+        }
+
+        // Verify messages were persisted to database
+        Message[] persistedMessages = await _context.Messages
+            .Where(m => m.GameId == game.Id)
+            .OrderBy(m => m.Id)
+            .ToArrayAsync(TestContext.Current.CancellationToken);
+        persistedMessages.Length.ShouldBeGreaterThan(0);
+        // First message should be the player message
+        persistedMessages[0].Text.ShouldBe(playerMessage);
+        persistedMessages[0].PlayerId.ShouldBe("test-player");
+    }
+
     // Mock implementations for testing
     private class MockChatService : IChatService
     {
@@ -229,6 +327,7 @@ public class GameServiceTests : IAsyncLifetime
             {
                 Messages = [new MessageResponse
                 {
+                    Id = 0, // Will be set by GameService after persistence
                     Text = "Test response",
                     Participant = ChatParticipant.GameMaster,
                     PlayerId = null,

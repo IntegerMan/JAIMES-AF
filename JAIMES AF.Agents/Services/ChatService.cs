@@ -206,7 +206,8 @@ public class ChatService(JaimesChatOptions options, ILogger<ChatService> logger,
         logger.LogInformation("Thread after Initial Message: {Thread}", json);
 
         // Get the first message from the response
-        string firstMessage = response.Messages.FirstOrDefault()?.Text ?? "Welcome to the adventure!";
+        string? messageText = response.Messages.FirstOrDefault()?.Text;
+        string firstMessage = string.IsNullOrWhiteSpace(messageText) ? "Welcome to the adventure!" : messageText;
 
         return new InitialMessageResponse
         {

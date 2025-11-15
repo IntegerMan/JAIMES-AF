@@ -35,6 +35,7 @@ public class GameStateEndpointTests : EndpointTestBase
         game.Messages.ShouldHaveSingleItem();
         game.Messages[0].Text.ShouldNotBeNull();
         game.Messages[0].Text.ShouldNotBeEmpty();
+        game.Messages[0].Id.ShouldBeGreaterThan(0);
     }
 
     [Fact]

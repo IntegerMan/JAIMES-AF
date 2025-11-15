@@ -29,6 +29,14 @@ EF Core entities
 Testing
 
 - Tests are in `JAIMES AF.Tests/` with folders for endpoints, repositories, and services.
+- **CRITICAL**: When making code changes, you MUST:
+  1. Update existing tests to reflect any changes to data structures, behavior, or APIs
+  2. Add new tests when introducing new functionality or fixing bugs
+  3. Ensure all tests pass before considering a task complete
+  4. Use Shouldly for all assertions (never use `Assert.*` methods)
+  5. Verify that tests cover edge cases, especially when fixing bugs (e.g., if fixing ordering, test with identical timestamps)
+- When adding properties to DTOs or responses, update tests to verify those properties are populated correctly
+- When changing ordering logic, add tests that verify the ordering works correctly, including edge cases
 
 Development notes
 
