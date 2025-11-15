@@ -9,10 +9,20 @@ builder.AddServiceDefaults();
 
 // Register a named HttpClient that targets the Aspire API resource name 'apiservice'.
 // Service discovery handlers added by AddServiceDefaults will resolve this logical host to the real address at runtime.
+// Configure longer timeout for AI chat requests which can take significant time
+TimeSpan httpClientTimeout = TimeSpan.FromMinutes(5); // 5 minutes for AI chat requests
+if (builder.Configuration["ApiService:TimeoutMinutes"] != null 
+    && int.TryParse(builder.Configuration["ApiService:TimeoutMinutes"], out int timeoutMinutes))
+{
+    httpClientTimeout = TimeSpan.FromMinutes(timeoutMinutes);
+}
+
 builder.Services.AddHttpClient("Api", client =>
 {
     // Allow configuring an override in configuration if needed; otherwise use the Aspire project reference name
     client.BaseAddress = new Uri(builder.Configuration["ApiService:BaseAddress"] ?? "http://apiservice/");
+    // Set longer timeout for AI chat requests which can take significant time to process
+    client.Timeout = httpClientTimeout;
 })
 // Ensure service discovery is added on IHttpClientBuilder, then add resilience pipeline
 .AddServiceDiscovery()
