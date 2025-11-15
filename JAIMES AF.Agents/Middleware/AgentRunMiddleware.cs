@@ -1,0 +1,117 @@
+using System.Diagnostics;
+using Microsoft.Agents.AI;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
+
+namespace MattEland.Jaimes.Agents.Middleware;
+
+/// <summary>
+/// Middleware that tracks agent runs and logs them with OpenTelemetry.
+/// This middleware intercepts agent run execution to track agent interactions.
+/// </summary>
+public static class AgentRunMiddleware
+{
+    private static readonly ActivitySource ActivitySource = new("Jaimes.Agents.Run");
+
+    /// <summary>
+    /// Creates an agent run middleware that tracks agent run execution.
+    /// </summary>
+    /// <param name="logger">The logger to use for logging agent runs.</param>
+    /// <returns>A middleware function that can be used with the agent builder.</returns>
+    public static Func<IEnumerable<ChatMessage>, AgentThread?, AgentRunOptions?, AIAgent, CancellationToken, Task<AgentRunResponse>> CreateRunFunc(ILogger logger)
+    {
+        // Log that middleware is being created/registered
+        logger.LogInformation("AgentRunMiddleware created and registered");
+        
+        return async (messages, thread, options, innerAgent, cancellationToken) =>
+        {
+            int messageCount = messages.Count();
+            string agentName = innerAgent.Name ?? "unknown";
+            
+            // Log that an agent run is starting
+            logger.LogInformation(
+                "🤖 Agent run started: {AgentName} with {MessageCount} message(s)",
+                agentName,
+                messageCount);
+            
+            // Log run details for debugging
+            string threadStatus = thread != null ? "existing" : "new";
+            logger.LogDebug(
+                "Agent run context - AgentName: {AgentName}, MessageCount: {MessageCount}, ThreadStatus: {ThreadStatus}, Options: {Options}",
+                agentName,
+                messageCount,
+                threadStatus,
+                options != null ? System.Text.Json.JsonSerializer.Serialize(options) : "null");
+
+            // Create an OpenTelemetry activity for the agent run
+            using Activity? activity = ActivitySource.StartActivity($"Agent.Run.{agentName}");
+            
+            if (activity != null)
+            {
+                activity.SetTag("agent.name", agentName);
+                activity.SetTag("agent.message_count", messageCount);
+                activity.SetTag("agent.thread_status", threadStatus);
+                activity.SetTag("agent.options", options != null ? System.Text.Json.JsonSerializer.Serialize(options) : "null");
+            }
+
+            AgentRunResponse? response = null;
+            Exception? exception = null;
+            
+            try
+            {
+                // Execute the actual agent run
+                response = await innerAgent.RunAsync(messages, thread, options, cancellationToken);
+                
+                int responseMessageCount = response.Messages?.Count() ?? 0;
+                
+                // Log successful run
+                logger.LogInformation(
+                    "Agent run completed: {AgentName} with {ResponseMessageCount} response message(s)",
+                    agentName,
+                    responseMessageCount);
+
+                if (activity != null)
+                {
+                    activity.SetTag("agent.response_message_count", responseMessageCount);
+                    activity.SetStatus(ActivityStatusCode.Ok);
+                }
+            }
+            catch (Exception ex)
+            {
+                exception = ex;
+                logger.LogError(
+                    ex,
+                    "Agent run failed: {AgentName}",
+                    agentName);
+                
+                if (activity != null)
+                {
+                    activity.SetTag("agent.error", ex.Message);
+                    activity.SetStatus(ActivityStatusCode.Error, ex.Message);
+                }
+                
+                throw;
+            }
+            finally
+            {
+                if (activity != null && exception == null && response != null)
+                {
+                    // Log response summary if available
+                    string? responseSummary = response.Messages?.FirstOrDefault()?.Text;
+                    if (!string.IsNullOrEmpty(responseSummary))
+                    {
+                        // Truncate long responses for logging
+                        if (responseSummary.Length > 500)
+                        {
+                            responseSummary = responseSummary[..500] + "... (truncated)";
+                        }
+                        activity.SetTag("agent.response_summary", responseSummary);
+                    }
+                }
+            }
+
+            return response!;
+        };
+    }
+}
+

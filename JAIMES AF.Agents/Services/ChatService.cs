@@ -64,6 +64,8 @@ public class ChatService(JaimesChatOptions options, ILogger<ChatService> logger,
 
         // Per Microsoft docs: https://learn.microsoft.com/en-us/agent-framework/user-guide/agents/agent-observability?pivots=programming-language-csharp
         // First instrument the chat client, then use it to create the agent
+        // Per Microsoft docs: https://learn.microsoft.com/en-us/agent-framework/user-guide/agents/agent-middleware?pivots=programming-language-csharp
+        // Register IChatClient middleware on the chat client before creating the agent
         
         IChatClient instrumentedChatClient = new AzureOpenAIClient(
                 new Uri(_options.Endpoint),
@@ -74,12 +76,17 @@ public class ChatService(JaimesChatOptions options, ILogger<ChatService> logger,
             .UseOpenTelemetry(
                 sourceName: DefaultActivitySourceName,
                 configure: cfg => cfg.EnableSensitiveData = true)
+            .Use(
+                getResponseFunc: ChatClientMiddleware.Create(logger),
+                getStreamingResponseFunc: null)
             .Build();
         
-        logger.LogInformation("Chat client instrumented with OpenTelemetry (source: {SourceName})", DefaultActivitySourceName);
+        logger.LogInformation("Chat client instrumented with OpenTelemetry and chat client middleware (source: {SourceName})", DefaultActivitySourceName);
         
         // Create the agent with the instrumented chat client and enable observability
         // Per Microsoft docs, use WithOpenTelemetry on the agent (not UseOpenTelemetry on builder)
+        // Per Microsoft docs: https://learn.microsoft.com/en-us/agent-framework/user-guide/agents/agent-middleware?pivots=programming-language-csharp
+        // Register agent run middleware on the agent builder
         AIAgent agent = new ChatClientAgent(
                 instrumentedChatClient,
                 name: $"JaimesAgent-{game!.GameId}",
@@ -89,10 +96,11 @@ public class ChatService(JaimesChatOptions options, ILogger<ChatService> logger,
             .UseOpenTelemetry(
                 sourceName: DefaultActivitySourceName,
                 configure: cfg => cfg.EnableSensitiveData = true)
+            .Use(runFunc: AgentRunMiddleware.CreateRunFunc(logger), runStreamingFunc: null)
             .Use(ToolInvocationMiddleware.Create(logger))
             .Build();
         
-        logger.LogInformation("Agent created with OpenTelemetry and tool invocation middleware");
+        logger.LogInformation("Agent created with OpenTelemetry, agent run middleware, and tool invocation middleware");
         
         return agent;
     }
@@ -177,15 +185,10 @@ public class ChatService(JaimesChatOptions options, ILogger<ChatService> logger,
         // Create a new thread for this game
         AgentThread thread = agent.GetNewThread();
 
-        // Build the initial prompt with player character info and new game instructions
+        // Build the initial prompt with new game instructions
+        // Player character info is now available via GetPlayerInfo tool call, so it's not included in the prompt
         StringBuilder promptBuilder = new();
         promptBuilder.AppendLine(request.NewGameInstructions);
-        promptBuilder.AppendLine();
-        promptBuilder.AppendLine($"Player Character: {request.PlayerName}");
-        if (!string.IsNullOrWhiteSpace(request.PlayerDescription))
-        {
-            promptBuilder.AppendLine($"Character Description: {request.PlayerDescription}");
-        }
         promptBuilder.AppendLine();
         promptBuilder.AppendLine("Please begin the adventure with an opening message that introduces the scenario and sets the scene for the player.");
 

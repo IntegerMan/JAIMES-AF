@@ -24,7 +24,12 @@
         {
             Url = "/health",
             DisplayText = "👨‍⚕️ Health"
-        });
+        })
+        // Configure debug-level logging for user namespaces and Agent Framework
+        // Note: Dots in namespace names must be replaced with double underscores in environment variables
+        .WithEnvironment("Logging__LogLevel__MattEland__Jaimes", "Debug")
+        .WithEnvironment("Logging__LogLevel__Microsoft__Agents__AI", "Debug")
+        .WithEnvironment("Logging__LogLevel__Microsoft__Extensions__AI", "Debug");
 
     Console.WriteLine("Adding Web frontend...");
     builder.AddProject<Projects.JAIMES_AF_Web>("webfrontend")
@@ -39,7 +44,12 @@
         .WithUrlForEndpoint("http", static url => url.DisplayText = "🏠 Home")
         .WithUrlForEndpoint("https", static url => url.DisplayText = "🔑 Home (HTTPS)")
         .WithReference(apiService)
-        .WaitFor(apiService);
+        .WaitFor(apiService)
+        // Configure debug-level logging for user namespaces and Agent Framework
+        // Note: Dots in namespace names must be replaced with double underscores in environment variables
+        .WithEnvironment("Logging__LogLevel__MattEland__Jaimes", "Debug")
+        .WithEnvironment("Logging__LogLevel__Microsoft__Agents__AI", "Debug")
+        .WithEnvironment("Logging__LogLevel__Microsoft__Extensions__AI", "Debug");
 
     Console.WriteLine("Building distributed application...");
     var app = builder.Build();
