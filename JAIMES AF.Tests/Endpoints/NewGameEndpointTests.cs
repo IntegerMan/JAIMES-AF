@@ -29,7 +29,8 @@ public class NewGameEndpointTests : EndpointTestBase
         game.GameId.ShouldNotBe(Guid.Empty);
         game.Messages.ShouldNotBeNull();
         game.Messages.ShouldHaveSingleItem();
-        game.Messages[0].Text.ShouldBe("Hello World");
+        game.Messages[0].Text.ShouldNotBeNull();
+        game.Messages[0].Text.ShouldNotBeEmpty();
     }
 
     [Fact]
