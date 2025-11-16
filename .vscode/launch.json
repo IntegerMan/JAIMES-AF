@@ -24,7 +24,7 @@
                 "action": "openExternally",
                 "pattern": "Login to the dashboard at (https?://\\S+)",
                 "uriFormat": "%s",
-                "killOnServerStop": false
+                "killOnServerStop": true
             }
         }
     ]

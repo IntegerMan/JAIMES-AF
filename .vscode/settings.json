@@ -12,5 +12,8 @@
         "Scrutor",
         "Shouldly",
         "webfrontend"
-    ]
+    ],
+    "debug.allowBreakpointsEverywhere": true,
+    "debug.inlineValues": true,
+    "debug.showBreakpointsInOverviewRuler": true
 }
