@@ -1,0 +1,60 @@
+@page "/rulesets"
+@rendermode InteractiveServer
+
+@inject HttpClient Http
+@inject ILoggerFactory LoggerFactory
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+
+<PageTitle>Rulesets</PageTitle>
+
+<MudPaper Class="pa-4">
+	<MudText Typo="Typo.h4">Rulesets</MudText>
+
+	<MudText Class="mb-4">Manage your game rulesets. Create new rulesets or edit existing ones.</MudText>
+
+	<MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/rulesets/new" Class="mb-4">
+		New Ruleset
+	</MudButton>
+
+	<div style="position: relative; min-height: 200px;">
+		@if (isLoading)
+		{
+			<div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+				<MudProgressCircular Indeterminate="true"/>
+			</div>
+		}
+		
+		@if (!isLoading && !string.IsNullOrEmpty(errorMessage))
+		{
+			<MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
+		}
+		
+		@if (!isLoading && string.IsNullOrEmpty(errorMessage) && (rulesets is null || rulesets.Length == 0))
+		{
+			<MudText Class="mb-4">No rulesets yet. <MudLink Href="/rulesets/new">Create a new ruleset</MudLink></MudText>
+		}
+		
+		@if (!isLoading && string.IsNullOrEmpty(errorMessage) && rulesets is not null && rulesets.Length > 0)
+		{
+			<MudTable Items="rulesets" Dense="true" Hover="true">
+				<HeaderContent>
+					<MudTh>ID</MudTh>
+					<MudTh>Name</MudTh>
+					<MudTh align="Align.Right">Actions</MudTh>
+				</HeaderContent>
+				<RowTemplate>
+					<MudTd>@context.Id</MudTd>
+					<MudTd>@context.Name</MudTd>
+					<MudTd align="Align.Right">
+						<MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+						           Href="@($"/rulesets/{context.Id}/edit")" Class="me-2">
+							Edit
+						</MudButton>
+					</MudTd>
+				</RowTemplate>
+			</MudTable>
+		}
+	</div>
+</MudPaper>
+

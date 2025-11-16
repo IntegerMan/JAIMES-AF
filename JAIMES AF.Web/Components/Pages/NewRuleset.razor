@@ -1,0 +1,62 @@
+@page "/rulesets/new"
+@rendermode InteractiveServer
+
+<PageTitle>Create New Ruleset</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+	<MudPaper Class="pa-4">
+		<MudText Typo="Typo.h4" Class="mb-4">Create New Ruleset</MudText>
+
+		@if (!string.IsNullOrEmpty(errorMessage))
+		{
+			<MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
+		}
+
+		<MudForm>
+			<MudTextField @bind-Value="rulesetId"
+			              Label="Ruleset ID"
+			              Variant="Variant.Outlined"
+			              Class="mb-4"
+			              Disabled="isSaving"
+			              Required="true"
+			              RequiredError="Ruleset ID is required"
+			              HelperText="A unique identifier for this ruleset (e.g., 'dnd5e', 'pathfinder')" />
+
+			<MudTextField @bind-Value="name"
+			              Label="Name"
+			              Variant="Variant.Outlined"
+			              Class="mb-4"
+			              Disabled="isSaving"
+			              Required="true"
+			              RequiredError="Name is required"
+			              HelperText="The display name for this ruleset (e.g., 'D&D 5th Edition')" />
+
+			<div class="d-flex gap-2">
+				<MudButton Variant="Variant.Filled" 
+				           Color="Color.Primary" 
+				           OnClick="CreateRulesetAsync" 
+				           Disabled="isSaving || !IsFormValid()"
+				           Class="mt-2">
+					@if (isSaving)
+					{
+						<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+						<span class="ms-2">Creating...</span>
+					}
+					else
+					{
+						<span>Create Ruleset</span>
+					}
+				</MudButton>
+
+				<MudButton Variant="Variant.Text" 
+				           Color="Color.Default" 
+				           OnClick="Cancel" 
+				           Disabled="isSaving"
+				           Class="mt-2">
+					Cancel
+				</MudButton>
+			</div>
+		</MudForm>
+	</MudPaper>
+</MudContainer>
+

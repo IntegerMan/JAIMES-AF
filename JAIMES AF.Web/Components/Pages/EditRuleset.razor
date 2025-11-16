@@ -1,0 +1,73 @@
+@page "/rulesets/{RulesetId}/edit"
+@rendermode InteractiveServer
+
+<PageTitle>Edit Ruleset</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+	<MudPaper Class="pa-4">
+		<MudText Typo="Typo.h4" Class="mb-4">Edit Ruleset</MudText>
+
+		@if (isLoading)
+		{
+			<MudProgressCircular Indeterminate="true" Class="my-4" />
+		}
+		else if (!string.IsNullOrEmpty(errorMessage))
+		{
+			<MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
+		}
+
+		@if (!isLoading && !string.IsNullOrEmpty(errorMessage) && errorMessage.Contains("not found"))
+		{
+			<MudButton Variant="Variant.Text" Color="Color.Primary" Href="/rulesets" Class="mt-2">
+				Back to Rulesets
+			</MudButton>
+		}
+
+		@if (!isLoading && string.IsNullOrEmpty(errorMessage))
+		{
+			<MudForm>
+				<MudTextField Value="@RulesetId"
+				              Label="Ruleset ID"
+				              Variant="Variant.Outlined"
+				              Class="mb-4"
+				              Disabled="true"
+				              HelperText="Ruleset ID cannot be changed" />
+
+				<MudTextField @bind-Value="name"
+				              Label="Name"
+				              Variant="Variant.Outlined"
+				              Class="mb-4"
+				              Disabled="isSaving"
+				              Required="true"
+				              RequiredError="Name is required" />
+
+				<div class="d-flex gap-2">
+					<MudButton Variant="Variant.Filled" 
+					           Color="Color.Primary" 
+					           OnClick="UpdateRulesetAsync" 
+					           Disabled="isSaving || !IsFormValid()"
+					           Class="mt-2">
+						@if (isSaving)
+						{
+							<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+							<span class="ms-2">Saving...</span>
+						}
+						else
+						{
+							<span>Save Changes</span>
+						}
+					</MudButton>
+
+					<MudButton Variant="Variant.Text" 
+					           Color="Color.Default" 
+					           OnClick="Cancel" 
+					           Disabled="isSaving"
+					           Class="mt-2">
+						Cancel
+					</MudButton>
+				</div>
+			</MudForm>
+		}
+	</MudPaper>
+</MudContainer>
+
