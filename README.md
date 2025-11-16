@@ -17,43 +17,37 @@ This solution uses several best practices and modern .NET libraries:
 
 ## Database Configuration
 
-The application supports multiple database providers through environment-based configuration:
+The application uses **SQLite by default** for cross-platform compatibility. The database file (`jaimes.db`) will be created automatically on first run with all necessary tables and seed data.
 
-### SQLite (Default)
-Best for local development and testing. No setup required.
+### Using SQL Server / LocalDB (Windows only)
 
-```json
-{
-  "DatabaseProvider": "Sqlite",
-  "ConnectionStrings": {
-    "DefaultConnection": "Data Source=jaimes-dev.db"
-  }
-}
+If you prefer to use SQL Server/LocalDB on Windows, configure it via user secrets:
+
+```bash
+cd "JAIMES AF.ApiService"
+dotnet user-secrets set "DatabaseProvider" "SqlServer"
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=(localdb)\\mssqllocaldb;Database=Jaimes;Trusted_Connection=True;MultipleActiveResultSets=true"
 ```
 
-### SQL Server / LocalDB
-For production or when you need SQL Server features.
-
-```json
-{
-  "DatabaseProvider": "SqlServer",
-  "ConnectionStrings": {
-    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=Jaimes;Trusted_Connection=True;MultipleActiveResultSets=true"
-  }
-}
-```
+**Important:** The included migrations are SQLite-specific. To use SQL Server:
+1. Delete your existing `jaimes.db` file (if it exists)
+2. Remove all migrations: `rm -rf "JAIMES AF.Repositories/Migrations"`
+3. Regenerate migrations for SQL Server:
+   ```bash
+   dotnet ef migrations add InitialCreate --project "JAIMES AF.Repositories" --startup-project "JAIMES AF.ApiService"
+   ```
+4. The database will be created automatically on first run
 
 ### Azure SQL
-For cloud deployments.
 
-```json
-{
-  "DatabaseProvider": "SqlServer",
-  "ConnectionStrings": {
-    "DefaultConnection": "Server=tcp:{your-server}.database.windows.net,1433;Database=Jaimes;..."
-  }
-}
+For production cloud deployments, configure via user secrets or environment variables:
+
+```bash
+dotnet user-secrets set "DatabaseProvider" "SqlServer"
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=tcp:{your-server}.database.windows.net,1433;Database=Jaimes;User ID={user};Password={password};Encrypt=True;"
 ```
+
+Note: You'll need to regenerate migrations for SQL Server (see instructions above) before deploying to Azure SQL.
 
 ## Project Structure
 
