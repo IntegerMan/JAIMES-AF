@@ -8,75 +8,66 @@
 
 	<MudDivider Class="my-4" />
 
+	<MudText Class="mb-4">
+		JAIMES AF offers a single-player roleplaying experience powered by an AI game master. Create or select a scenario, choose a player character, and start chatting with your AI Game Master. The AI will craft an immersive story that adapts to your choices in real-time.
+	</MudText>
+
+	<MudGrid Class="mb-6" Justify="Justify.Center">
+		<MudItem xs="12" Class="text-center">
+			<MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" Href="/games/new" Class="px-6 mb-2">
+				Start New Game
+			</MudButton>
+			<MudText Typo="Typo.body2" Class="text-muted">or <MudLink Href="/games">view existing games</MudLink></MudText>
+		</MudItem>
+	</MudGrid>
+
+	<MudDivider Class="my-4" />
+
+	<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-3">Manage Your Content</MudText>
 	<MudGrid>
-		<MudItem xs="12" md="8">
-			<MudText>
-				JAIMES AF offers a single-player roleplaying experience powered by an AI game master. Pick from a variety of different game systems, bring your own characters, tell your GM what you're looking for and click play. JAIMES AF will take over from there in crafting and delivering an immersive solo adventure.
-			</MudText>
-
-			<MudGrid Class="mt-3">
-				<MudItem xs="12" sm="6">
-					<MudPaper Class="pa-4" Elevation="1">
-						<MudText Typo="Typo.h6">For Players</MudText>
-						<MudText Typo="Typo.body2" Class="mt-2">Jump into single-player scenarios hosted by intelligent AI Game Masters. Create a character, make choices, and watch the story adapt dynamically to your actions.</MudText>
-						<MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/games" Class="mt-3">Browse Scenarios</MudButton>
-					</MudPaper>
-				</MudItem>
-
-				<MudItem xs="12" sm="6">
-					<MudPaper Class="pa-4" Elevation="1">
-						<MudText Typo="Typo.h6">Customize the AI GM</MudText>
-						<MudText Typo="Typo.body2" Class="mt-2">Adjust the AI Game Master's style, difficulty, and storytelling preferences to tailor the experience — no human GM required.</MudText>
-						<MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/settings" Class="mt-3">Adjust AI Settings</MudButton>
-					</MudPaper>
-				</MudItem>
-
-				<MudItem xs="12" sm="6">
-					<MudPaper Class="pa-4" Elevation="1">
-						<MudText Typo="Typo.h6">Manage Scenarios</MudText>
-						<MudText Typo="Typo.body2" Class="mt-2">Create and edit game scenarios. Define system prompts, initial game instructions, and customize the AI Game Master's behavior for each scenario.</MudText>
-						<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/scenarios" Class="mt-3">Manage Scenarios</MudButton>
-					</MudPaper>
-				</MudItem>
-
-				<MudItem xs="12" sm="6">
-					<MudPaper Class="pa-4" Elevation="1">
-						<MudText Typo="Typo.h6">Manage Players</MudText>
-						<MudText Typo="Typo.body2" Class="mt-2">Create and edit player characters. Define player names, descriptions, and assign them to rulesets for use in your games.</MudText>
-						<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/players" Class="mt-3">Manage Players</MudButton>
-					</MudPaper>
-				</MudItem>
-
-				<MudItem xs="12" sm="6">
-					<MudPaper Class="pa-4" Elevation="1">
-						<MudText Typo="Typo.h6">Manage Rulesets</MudText>
-						<MudText Typo="Typo.body2" Class="mt-2">Create and edit game rulesets. Define different game systems and rule sets that scenarios and players can use.</MudText>
-						<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/rulesets" Class="mt-3">Manage Rulesets</MudButton>
-					</MudPaper>
-				</MudItem>
-			</MudGrid>
-
-			<MudText Typo="Typo.subtitle2" Class="mt-4">Why JAIMES AF?</MudText>
-			<MudList T="string" Dense="true" Class="mt-2">
-				<MudListItem T="string">Rulesets (Game Systems): Supports multiple systems and user-defined rules — map mechanics flexibly so the AI storyteller can run any game system.</MudListItem>
-				<MudListItem T="string">Scenarios: Curated and procedurally generated story seeds that the AI storyteller adapts in real time to craft unique narratives.</MudListItem>
-				<MudListItem T="string">Players: Personalized single-player experiences with persistent characters and meaningful choice-driven consequences.</MudListItem>
-				<MudListItem T="string">Games: Single-player AI-GM sessions and persistent campaigns with branching outcomes, replay, and full session replay for review.</MudListItem>
-				<MudListItem T="string">Flexibility & Cutting-Edge AI: A modular platform that lets the AI storyteller vary tone, pacing, and content to tell fresh, unique stories every playthrough.</MudListItem>
-			</MudList>
+		<MudItem xs="12" sm="6" md="3">
+			<MudPaper Class="pa-4" Elevation="1" Style="height: 100%;">
+				<MudText Typo="Typo.h6">Play Games</MudText>
+				<MudText Typo="Typo.body2" Class="mt-2">Start a new game or continue an existing one. Chat with your AI Game Master in real-time.</MudText>
+				<MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/games" Class="mt-3" FullWidth="true">View Games</MudButton>
+			</MudPaper>
 		</MudItem>
 
-		<MudItem xs="12" md="4">
-			<MudPaper Elevation="0" Class="pa-4 mud-elevation-1">
-				<MudText Typo="Typo.h6">Get started</MudText>
-				<MudText Typo="Typo.body2" Class="mt-2">Ready to play? Start a scenario or tune the AI Game Master to your taste.</MudText>
-				<MudStack direction="Column" Spacing="1" Class="mt-3">
-					<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/games">Start a Scenario</MudButton>
-					<MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/settings">Customize AI GM</MudButton>
-					<MudButton Variant="Variant.Text" Href="/help">Learn More</MudButton>
-				</MudStack>
-				<MudText Typo="Typo.caption" Class="mt-4">Powered by .NET and Microsoft Agent Framework.</MudText>
+		<MudItem xs="12" sm="6" md="3">
+			<MudPaper Class="pa-4" Elevation="1" Style="height: 100%;">
+				<MudText Typo="Typo.h6">Scenarios</MudText>
+				<MudText Typo="Typo.body2" Class="mt-2">Create and edit game scenarios with system prompts and initial instructions.</MudText>
+				<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/scenarios" Class="mt-3" FullWidth="true">Manage Scenarios</MudButton>
+			</MudPaper>
+		</MudItem>
+
+		<MudItem xs="12" sm="6" md="3">
+			<MudPaper Class="pa-4" Elevation="1" Style="height: 100%;">
+				<MudText Typo="Typo.h6">Players</MudText>
+				<MudText Typo="Typo.body2" Class="mt-2">Create and edit player characters with names, descriptions, and ruleset assignments.</MudText>
+				<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/players" Class="mt-3" FullWidth="true">Manage Players</MudButton>
+			</MudPaper>
+		</MudItem>
+
+		<MudItem xs="12" sm="6" md="3">
+			<MudPaper Class="pa-4" Elevation="1" Style="height: 100%;">
+				<MudText Typo="Typo.h6">Rulesets</MudText>
+				<MudText Typo="Typo.body2" Class="mt-2">Create and edit game rulesets that define different game systems and mechanics.</MudText>
+				<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/rulesets" Class="mt-3" FullWidth="true">Manage Rulesets</MudButton>
 			</MudPaper>
 		</MudItem>
 	</MudGrid>
+
+	<MudDivider Class="my-6" />
+
+	<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-3">How It Works</MudText>
+	<MudList T="string" Dense="true">
+		<MudListItem T="string">Rulesets: Define game systems and mechanics that the AI Game Master will use to run your games.</MudListItem>
+		<MudListItem T="string">Scenarios: Create story seeds with system prompts and initial instructions that guide the AI's storytelling.</MudListItem>
+		<MudListItem T="string">Players: Create player characters with names and descriptions that the AI will incorporate into the story.</MudListItem>
+		<MudListItem T="string">Games: Start a new game by selecting a scenario and player. Chat with the AI Game Master in real-time and watch your story unfold.</MudListItem>
+		<MudListItem T="string">AI-Powered: Built on Microsoft Agent Framework, the AI adapts the story dynamically based on your choices and interactions.</MudListItem>
+	</MudList>
+
+	<MudText Typo="Typo.caption" Class="mt-4 text-muted">Powered by .NET and Microsoft Agent Framework.</MudText>
 </MudPaper>
