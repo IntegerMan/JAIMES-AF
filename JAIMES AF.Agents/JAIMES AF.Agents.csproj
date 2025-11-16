@@ -11,11 +11,13 @@
     <PackageReference Include="Azure.AI.OpenAI" />
     <PackageReference Include="Microsoft.Agents.AI" />
     <PackageReference Include="Microsoft.Agents.AI.OpenAI" />
+    <PackageReference Include="Microsoft.KernelMemory.Core" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\JAIMES AF.ServiceDefinitions\JAIMES AF.ServiceDefinitions.csproj" />
     <ProjectReference Include="..\JAIMES AF.Tools\JAIMES AF.Tools.csproj" />
+    <ProjectReference Include="..\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj" />
   </ItemGroup>
 
 </Project>

@@ -14,9 +14,20 @@ using Microsoft.Extensions.Logging;
 
 namespace MattEland.Jaimes.Agents.Services;
 
-public class ChatService(JaimesChatOptions options, ILogger<ChatService> logger, IChatHistoryService chatHistoryService) : IChatService
+public class ChatService : IChatService
 {
-    private readonly JaimesChatOptions _options = options ?? throw new ArgumentNullException(nameof(options));
+    private readonly JaimesChatOptions _options;
+    private readonly ILogger<ChatService> logger;
+    private readonly IChatHistoryService chatHistoryService;
+    private readonly IRulesSearchService? rulesSearchService;
+
+    public ChatService(JaimesChatOptions options, ILogger<ChatService> logger, IChatHistoryService chatHistoryService, IRulesSearchService? rulesSearchService = null)
+    {
+        _options = options ?? throw new ArgumentNullException(nameof(options));
+        this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        this.chatHistoryService = chatHistoryService ?? throw new ArgumentNullException(nameof(chatHistoryService));
+        this.rulesSearchService = rulesSearchService;
+    }
     
     // Use consistent source name with OpenTelemetry configuration
     private const string DefaultActivitySourceName = "Jaimes.ApiService";
@@ -28,16 +39,32 @@ public class ChatService(JaimesChatOptions options, ILogger<ChatService> logger,
         IList<AITool>? tools = null;
         if (game != null)
         {
+            List<AITool> toolList = new();
+            
             PlayerInfoTool playerInfoTool = new(game);
             
             // Create the tool with explicit name and description to ensure proper registration
             // Per Microsoft docs: https://learn.microsoft.com/en-us/agent-framework/user-guide/agents/agent-tools?pivots=programming-language-csharp
             // The Create method has optional parameters for name and description
-            AIFunction function = AIFunctionFactory.Create(
+            AIFunction playerInfoFunction = AIFunctionFactory.Create(
                 () => playerInfoTool.GetPlayerInfo(),
                 name: "GetPlayerInfo",
                 description: "Retrieves detailed information about the current player character in the game, including their name, unique identifier, and character description. Use this tool whenever you need to reference or describe the player character, their background, or their current state in the game world.");
-            tools = [function];
+            toolList.Add(playerInfoFunction);
+            
+            // Add rules search tool if the service is available
+            if (this.rulesSearchService != null)
+            {
+                RulesSearchTool rulesSearchTool = new(game, this.rulesSearchService);
+                
+                AIFunction rulesSearchFunction = AIFunctionFactory.Create(
+                    (string query) => rulesSearchTool.SearchRulesAsync(query),
+                    name: "SearchRules",
+                    description: "Searches the ruleset's indexed rules to find answers to specific questions or queries. This is a rules search tool that gets answers from rules to specific questions or queries. Use this tool whenever you need to look up game rules, mechanics, or rule clarifications. The tool will search through the indexed rules for the current scenario's ruleset and return relevant information.");
+                toolList.Add(rulesSearchFunction);
+            }
+            
+            tools = toolList;
             
             // Log detailed information about registered tools for debugging
             foreach (AITool tool in tools)

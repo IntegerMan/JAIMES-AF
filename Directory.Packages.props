@@ -24,6 +24,7 @@
     <PackageVersion Include="Microsoft.Extensions.Http.Polly" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.KernelMemory.Core" Version="0.80.241017.2" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageVersion Include="Markdig" Version="0.37.0" />
     <PackageVersion Include="MudBlazor" Version="8.14.0" />

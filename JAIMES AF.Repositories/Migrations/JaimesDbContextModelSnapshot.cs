@@ -47,7 +47,7 @@ namespace MattEland.Jaimes.Repositories.Migrations
 
                     b.HasIndex("PreviousHistoryId");
 
-                    b.ToTable("ChatHistories");
+                    b.ToTable("ChatHistories", (string)null);
                 });
 
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Game", b =>
@@ -84,7 +84,7 @@ namespace MattEland.Jaimes.Repositories.Migrations
 
                     b.HasIndex("ScenarioId");
 
-                    b.ToTable("Games");
+                    b.ToTable("Games", (string)null);
                 });
 
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Message", b =>
@@ -117,7 +117,7 @@ namespace MattEland.Jaimes.Repositories.Migrations
 
                     b.HasIndex("PlayerId");
 
-                    b.ToTable("Messages");
+                    b.ToTable("Messages", (string)null);
                 });
 
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Player", b =>
@@ -140,7 +140,7 @@ namespace MattEland.Jaimes.Repositories.Migrations
 
                     b.HasIndex("RulesetId");
 
-                    b.ToTable("Players");
+                    b.ToTable("Players", (string)null);
 
                     b.HasData(
                         new
@@ -163,7 +163,7 @@ namespace MattEland.Jaimes.Repositories.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Rulesets");
+                    b.ToTable("Rulesets", (string)null);
 
                     b.HasData(
                         new
@@ -205,7 +205,7 @@ namespace MattEland.Jaimes.Repositories.Migrations
 
                     b.HasIndex("RulesetId");
 
-                    b.ToTable("Scenarios");
+                    b.ToTable("Scenarios", (string)null);
 
                     b.HasData(
                         new
