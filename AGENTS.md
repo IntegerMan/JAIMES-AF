@@ -9,7 +9,9 @@ Key service interfaces and locations
 - `IGameService` -> `JAIMES AF.Services/Services/IGameService.cs`
 - `IScenariosService` -> `JAIMES AF.Services/Services/IScenariosService.cs`
 - `IPlayersService` -> `JAIMES AF.Services/Services/IPlayersService.cs`
-- `ChatService` -> `JAIMES AF.Services/Services/ChatService.cs`
+- `ChatService` -> `JAIMES AF.Agents/Services/ChatService.cs`
+- `IRulesSearchService` -> `JAIMES AF.ServiceDefinitions/Services/IRulesSearchService.cs`
+- `RulesSearchService` -> `JAIMES AF.Agents/Services/RulesSearchService.cs`
 
 Common DTOs and Mappers
 
@@ -40,9 +42,21 @@ Testing
 
 Development notes
 
-- Target: `.NET9`
+- Target: `.NET10`
 - DI registration: `ServiceCollectionExtensions.cs` in each layer registers services and repositories.
 - Keep endpoints thin and delegate to services.
+
+Kernel Memory and Rules Search
+
+- **Kernel Memory**: Used for RAG (Retrieval-Augmented Generation) search over rulesets
+- **RulesSearchService**: Provides rules search functionality using Kernel Memory
+- **Storage**: Rules are stored in Kernel Memory's SQLite vector database (`km_vector_store.db`), NOT in EF entities
+- **Indexing**: Rules are indexed by `rulesetId` - this is used as an index/filter for organizing and searching rules
+- **Tool**: `RulesSearchTool` is registered with AI agents to allow them to search rules using natural language queries
+- **Configuration**: Uses `WithSimpleVectorDb()` with SQLite connection string for vector storage
+- **References**: 
+  - Blog post: https://blog.leadingedje.com/post/ai/documents/kernelmemory.html
+  - Kernel Memory uses `ImportTextAsync()` to index rules and `AskAsync()` to search them
 
 Database migrations and seed data
 
