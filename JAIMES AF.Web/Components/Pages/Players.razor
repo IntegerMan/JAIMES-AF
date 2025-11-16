@@ -1,0 +1,62 @@
+@page "/players"
+@rendermode InteractiveServer
+
+@inject HttpClient Http
+@inject ILoggerFactory LoggerFactory
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+
+<PageTitle>Players</PageTitle>
+
+<MudPaper Class="pa-4">
+	<MudText Typo="Typo.h4">Players</MudText>
+
+	<MudText Class="mb-4">Manage your game players. Create new players or edit existing ones.</MudText>
+
+	<MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/players/new" Class="mb-4">
+		New Player
+	</MudButton>
+
+	<div style="position: relative; min-height: 200px;">
+		@if (isLoading)
+		{
+			<div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+				<MudProgressCircular Indeterminate="true"/>
+			</div>
+		}
+		
+		@if (!isLoading && !string.IsNullOrEmpty(errorMessage))
+		{
+			<MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
+		}
+		
+		@if (!isLoading && string.IsNullOrEmpty(errorMessage) && (players is null || players.Length == 0))
+		{
+			<MudText Class="mb-4">No players yet. <MudLink Href="/players/new">Create a new player</MudLink></MudText>
+		}
+		
+		@if (!isLoading && string.IsNullOrEmpty(errorMessage) && players is not null && players.Length > 0)
+		{
+			<MudTable Items="players" Dense="true" Hover="true">
+				<HeaderContent>
+					<MudTh>Name</MudTh>
+					<MudTh>Description</MudTh>
+					<MudTh>Ruleset ID</MudTh>
+					<MudTh align="Align.Right">Actions</MudTh>
+				</HeaderContent>
+				<RowTemplate>
+					<MudTd>@context.Name</MudTd>
+					<MudTd>@(context.Description ?? "-")</MudTd>
+					<MudTd>@context.RulesetId</MudTd>
+					<MudTd align="Align.Right">
+						<MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+						           Href="@($"/players/{context.Id}/edit")" Class="me-2">
+							Edit
+						</MudButton>
+					</MudTd>
+				</RowTemplate>
+			</MudTable>
+		}
+	</div>
+</MudPaper>
+

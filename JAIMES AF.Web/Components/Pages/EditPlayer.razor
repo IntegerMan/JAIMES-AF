@@ -1,0 +1,94 @@
+@page "/players/{PlayerId}/edit"
+@rendermode InteractiveServer
+
+<PageTitle>Edit Player</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+	<MudPaper Class="pa-4">
+		<MudText Typo="Typo.h4" Class="mb-4">Edit Player</MudText>
+
+		@if (isLoading)
+		{
+			<MudProgressCircular Indeterminate="true" Class="my-4" />
+		}
+		else if (!string.IsNullOrEmpty(errorMessage))
+		{
+			<MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
+		}
+
+		@if (!isLoading && !string.IsNullOrEmpty(errorMessage) && errorMessage.Contains("not found"))
+		{
+			<MudButton Variant="Variant.Text" Color="Color.Primary" Href="/players" Class="mt-2">
+				Back to Players
+			</MudButton>
+		}
+
+		@if (!isLoading && string.IsNullOrEmpty(errorMessage))
+		{
+			<MudForm>
+				<MudTextField Value="@PlayerId"
+				              Label="Player ID"
+				              Variant="Variant.Outlined"
+				              Class="mb-4"
+				              Disabled="true"
+				              HelperText="Player ID cannot be changed" />
+
+				<MudSelect T="string"
+				           @bind-Value="selectedRulesetId"
+				           Label="Ruleset"
+				           Variant="Variant.Outlined"
+				           Class="mb-4"
+				           Disabled="isSaving"
+				           Required="true"
+				           RequiredError="Please select a ruleset">
+					@foreach (var ruleset in rulesets)
+					{
+						<MudSelectItem Value="@ruleset.Id">@ruleset.Name</MudSelectItem>
+					}
+				</MudSelect>
+
+				<MudTextField @bind-Value="name"
+				              Label="Name"
+				              Variant="Variant.Outlined"
+				              Class="mb-4"
+				              Disabled="isSaving"
+				              Required="true"
+				              RequiredError="Name is required" />
+
+				<MudTextField @bind-Value="description"
+				              Label="Description"
+				              Variant="Variant.Outlined"
+				              Class="mb-4"
+				              Disabled="isSaving"
+				              Lines="2" />
+
+				<div class="d-flex gap-2">
+					<MudButton Variant="Variant.Filled" 
+					           Color="Color.Primary" 
+					           OnClick="UpdatePlayerAsync" 
+					           Disabled="isSaving || !IsFormValid()"
+					           Class="mt-2">
+						@if (isSaving)
+						{
+							<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+							<span class="ms-2">Saving...</span>
+						}
+						else
+						{
+							<span>Save Changes</span>
+						}
+					</MudButton>
+
+					<MudButton Variant="Variant.Text" 
+					           Color="Color.Default" 
+					           OnClick="Cancel" 
+					           Disabled="isSaving"
+					           Class="mt-2">
+						Cancel
+					</MudButton>
+				</div>
+			</MudForm>
+		}
+	</MudPaper>
+</MudContainer>
+
