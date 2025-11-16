@@ -25,7 +25,10 @@
 	{
 		<div class="game-header">
 			<MudText Typo="Typo.h5" Class="mb-0">Game details</MudText>
-			<MudText Typo="Typo.body2" Class="text-muted">Game ID: @game.GameId</MudText>
+			<MudText Typo="Typo.body2" Class="text-muted">
+				<strong>@game.PlayerName</strong> playing <strong>@game.ScenarioName</strong> (@game.RulesetId) 
+			</MudText>
+			<MudText Typo="Typo.body2" Class="text-muted">Game @game.GameId</MudText>
 		</div>
 
 		<div id="chat-scroll-container" class="chat-scroll">
