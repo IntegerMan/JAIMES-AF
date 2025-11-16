@@ -49,6 +49,22 @@ dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=tcp:{your-
 
 Note: You'll need to regenerate migrations for SQL Server (see instructions above) before deploying to Azure SQL.
 
+## Chat Service Configuration
+
+The application requires Azure OpenAI with the following deployment:
+
+- **Model Deployment**: `gpt-4o-mini` (or update the `Deployment` setting in appsettings.json)
+
+Configure your Azure OpenAI credentials via user secrets:
+
+```bash
+cd "JAIMES AF.ApiService"
+dotnet user-secrets set "ChatService:Endpoint" "https://YourResource.openai.azure.com/"
+dotnet user-secrets set "ChatService:ApiKey" "your-actual-api-key-here"
+```
+
+Replace `YourResource` with your Azure OpenAI resource name and provide your actual API key.
+
 ## Project Structure
 
 - **JAIMES AF.ApiService** - FastEndpoints-based API
