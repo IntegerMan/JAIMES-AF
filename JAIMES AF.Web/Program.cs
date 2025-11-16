@@ -26,7 +26,7 @@ builder.Services.AddHttpClient("Api", client =>
 })
 // Ensure service discovery is added on IHttpClientBuilder, then add resilience pipeline
 .AddServiceDiscovery()
-.AddStandardResilienceHandler();
+.AddStandardResilienceHandler(Extensions.ConfigureResilienceHandlerExcludingPost);
 
 // Make the named client the default HttpClient that's injected with `@inject HttpClient Http`
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api"));

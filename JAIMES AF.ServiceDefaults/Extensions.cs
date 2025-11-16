@@ -5,6 +5,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.ServiceDiscovery;
+using Microsoft.Extensions.Http.Resilience;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
@@ -32,8 +33,8 @@ public static class Extensions
 
         builder.Services.ConfigureHttpClientDefaults(http =>
         {
-            // Turn on resilience by default
-            http.AddStandardResilienceHandler();
+            // Turn on resilience by default, but exclude POST requests from retries
+            http.AddStandardResilienceHandler(ConfigureResilienceHandlerExcludingPost);
 
             // Turn on service discovery by default
             http.AddServiceDiscovery();
@@ -160,5 +161,29 @@ public static class Extensions
         }
 
         return app;
+    }
+
+    /// <summary>
+    /// Configures a StandardResilienceHandler to exclude POST requests from retries.
+    /// This prevents duplicate submissions and other side effects from retrying non-idempotent operations.
+    /// </summary>
+    public static void ConfigureResilienceHandlerExcludingPost(HttpStandardResilienceOptions options)
+    {
+        options.Retry.ShouldHandle = args =>
+        {
+            // Exclude POST requests from retries (only when we have a response)
+            if (args.Outcome.Result?.RequestMessage?.Method == HttpMethod.Post)
+            {
+                return ValueTask.FromResult(false);
+            }
+            
+            // For non-POST requests or exceptions, use default retry logic
+            return ValueTask.FromResult(
+                args.Outcome.Exception is HttpRequestException ||
+                (args.Outcome.Result?.StatusCode == System.Net.HttpStatusCode.RequestTimeout ||
+                 args.Outcome.Result?.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable ||
+                 (args.Outcome.Result?.StatusCode >= System.Net.HttpStatusCode.InternalServerError &&
+                  args.Outcome.Result?.StatusCode <= (System.Net.HttpStatusCode)599)));
+        };
     }
 }
