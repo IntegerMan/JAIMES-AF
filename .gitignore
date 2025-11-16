@@ -366,3 +366,6 @@ FodyWeavers.xsd
 *.db
 *.db-shm
 *.db-wal
+
+# Indexer tracking file
+indexer_tracking.json
