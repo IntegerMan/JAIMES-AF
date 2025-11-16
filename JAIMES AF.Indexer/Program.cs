@@ -39,12 +39,11 @@ if (string.IsNullOrWhiteSpace(options.OpenAiEndpoint) || string.IsNullOrWhiteSpa
 // Register services
 builder.Services.AddSingleton(options);
 
-// Configure Kernel Memory
+// Configure Kernel Memory - only embedding model needed for indexing
 OpenAIConfig openAiConfig = new()
 {
     APIKey = options.OpenAiApiKey,
     Endpoint = options.OpenAiEndpoint,
-    TextModel = options.OpenAiDeployment,
     EmbeddingModel = options.OpenAiDeployment
 };
 
@@ -57,11 +56,7 @@ builder.Services.AddSingleton(memory);
 
 // Register application services
 builder.Services.AddSingleton<IDirectoryScanner, DirectoryScanner>();
-builder.Services.AddSingleton<IChangeTracker>(sp =>
-{
-    ILogger<ChangeTracker> logger = sp.GetRequiredService<ILogger<ChangeTracker>>();
-    return new ChangeTracker(logger, options.ChangeTrackingFile);
-});
+builder.Services.AddSingleton<IChangeTracker, ChangeTracker>();
 builder.Services.AddSingleton<IDocumentIndexer, DocumentIndexer>();
 builder.Services.AddSingleton<IndexingOrchestrator>();
 

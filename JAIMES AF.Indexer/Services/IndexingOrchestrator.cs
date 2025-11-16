@@ -121,37 +121,30 @@ public class IndexingOrchestrator
         try
         {
             string currentHash = await _changeTracker.ComputeFileHashAsync(filePath, cancellationToken);
-            DocumentState? existingState = await _changeTracker.GetDocumentStateAsync(filePath, cancellationToken);
+            string? existingHash = await _documentIndexer.GetDocumentHashAsync(filePath, indexName, cancellationToken);
 
-            if (existingState != null)
-            {
-                if (existingState.Hash == currentHash)
-                {
-                    _logger.LogDebug("Document unchanged, skipping: {FilePath}", filePath);
-                    return IndexingResult.Skipped;
-                }
-
-                // Document has changed, update it
-                _logger.LogInformation("Document changed, updating: {FilePath}", filePath);
-            }
-            else
+            // If we can't retrieve the stored hash (Kernel Memory limitation), 
+            // we'll check if document exists and always re-index to update the hash tag
+            // Kernel Memory handles document updates efficiently when using the same documentId
+            bool documentExists = existingHash != null;
+            
+            if (!documentExists)
             {
                 _logger.LogInformation("New document found, adding: {FilePath}", filePath);
             }
+            else
+            {
+                // Document exists - we'll re-index it to ensure hash tag is up to date
+                // Note: This means we can't skip unchanged documents easily without 
+                // being able to retrieve the stored hash from Kernel Memory
+                _logger.LogInformation("Document exists, updating hash tag: {FilePath}", filePath);
+            }
 
-            bool success = await _documentIndexer.IndexDocumentAsync(filePath, indexName, cancellationToken);
+            bool success = await _documentIndexer.IndexDocumentAsync(filePath, indexName, currentHash, cancellationToken);
             
             if (success)
             {
-                DocumentState newState = new()
-                {
-                    FilePath = filePath,
-                    Hash = currentHash,
-                    LastIndexed = DateTime.UtcNow
-                };
-                await _changeTracker.SaveDocumentStateAsync(newState, cancellationToken);
-
-                return existingState == null ? IndexingResult.Added : IndexingResult.Updated;
+                return documentExists ? IndexingResult.Updated : IndexingResult.Added;
             }
 
             return IndexingResult.Error;

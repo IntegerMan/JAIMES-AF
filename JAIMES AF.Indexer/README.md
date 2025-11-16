@@ -19,17 +19,16 @@ The application is designed with modularity in mind, making it easy to convert t
 ### Services
 
 - **IDirectoryScanner / DirectoryScanner**: Scans directories and enumerates files
-- **IChangeTracker / ChangeTracker**: Tracks document state using file hashes stored in JSON
-- **IDocumentIndexer / DocumentIndexer**: Interfaces with Kernel Memory to index documents
+- **IChangeTracker / ChangeTracker**: Computes SHA256 file hashes for change detection
+- **IDocumentIndexer / DocumentIndexer**: Interfaces with Kernel Memory to index documents and check document status
 - **IndexingOrchestrator**: Coordinates the indexing process
 
 ### Configuration
 
 Configuration is provided via `appsettings.json`:
 - `SourceDirectory`: Root directory to scan
-- `VectorDbConnectionString`: SQLite connection string for Kernel Memory vector store
-- `OpenAiEndpoint`, `OpenAiApiKey`, `OpenAiDeployment`: Azure OpenAI configuration
-- `ChangeTrackingFile`: Path to JSON file storing document state (default: `indexer_tracking.json`)
+- `VectorDbConnectionString`: SQLite connection string for Kernel Memory vector store (default: `"Data Source=km_vector_store.db"` - must match RulesSearchService)
+- `OpenAiEndpoint`, `OpenAiApiKey`, `OpenAiDeployment`: Azure OpenAI configuration (only EmbeddingModel is used, not TextModel)
 - `SupportedExtensions`: List of file extensions to index (default: `.txt`, `.md`, `.pdf`, `.docx`)
 - `Recursive`: Whether to process subdirectories recursively (default: `true`)
 
@@ -68,10 +67,10 @@ Documents are organized by directory:
 
 ## Change Tracking
 
-The application tracks document state using SHA256 file hashes stored in `indexer_tracking.json`:
-- **New documents**: Hash is computed and document is indexed
-- **Changed documents**: Hash differs from stored value, document is re-indexed
-- **Unchanged documents**: Hash matches stored value, document is skipped
+The application tracks document state using SHA256 file hashes stored as tags in Kernel Memory:
+- **New documents**: Hash is computed and document is indexed with hash stored as a tag
+- **Existing documents**: Document status is checked in Kernel Memory, and hash tag is updated on re-index
+- **Note**: Due to Kernel Memory API limitations, we cannot easily retrieve stored hash tags from search results. As a result, existing documents are re-indexed to ensure the hash tag is current. Kernel Memory handles document updates efficiently when using the same documentId.
 
 ## Logging
 
@@ -91,8 +90,9 @@ The modular design allows easy conversion to a worker service:
 
 ## Integration with RulesSearchService
 
-This indexer populates the same vector store (`km_vector_store.db`) used by `RulesSearchService`:
-- Documents indexed here are searchable via the RulesSearchService
-- Index names should align with ruleset IDs for proper organization
-- The vector store is shared, so both services can access the same indexed documents
+This indexer uses the same vector store as `RulesSearchService`:
+- **Shared Database**: Both services use the same vector database connection string (`Data Source=km_vector_store.db` by default)
+- **Same Configuration**: The `VectorDbConnectionString` in `appsettings.json` should match the connection string used by `RulesSearchService` (currently hardcoded to `"Data Source=km_vector_store.db"`)
+- **Document Access**: Documents indexed here are searchable via the RulesSearchService
+- **Index Organization**: Index names are generated from directory names (prefixed with `index-`), while RulesSearchService uses `ruleset-` prefix for ruleset indexes
 
