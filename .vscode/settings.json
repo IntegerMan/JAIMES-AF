@@ -14,6 +14,6 @@
         "webfrontend"
     ],
     "debug.allowBreakpointsEverywhere": true,
-    "debug.inlineValues": true,
+    "debug.inlineValues": "on",
     "debug.showBreakpointsInOverviewRuler": true
 }
