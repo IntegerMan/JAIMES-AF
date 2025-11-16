@@ -6,7 +6,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/JAIMES AF.AppHost/bin/Debug/net9.0/JAIMES AF.AppHost.dll",
+            "program": "${workspaceFolder}/JAIMES AF.AppHost/bin/Debug/net10.0/JAIMES AF.AppHost.dll",
             "args": [],
             "cwd": "${workspaceFolder}/JAIMES AF.AppHost",
             "stopAtEntry": false,

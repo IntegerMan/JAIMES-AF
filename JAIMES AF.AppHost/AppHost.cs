@@ -2,6 +2,9 @@
 {
     Console.WriteLine("Starting Aspire AppHost...");
     
+    // Use polling instead of inotify to avoid watcher limits
+    Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER", "1", EnvironmentVariableTarget.Process);
+
     IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
     
     Console.WriteLine("Adding API service...");
