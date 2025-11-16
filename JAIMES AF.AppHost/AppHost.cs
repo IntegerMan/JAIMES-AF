@@ -11,7 +11,8 @@
     IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIMES_AF_ApiService>("apiservice")
         .WithIconName("DocumentGlobe", IconVariant.Regular)
         .WithExternalHttpEndpoints()
-        .WithUrls(u => u.Urls.Clear())
+        //.WithUrls(u => u.Urls.Clear())
+        .WithUrlForEndpoint("http", static url => url.DisplayText = "🌳 Root")
         .WithUrlForEndpoint("http", static _ => new()
         {
             Url = "/openapi/v1.json",
@@ -45,7 +46,27 @@
             DisplayText = "👨‍⚕️ Health"
         })
         .WithUrlForEndpoint("http", static url => url.DisplayText = "🏠 Home")
-        .WithUrlForEndpoint("https", static url => url.DisplayText = "🔑 Home (HTTPS)")
+        //.WithUrlForEndpoint("https", static url => url.DisplayText = "🔑 Home (HTTPS)")
+        .WithUrlForEndpoint("http", static _ => new()
+        {
+            Url = "/games",
+            DisplayText = "🎮 Games"
+        })
+        .WithUrlForEndpoint("http", static _ => new()
+        {
+            Url = "/scenarios",
+            DisplayText = "📖 Scenarios"
+        })
+        .WithUrlForEndpoint("http", static _ => new()
+        {
+            Url = "/players",
+            DisplayText = "👤 Players"
+        })
+        .WithUrlForEndpoint("http", static _ => new()
+        {
+            Url = "/rulesets",
+            DisplayText = "📋 Rulesets"
+        })
         .WithReference(apiService)
         .WaitFor(apiService)
         // Configure debug-level logging for user namespaces and Agent Framework
