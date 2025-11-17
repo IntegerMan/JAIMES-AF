@@ -7,16 +7,10 @@ namespace MattEland.Jaimes.Tools;
 /// <summary>
 /// Tool that provides rules search functionality using Kernel Memory RAG.
 /// </summary>
-public class RulesSearchTool
+public class RulesSearchTool(GameDto game, IRulesSearchService rulesSearchService)
 {
-    private readonly GameDto _game;
-    private readonly IRulesSearchService _rulesSearchService;
-
-    public RulesSearchTool(GameDto game, IRulesSearchService rulesSearchService)
-    {
-        _game = game ?? throw new ArgumentNullException(nameof(game));
-        _rulesSearchService = rulesSearchService ?? throw new ArgumentNullException(nameof(rulesSearchService));
-    }
+    private readonly GameDto _game = game ?? throw new ArgumentNullException(nameof(game));
+    private readonly IRulesSearchService _rulesSearchService = rulesSearchService ?? throw new ArgumentNullException(nameof(rulesSearchService));
 
     /// <summary>
     /// Searches the ruleset's rules to find answers to specific questions or queries.

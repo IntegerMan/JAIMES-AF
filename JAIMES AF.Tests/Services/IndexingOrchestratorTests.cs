@@ -73,7 +73,7 @@ public class IndexingOrchestratorTests
 
         // Assert
         summary.TotalProcessed.ShouldBe(1);
-        summary.TotalAdded.ShouldBe(1);
+        summary.TotalSucceeded.ShouldBe(1);
         summary.TotalUpdated.ShouldBe(0);
         summary.TotalErrors.ShouldBe(0);
     }
@@ -145,7 +145,7 @@ public class IndexingOrchestratorTests
         // Assert
         int totalFiles = subdirectoryCount * (newFiles + existingFiles);
         summary.TotalProcessed.ShouldBe(totalFiles);
-        summary.TotalAdded.ShouldBe(subdirectoryCount * newFiles);
+        summary.TotalSucceeded.ShouldBe(subdirectoryCount * newFiles);
         summary.TotalUpdated.ShouldBe(subdirectoryCount * existingFiles);
         summary.TotalErrors.ShouldBe(0);
     }
@@ -184,7 +184,7 @@ public class IndexingOrchestratorTests
         // Assert
         summary.TotalProcessed.ShouldBe(1);
         summary.TotalErrors.ShouldBe(1);
-        summary.TotalAdded.ShouldBe(0);
+        summary.TotalSucceeded.ShouldBe(0);
     }
 
     [Fact]
@@ -226,7 +226,7 @@ public class IndexingOrchestratorTests
         // Assert
         summary.TotalProcessed.ShouldBe(2);
         summary.TotalErrors.ShouldBe(1);
-        summary.TotalAdded.ShouldBe(1);
+        summary.TotalSucceeded.ShouldBe(1);
     }
 
     [Fact]
@@ -302,7 +302,7 @@ public class IndexingOrchestratorTests
         IndexingOrchestrator.IndexingSummary summary1 = new()
         {
             TotalProcessed = 5,
-            TotalAdded = 3,
+            TotalSucceeded = 3,
             TotalUpdated = 2,
             TotalErrors = 0
         };
@@ -310,7 +310,7 @@ public class IndexingOrchestratorTests
         IndexingOrchestrator.IndexingSummary summary2 = new()
         {
             TotalProcessed = 3,
-            TotalAdded = 1,
+            TotalSucceeded = 1,
             TotalUpdated = 1,
             TotalErrors = 1
         };
@@ -320,7 +320,7 @@ public class IndexingOrchestratorTests
 
         // Assert
         summary1.TotalProcessed.ShouldBe(8);
-        summary1.TotalAdded.ShouldBe(4);
+        summary1.TotalSucceeded.ShouldBe(4);
         summary1.TotalUpdated.ShouldBe(3);
         summary1.TotalErrors.ShouldBe(1);
     }

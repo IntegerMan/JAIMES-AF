@@ -86,7 +86,7 @@ Based on this project's configuration:
    ```json
    {
      "Indexer": {
-       "SourceDirectory": "C:\\Users\\MattE\\OneDrive\\Sourcebooks",
+       "SourceDirectory": "C:\\Your\\Directory\\Sourcebooks",
        "VectorDbConnectionString": "Data Source=km_vector_store.db",
        "OpenAiEndpoint": "https://your-endpoint.openai.azure.com/",
        "OpenAiApiKey": "your-api-key",

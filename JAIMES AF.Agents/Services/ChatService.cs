@@ -14,21 +14,17 @@ using Microsoft.Extensions.Logging;
 
 namespace MattEland.Jaimes.Agents.Services;
 
-public class ChatService : IChatService
+public class ChatService(
+    JaimesChatOptions options,
+    ILogger<ChatService> logger,
+    IChatHistoryService chatHistoryService,
+    IRulesSearchService? rulesSearchService = null)
+    : IChatService
 {
-    private readonly JaimesChatOptions _options;
-    private readonly ILogger<ChatService> logger;
-    private readonly IChatHistoryService chatHistoryService;
-    private readonly IRulesSearchService? rulesSearchService;
+    private readonly JaimesChatOptions _options = options ?? throw new ArgumentNullException(nameof(options));
+    private readonly ILogger<ChatService> logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    private readonly IChatHistoryService chatHistoryService = chatHistoryService ?? throw new ArgumentNullException(nameof(chatHistoryService));
 
-    public ChatService(JaimesChatOptions options, ILogger<ChatService> logger, IChatHistoryService chatHistoryService, IRulesSearchService? rulesSearchService = null)
-    {
-        _options = options ?? throw new ArgumentNullException(nameof(options));
-        this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        this.chatHistoryService = chatHistoryService ?? throw new ArgumentNullException(nameof(chatHistoryService));
-        this.rulesSearchService = rulesSearchService;
-    }
-    
     // Use consistent source name with OpenTelemetry configuration
     private const string DefaultActivitySourceName = "Jaimes.ApiService";
 
@@ -53,9 +49,9 @@ public class ChatService : IChatService
             toolList.Add(playerInfoFunction);
             
             // Add rules search tool if the service is available
-            if (this.rulesSearchService != null)
+            if (rulesSearchService != null)
             {
-                RulesSearchTool rulesSearchTool = new(game, this.rulesSearchService);
+                RulesSearchTool rulesSearchTool = new(game, rulesSearchService);
                 
                 AIFunction rulesSearchFunction = AIFunctionFactory.Create(
                     (string query) => rulesSearchTool.SearchRulesAsync(query),

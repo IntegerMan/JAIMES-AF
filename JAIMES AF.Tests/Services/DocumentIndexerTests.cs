@@ -1,3 +1,4 @@
+using System.Reflection;
 using MattEland.Jaimes.Indexer.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.KernelMemory;
@@ -21,18 +22,25 @@ public class DocumentIndexerTests
     }
 
     [Theory]
-    [InlineData("C:\\Test\\rulesetA\\rules.pdf", "index-ruleseta", "doc-c-/test/ruleseta/rules.pdf")]
-    [InlineData("C:\\Test\\rulesetB\\rules.pdf", "index-rulesetb", "doc-c-/test/rulesetb/rules.pdf")]
-    [InlineData("/home/test/rulesetA/file.txt", "index-ruleseta", "doc-/home/test/ruleseta/file.txt")]
-    [InlineData("D:\\Documents\\My Rules\\guide.md", "index-my-rules", "doc-d-/documents/my-rules/guide.md")]
+    [InlineData("C:\\Test\\rulesetA\\rules.pdf", "index-ruleseta")]
+    [InlineData("C:\\Test\\rulesetB\\rules.pdf", "index-rulesetb")]
+    [InlineData("/home/test/rulesetA/file.txt", "index-ruleseta")]
+    [InlineData("D:\\Documents\\My Rules\\guide.md", "index-my-rules")]
+    [InlineData("C:\\Users\\MattE\\OneDrive\\Sourcebooks\\Battletech\\ATOW_QSR.pdf", "index-test")]
     public async Task IndexDocumentAsync_WhenFileExists_CallsImportDocumentAsyncWithCorrectDocumentId(
-        string filePath, string indexName, string expectedDocumentId)
+        string filePath, string indexName)
     {
         // Arrange
         string tempFile = Path.Combine(Path.GetTempPath(), Path.GetFileName(filePath));
         await File.WriteAllTextAsync(tempFile, "test content");
         string fileHash = "test-hash";
 
+        // Generate expected document ID from temp file path using reflection
+        MethodInfo? getDocumentIdMethod = typeof(DocumentIndexer).GetMethod("GetDocumentId", BindingFlags.NonPublic | BindingFlags.Static);
+        getDocumentIdMethod.ShouldNotBeNull();
+        string expectedDocumentId = (string)getDocumentIdMethod.Invoke(null, new object[] { tempFile })!;
+
+        Document? capturedDocument = null;
         // Mock ImportDocumentAsync - signature: ImportDocumentAsync(Document, string?, IEnumerable<string>?, IContext?, CancellationToken)
         _memoryMock
             .Setup(m => m.ImportDocumentAsync(
@@ -41,6 +49,8 @@ public class DocumentIndexerTests
                 It.IsAny<IEnumerable<string>?>(), 
                 It.IsAny<Microsoft.KernelMemory.Context.IContext?>(), 
                 It.IsAny<CancellationToken>()))
+            .Callback<Document, string?, IEnumerable<string>?, Microsoft.KernelMemory.Context.IContext?, CancellationToken>(
+                (doc, idx, steps, ctx, ct) => capturedDocument = doc)
             .ReturnsAsync(string.Empty);
 
         try
@@ -50,15 +60,8 @@ public class DocumentIndexerTests
 
             // Assert
             result.ShouldBeTrue();
-            // Verify the call was made with the correct document ID
-            _memoryMock.Verify(
-                m => m.ImportDocumentAsync(
-                    It.Is<Document>(d => d.Id == expectedDocumentId),
-                    It.IsAny<string?>(),
-                    It.IsAny<IEnumerable<string>?>(),
-                    It.IsAny<Microsoft.KernelMemory.Context.IContext?>(),
-                    It.IsAny<CancellationToken>()),
-                Times.Once);
+            capturedDocument.ShouldNotBeNull();
+            capturedDocument.Id.ShouldBe(expectedDocumentId);
         }
         finally
         {
@@ -153,15 +156,17 @@ public class DocumentIndexerTests
     public async Task DocumentExistsAsync_WhenDocumentExists_ReturnsTrue(
         string filePath, string indexName, bool documentExists)
     {
-        // Arrange
-        string documentId = $"doc-{filePath.Replace("\\", "/").Replace(":", "-").ToLowerInvariant()}";
+        // Arrange - Generate expected document ID using reflection
+        MethodInfo? getDocumentIdMethod = typeof(DocumentIndexer).GetMethod("GetDocumentId", BindingFlags.NonPublic | BindingFlags.Static);
+        getDocumentIdMethod.ShouldNotBeNull();
+        string expectedDocumentId = (string)getDocumentIdMethod.Invoke(null, new object[] { filePath })!;
         
         DataPipelineStatus? status = documentExists
             ? new DataPipelineStatus { Completed = true }
             : null;
 
         _memoryMock
-            .Setup(m => m.GetDocumentStatusAsync(documentId, indexName, It.IsAny<CancellationToken>()))
+            .Setup(m => m.GetDocumentStatusAsync(expectedDocumentId, indexName, It.IsAny<CancellationToken>()))
             .ReturnsAsync(status);
 
         // Act
@@ -177,7 +182,11 @@ public class DocumentIndexerTests
         // Arrange
         string filePath = "C:\\Test\\file.txt";
         string indexName = "test-index";
-        string documentId = $"doc-c-/test/file.txt";
+        
+        // Generate expected document ID using reflection
+        MethodInfo? getDocumentIdMethod = typeof(DocumentIndexer).GetMethod("GetDocumentId", BindingFlags.NonPublic | BindingFlags.Static);
+        getDocumentIdMethod.ShouldNotBeNull();
+        string documentId = (string)getDocumentIdMethod.Invoke(null, new object[] { filePath })!;
 
         DataPipelineStatus status = new DataPipelineStatus { Completed = false };
 
@@ -211,28 +220,68 @@ public class DocumentIndexerTests
     }
 
     [Theory]
-    [InlineData("C:\\Test\\RulesetA\\Rules.pdf", "doc-c-/test/ruleseta/rules.pdf")]
-    [InlineData("C:\\Test\\RulesetB\\Rules.pdf", "doc-c-/test/rulesetb/rules.pdf")]
-    [InlineData("D:\\Documents\\My Rules\\Guide.md", "doc-d-/documents/my-rules/guide.md")]
-    [InlineData("/home/user/rulesetA/file.txt", "doc-/home/user/ruleseta/file.txt")]
-    public async Task GetDocumentId_NormalizesPathCorrectly(string filePath, string expectedDocumentId)
+    [InlineData("C:\\Test\\RulesetA\\Rules.pdf")]
+    [InlineData("C:\\Test\\RulesetB\\Rules.pdf")]
+    [InlineData("D:\\Documents\\My Rules\\Guide.md")]
+    [InlineData("/home/user/rulesetA/file.txt")]
+    [InlineData("C:\\Users\\MattE\\OneDrive\\Sourcebooks\\Battletech\\ATOW_QSR.pdf")]
+    [InlineData("C:\\Users\\MattE\\OneDrive\\Sourcebooks\\Battletech\\E-CAT35260_Combat_Manual_Mercenaries.pdf")]
+    public void GetDocumentId_GeneratesValidHashBasedId(string filePath)
     {
-        // Arrange & Act
-        // We need to access the private method via reflection or test it indirectly
-        // Testing indirectly through DocumentExistsAsync which uses GetDocumentId
-        string indexName = "test-index";
-        
-        _memoryMock
-            .Setup(m => m.GetDocumentStatusAsync(expectedDocumentId, indexName, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((DataPipelineStatus?)null);
+        // Arrange - Use reflection to access the private static method
+        MethodInfo? getDocumentIdMethod = typeof(DocumentIndexer).GetMethod("GetDocumentId", BindingFlags.NonPublic | BindingFlags.Static);
+        getDocumentIdMethod.ShouldNotBeNull();
 
         // Act
-        _ = await _indexer.DocumentExistsAsync(filePath, indexName, TestContext.Current.CancellationToken);
+        string actualDocumentId = (string)getDocumentIdMethod.Invoke(null, new object[] { filePath })!;
+
+        // Assert - Verify the ID format and validity
+        actualDocumentId.ShouldStartWith("doc-");
+        actualDocumentId.Length.ShouldBe(36); // "doc-" (4) + 32 hex characters
+        
+        // Verify it only contains valid characters (a-f, 0-9, '-', '.')
+        string idWithoutPrefix = actualDocumentId[4..];
+        foreach (char c in idWithoutPrefix)
+        {
+            (char.IsLetterOrDigit(c) || c == '-' || c == '.' || c == '_').ShouldBeTrue(
+                $"Document ID contains invalid character: '{c}' in '{actualDocumentId}'");
+        }
+        
+        // Verify it's a valid hex string (only 0-9, a-f)
+        idWithoutPrefix.ShouldMatch("^[0-9a-f]{32}$");
+    }
+    
+    [Fact]
+    public void GetDocumentId_SamePathGeneratesSameId()
+    {
+        // Arrange
+        string filePath = "C:\\Test\\file.pdf";
+        MethodInfo? getDocumentIdMethod = typeof(DocumentIndexer).GetMethod("GetDocumentId", BindingFlags.NonPublic | BindingFlags.Static);
+        getDocumentIdMethod.ShouldNotBeNull();
+
+        // Act
+        string id1 = (string)getDocumentIdMethod.Invoke(null, new object[] { filePath })!;
+        string id2 = (string)getDocumentIdMethod.Invoke(null, new object[] { filePath })!;
 
         // Assert
-        _memoryMock.Verify(
-            m => m.GetDocumentStatusAsync(expectedDocumentId, indexName, It.IsAny<CancellationToken>()),
-            Times.Once);
+        id1.ShouldBe(id2);
+    }
+    
+    [Fact]
+    public void GetDocumentId_DifferentPathsGenerateDifferentIds()
+    {
+        // Arrange
+        string filePath1 = "C:\\Test\\file1.pdf";
+        string filePath2 = "C:\\Test\\file2.pdf";
+        MethodInfo? getDocumentIdMethod = typeof(DocumentIndexer).GetMethod("GetDocumentId", BindingFlags.NonPublic | BindingFlags.Static);
+        getDocumentIdMethod.ShouldNotBeNull();
+
+        // Act
+        string id1 = (string)getDocumentIdMethod.Invoke(null, new object[] { filePath1 })!;
+        string id2 = (string)getDocumentIdMethod.Invoke(null, new object[] { filePath2 })!;
+
+        // Assert
+        id1.ShouldNotBe(id2);
     }
 }
 

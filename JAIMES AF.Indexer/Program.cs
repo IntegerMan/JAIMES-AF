@@ -12,6 +12,10 @@ HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.SetMinimumLevel(LogLevel.Information);
+// Enable debug logging for Kernel Memory and OpenAI to see API calls
+builder.Logging.AddFilter("Microsoft.KernelMemory", LogLevel.Debug);
+builder.Logging.AddFilter("Microsoft.SemanticKernel", LogLevel.Debug);
+builder.Logging.AddFilter("OpenAI", LogLevel.Debug);
 
 // Load configuration
 builder.Configuration
@@ -40,16 +44,21 @@ if (string.IsNullOrWhiteSpace(options.OpenAiEndpoint) || string.IsNullOrWhiteSpa
 // Register services
 builder.Services.AddSingleton(options);
 
-// Configure Kernel Memory - only embedding model needed for indexing
-OpenAIConfig openAiConfig = new()
+// Configure Kernel Memory
+// Normalize endpoint URL - remove trailing slash to avoid 404 errors
+string normalizedEndpoint = options.OpenAiEndpoint.TrimEnd('/');
+
+AzureOpenAIConfig openAiConfig = new()
 {
     APIKey = options.OpenAiApiKey,
-    Endpoint = options.OpenAiEndpoint,
-    EmbeddingModel = options.OpenAiDeployment
+    Auth = AzureOpenAIConfig.AuthTypes.APIKey,
+    Endpoint = normalizedEndpoint,
+    Deployment = options.OpenAiDeployment,
 };
 
 IKernelMemory memory = new KernelMemoryBuilder()
-    .WithOpenAI(openAiConfig)
+    .WithAzureOpenAITextEmbeddingGeneration(openAiConfig)
+    .WithoutTextGenerator()
     .WithSimpleVectorDb(options.VectorDbConnectionString)
     .Build();
 
@@ -57,7 +66,6 @@ builder.Services.AddSingleton(memory);
 
 // Register application services
 builder.Services.AddSingleton<IDirectoryScanner, DirectoryScanner>();
-builder.Services.AddSingleton<IChangeTracker, ChangeTracker>();
 builder.Services.AddSingleton<IDocumentIndexer, DocumentIndexer>();
 builder.Services.AddSingleton<IndexingOrchestrator>();
 
@@ -74,11 +82,31 @@ try
     logger.LogInformation("Source directory: {SourceDirectory}", options.SourceDirectory);
     logger.LogInformation("Vector DB connection: {VectorDbConnectionString}", options.VectorDbConnectionString);
     logger.LogInformation("Supported extensions: {Extensions}", string.Join(", ", options.SupportedExtensions));
+    logger.LogInformation("=== OpenAI Configuration ===");
+    logger.LogInformation("OpenAI Endpoint: {Endpoint}", normalizedEndpoint);
+    logger.LogInformation("OpenAI Embedding Deployment Name: '{Deployment}'", options.OpenAiDeployment);
+    logger.LogInformation("OpenAI API Key Length: {KeyLength} characters", string.IsNullOrEmpty(options.OpenAiApiKey) ? 0 : options.OpenAiApiKey.Length);
+    
+    // Log the expected URI format that Azure OpenAI will construct
+    string expectedEmbeddingsUri = $"{normalizedEndpoint}/openai/deployments/{options.OpenAiDeployment}/embeddings?api-version=2024-02-15-preview";
+    logger.LogInformation("Expected Embeddings API URI: {Uri}", expectedEmbeddingsUri);
+    logger.LogInformation("=== End OpenAI Configuration ===");
+    
+    // Warn if deployment name doesn't match common patterns (might indicate incorrect name)
+    if (!options.OpenAiDeployment.Contains("embedding", StringComparison.OrdinalIgnoreCase) && 
+        !options.OpenAiDeployment.Contains("ada", StringComparison.OrdinalIgnoreCase))
+    {
+        logger.LogWarning(
+            "Deployment name '{Deployment}' doesn't match common embedding model patterns. " +
+            "If you encounter 404 errors, verify this matches your Azure OpenAI deployment name exactly (case-sensitive). " +
+            "Common names: 'text-embedding-3-small-global', 'text-embedding-3-small', 'text-embedding-ada-002'",
+            options.OpenAiDeployment);
+    }
 
     IndexingOrchestrator.IndexingSummary summary = await orchestrator.ProcessAllDirectoriesAsync(CancellationToken.None);
 
-    logger.LogInformation("Indexing completed successfully. Processed: {Processed}, Added: {Added}, Updated: {Updated}, Errors: {Errors}",
-        summary.TotalProcessed, summary.TotalAdded, summary.TotalUpdated, summary.TotalErrors);
+    logger.LogInformation("Indexing completed successfully. Processed: {Processed}, Succeeded: {Succeeded}, Errors: {Errors}",
+        summary.TotalProcessed, summary.TotalSucceeded, summary.TotalErrors);
     return 0;
 }
 catch (Exception ex)

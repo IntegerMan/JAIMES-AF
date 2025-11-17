@@ -3,66 +3,50 @@ using MattEland.Jaimes.Indexer.Configuration;
 
 namespace MattEland.Jaimes.Indexer.Services;
 
-public class IndexingOrchestrator
+public class IndexingOrchestrator(
+    ILogger<IndexingOrchestrator> logger,
+    IDirectoryScanner directoryScanner,
+    IDocumentIndexer documentIndexer,
+    IndexerOptions options)
 {
-    private readonly ILogger<IndexingOrchestrator> _logger;
-    private readonly IDirectoryScanner _directoryScanner;
-    private readonly IChangeTracker _changeTracker;
-    private readonly IDocumentIndexer _documentIndexer;
-    private readonly IndexerOptions _options;
-
-    public IndexingOrchestrator(
-        ILogger<IndexingOrchestrator> logger,
-        IDirectoryScanner directoryScanner,
-        IChangeTracker changeTracker,
-        IDocumentIndexer documentIndexer,
-        IndexerOptions options)
-    {
-        _logger = logger;
-        _directoryScanner = directoryScanner;
-        _changeTracker = changeTracker;
-        _documentIndexer = documentIndexer;
-        _options = options;
-    }
-
     public async Task<IndexingSummary> ProcessAllDirectoriesAsync(CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Starting indexing process for directory: {SourceDirectory}", _options.SourceDirectory);
+        logger.LogInformation("Starting indexing process for directory: {SourceDirectory}", options.SourceDirectory);
         
         IndexingSummary summary = new();
 
         try
         {
-            IEnumerable<string> subdirectories = _directoryScanner.GetSubdirectories(_options.SourceDirectory);
+            IEnumerable<string> subdirectories = directoryScanner.GetSubdirectories(options.SourceDirectory);
             
             foreach (string subdirectory in subdirectories)
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
-                    _logger.LogWarning("Indexing process cancelled");
+                    logger.LogWarning("Indexing process cancelled");
                     break;
                 }
 
                 string indexName = GetIndexName(subdirectory);
-                _logger.LogInformation("Processing subdirectory: {Subdirectory} with index: {IndexName}", subdirectory, indexName);
+                logger.LogInformation("Processing subdirectory: {Subdirectory} with index: {IndexName}", subdirectory, indexName);
 
                 IndexingSummary dirSummary = await ProcessDirectoryAsync(subdirectory, indexName, cancellationToken);
                 summary.Add(dirSummary);
             }
 
             // Also process files in the root directory
-            string rootIndexName = GetIndexName(_options.SourceDirectory);
-            _logger.LogInformation("Processing root directory: {SourceDirectory} with index: {IndexName}", _options.SourceDirectory, rootIndexName);
-            IndexingSummary rootSummary = await ProcessDirectoryAsync(_options.SourceDirectory, rootIndexName, cancellationToken);
+            string rootIndexName = GetIndexName(options.SourceDirectory);
+            logger.LogInformation("Processing root directory: {SourceDirectory} with index: {IndexName}", options.SourceDirectory, rootIndexName);
+            IndexingSummary rootSummary = await ProcessDirectoryAsync(options.SourceDirectory, rootIndexName, cancellationToken);
             summary.Add(rootSummary);
 
-            _logger.LogInformation(
-                "Indexing complete. Processed: {TotalProcessed}, Added: {TotalAdded}, Updated: {TotalUpdated}, Errors: {TotalErrors}",
-                summary.TotalProcessed, summary.TotalAdded, summary.TotalUpdated, summary.TotalErrors);
+            logger.LogInformation(
+                "Indexing complete. Processed: {TotalProcessed}, Succeeded: {TotalSucceeded}, Errors: {TotalErrors}",
+                summary.TotalProcessed, summary.TotalSucceeded, summary.TotalErrors);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during indexing process");
+            logger.LogError(ex, "Error during indexing process");
             throw;
         }
 
@@ -72,7 +56,7 @@ public class IndexingOrchestrator
     private async Task<IndexingSummary> ProcessDirectoryAsync(string directoryPath, string indexName, CancellationToken cancellationToken)
     {
         IndexingSummary summary = new();
-        IEnumerable<string> files = _directoryScanner.GetFiles(directoryPath, _options.SupportedExtensions);
+        IEnumerable<string> files = directoryScanner.GetFiles(directoryPath, options.SupportedExtensions);
 
         foreach (string filePath in files)
         {
@@ -81,67 +65,40 @@ public class IndexingOrchestrator
                 break;
             }
 
+            summary.TotalProcessed++;
             try
             {
-                IndexingResult result = await ProcessFileAsync(filePath, indexName, cancellationToken);
-                summary.TotalProcessed++;
+                bool result = await ProcessFileAsync(filePath, indexName, cancellationToken);
 
-                switch (result)
+                if (result)
                 {
-                    case IndexingResult.Added:
-                        summary.TotalAdded++;
-                        _logger.LogInformation("Added new document: {FilePath}", filePath);
-                        break;
-                    case IndexingResult.Updated:
-                        summary.TotalUpdated++;
-                        _logger.LogInformation("Updated existing document: {FilePath}", filePath);
-                        break;
-                    case IndexingResult.Error:
-                        summary.TotalErrors++;
-                        _logger.LogError("Error processing document: {FilePath}", filePath);
-                        break;
+                    summary.TotalSucceeded++;
+                }
+                else
+                {
+                    summary.TotalErrors++;
                 }
             }
             catch (Exception ex)
             {
                 summary.TotalErrors++;
-                _logger.LogError(ex, "Unexpected error processing file: {FilePath}", filePath);
+                logger.LogError(ex, "Unexpected error processing file: {FilePath}", filePath);
             }
         }
 
         return summary;
     }
 
-    private async Task<IndexingResult> ProcessFileAsync(string filePath, string indexName, CancellationToken cancellationToken)
+    private async Task<bool> ProcessFileAsync(string filePath, string indexName, CancellationToken cancellationToken)
     {
         try
         {
-            // Compute hash for tagging (Kernel Memory will overwrite existing documents with same documentId)
-            string fileHash = await _changeTracker.ComputeFileHashAsync(filePath, cancellationToken);
-            bool documentExists = await _documentIndexer.DocumentExistsAsync(filePath, indexName, cancellationToken);
-
-            if (documentExists)
-            {
-                _logger.LogDebug("Document exists, re-indexing to update: {FilePath}", filePath);
-            }
-            else
-            {
-                _logger.LogInformation("New document found, adding: {FilePath}", filePath);
-            }
-
-            bool success = await _documentIndexer.IndexDocumentAsync(filePath, indexName, fileHash, cancellationToken);
-            
-            if (success)
-            {
-                return documentExists ? IndexingResult.Updated : IndexingResult.Added;
-            }
-
-            return IndexingResult.Error;
+            return await documentIndexer.IndexDocumentAsync(filePath, indexName, cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing file: {FilePath}", filePath);
-            return IndexingResult.Error;
+            logger.LogError(ex, "Error processing file: {FilePath}", filePath);
+            return false;
         }
     }
 
@@ -156,25 +113,16 @@ public class IndexingOrchestrator
         return $"index-{directoryName.ToLowerInvariant().Replace(" ", "-")}";
     }
 
-    private enum IndexingResult
-    {
-        Added,
-        Updated,
-        Error
-    }
-
     public class IndexingSummary
     {
         public int TotalProcessed { get; set; }
-        public int TotalAdded { get; set; }
-        public int TotalUpdated { get; set; }
+        public int TotalSucceeded { get; set; }
         public int TotalErrors { get; set; }
 
         public void Add(IndexingSummary other)
         {
             TotalProcessed += other.TotalProcessed;
-            TotalAdded += other.TotalAdded;
-            TotalUpdated += other.TotalUpdated;
+            TotalSucceeded += other.TotalSucceeded;
             TotalErrors += other.TotalErrors;
         }
     }
