@@ -50,10 +50,10 @@ Kernel Memory and Rules Search
 
 - **Kernel Memory**: Used for RAG (Retrieval-Augmented Generation) search over rulesets
 - **RulesSearchService**: Provides rules search functionality using Kernel Memory
-- **Storage**: Rules are stored in Kernel Memory's SQLite vector database (`km_vector_store.db`), NOT in EF entities
+- **Storage**: Rules are stored in Kernel Memory's directory-based vector store, NOT in EF entities
 - **Indexing**: Rules are indexed by `rulesetId` - this is used as an index/filter for organizing and searching rules
 - **Tool**: `RulesSearchTool` is registered with AI agents to allow them to search rules using natural language queries
-- **Configuration**: Uses `WithSimpleVectorDb()` with SQLite connection string for vector storage
+- **Configuration**: Uses `WithSimpleVectorDb()` with a directory path for vector storage (path can be extracted from connection string format for backward compatibility)
 - **References**: 
   - Blog post: https://blog.leadingedje.com/post/ai/documents/kernelmemory.html
   - Kernel Memory uses `ImportTextAsync()` to index rules and `AskAsync()` to search them

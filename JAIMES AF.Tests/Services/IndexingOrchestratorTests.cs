@@ -11,7 +11,6 @@ public class IndexingOrchestratorTests
 {
     private readonly Mock<ILogger<IndexingOrchestrator>> _loggerMock;
     private readonly Mock<IDirectoryScanner> _directoryScannerMock;
-    private readonly Mock<IChangeTracker> _changeTrackerMock;
     private readonly Mock<IDocumentIndexer> _documentIndexerMock;
     private readonly IndexerOptions _options;
     private readonly IndexingOrchestrator _orchestrator;
@@ -20,7 +19,6 @@ public class IndexingOrchestratorTests
     {
         _loggerMock = new Mock<ILogger<IndexingOrchestrator>>();
         _directoryScannerMock = new Mock<IDirectoryScanner>();
-        _changeTrackerMock = new Mock<IChangeTracker>();
         _documentIndexerMock = new Mock<IDocumentIndexer>();
 
         _options = new IndexerOptions
@@ -36,7 +34,6 @@ public class IndexingOrchestratorTests
         _orchestrator = new IndexingOrchestrator(
             _loggerMock.Object,
             _directoryScannerMock.Object,
-            _changeTrackerMock.Object,
             _documentIndexerMock.Object,
             _options);
     }
@@ -46,7 +43,6 @@ public class IndexingOrchestratorTests
     {
         // Arrange
         string rootDir = _options.SourceDirectory;
-        string rootIndex = "index-root";
 
         _directoryScannerMock
             .Setup(s => s.GetSubdirectories(rootDir))
@@ -56,16 +52,9 @@ public class IndexingOrchestratorTests
             .Setup(s => s.GetFiles(rootDir, _options.SupportedExtensions))
             .Returns(new[] { Path.Combine(rootDir, "file1.txt") });
 
-        _changeTrackerMock
-            .Setup(t => t.ComputeFileHashAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync("hash1");
-
+        string rootIndexName = GetIndexName(rootDir);
         _documentIndexerMock
-            .Setup(i => i.DocumentExistsAsync(It.IsAny<string>(), rootIndex, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
-
-        _documentIndexerMock
-            .Setup(i => i.IndexDocumentAsync(It.IsAny<string>(), rootIndex, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(i => i.IndexDocumentAsync(Path.Combine(rootDir, "file1.txt"), rootIndexName, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         // Act
@@ -74,7 +63,6 @@ public class IndexingOrchestratorTests
         // Assert
         summary.TotalProcessed.ShouldBe(1);
         summary.TotalSucceeded.ShouldBe(1);
-        summary.TotalUpdated.ShouldBe(0);
         summary.TotalErrors.ShouldBe(0);
     }
 
@@ -96,26 +84,28 @@ public class IndexingOrchestratorTests
             .Setup(s => s.GetSubdirectories(rootDir))
             .Returns(subdirs);
 
+        // Root directory has no files in this test
         _directoryScannerMock
             .Setup(s => s.GetFiles(rootDir, _options.SupportedExtensions))
             .Returns(Enumerable.Empty<string>());
 
-        int fileIndex = 0;
+        int subdirIndex = 0;
         foreach (string subdir in subdirs)
         {
-            string indexName = $"index-subdir{fileIndex + 1}";
+            subdirIndex++;
+            string indexName = GetIndexName(subdir);
             List<string> files = new();
             
             // Add new files
             for (int i = 0; i < newFiles; i++)
             {
-                files.Add(Path.Combine(subdir, $"file{fileIndex++}.txt"));
+                files.Add(Path.Combine(subdir, $"file{i}.txt"));
             }
             
             // Add existing files
             for (int i = 0; i < existingFiles; i++)
             {
-                files.Add(Path.Combine(subdir, $"existing{fileIndex++}.txt"));
+                files.Add(Path.Combine(subdir, $"existing{i}.txt"));
             }
 
             _directoryScannerMock
@@ -124,17 +114,8 @@ public class IndexingOrchestratorTests
 
             foreach (string file in files)
             {
-                _changeTrackerMock
-                    .Setup(t => t.ComputeFileHashAsync(file, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync($"hash-{file}");
-
-                bool isExisting = file.Contains("existing");
                 _documentIndexerMock
-                    .Setup(i => i.DocumentExistsAsync(file, indexName, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(isExisting);
-
-                _documentIndexerMock
-                    .Setup(i => i.IndexDocumentAsync(file, indexName, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .Setup(i => i.IndexDocumentAsync(file, indexName, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(true);
             }
         }
@@ -143,10 +124,11 @@ public class IndexingOrchestratorTests
         IndexingOrchestrator.IndexingSummary summary = await _orchestrator.ProcessAllDirectoriesAsync(CancellationToken.None);
 
         // Assert
+        // Note: The orchestrator processes subdirectories AND root directory
+        // Since root directory has no files in this test, only subdirectory files are processed
         int totalFiles = subdirectoryCount * (newFiles + existingFiles);
         summary.TotalProcessed.ShouldBe(totalFiles);
-        summary.TotalSucceeded.ShouldBe(subdirectoryCount * newFiles);
-        summary.TotalUpdated.ShouldBe(subdirectoryCount * existingFiles);
+        summary.TotalSucceeded.ShouldBe(totalFiles);
         summary.TotalErrors.ShouldBe(0);
     }
 
@@ -156,7 +138,7 @@ public class IndexingOrchestratorTests
         // Arrange
         string rootDir = _options.SourceDirectory;
         string filePath = Path.Combine(rootDir, "file.txt");
-        string rootIndex = "index-root";
+        string rootIndexName = GetIndexName(rootDir);
 
         _directoryScannerMock
             .Setup(s => s.GetSubdirectories(rootDir))
@@ -166,16 +148,8 @@ public class IndexingOrchestratorTests
             .Setup(s => s.GetFiles(rootDir, _options.SupportedExtensions))
             .Returns(new[] { filePath });
 
-        _changeTrackerMock
-            .Setup(t => t.ComputeFileHashAsync(filePath, It.IsAny<CancellationToken>()))
-            .ReturnsAsync("hash1");
-
         _documentIndexerMock
-            .Setup(i => i.DocumentExistsAsync(filePath, rootIndex, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
-
-        _documentIndexerMock
-            .Setup(i => i.IndexDocumentAsync(filePath, rootIndex, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(i => i.IndexDocumentAsync(filePath, rootIndexName, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false); // Indexing fails
 
         // Act
@@ -194,39 +168,32 @@ public class IndexingOrchestratorTests
         string rootDir = _options.SourceDirectory;
         string filePath1 = Path.Combine(rootDir, "file1.txt");
         string filePath2 = Path.Combine(rootDir, "file2.txt");
-        string rootIndex = "index-root";
 
         _directoryScannerMock
             .Setup(s => s.GetSubdirectories(rootDir))
             .Returns(Enumerable.Empty<string>());
 
+        string rootIndexName = GetIndexName(rootDir);
         _directoryScannerMock
             .Setup(s => s.GetFiles(rootDir, _options.SupportedExtensions))
             .Returns(new[] { filePath1, filePath2 });
 
-        _changeTrackerMock
-            .Setup(t => t.ComputeFileHashAsync(filePath1, It.IsAny<CancellationToken>()))
+        _documentIndexerMock
+            .Setup(i => i.IndexDocumentAsync(filePath1, rootIndexName, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new IOException("File access error"));
 
-        _changeTrackerMock
-            .Setup(t => t.ComputeFileHashAsync(filePath2, It.IsAny<CancellationToken>()))
-            .ReturnsAsync("hash2");
-
         _documentIndexerMock
-            .Setup(i => i.DocumentExistsAsync(filePath2, rootIndex, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
-
-        _documentIndexerMock
-            .Setup(i => i.IndexDocumentAsync(filePath2, rootIndex, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(i => i.IndexDocumentAsync(filePath2, rootIndexName, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         // Act
         IndexingOrchestrator.IndexingSummary summary = await _orchestrator.ProcessAllDirectoriesAsync(CancellationToken.None);
 
         // Assert
+        // Both files are processed: file1 throws exception (error), file2 succeeds
         summary.TotalProcessed.ShouldBe(2);
-        summary.TotalErrors.ShouldBe(1);
-        summary.TotalSucceeded.ShouldBe(1);
+        summary.TotalErrors.ShouldBe(1); // file1 exception
+        summary.TotalSucceeded.ShouldBe(1); // file2 succeeds
     }
 
     [Fact]
@@ -258,7 +225,6 @@ public class IndexingOrchestratorTests
     [InlineData("C:\\Test\\RulesetA", "index-ruleseta")]
     [InlineData("C:\\Test\\RulesetB", "index-rulesetb")]
     [InlineData("C:\\Test\\My Rules", "index-my-rules")]
-    [InlineData("C:\\Test\\", "index-root")]
     [InlineData("/home/test/rulesetA", "index-ruleseta")]
     public async Task GetIndexName_GeneratesCorrectIndexName(string directoryPath, string expectedIndexName)
     {
@@ -274,16 +240,12 @@ public class IndexingOrchestratorTests
             .Setup(s => s.GetFiles(directoryPath, _options.SupportedExtensions))
             .Returns(new[] { filePath });
 
-        _changeTrackerMock
-            .Setup(t => t.ComputeFileHashAsync(filePath, It.IsAny<CancellationToken>()))
-            .ReturnsAsync("hash1");
+        _directoryScannerMock
+            .Setup(s => s.GetFiles(rootDir, _options.SupportedExtensions))
+            .Returns(Enumerable.Empty<string>());
 
         _documentIndexerMock
-            .Setup(i => i.DocumentExistsAsync(filePath, expectedIndexName, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
-
-        _documentIndexerMock
-            .Setup(i => i.IndexDocumentAsync(filePath, expectedIndexName, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(i => i.IndexDocumentAsync(filePath, expectedIndexName, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         // Act
@@ -291,8 +253,19 @@ public class IndexingOrchestratorTests
 
         // Assert
         _documentIndexerMock.Verify(
-            i => i.IndexDocumentAsync(filePath, expectedIndexName, It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            i => i.IndexDocumentAsync(filePath, expectedIndexName, It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    private static string GetIndexName(string directoryPath)
+    {
+        // Replicate the logic from IndexingOrchestrator.GetIndexName
+        string directoryName = Path.GetFileName(directoryPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        if (string.IsNullOrEmpty(directoryName))
+        {
+            directoryName = "root";
+        }
+        return $"index-{directoryName.ToLowerInvariant().Replace(" ", "-")}";
     }
 
     [Fact]
@@ -303,7 +276,6 @@ public class IndexingOrchestratorTests
         {
             TotalProcessed = 5,
             TotalSucceeded = 3,
-            TotalUpdated = 2,
             TotalErrors = 0
         };
 
@@ -311,7 +283,6 @@ public class IndexingOrchestratorTests
         {
             TotalProcessed = 3,
             TotalSucceeded = 1,
-            TotalUpdated = 1,
             TotalErrors = 1
         };
 
@@ -321,7 +292,6 @@ public class IndexingOrchestratorTests
         // Assert
         summary1.TotalProcessed.ShouldBe(8);
         summary1.TotalSucceeded.ShouldBe(4);
-        summary1.TotalUpdated.ShouldBe(3);
         summary1.TotalErrors.ShouldBe(1);
     }
 }

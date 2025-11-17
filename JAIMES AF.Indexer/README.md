@@ -27,7 +27,7 @@ The application is designed with modularity in mind, making it easy to convert t
 
 Configuration is provided via `appsettings.json`:
 - `SourceDirectory`: Root directory to scan
-- `VectorDbConnectionString`: SQLite connection string for Kernel Memory vector store (default: `"Data Source=km_vector_store.db"` - must match RulesSearchService)
+- `VectorDbConnectionString`: Directory path for Kernel Memory vector store (e.g., `"C:\\Dev\\JAIMES AF\\VectorStore"` - can also use `"Data Source=path"` format for backward compatibility, must match RulesSearchService)
 - `OpenAiEndpoint`, `OpenAiApiKey`, `OpenAiDeployment`: Azure OpenAI configuration (only EmbeddingModel is used, not TextModel)
 - `SupportedExtensions`: List of file extensions to index (default: `.txt`, `.md`, `.pdf`, `.docx`)
 - `Recursive`: Whether to process subdirectories recursively (default: `true`)
@@ -87,7 +87,7 @@ Based on this project's configuration:
    {
      "Indexer": {
        "SourceDirectory": "C:\\Your\\Directory\\Sourcebooks",
-       "VectorDbConnectionString": "Data Source=km_vector_store.db",
+       "VectorDbConnectionString": "C:\\Dev\\JAIMES AF\\VectorStore",
        "OpenAiEndpoint": "https://your-endpoint.openai.azure.com/",
        "OpenAiApiKey": "your-api-key",
        "OpenAiDeployment": "your-deployment-name"
@@ -140,8 +140,9 @@ The modular design allows easy conversion to a worker service:
 ## Integration with RulesSearchService
 
 This indexer uses the same vector store as `RulesSearchService`:
-- **Shared Database**: Both services use the same vector database connection string (`Data Source=km_vector_store.db` by default)
-- **Same Configuration**: The `VectorDbConnectionString` in `appsettings.json` should match the connection string used by `RulesSearchService` (currently hardcoded to `"Data Source=km_vector_store.db"`)
+- **Shared Storage**: Both services use the same vector store directory path (specified in `VectorDbConnectionString` configuration)
+- **Same Configuration**: The `VectorDbConnectionString` in `appsettings.json` should match the path used by `RulesSearchService` (can be a direct directory path like `"C:\\Dev\\JAIMES AF\\VectorStore"` or use `"Data Source=path"` format for backward compatibility)
 - **Document Access**: Documents indexed here are searchable via the RulesSearchService
 - **Index Organization**: Index names are generated from directory names (prefixed with `index-`), while RulesSearchService uses `ruleset-` prefix for ruleset indexes
+- **Storage Format**: The vector store uses a directory structure (not SQLite), managed by Kernel Memory's `WithSimpleVectorDb()` method
 

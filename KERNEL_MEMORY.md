@@ -7,8 +7,9 @@ Kernel Memory is used in this project to provide RAG (Retrieval-Augmented Genera
 ## Architecture
 
 ### Storage Model
-- **Rules are NOT stored in EF entities** - they exist only in Kernel Memory's SQLite vector database
-- Vector database file: `km_vector_store.db` (separate from the main application database)
+- **Rules are NOT stored in EF entities** - they exist only in Kernel Memory's vector store
+- Vector store: Uses a directory structure (configured via `WithSimpleVectorDb()` with a directory path)
+- The directory path can be specified directly or extracted from a connection string format (e.g., `"Data Source=km_vector_store"` becomes `"km_vector_store"`)
 - Rules are indexed by `rulesetId` which serves as an index/filter for organizing and searching
 
 ### Key Components
@@ -19,7 +20,7 @@ Kernel Memory is used in this project to provide RAG (Retrieval-Augmented Genera
 
 2. **RulesSearchService** (`JAIMES AF.Agents/Services/RulesSearchService.cs`)
    - Implementation using Kernel Memory
-   - Configures Kernel Memory with Azure OpenAI and SQLite vector store
+   - Configures Kernel Memory with Azure OpenAI and directory-based vector store
    - Handles indexing and searching of rules
 
 3. **RulesSearchTool** (`JAIMES AF.Tools/RulesSearchTool.cs`)
@@ -41,19 +42,21 @@ OpenAIConfig openAiConfig = new()
     EmbeddingModel = chatOptions.Deployment
 };
 
-// Configure SQLite vector store
-string vectorDbConnectionString = "Data Source=km_vector_store.db";
+// Configure directory-based vector store
+// WithSimpleVectorDb expects a directory path (not a connection string)
+// The path can be extracted from a connection string format for backward compatibility
+string vectorDbPath = "km_vector_store"; // or extract from "Data Source=km_vector_store"
 
 // Build Kernel Memory instance
 IKernelMemory memory = new KernelMemoryBuilder()
     .WithOpenAI(openAiConfig)
-    .WithSimpleVectorDb(vectorDbConnectionString)
+    .WithSimpleVectorDb(vectorDbPath)
     .Build();
 ```
 
 ### Package Dependencies
 - `Microsoft.KernelMemory.Core` - Core Kernel Memory functionality
-- Uses `WithSimpleVectorDb()` for SQLite vector storage (built into core package)
+- Uses `WithSimpleVectorDb()` for directory-based vector storage (built into core package)
 
 ## Usage
 
@@ -134,7 +137,7 @@ The tool is described to agents as:
 
 3. **Automatic Indexing**: Rules should be indexed via `IndexRuleAsync()` when they are added to the system. The `EnsureRulesetIndexedAsync()` method is kept for interface compatibility but doesn't query EF entities.
 
-4. **Separate Database**: The vector database (`km_vector_store.db`) is separate from the main application database, allowing for independent management and optimization.
+4. **Separate Storage**: The vector store (directory structure) is separate from the main application database, allowing for independent management and optimization.
 
 ## References
 

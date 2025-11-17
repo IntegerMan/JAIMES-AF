@@ -29,11 +29,11 @@ public class RulesSearchService : IRulesSearchService
             EmbeddingModel = chatOptions.Deployment // Use the same deployment for embeddings, or configure separately if needed
         };
 
-        // Use SQLite as the vector store for Kernel Memory
-        // Kernel Memory's WithSimpleVectorDb uses SQLite for vector storage
+        // Use directory-based vector store for Kernel Memory
+        // Kernel Memory's WithSimpleVectorDb uses a directory structure for vector storage
         // Reference: https://blog.leadingedje.com/post/ai/documents/kernelmemory.html
-        // Extract file path from connection string if needed
-        // WithSimpleVectorDb expects just the file path, not a full connection string
+        // Extract directory path from connection string format if needed (for backward compatibility)
+        // WithSimpleVectorDb expects a directory path, not a connection string
         string vectorDbPath = vectorDbOptions.ConnectionString;
         if (vectorDbPath.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase))
         {
@@ -45,7 +45,7 @@ public class RulesSearchService : IRulesSearchService
             .WithSimpleVectorDb(vectorDbPath)
             .Build();
 
-        _logger.LogInformation("RulesSearchService initialized with Kernel Memory using SQLite vector store");
+        _logger.LogInformation("RulesSearchService initialized with Kernel Memory using directory-based vector store at: {VectorDbPath}", vectorDbPath);
     }
 
     public async Task<string> SearchRulesAsync(string rulesetId, string query, CancellationToken cancellationToken = default)
