@@ -28,7 +28,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Moq" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\JAIMES AF.AppHost\JAIMES AF.AppHost.csproj" />
+    <ProjectReference Include="..\JAIMES AF.Indexer\JAIMES AF.Indexer.csproj" />
     <ProjectReference Include="..\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj" />
     <ProjectReference Include="..\JAIMES AF.Services\JAIMES AF.ServiceLayer.csproj" />
     <ProjectReference Include="..\JAIMES AF.ApiService\JAIMES AF.ApiService.csproj" />

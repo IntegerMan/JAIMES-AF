@@ -76,8 +76,8 @@ try
 
     IndexingOrchestrator.IndexingSummary summary = await orchestrator.ProcessAllDirectoriesAsync(CancellationToken.None);
 
-    logger.LogInformation("Indexing completed successfully. Processed: {Processed}, Added: {Added}, Updated: {Updated}, Skipped: {Skipped}, Errors: {Errors}",
-        summary.TotalProcessed, summary.TotalAdded, summary.TotalUpdated, summary.TotalSkipped, summary.TotalErrors);
+    logger.LogInformation("Indexing completed successfully. Processed: {Processed}, Added: {Added}, Updated: {Updated}, Errors: {Errors}",
+        summary.TotalProcessed, summary.TotalAdded, summary.TotalUpdated, summary.TotalErrors);
     return 0;
 }
 catch (Exception ex)

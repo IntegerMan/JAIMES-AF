@@ -57,8 +57,8 @@ public class IndexingOrchestrator
             summary.Add(rootSummary);
 
             _logger.LogInformation(
-                "Indexing complete. Processed: {TotalProcessed}, Added: {TotalAdded}, Updated: {TotalUpdated}, Skipped: {TotalSkipped}, Errors: {TotalErrors}",
-                summary.TotalProcessed, summary.TotalAdded, summary.TotalUpdated, summary.TotalSkipped, summary.TotalErrors);
+                "Indexing complete. Processed: {TotalProcessed}, Added: {TotalAdded}, Updated: {TotalUpdated}, Errors: {TotalErrors}",
+                summary.TotalProcessed, summary.TotalAdded, summary.TotalUpdated, summary.TotalErrors);
         }
         catch (Exception ex)
         {
@@ -96,10 +96,6 @@ public class IndexingOrchestrator
                         summary.TotalUpdated++;
                         _logger.LogInformation("Updated existing document: {FilePath}", filePath);
                         break;
-                    case IndexingResult.Skipped:
-                        summary.TotalSkipped++;
-                        _logger.LogDebug("Skipped unchanged document: {FilePath}", filePath);
-                        break;
                     case IndexingResult.Error:
                         summary.TotalErrors++;
                         _logger.LogError("Error processing document: {FilePath}", filePath);
@@ -120,27 +116,20 @@ public class IndexingOrchestrator
     {
         try
         {
-            string currentHash = await _changeTracker.ComputeFileHashAsync(filePath, cancellationToken);
-            string? existingHash = await _documentIndexer.GetDocumentHashAsync(filePath, indexName, cancellationToken);
+            // Compute hash for tagging (Kernel Memory will overwrite existing documents with same documentId)
+            string fileHash = await _changeTracker.ComputeFileHashAsync(filePath, cancellationToken);
+            bool documentExists = await _documentIndexer.DocumentExistsAsync(filePath, indexName, cancellationToken);
 
-            // If we can't retrieve the stored hash (Kernel Memory limitation), 
-            // we'll check if document exists and always re-index to update the hash tag
-            // Kernel Memory handles document updates efficiently when using the same documentId
-            bool documentExists = existingHash != null;
-            
-            if (!documentExists)
+            if (documentExists)
             {
-                _logger.LogInformation("New document found, adding: {FilePath}", filePath);
+                _logger.LogDebug("Document exists, re-indexing to update: {FilePath}", filePath);
             }
             else
             {
-                // Document exists - we'll re-index it to ensure hash tag is up to date
-                // Note: This means we can't skip unchanged documents easily without 
-                // being able to retrieve the stored hash from Kernel Memory
-                _logger.LogInformation("Document exists, updating hash tag: {FilePath}", filePath);
+                _logger.LogInformation("New document found, adding: {FilePath}", filePath);
             }
 
-            bool success = await _documentIndexer.IndexDocumentAsync(filePath, indexName, currentHash, cancellationToken);
+            bool success = await _documentIndexer.IndexDocumentAsync(filePath, indexName, fileHash, cancellationToken);
             
             if (success)
             {
@@ -171,7 +160,6 @@ public class IndexingOrchestrator
     {
         Added,
         Updated,
-        Skipped,
         Error
     }
 
@@ -180,7 +168,6 @@ public class IndexingOrchestrator
         public int TotalProcessed { get; set; }
         public int TotalAdded { get; set; }
         public int TotalUpdated { get; set; }
-        public int TotalSkipped { get; set; }
         public int TotalErrors { get; set; }
 
         public void Add(IndexingSummary other)
@@ -188,7 +175,6 @@ public class IndexingOrchestrator
             TotalProcessed += other.TotalProcessed;
             TotalAdded += other.TotalAdded;
             TotalUpdated += other.TotalUpdated;
-            TotalSkipped += other.TotalSkipped;
             TotalErrors += other.TotalErrors;
         }
     }

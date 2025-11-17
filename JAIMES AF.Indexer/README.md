@@ -54,7 +54,7 @@ Configuration is provided via `appsettings.json`:
 
 3. The application will:
    - Scan the source directory and all subdirectories
-   - Process each document (add new, update changed, skip unchanged)
+   - Process each document (add new or update existing)
    - Log progress with appropriate log levels
    - Exit when complete
 
@@ -67,10 +67,11 @@ Documents are organized by directory:
 
 ## Change Tracking
 
-The application tracks document state using SHA256 file hashes stored as tags in Kernel Memory:
-- **New documents**: Hash is computed and document is indexed with hash stored as a tag
-- **Existing documents**: Document status is checked in Kernel Memory, and hash tag is updated on re-index
-- **Note**: Due to Kernel Memory API limitations, we cannot easily retrieve stored hash tags from search results. As a result, existing documents are re-indexed to ensure the hash tag is current. Kernel Memory handles document updates efficiently when using the same documentId.
+The application uses Kernel Memory's document overwrite behavior for change tracking:
+- **New documents**: Document is indexed with file hash stored as a tag
+- **Existing documents**: Document status is checked, then re-indexed (Kernel Memory overwrites documents with the same `documentId`)
+- **No duplicates**: Kernel Memory ensures that re-indexing with the same `documentId` overwrites the existing document rather than creating duplicates
+- **Hash tagging**: File hashes are computed and stored as tags for potential future use, but are not used for comparison
 
 ## Logging
 
