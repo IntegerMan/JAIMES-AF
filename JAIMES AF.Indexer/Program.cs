@@ -56,10 +56,18 @@ AzureOpenAIConfig openAiConfig = new()
     Deployment = options.OpenAiDeployment,
 };
 
+// Extract file path from connection string if needed
+// WithSimpleVectorDb expects just the file path, not a full connection string
+string vectorDbPath = options.VectorDbConnectionString;
+if (vectorDbPath.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase))
+{
+    vectorDbPath = vectorDbPath["Data Source=".Length..].Trim();
+}
+
 IKernelMemory memory = new KernelMemoryBuilder()
     .WithAzureOpenAITextEmbeddingGeneration(openAiConfig)
     .WithoutTextGenerator()
-    .WithSimpleVectorDb(options.VectorDbConnectionString)
+    .WithSimpleVectorDb(vectorDbPath)
     .Build();
 
 builder.Services.AddSingleton(memory);
@@ -80,7 +88,7 @@ try
 {
     logger.LogInformation("Starting document indexing application");
     logger.LogInformation("Source directory: {SourceDirectory}", options.SourceDirectory);
-    logger.LogInformation("Vector DB connection: {VectorDbConnectionString}", options.VectorDbConnectionString);
+    logger.LogInformation("Vector DB path: {VectorDbPath}", vectorDbPath);
     logger.LogInformation("Supported extensions: {Extensions}", string.Join(", ", options.SupportedExtensions));
     logger.LogInformation("=== OpenAI Configuration ===");
     logger.LogInformation("OpenAI Endpoint: {Endpoint}", normalizedEndpoint);

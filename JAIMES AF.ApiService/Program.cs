@@ -36,6 +36,10 @@ public class Program
         JaimesChatOptions chatOptions = builder.Configuration.GetSection("ChatService").Get<JaimesChatOptions>() ?? throw new InvalidOperationException("ChatService configuration is required");
         builder.Services.AddSingleton(chatOptions);
 
+        // Configure VectorDbOptions from configuration and register instance for DI
+        VectorDbOptions vectorDbOptions = builder.Configuration.GetSection("VectorDb").Get<VectorDbOptions>() ?? throw new InvalidOperationException("VectorDb configuration is required");
+        builder.Services.AddSingleton(vectorDbOptions);
+
         // Add Jaimes repositories and services
         builder.Services.AddJaimesRepositories(builder.Configuration);
         builder.Services.AddJaimesServices();

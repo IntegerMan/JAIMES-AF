@@ -12,9 +12,12 @@ public class RulesSearchService : IRulesSearchService
 
     public RulesSearchService(
         ILogger<RulesSearchService> logger,
-        JaimesChatOptions chatOptions)
+        JaimesChatOptions chatOptions,
+        VectorDbOptions vectorDbOptions)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        ArgumentNullException.ThrowIfNull(chatOptions);
+        ArgumentNullException.ThrowIfNull(vectorDbOptions);
 
         // Configure Kernel Memory with Azure OpenAI
         // Reference: https://blog.leadingedje.com/post/ai/documents/kernelmemory.html
@@ -29,11 +32,17 @@ public class RulesSearchService : IRulesSearchService
         // Use SQLite as the vector store for Kernel Memory
         // Kernel Memory's WithSimpleVectorDb uses SQLite for vector storage
         // Reference: https://blog.leadingedje.com/post/ai/documents/kernelmemory.html
-        string vectorDbConnectionString = "Data Source=km_vector_store.db";
+        // Extract file path from connection string if needed
+        // WithSimpleVectorDb expects just the file path, not a full connection string
+        string vectorDbPath = vectorDbOptions.ConnectionString;
+        if (vectorDbPath.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase))
+        {
+            vectorDbPath = vectorDbPath["Data Source=".Length..].Trim();
+        }
 
         _memory = new KernelMemoryBuilder()
             .WithOpenAI(openAiConfig)
-            .WithSimpleVectorDb(vectorDbConnectionString)
+            .WithSimpleVectorDb(vectorDbPath)
             .Build();
 
         _logger.LogInformation("RulesSearchService initialized with Kernel Memory using SQLite vector store");
