@@ -32,13 +32,61 @@ Configuration is provided via `appsettings.json`:
 - `SupportedExtensions`: List of file extensions to index (default: `.txt`, `.md`, `.pdf`, `.docx`)
 - `Recursive`: Whether to process subdirectories recursively (default: `true`)
 
+## Azure OpenAI Setup
+
+Before configuring the application, you need to create an Azure OpenAI resource and deployment. This indexer only requires an embedding model (not a text generation model).
+
+### Creating the Azure OpenAI Resource
+
+1. **Create an Azure OpenAI resource** in the Azure Portal:
+   - Navigate to Azure Portal → Create a resource → Azure OpenAI
+   - Select your subscription, resource group, and region
+   - Choose a pricing tier appropriate for your needs
+
+2. **Create an embedding model deployment**:
+   - In your Azure OpenAI resource, go to "Deployments" → "Create"
+   - **Deployment name**: `text-embedding-3-small-global` (or your preferred name)
+   - **Deployment type**: Select "Global Standard" (pay per API call with highest rate limits)
+   - **Model**: Select `text-embedding-3-small` (or another embedding model)
+   - **Model version**: `1 (Default)`
+   - **Model version upgrade policy**: "Opt out of automatic model version upgrades" (recommended for embedding models)
+   - **Tokens per Minute Rate Limit**: Set based on your needs (e.g., 501K tokens/min ≈ 3K requests/min)
+   - **Content filter**: Select your content filter policy
+
+3. **Get your credentials**:
+   - **Endpoint**: Found in your Azure OpenAI resource under "Keys and Endpoint" (format: `https://your-resource-name.openai.azure.com/`)
+   - **API Key**: Found in the same section (you can use either Key 1 or Key 2)
+   - **Deployment name**: The name you used when creating the deployment (e.g., `text-embedding-3-small-global`)
+
+### Recommended Deployment Settings
+
+Based on this project's configuration:
+- **Deployment name**: `text-embedding-3-small-global`
+- **Model**: `text-embedding-3-small`
+- **Deployment type**: Global Standard
+- **Rate limit**: 501K tokens per minute (provides ~3K requests per minute)
+
+**Note**: The indexer only uses the embedding model for vectorizing documents. You do not need a text generation model (like GPT-4) for this application.
+
 ## Usage
 
-1. **Configure the application** by editing `appsettings.json`:
+1. **Configure the application**:
+   
+   **Option A: Using User Secrets (Recommended for sensitive data)**
+   
+   Set the API key and endpoint using user secrets:
+   ```bash
+   dotnet user-secrets set "Indexer:OpenAiApiKey" "your-api-key" --project "JAIMES AF.Indexer"
+   dotnet user-secrets set "Indexer:OpenAiEndpoint" "https://your-endpoint.openai.azure.com/" --project "JAIMES AF.Indexer"
+   ```
+   
+   **Option B: Using appsettings.json**
+   
+   Edit `appsettings.json`:
    ```json
    {
      "Indexer": {
-       "SourceDirectory": "C:\\Path\\To\\Your\\Documents",
+       "SourceDirectory": "C:\\Users\\MattE\\OneDrive\\Sourcebooks",
        "VectorDbConnectionString": "Data Source=km_vector_store.db",
        "OpenAiEndpoint": "https://your-endpoint.openai.azure.com/",
        "OpenAiApiKey": "your-api-key",
