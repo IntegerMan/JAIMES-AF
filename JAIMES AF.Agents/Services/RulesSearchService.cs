@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.KernelMemory;
 using MattEland.Jaimes.ServiceDefinitions.Services;
+using MattEland.Jaimes.ServiceDefinitions.Responses;
 
 namespace MattEland.Jaimes.Agents.Services;
 
@@ -68,6 +69,99 @@ public class RulesSearchService : IRulesSearchService
 
         _logger.LogInformation("Found answer for query: {Query} in ruleset: {RulesetId}", query, rulesetId);
         return answer.Result;
+    }
+
+    public async Task<SearchRulesResponse> SearchRulesDetailedAsync(string? rulesetId, string query, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            throw new ArgumentException("Query cannot be null or empty", nameof(query));
+        }
+
+        _logger.LogInformation("Searching rules with query: {Query}, rulesetId: {RulesetId}", query, rulesetId ?? "all");
+
+        MemoryAnswer answer;
+        
+        if (string.IsNullOrWhiteSpace(rulesetId))
+        {
+            // Search across all rulesets - use a wildcard or search all indexes
+            // For now, we'll search without a specific index filter
+            // Note: This may need adjustment based on Kernel Memory's capabilities
+            answer = await _memory.AskAsync(
+                question: query,
+                index: null, // Search across all indexes
+                filters: null,
+                cancellationToken: cancellationToken);
+        }
+        else
+        {
+            // Search within a specific ruleset
+            answer = await _memory.AskAsync(
+                question: query,
+                index: GetIndexName(rulesetId),
+                filters: new List<MemoryFilter> { new MemoryFilter().ByTag("rulesetId", rulesetId) },
+                cancellationToken: cancellationToken);
+        }
+
+        // Extract citations from the answer
+        List<CitationInfo> citations = new();
+        if (answer.RelevantSources != null)
+        {
+            foreach (Citation citation in answer.RelevantSources)
+            {
+                string source = citation.SourceUrl ?? citation.Link ?? citation.Index ?? "Unknown";
+                string text = string.Empty;
+                
+                if (citation.Partitions != null && citation.Partitions.Count > 0)
+                {
+                    text = citation.Partitions[0].Text ?? string.Empty;
+                }
+                
+                citations.Add(new CitationInfo
+                {
+                    Source = source,
+                    Text = text,
+                    Relevance = null // Citation doesn't have a Relevance property in Kernel Memory
+                });
+            }
+        }
+
+        // Extract document information
+        List<DocumentInfo> documents = new();
+        HashSet<string> seenDocumentIds = new();
+        
+        if (answer.RelevantSources != null)
+        {
+            foreach (Citation citation in answer.RelevantSources)
+            {
+                string documentId = citation.DocumentId ?? "Unknown";
+                if (!seenDocumentIds.Contains(documentId))
+                {
+                    seenDocumentIds.Add(documentId);
+                    
+                    Dictionary<string, string> tags = new();
+                    // Citation doesn't expose Tags directly, but we can extract from metadata if available
+                    // For now, we'll leave tags empty as Kernel Memory's Citation structure doesn't expose them directly
+                    
+                    documents.Add(new DocumentInfo
+                    {
+                        DocumentId = documentId,
+                        Index = citation.Index ?? "Unknown",
+                        Tags = tags
+                    });
+                }
+            }
+        }
+
+        SearchRulesResponse response = new()
+        {
+            Answer = answer.Result ?? "No relevant rules found for your query.",
+            Citations = citations.ToArray(),
+            Documents = documents.ToArray()
+        };
+
+        _logger.LogInformation("Found answer with {CitationCount} citations and {DocumentCount} documents", citations.Count, documents.Count);
+        return response;
     }
 
     public async Task IndexRuleAsync(string rulesetId, string ruleId, string title, string content, CancellationToken cancellationToken = default)
