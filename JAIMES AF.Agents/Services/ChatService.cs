@@ -93,7 +93,7 @@ public class ChatService(
         IChatClient instrumentedChatClient = new AzureOpenAIClient(
                 new Uri(_options.Endpoint),
                 new ApiKeyCredential(_options.ApiKey))
-            .GetChatClient(_options.Deployment)
+            .GetChatClient(_options.TextGenerationDeployment)
             .AsIChatClient()
             .AsBuilder()
             .UseOpenTelemetry(

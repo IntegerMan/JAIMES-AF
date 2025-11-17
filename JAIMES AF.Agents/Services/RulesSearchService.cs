@@ -21,12 +21,24 @@ public class RulesSearchService : IRulesSearchService
 
         // Configure Kernel Memory with Azure OpenAI
         // Reference: https://blog.leadingedje.com/post/ai/documents/kernelmemory.html
-        OpenAIConfig openAiConfig = new()
+        // Normalize endpoint URL - remove trailing slash to avoid 404 errors
+        string normalizedEndpoint = chatOptions.Endpoint.TrimEnd('/');
+
+        // Create separate configs for embedding and text generation since they use different deployments
+        AzureOpenAIConfig embeddingConfig = new()
         {
             APIKey = chatOptions.ApiKey,
-            Endpoint = chatOptions.Endpoint,
-            TextModel = chatOptions.Deployment,
-            EmbeddingModel = chatOptions.Deployment // Use the same deployment for embeddings, or configure separately if needed
+            Auth = AzureOpenAIConfig.AuthTypes.APIKey,
+            Endpoint = normalizedEndpoint,
+            Deployment = chatOptions.EmbeddingDeployment,
+        };
+
+        AzureOpenAIConfig textGenerationConfig = new()
+        {
+            APIKey = chatOptions.ApiKey,
+            Auth = AzureOpenAIConfig.AuthTypes.APIKey,
+            Endpoint = normalizedEndpoint,
+            Deployment = chatOptions.TextGenerationDeployment,
         };
 
         // Use directory-based vector store for Kernel Memory
@@ -41,7 +53,8 @@ public class RulesSearchService : IRulesSearchService
         }
 
         _memory = new KernelMemoryBuilder()
-            .WithOpenAI(openAiConfig)
+            .WithAzureOpenAITextEmbeddingGeneration(embeddingConfig)
+            .WithAzureOpenAITextGeneration(textGenerationConfig)
             .WithSimpleVectorDb(vectorDbPath)
             .Build();
 
@@ -108,7 +121,7 @@ public class RulesSearchService : IRulesSearchService
             answer = await _memory.AskAsync(
                 question: query,
                 index: GetIndexName(rulesetId),
-                filters: new List<MemoryFilter> { new MemoryFilter().ByTag("rulesetId", rulesetId) },
+                filters: null, //new List<MemoryFilter> { new MemoryFilter().ByTag("rulesetId", rulesetId) },
                 cancellationToken: cancellationToken);
         }
 
