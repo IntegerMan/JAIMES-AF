@@ -166,9 +166,13 @@ public static class Extensions
     /// <summary>
     /// Configures a StandardResilienceHandler to exclude POST requests from retries.
     /// This prevents duplicate submissions and other side effects from retrying non-idempotent operations.
+    /// Also configures a longer timeout for operations that may take significant time (e.g., document listing).
     /// </summary>
     public static void ConfigureResilienceHandlerExcludingPost(HttpStandardResilienceOptions options)
     {
+        // Configure a longer timeout (5 minutes) for operations that may take significant time
+        options.TotalRequestTimeout.Timeout = TimeSpan.FromMinutes(5);
+        
         options.Retry.ShouldHandle = args =>
         {
             // Exclude POST requests from retries (only when we have a response)

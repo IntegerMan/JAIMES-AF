@@ -56,18 +56,24 @@ AzureOpenAIConfig openAiConfig = new()
     Deployment = options.OpenAiDeployment,
 };
 
-// Extract file path from connection string if needed
-// WithSimpleVectorDb expects just the file path, not a full connection string
-string vectorDbPath = options.VectorDbConnectionString;
-if (vectorDbPath.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase))
+// Use Redis as the vector store for Kernel Memory
+// Redis provides better performance and document listing capabilities than SimpleVectorDb
+// Connection string format: "localhost:6379" or "localhost:6379,password=xxx" or full connection string
+string redisConnectionString = options.VectorDbConnectionString;
+
+// If connection string is in old format (Data Source=...), extract just the path
+// Otherwise use as-is for Redis connection string
+if (redisConnectionString.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase))
 {
-    vectorDbPath = vectorDbPath["Data Source=".Length..].Trim();
+    // Legacy format - convert to Redis default
+    redisConnectionString = "localhost:6379";
 }
 
+// Use Redis extension method from the Redis package
 IKernelMemory memory = new KernelMemoryBuilder()
     .WithAzureOpenAITextEmbeddingGeneration(openAiConfig)
     .WithoutTextGenerator()
-    .WithSimpleVectorDb(vectorDbPath)
+    .WithRedisMemoryDb(redisConnectionString)
     .Build();
 
 builder.Services.AddSingleton(memory);
@@ -88,7 +94,7 @@ try
 {
     logger.LogInformation("Starting document indexing application");
     logger.LogInformation("Source directory: {SourceDirectory}", options.SourceDirectory);
-    logger.LogInformation("Vector DB path: {VectorDbPath}", vectorDbPath);
+    logger.LogInformation("Redis connection string: {RedisConnectionString}", redisConnectionString);
     logger.LogInformation("Supported extensions: {Extensions}", string.Join(", ", options.SupportedExtensions));
     logger.LogInformation("=== OpenAI Configuration ===");
     logger.LogInformation("OpenAI Endpoint: {Endpoint}", normalizedEndpoint);

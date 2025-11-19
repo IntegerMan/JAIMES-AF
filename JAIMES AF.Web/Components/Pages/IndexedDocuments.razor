@@ -39,13 +39,20 @@
 				{
 					<MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
 				}
-				Refresh
+				Load
 			</MudButton>
 		</MudPaper>
 
 		@if (!string.IsNullOrEmpty(errorMessage))
 		{
 			<MudAlert Severity="Severity.Error" Class="mt-4">@errorMessage</MudAlert>
+		}
+
+		@if (indexes.Length == 0 && string.IsNullOrEmpty(errorMessage))
+		{
+			<MudAlert Severity="Severity.Warning" Class="mt-4">
+				No indexes found in Kernel Memory. This may indicate that no documents have been indexed yet, or there may be a connection issue with the vector store.
+			</MudAlert>
 		}
 
 		@if (documentList != null)
@@ -58,7 +65,7 @@
 
 			@if (documentList.Documents.Length == 0)
 			{
-				<MudAlert Severity="Severity.Info">No documents found in this index.</MudAlert>
+				<MudAlert Severity="Severity.Warning">No documents found in this index.</MudAlert>
 			}
 			else
 			{

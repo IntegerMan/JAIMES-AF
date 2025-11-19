@@ -56,21 +56,24 @@ public static class ServiceCollectionExtensions
                 Deployment = chatOptions.TextGenerationDeployment,
             };
 
-            // Use directory-based vector store for Kernel Memory
-            // Kernel Memory's WithSimpleVectorDb uses a directory structure for vector storage
-            // Reference: https://blog.leadingedje.com/post/ai/documents/kernelmemory.html
-            // Extract directory path from connection string format if needed (for backward compatibility)
-            // WithSimpleVectorDb expects a directory path, not a connection string
-            string vectorDbPath = vectorDbOptions.ConnectionString;
-            if (vectorDbPath.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase))
+            // Use Redis as the vector store for Kernel Memory
+            // Redis provides better performance and document listing capabilities than SimpleVectorDb
+            // Connection string format: "localhost:6379" or "localhost:6379,password=xxx" or full connection string
+            string redisConnectionString = vectorDbOptions.ConnectionString;
+            
+            // If connection string is in old format (Data Source=...), extract just the path
+            // Otherwise use as-is for Redis connection string
+            if (redisConnectionString.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase))
             {
-                vectorDbPath = vectorDbPath["Data Source=".Length..].Trim();
+                // Legacy format - convert to Redis default
+                redisConnectionString = "localhost:6379";
             }
 
+            // Use Redis extension method from the Redis package
             IKernelMemory memory = new KernelMemoryBuilder()
                 .WithAzureOpenAITextEmbeddingGeneration(embeddingConfig)
                 .WithAzureOpenAITextGeneration(textGenerationConfig)
-                .WithSimpleVectorDb(vectorDbPath)
+                .WithRedisMemoryDb(redisConnectionString)
                 .Build();
 
             return memory;

@@ -88,68 +88,80 @@ public class DocumentListService : IDocumentListService
         try
         {
             // Note: KernelMemory doesn't have a direct ListDocumentsAsync method
-            // We'll use a search query to find documents, or we can try to get document status
-            // For now, we'll use a broad search query to discover documents
-            // This is a workaround - in a production system, you might want to maintain a separate index
-            // of document IDs, or use the vector store's native listing capabilities if available
+            // We'll use multiple generic search queries to discover documents
+            // This is a workaround - we try several common words that should match most documents
             
-            _logger.LogWarning("Listing documents from index {IndexName} - using search-based discovery which may not find all documents", indexName);
+            _logger.LogInformation("Listing documents from index {IndexName} - using search-based discovery", indexName);
             
-            // Use a very broad search to discover documents
-            // This is not ideal but works with the available API
-            try
+            // Try multiple generic queries to find documents
+            // These queries should match most document content
+            string[] genericQueries = ["the", "document", "text", "content", "information", "data"];
+            HashSet<string> seenDocumentIds = new();
+            
+            foreach (string query in genericQueries)
             {
-                MemoryAnswer answer = await _memory.AskAsync(
-                    question: "*",
-                    index: indexName,
-                    filters: null,
-                    cancellationToken: cancellationToken);
-
-                // Extract unique document IDs from citations
-                HashSet<string> seenDocumentIds = new();
-                if (answer.RelevantSources != null)
+                try
                 {
-                    foreach (Citation citation in answer.RelevantSources)
+                    MemoryAnswer answer = await _memory.AskAsync(
+                        question: query,
+                        index: indexName,
+                        filters: null,
+                        cancellationToken: cancellationToken);
+
+                    // Extract unique document IDs from citations
+                    if (answer.RelevantSources != null)
                     {
-                        string? documentId = citation.DocumentId;
-                        if (!string.IsNullOrWhiteSpace(documentId) && !seenDocumentIds.Contains(documentId))
+                        foreach (Citation citation in answer.RelevantSources)
                         {
-                            seenDocumentIds.Add(documentId);
-                            
-                            // Get document status to get more details
-                            DataPipelineStatus? status = null;
-                            try
+                            string? documentId = citation.DocumentId;
+                            if (!string.IsNullOrWhiteSpace(documentId) && !seenDocumentIds.Contains(documentId))
                             {
-                                status = await _memory.GetDocumentStatusAsync(documentId, indexName, cancellationToken);
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogWarning(ex, "Error getting status for document {DocumentId} in index {IndexName}", documentId, indexName);
-                            }
+                                seenDocumentIds.Add(documentId);
+                                
+                                // Get document status to get more details
+                                DataPipelineStatus? status = null;
+                                try
+                                {
+                                    status = await _memory.GetDocumentStatusAsync(documentId, indexName, cancellationToken);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogWarning(ex, "Error getting status for document {DocumentId} in index {IndexName}", documentId, indexName);
+                                }
 
-                            Dictionary<string, string> tags = new();
-                            // Extract tags from citation if available
-                            if (citation.Partitions != null && citation.Partitions.Count > 0)
-                            {
-                                // Tags aren't directly available from citations, so we'll leave them empty
-                            }
+                                // Extract tags from document status if available
+                                Dictionary<string, string> tags = new();
+                                if (status?.Tags != null)
+                                {
+                                    foreach (KeyValuePair<string, List<string?>> tag in status.Tags)
+                                    {
+                                        if (tag.Value.Count > 0 && !string.IsNullOrWhiteSpace(tag.Value[0]))
+                                        {
+                                            tags[tag.Key] = tag.Value[0];
+                                        }
+                                    }
+                                }
 
-                            documents.Add(new IndexedDocumentInfo
-                            {
-                                DocumentId = documentId,
-                                Index = indexName,
-                                Tags = tags,
-                                LastUpdate = status != null && status.LastUpdate != default ? status.LastUpdate.DateTime : null,
-                                Status = status?.Completed == true ? "Completed" : status?.Completed == false ? "Processing" : "Unknown"
-                            });
+                                documents.Add(new IndexedDocumentInfo
+                                {
+                                    DocumentId = documentId,
+                                    Index = indexName,
+                                    Tags = tags,
+                                    LastUpdate = status != null && status.LastUpdate != default ? status.LastUpdate.DateTime : null,
+                                    Status = status?.Completed == true ? "Completed" : status?.Completed == false ? "Processing" : "Unknown"
+                                });
+                            }
                         }
                     }
                 }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Query '{Query}' did not return results for index {IndexName}", query, indexName);
+                    // Continue with next query
+                }
             }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Error searching for documents in index: {IndexName}", indexName);
-            }
+            
+            _logger.LogInformation("Found {Count} unique documents in index {IndexName} using search-based discovery", documents.Count, indexName);
         }
         catch (Exception ex)
         {
