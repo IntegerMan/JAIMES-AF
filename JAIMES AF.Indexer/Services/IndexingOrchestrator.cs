@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Spectre.Console;
 using MattEland.Jaimes.Indexer.Configuration;
 
 namespace MattEland.Jaimes.Indexer.Services;
@@ -18,27 +19,51 @@ public class IndexingOrchestrator(
         try
         {
             IEnumerable<string> subdirectories = directoryScanner.GetSubdirectories(options.SourceDirectory);
+            List<string> allDirectories = subdirectories.ToList();
             
-            foreach (string subdirectory in subdirectories)
-            {
-                if (cancellationToken.IsCancellationRequested)
+            // Add root directory to the list
+            allDirectories.Add(options.SourceDirectory);
+            
+            int totalDirectories = allDirectories.Count;
+            int currentDirectory = 0;
+
+            await AnsiConsole.Progress()
+                .AutoRefresh(true)
+                .AutoClear(false)
+                .HideCompleted(false)
+                .Columns(new ProgressColumn[]
                 {
-                    logger.LogWarning("Indexing process cancelled");
-                    break;
-                }
+                    new TaskDescriptionColumn(),
+                    new ProgressBarColumn(),
+                    new PercentageColumn(),
+                    new SpinnerColumn()
+                })
+                .StartAsync(async ctx =>
+                {
+                    ProgressTask mainTask = ctx.AddTask("[bold cyan]Processing directories[/]", maxValue: totalDirectories);
 
-                string indexName = GetIndexName(subdirectory);
-                logger.LogInformation("Processing subdirectory: {Subdirectory} with index: {IndexName}", subdirectory, indexName);
+                    foreach (string directory in allDirectories)
+                    {
+                        if (cancellationToken.IsCancellationRequested)
+                        {
+                            AnsiConsole.MarkupLine("[yellow]⚠[/] [yellow]Indexing process cancelled[/]");
+                            logger.LogWarning("Indexing process cancelled");
+                            break;
+                        }
 
-                IndexingSummary dirSummary = await ProcessDirectoryAsync(subdirectory, indexName, cancellationToken);
-                summary.Add(dirSummary);
-            }
+                        currentDirectory++;
+                        string indexName = GetIndexName(directory);
+                        string displayName = directory == options.SourceDirectory ? "[bold]Root Directory[/]" : $"[bold]{Path.GetFileName(directory)}[/]";
+                        
+                        mainTask.Description = $"[cyan]Processing: {displayName}[/]";
+                        logger.LogInformation("Processing directory: {Directory} with index: {IndexName}", directory, indexName);
 
-            // Also process files in the root directory
-            string rootIndexName = GetIndexName(options.SourceDirectory);
-            logger.LogInformation("Processing root directory: {SourceDirectory} with index: {IndexName}", options.SourceDirectory, rootIndexName);
-            IndexingSummary rootSummary = await ProcessDirectoryAsync(options.SourceDirectory, rootIndexName, cancellationToken);
-            summary.Add(rootSummary);
+                        IndexingSummary dirSummary = await ProcessDirectoryAsync(directory, indexName, cancellationToken, ctx);
+                        summary.Add(dirSummary);
+                        
+                        mainTask.Increment(1);
+                    }
+                });
 
             logger.LogInformation(
                 "Indexing complete. Processed: {TotalProcessed}, Succeeded: {TotalSucceeded}, Errors: {TotalErrors}",
@@ -46,6 +71,7 @@ public class IndexingOrchestrator(
         }
         catch (Exception ex)
         {
+            AnsiConsole.MarkupLine($"[red]✗[/] [red]Error during indexing process: {ex.Message}[/]");
             logger.LogError(ex, "Error during indexing process");
             throw;
         }
@@ -53,10 +79,25 @@ public class IndexingOrchestrator(
         return summary;
     }
 
-    private async Task<IndexingSummary> ProcessDirectoryAsync(string directoryPath, string indexName, CancellationToken cancellationToken)
+    private async Task<IndexingSummary> ProcessDirectoryAsync(string directoryPath, string indexName, CancellationToken cancellationToken, ProgressContext? progressContext = null)
     {
         IndexingSummary summary = new();
-        IEnumerable<string> files = directoryScanner.GetFiles(directoryPath, options.SupportedExtensions);
+        List<string> files = directoryScanner.GetFiles(directoryPath, options.SupportedExtensions).ToList();
+        
+        if (files.Count == 0)
+        {
+            return summary;
+        }
+
+        string directoryName = Path.GetFileName(directoryPath);
+        if (string.IsNullOrEmpty(directoryName))
+        {
+            directoryName = "Root";
+        }
+
+        ProgressTask? fileTask = progressContext?.AddTask(
+            $"[dim]  Files in {directoryName}[/]",
+            maxValue: files.Count);
 
         foreach (string filePath in files)
         {
@@ -64,6 +105,9 @@ public class IndexingOrchestrator(
             {
                 break;
             }
+
+            string fileName = Path.GetFileName(filePath);
+            fileTask?.Description($"[dim]  Processing: [cyan]{fileName}[/][/]");
 
             summary.TotalProcessed++;
             try
@@ -73,17 +117,22 @@ public class IndexingOrchestrator(
                 if (result)
                 {
                     summary.TotalSucceeded++;
+                    fileTask?.Description($"[dim]  [green]✓[/] [green]{fileName}[/][/]");
                 }
                 else
                 {
                     summary.TotalErrors++;
+                    fileTask?.Description($"[dim]  [red]✗[/] [red]{fileName}[/][/]");
                 }
             }
             catch (Exception ex)
             {
                 summary.TotalErrors++;
+                fileTask?.Description($"[dim]  [red]✗[/] [red]{fileName}[/] ([red]{ex.Message}[/])[/]");
                 logger.LogError(ex, "Unexpected error processing file: {FilePath}", filePath);
             }
+            
+            fileTask?.Increment(1);
         }
 
         return summary;

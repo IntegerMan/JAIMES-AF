@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.KernelMemory;
+using Spectre.Console;
 using MattEland.Jaimes.Indexer.Configuration;
 using MattEland.Jaimes.Indexer.Services;
 
@@ -92,39 +93,83 @@ IndexingOrchestrator orchestrator = host.Services.GetRequiredService<IndexingOrc
 
 try
 {
-    logger.LogInformation("Starting document indexing application");
-    logger.LogInformation("Source directory: {SourceDirectory}", options.SourceDirectory);
-    logger.LogInformation("Redis connection string: {RedisConnectionString}", redisConnectionString);
-    logger.LogInformation("Supported extensions: {Extensions}", string.Join(", ", options.SupportedExtensions));
-    logger.LogInformation("=== OpenAI Configuration ===");
-    logger.LogInformation("OpenAI Endpoint: {Endpoint}", normalizedEndpoint);
-    logger.LogInformation("OpenAI Embedding Deployment Name: '{Deployment}'", options.OpenAiDeployment);
-    logger.LogInformation("OpenAI API Key Length: {KeyLength} characters", string.IsNullOrEmpty(options.OpenAiApiKey) ? 0 : options.OpenAiApiKey.Length);
-    
-    // Log the expected URI format that Azure OpenAI will construct
-    string expectedEmbeddingsUri = $"{normalizedEndpoint}/openai/deployments/{options.OpenAiDeployment}/embeddings?api-version=2024-02-15-preview";
-    logger.LogInformation("Expected Embeddings API URI: {Uri}", expectedEmbeddingsUri);
-    logger.LogInformation("=== End OpenAI Configuration ===");
-    
-    // Warn if deployment name doesn't match common patterns (might indicate incorrect name)
+    // Display colorful header
+    AnsiConsole.Write(new FigletText("JAIMES Indexer").Color(Color.Cyan1));
+    AnsiConsole.MarkupLine("[bold cyan]Document Indexing Application[/]");
+    AnsiConsole.WriteLine();
+
+    // Display configuration panel
+    Panel configPanel = new Panel(
+        new Table()
+            .AddColumn(new TableColumn("[bold]Setting[/]").RightAligned())
+            .AddColumn(new TableColumn("[bold]Value[/]"))
+            .HideHeaders()
+            .Border(TableBorder.None)
+            .AddRow("[dim]Source Directory:[/]", $"[cyan]{options.SourceDirectory}[/]")
+            .AddRow("[dim]Redis Connection:[/]", $"[cyan]{redisConnectionString}[/]")
+            .AddRow("[dim]Supported Extensions:[/]", $"[cyan]{string.Join(", ", options.SupportedExtensions)}[/]")
+            .AddRow("[dim]OpenAI Endpoint:[/]", $"[cyan]{normalizedEndpoint}[/]")
+            .AddRow("[dim]Embedding Deployment:[/]", $"[cyan]{options.OpenAiDeployment}[/]")
+            .AddRow("[dim]API Key Length:[/]", $"[cyan]{options.OpenAiApiKey.Length} characters[/]")
+    )
+    {
+        Header = new PanelHeader("[bold yellow]Configuration[/]", Justify.Left),
+        Border = BoxBorder.Rounded,
+        BorderStyle = new Style(Color.Yellow1)
+    };
+
+    AnsiConsole.Write(configPanel);
+    AnsiConsole.WriteLine();
+
+    // Warn if deployment name doesn't match common patterns
     if (!options.OpenAiDeployment.Contains("embedding", StringComparison.OrdinalIgnoreCase) && 
         !options.OpenAiDeployment.Contains("ada", StringComparison.OrdinalIgnoreCase))
     {
-        logger.LogWarning(
-            "Deployment name '{Deployment}' doesn't match common embedding model patterns. " +
-            "If you encounter 404 errors, verify this matches your Azure OpenAI deployment name exactly (case-sensitive). " +
-            "Common names: 'text-embedding-3-small-global', 'text-embedding-3-small', 'text-embedding-ada-002'",
-            options.OpenAiDeployment);
+        AnsiConsole.MarkupLine("[yellow]⚠[/] [yellow]Warning:[/] Deployment name doesn't match common embedding model patterns.");
+        AnsiConsole.MarkupLine("[dim]If you encounter 404 errors, verify this matches your Azure OpenAI deployment name exactly.[/]");
+        AnsiConsole.WriteLine();
     }
+
+    // Log expected URI for debugging (but keep it minimal)
+    logger.LogDebug("Expected Embeddings API URI: {Uri}", 
+        $"{normalizedEndpoint}/openai/deployments/{options.OpenAiDeployment}/embeddings?api-version=2024-02-15-preview");
+
+    AnsiConsole.MarkupLine("[bold green]Starting indexing process...[/]");
+    AnsiConsole.WriteLine();
 
     IndexingOrchestrator.IndexingSummary summary = await orchestrator.ProcessAllDirectoriesAsync(CancellationToken.None);
 
+    AnsiConsole.WriteLine();
+    
+    // Display summary table
+    Table summaryTable = new Table()
+        .AddColumn(new TableColumn("[bold]Metric[/]").RightAligned())
+        .AddColumn(new TableColumn("[bold]Value[/]").Centered())
+        .HideHeaders()
+        .Border(TableBorder.Rounded)
+        .AddRow("[dim]Total Processed:[/]", $"[cyan]{summary.TotalProcessed}[/]")
+        .AddRow("[dim]Succeeded:[/]", $"[green]{summary.TotalSucceeded}[/]")
+        .AddRow("[dim]Errors:[/]", summary.TotalErrors > 0 ? $"[red]{summary.TotalErrors}[/]" : "[green]0[/]");
+
+    Panel summaryPanel = new Panel(summaryTable)
+    {
+        Header = new PanelHeader("[bold green]✓ Indexing Complete[/]", Justify.Left),
+        Border = BoxBorder.Rounded,
+        BorderStyle = new Style(Color.Green1)
+    };
+
+    AnsiConsole.Write(summaryPanel);
+    AnsiConsole.WriteLine();
+
     logger.LogInformation("Indexing completed successfully. Processed: {Processed}, Succeeded: {Succeeded}, Errors: {Errors}",
         summary.TotalProcessed, summary.TotalSucceeded, summary.TotalErrors);
-    return 0;
+    
+    return summary.TotalErrors > 0 ? 1 : 0;
 }
 catch (Exception ex)
 {
+    AnsiConsole.WriteLine();
+    AnsiConsole.WriteException(ex, ExceptionFormats.ShortenPaths | ExceptionFormats.ShortenTypes);
     logger.LogError(ex, "Fatal error during indexing");
     return 1;
 }
