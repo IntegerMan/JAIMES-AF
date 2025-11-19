@@ -40,6 +40,9 @@ public class Program
         VectorDbOptions vectorDbOptions = builder.Configuration.GetSection("VectorDb").Get<VectorDbOptions>() ?? throw new InvalidOperationException("VectorDb configuration is required");
         builder.Services.AddSingleton(vectorDbOptions);
 
+        // Register Kernel Memory (must be registered before services that depend on it)
+        builder.Services.AddKernelMemory();
+
         // Add Jaimes repositories and services
         builder.Services.AddJaimesRepositories(builder.Configuration);
         builder.Services.AddJaimesServices();

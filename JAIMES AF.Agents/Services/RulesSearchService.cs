@@ -12,53 +12,12 @@ public class RulesSearchService : IRulesSearchService
 
     public RulesSearchService(
         ILogger<RulesSearchService> logger,
-        JaimesChatOptions chatOptions,
-        VectorDbOptions vectorDbOptions)
+        IKernelMemory memory)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        ArgumentNullException.ThrowIfNull(chatOptions);
-        ArgumentNullException.ThrowIfNull(vectorDbOptions);
+        _memory = memory ?? throw new ArgumentNullException(nameof(memory));
 
-        // Configure Kernel Memory with Azure OpenAI
-        // Reference: https://blog.leadingedje.com/post/ai/documents/kernelmemory.html
-        // Normalize endpoint URL - remove trailing slash to avoid 404 errors
-        string normalizedEndpoint = chatOptions.Endpoint.TrimEnd('/');
-
-        // Create separate configs for embedding and text generation since they use different deployments
-        AzureOpenAIConfig embeddingConfig = new()
-        {
-            APIKey = chatOptions.ApiKey,
-            Auth = AzureOpenAIConfig.AuthTypes.APIKey,
-            Endpoint = normalizedEndpoint,
-            Deployment = chatOptions.EmbeddingDeployment,
-        };
-
-        AzureOpenAIConfig textGenerationConfig = new()
-        {
-            APIKey = chatOptions.ApiKey,
-            Auth = AzureOpenAIConfig.AuthTypes.APIKey,
-            Endpoint = normalizedEndpoint,
-            Deployment = chatOptions.TextGenerationDeployment,
-        };
-
-        // Use directory-based vector store for Kernel Memory
-        // Kernel Memory's WithSimpleVectorDb uses a directory structure for vector storage
-        // Reference: https://blog.leadingedje.com/post/ai/documents/kernelmemory.html
-        // Extract directory path from connection string format if needed (for backward compatibility)
-        // WithSimpleVectorDb expects a directory path, not a connection string
-        string vectorDbPath = vectorDbOptions.ConnectionString;
-        if (vectorDbPath.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase))
-        {
-            vectorDbPath = vectorDbPath["Data Source=".Length..].Trim();
-        }
-
-        _memory = new KernelMemoryBuilder()
-            .WithAzureOpenAITextEmbeddingGeneration(embeddingConfig)
-            .WithAzureOpenAITextGeneration(textGenerationConfig)
-            .WithSimpleVectorDb(vectorDbPath)
-            .Build();
-
-        _logger.LogInformation("RulesSearchService initialized with Kernel Memory using directory-based vector store at: {VectorDbPath}", vectorDbPath);
+        _logger.LogInformation("RulesSearchService initialized with Kernel Memory");
     }
 
     public async Task<string> SearchRulesAsync(string rulesetId, string query, CancellationToken cancellationToken = default)
