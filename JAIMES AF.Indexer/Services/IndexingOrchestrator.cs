@@ -12,8 +12,6 @@ public class IndexingOrchestrator(
 {
     public async Task<IndexingSummary> ProcessAllDirectoriesAsync(CancellationToken cancellationToken = default)
     {
-        logger.LogInformation("Starting indexing process for directory: {SourceDirectory}", options.SourceDirectory);
-        
         IndexingSummary summary = new();
 
         try
@@ -56,7 +54,6 @@ public class IndexingOrchestrator(
                         string displayName = directory == options.SourceDirectory ? "[bold]Root Directory[/]" : $"[bold]{Path.GetFileName(directory)}[/]";
                         
                         mainTask.Description = $"[cyan]Processing: {displayName}[/]";
-                        logger.LogInformation("Processing directory: {Directory} with index: {IndexName}", directory, indexName);
 
                         IndexingSummary dirSummary = await ProcessDirectoryAsync(directory, indexName, cancellationToken, ctx);
                         summary.Add(dirSummary);
@@ -64,14 +61,11 @@ public class IndexingOrchestrator(
                         mainTask.Increment(1);
                     }
                 });
-
-            logger.LogInformation(
-                "Indexing complete. Processed: {TotalProcessed}, Succeeded: {TotalSucceeded}, Errors: {TotalErrors}",
-                summary.TotalProcessed, summary.TotalSucceeded, summary.TotalErrors);
         }
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗[/] [red]Error during indexing process: {ex.Message}[/]");
+            // Only log full exception details to logger for debugging, not to console
             logger.LogError(ex, "Error during indexing process");
             throw;
         }
@@ -128,7 +122,8 @@ public class IndexingOrchestrator(
             catch (Exception ex)
             {
                 summary.TotalErrors++;
-                fileTask?.Description($"[dim]  [red]✗[/] [red]{fileName}[/] ([red]{ex.Message}[/])[/]");
+                fileTask?.Description($"[dim]  [red]✗[/] [red]{fileName}[/] ([red]{Markup.Escape(ex.Message)}[/])[/]");
+                // Only log full exception details to logger for debugging
                 logger.LogError(ex, "Unexpected error processing file: {FilePath}", filePath);
             }
             

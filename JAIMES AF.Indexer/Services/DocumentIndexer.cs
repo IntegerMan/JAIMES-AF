@@ -24,6 +24,7 @@ public class DocumentIndexer(ILogger<DocumentIndexer> logger, IKernelMemory memo
     {
         if (!File.Exists(filePath))
         {
+            // Only log to logger, not to console - progress bars handle user feedback
             logger.LogWarning("File does not exist: {FilePath}", filePath);
             return false;
         }
@@ -33,8 +34,6 @@ public class DocumentIndexer(ILogger<DocumentIndexer> logger, IKernelMemory memo
             string documentId = GetDocumentId(filePath, indexName);
             string fileName = Path.GetFileName(filePath);
             
-            logger.LogInformation("Indexing document: {FilePath} with ID: {DocumentId} in index: {IndexName}", filePath, documentId, indexName);
-            
             await memory.ImportDocumentAsync(
                 new Document(documentId)
                     .AddFile(filePath)
@@ -43,11 +42,12 @@ public class DocumentIndexer(ILogger<DocumentIndexer> logger, IKernelMemory memo
                 index: indexName,
                 cancellationToken: cancellationToken);
 
-            logger.LogInformation("Successfully indexed document: {FilePath}", filePath);
+            // Success is shown via progress bars, no need for console logging
             return true;
         }
         catch (Exception ex)
         {
+            // Only log to logger for debugging - progress bars show error status
             logger.LogError(ex, "Error indexing document: {FilePath}", filePath);
             return false;
         }

@@ -3,20 +3,24 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.KernelMemory;
+using Microsoft.KernelMemory.MemoryDb.Redis;
 using Spectre.Console;
 using MattEland.Jaimes.Indexer.Configuration;
 using MattEland.Jaimes.Indexer.Services;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
-// Configure logging
+// Configure logging - keep minimal to avoid cluttering Spectre.Console output
+// Only log warnings and errors to console, suppress informational messages
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
-builder.Logging.SetMinimumLevel(LogLevel.Information);
-// Enable debug logging for Kernel Memory and OpenAI to see API calls
-builder.Logging.AddFilter("Microsoft.KernelMemory", LogLevel.Debug);
-builder.Logging.AddFilter("Microsoft.SemanticKernel", LogLevel.Debug);
-builder.Logging.AddFilter("OpenAI", LogLevel.Debug);
+builder.Logging.SetMinimumLevel(LogLevel.Warning);
+// Suppress verbose logging from Kernel Memory and OpenAI during indexing
+builder.Logging.AddFilter("Microsoft.KernelMemory", LogLevel.Warning);
+builder.Logging.AddFilter("Microsoft.SemanticKernel", LogLevel.Warning);
+builder.Logging.AddFilter("OpenAI", LogLevel.Warning);
+// Suppress our own informational logging - we use Spectre.Console instead
+builder.Logging.AddFilter("MattEland.Jaimes.Indexer", LogLevel.Warning);
 
 // Load configuration
 builder.Configuration
@@ -70,11 +74,33 @@ if (redisConnectionString.StartsWith("Data Source=", StringComparison.OrdinalIgn
     redisConnectionString = "localhost:6379";
 }
 
-// Use Redis extension method from the Redis package
+// Configure Redis with tag fields that Kernel Memory uses internally and that we use in our code
+// IMPORTANT: All tag fields used when indexing documents MUST be declared here, or Redis will throw
+// an "un-indexed tag field" error. This includes:
+// - System tags: __part_n (document parts), collection (document organization)
+// - Document tags: sourcePath, fileName (used by DocumentIndexer)
+// - Rule tags: rulesetId, ruleId, title (used by RulesSearchService)
+// See: https://github.com/microsoft/kernel-memory/discussions/735
+RedisConfig redisConfig = new("km-", new Dictionary<string, char?>
+{
+    // System tags used by Kernel Memory internally
+    { "__part_n", ',' },
+    { "collection", ',' },
+    // Document tags used by DocumentIndexer
+    { "sourcePath", ',' },
+    { "fileName", ',' },
+    // Rule tags used by RulesSearchService
+    { "rulesetId", ',' },
+    { "ruleId", ',' },
+    { "title", ',' }
+});
+redisConfig.ConnectionString = redisConnectionString;
+
+// Use Redis as the vector store for Kernel Memory
 IKernelMemory memory = new KernelMemoryBuilder()
     .WithAzureOpenAITextEmbeddingGeneration(openAiConfig)
     .WithoutTextGenerator()
-    .WithRedisMemoryDb(redisConnectionString)
+    .WithRedisMemoryDb(redisConfig)
     .Build();
 
 builder.Services.AddSingleton(memory);
@@ -130,10 +156,6 @@ try
         AnsiConsole.WriteLine();
     }
 
-    // Log expected URI for debugging (but keep it minimal)
-    logger.LogDebug("Expected Embeddings API URI: {Uri}", 
-        $"{normalizedEndpoint}/openai/deployments/{options.OpenAiDeployment}/embeddings?api-version=2024-02-15-preview");
-
     AnsiConsole.MarkupLine("[bold green]Starting indexing process...[/]");
     AnsiConsole.WriteLine();
 
@@ -160,9 +182,6 @@ try
 
     AnsiConsole.Write(summaryPanel);
     AnsiConsole.WriteLine();
-
-    logger.LogInformation("Indexing completed successfully. Processed: {Processed}, Succeeded: {Succeeded}, Errors: {Errors}",
-        summary.TotalProcessed, summary.TotalSucceeded, summary.TotalErrors);
     
     return summary.TotalErrors > 0 ? 1 : 0;
 }
