@@ -49,6 +49,65 @@ dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=tcp:{your-
 
 Note: You'll need to regenerate migrations for SQL Server (see instructions above) before deploying to Azure SQL.
 
+## Redis Dependency
+
+The application uses Redis as the vector store backend for Kernel Memory. You must have Redis running locally before starting the application.
+
+### Running Redis with Docker
+
+```bash
+docker run -d --name redis-stack -p 6379:6379 -p 8001:8001 -v redis-data:/data redis/redis-stack:latest
+```
+
+This command:
+- Starts Redis Stack in detached mode
+- Maps Redis port 6379 to your host
+- Maps RedisInsight web UI to port 8001 (optional, for monitoring)
+- Creates a named volume `redis-data` for data persistence
+
+### Running Redis with Podman
+
+```bash
+podman run -d --name redis-stack -p 6379:6379 -p 8001:8001 -v redis-data:/data redis/redis-stack:latest
+```
+
+### Verifying Redis is Running
+
+Test the connection:
+```bash
+# Docker
+docker exec -it redis-stack redis-cli ping
+
+# Podman
+podman exec -it redis-stack redis-cli ping
+```
+
+You should receive a `PONG` response.
+
+### Accessing RedisInsight (Web UI)
+
+Open your browser and navigate to:
+```
+http://localhost:8001
+```
+
+### Redis Configuration
+
+The application connects to Redis at `localhost:6379` by default. This can be configured in `appsettings.json`:
+
+```json
+{
+  "VectorDb": {
+    "ConnectionString": "localhost:6379"
+  }
+}
+```
+
+For production or custom configurations, you can use full connection strings:
+- `localhost:6379` - Default local connection
+- `localhost:6379,password=yourpassword` - With password
+- `redis://localhost:6379` - Full Redis URL format
+
 ## Chat Service Configuration
 
 The application requires Azure OpenAI with the following deployment:
@@ -79,6 +138,10 @@ Replace `YourResource` with your Azure OpenAI resource name and provide your act
   - `Repositories/` - Data access tests
 
 ## Running the Application
+
+**Prerequisites:**
+1. Ensure Redis is running locally (see [Redis Dependency](#redis-dependency) section above)
+2. Configure Azure OpenAI credentials (see [Chat Service Configuration](#chat-service-configuration) section above)
 
 ```bash
 dotnet run --project "JAIMES AF.AppHost"

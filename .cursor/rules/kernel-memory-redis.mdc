@@ -1,0 +1,87 @@
+---
+globs: ["**/Program.cs", "**/ServiceCollectionExtensions.cs", "**/DocumentIndexer.cs", "**/RulesSearchService.cs"]
+alwaysApply: false
+description: Guidelines for Kernel Memory Redis configuration and tag field management
+---
+
+# Kernel Memory Redis Configuration Guidelines
+
+## Critical Rule: Redis Tag Field Configuration
+
+**IMPORTANT**: When using Redis as the vector store for Kernel Memory, **ALL tag fields** that are used when indexing documents **MUST** be declared in the `RedisConfig` tag fields dictionary. Failure to do so will result in an `ArgumentException` with the message: "Attempt to insert un-indexed tag field: '{tagName}', will not be able to filter on it, please adjust the tag settings in your Redis Configuration".
+
+## Where to Configure
+
+Redis tag fields must be configured in **both** places where `WithRedisMemoryDb` is called:
+
+1. **JAIMES AF.Indexer/Program.cs** - For the indexer application
+2. **JAIMES AF.Services/ServiceCollectionExtensions.cs** - For the main application services
+
+## Required Tag Fields
+
+The following tag fields must always be included in the `RedisConfig`:
+
+### System Tags (Kernel Memory Internal)
+- `__part_n` - Used by Kernel Memory for document part tracking
+- `collection` - Used by Kernel Memory for document organization
+
+### Document Tags (Used by DocumentIndexer)
+- `sourcePath` - Full file path of the indexed document
+- `fileName` - Name of the indexed file
+
+### Rule Tags (Used by RulesSearchService)
+- `rulesetId` - ID of the ruleset containing the rule
+- `ruleId` - Unique identifier for the rule
+- `title` - Title of the rule
+
+## Configuration Pattern
+
+```csharp
+RedisConfig redisConfig = new("km-", new Dictionary<string, char?>
+{
+    // System tags used by Kernel Memory internally
+    { "__part_n", ',' },
+    { "collection", ',' },
+    // Document tags used by DocumentIndexer
+    { "sourcePath", ',' },
+    { "fileName", ',' },
+    // Rule tags used by RulesSearchService
+    { "rulesetId", ',' },
+    { "ruleId", ',' },
+    { "title", ',' }
+});
+redisConfig.ConnectionString = redisConnectionString;
+```
+
+## Adding New Tags
+
+**CRITICAL**: If you add a new tag field when indexing documents (via `AddTag()` or in a `TagCollection`), you **MUST**:
+
+1. Add it to the `RedisConfig` tag fields dictionary in **both** configuration locations
+2. Update this documentation to include the new tag
+3. Add a comment explaining what the tag is used for
+
+## Example: Adding a New Tag
+
+If you add a new tag like `"category"` in `DocumentIndexer`:
+
+```csharp
+// In DocumentIndexer.cs
+.AddTag("category", categoryName)
+```
+
+You must then update **both** Redis configurations:
+
+```csharp
+// In Program.cs and ServiceCollectionExtensions.cs
+RedisConfig redisConfig = new("km-", new Dictionary<string, char?>
+{
+    // ... existing tags ...
+    { "category", ',' }  // NEW: Add this tag
+});
+```
+
+## References
+
+- GitHub Discussion: https://github.com/microsoft/kernel-memory/discussions/735
+- The separator character (`,`) is used by Redis for tag value indexing

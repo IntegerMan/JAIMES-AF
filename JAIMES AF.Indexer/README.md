@@ -27,10 +27,62 @@ The application is designed with modularity in mind, making it easy to convert t
 
 Configuration is provided via `appsettings.json`:
 - `SourceDirectory`: Root directory to scan
-- `VectorDbConnectionString`: Directory path for Kernel Memory vector store (e.g., `"C:\\Dev\\JAIMES AF\\VectorStore"` - can also use `"Data Source=path"` format for backward compatibility, must match RulesSearchService)
+- `VectorDbConnectionString`: Redis connection string for Kernel Memory vector store (e.g., `"localhost:6379"` - must match RulesSearchService configuration)
 - `OpenAiEndpoint`, `OpenAiApiKey`, `OpenAiDeployment`: Azure OpenAI configuration (only EmbeddingModel is used, not TextModel)
 - `SupportedExtensions`: List of file extensions to index (default: `.txt`, `.md`, `.pdf`, `.docx`)
 - `Recursive`: Whether to process subdirectories recursively (default: `true`)
+
+## Redis Dependency
+
+The indexer requires Redis to be running locally as the vector store backend for Kernel Memory.
+
+### Running Redis with Docker
+
+```bash
+docker run -d --name redis-stack -p 6379:6379 -p 8001:8001 -v redis-data:/data redis/redis-stack:latest
+```
+
+This command:
+- Starts Redis Stack in detached mode
+- Maps Redis port 6379 to your host
+- Maps RedisInsight web UI to port 8001 (optional, for monitoring)
+- Creates a named volume `redis-data` for data persistence
+
+### Running Redis with Podman
+
+```bash
+podman run -d --name redis-stack -p 6379:6379 -p 8001:8001 -v redis-data:/data redis/redis-stack:latest
+```
+
+### Verifying Redis is Running
+
+Test the connection:
+```bash
+# Docker
+docker exec -it redis-stack redis-cli ping
+
+# Podman
+podman exec -it redis-stack redis-cli ping
+```
+
+You should receive a `PONG` response.
+
+### Redis Configuration
+
+The indexer connects to Redis at `localhost:6379` by default. Configure this in `appsettings.json`:
+
+```json
+{
+  "Indexer": {
+    "VectorDbConnectionString": "localhost:6379"
+  }
+}
+```
+
+For custom configurations, you can use:
+- `localhost:6379` - Default local connection
+- `localhost:6379,password=yourpassword` - With password
+- `redis://localhost:6379` - Full Redis URL format
 
 ## Azure OpenAI Setup
 
@@ -87,7 +139,7 @@ Based on this project's configuration:
    {
      "Indexer": {
        "SourceDirectory": "C:\\Your\\Directory\\Sourcebooks",
-       "VectorDbConnectionString": "C:\\Dev\\JAIMES AF\\VectorStore",
+       "VectorDbConnectionString": "localhost:6379",
        "OpenAiEndpoint": "https://your-endpoint.openai.azure.com/",
        "OpenAiApiKey": "your-api-key",
        "OpenAiDeployment": "your-deployment-name"
@@ -140,9 +192,9 @@ The modular design allows easy conversion to a worker service:
 ## Integration with RulesSearchService
 
 This indexer uses the same vector store as `RulesSearchService`:
-- **Shared Storage**: Both services use the same vector store directory path (specified in `VectorDbConnectionString` configuration)
-- **Same Configuration**: The `VectorDbConnectionString` in `appsettings.json` should match the path used by `RulesSearchService` (can be a direct directory path like `"C:\\Dev\\JAIMES AF\\VectorStore"` or use `"Data Source=path"` format for backward compatibility)
+- **Shared Storage**: Both services use the same Redis instance (specified in `VectorDbConnectionString` configuration)
+- **Same Configuration**: The `VectorDbConnectionString` in `appsettings.json` should match the Redis connection string used by `RulesSearchService` (e.g., `"localhost:6379"`)
 - **Document Access**: Documents indexed here are searchable via the RulesSearchService
 - **Index Organization**: Index names are generated from directory names (prefixed with `index-`), while RulesSearchService uses `ruleset-` prefix for ruleset indexes
-- **Storage Format**: The vector store uses a directory structure (not SQLite), managed by Kernel Memory's `WithSimpleVectorDb()` method
+- **Storage Format**: The vector store uses Redis, managed by Kernel Memory's `WithRedisMemoryDb()` method
 

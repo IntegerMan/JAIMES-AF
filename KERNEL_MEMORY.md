@@ -8,9 +8,10 @@ Kernel Memory is used in this project to provide RAG (Retrieval-Augmented Genera
 
 ### Storage Model
 - **Rules are NOT stored in EF entities** - they exist only in Kernel Memory's vector store
-- Vector store: Uses a directory structure (configured via `WithSimpleVectorDb()` with a directory path)
-- The directory path can be specified directly or extracted from a connection string format (e.g., `"Data Source=km_vector_store"` becomes `"km_vector_store"`)
+- Vector store: Uses Redis as the backend (configured via `WithRedisMemoryDb()` with a Redis connection string)
+- Redis connection string format: `"localhost:6379"` or `"localhost:6379,password=xxx"` or full Redis URL
 - Rules are indexed by `rulesetId` which serves as an index/filter for organizing and searching
+- **Redis Dependency**: Redis must be running locally before starting the application
 
 ### Key Components
 
@@ -20,7 +21,7 @@ Kernel Memory is used in this project to provide RAG (Retrieval-Augmented Genera
 
 2. **RulesSearchService** (`JAIMES AF.Agents/Services/RulesSearchService.cs`)
    - Implementation using Kernel Memory
-   - Configures Kernel Memory with Azure OpenAI and directory-based vector store
+   - Configures Kernel Memory with Azure OpenAI and Redis vector store
    - Handles indexing and searching of rules
 
 3. **RulesSearchTool** (`JAIMES AF.Tools/RulesSearchTool.cs`)
@@ -30,39 +31,90 @@ Kernel Memory is used in this project to provide RAG (Retrieval-Augmented Genera
 
 ## Configuration
 
+### Redis Setup
+
+Before configuring Kernel Memory, you must have Redis running locally.
+
+#### Running Redis with Docker
+
+```bash
+docker run -d --name redis-stack -p 6379:6379 -p 8001:8001 -v redis-data:/data redis/redis-stack:latest
+```
+
+This command:
+- Starts Redis Stack in detached mode
+- Maps Redis port 6379 to your host
+- Maps RedisInsight web UI to port 8001 (optional, for monitoring)
+- Creates a named volume `redis-data` for data persistence
+
+#### Running Redis with Podman
+
+```bash
+podman run -d --name redis-stack -p 6379:6379 -p 8001:8001 -v redis-data:/data redis/redis-stack:latest
+```
+
+#### Verifying Redis is Running
+
+Test the connection:
+```bash
+# Docker
+docker exec -it redis-stack redis-cli ping
+
+# Podman
+podman exec -it redis-stack redis-cli ping
+```
+
+You should receive a `PONG` response.
+
+#### Accessing RedisInsight (Web UI)
+
+Open your browser and navigate to:
+```
+http://localhost:8001
+```
+
 ### Kernel Memory Setup
 
 ```csharp
 // Configure Azure OpenAI
-OpenAIConfig openAiConfig = new()
+AzureOpenAIConfig embeddingConfig = new()
 {
     APIKey = chatOptions.ApiKey,
-    Endpoint = chatOptions.Endpoint,
-    TextModel = chatOptions.Deployment,
-    EmbeddingModel = chatOptions.Deployment
+    Auth = AzureOpenAIConfig.AuthTypes.APIKey,
+    Endpoint = normalizedEndpoint,
+    Deployment = chatOptions.EmbeddingDeployment,
 };
 
-// Configure directory-based vector store
-// WithSimpleVectorDb expects a directory path (not a connection string)
-// The path can be extracted from a connection string format for backward compatibility
-string vectorDbPath = "km_vector_store"; // or extract from "Data Source=km_vector_store"
+AzureOpenAIConfig textGenerationConfig = new()
+{
+    APIKey = chatOptions.ApiKey,
+    Auth = AzureOpenAIConfig.AuthTypes.APIKey,
+    Endpoint = normalizedEndpoint,
+    Deployment = chatOptions.TextGenerationDeployment,
+};
+
+// Configure Redis as the vector store
+// Connection string format: "localhost:6379" or "localhost:6379,password=xxx"
+string redisConnectionString = "localhost:6379";
 
 // Build Kernel Memory instance
 IKernelMemory memory = new KernelMemoryBuilder()
-    .WithOpenAI(openAiConfig)
-    .WithSimpleVectorDb(vectorDbPath)
+    .WithAzureOpenAITextEmbeddingGeneration(embeddingConfig)
+    .WithAzureOpenAITextGeneration(textGenerationConfig)
+    .WithRedisMemoryDb(redisConnectionString)
     .Build();
 ```
 
 ### Package Dependencies
 - `Microsoft.KernelMemory.Core` - Core Kernel Memory functionality
-- Uses `WithSimpleVectorDb()` for directory-based vector storage (built into core package)
+- `Microsoft.KernelMemory.MemoryDb.Redis` - Redis memory database connector
+- Uses `WithRedisMemoryDb()` for Redis-based vector storage
 
 ## Usage
 
 ### Indexing Rules
 
-Rules are indexed into Kernel Memory using `ImportTextAsync()`:
+Rules are indexed into Kernel Memory using `ImportTextAsync()`. The data is stored in Redis:
 
 ```csharp
 await memory.ImportTextAsync(
@@ -137,13 +189,15 @@ The tool is described to agents as:
 
 3. **Automatic Indexing**: Rules should be indexed via `IndexRuleAsync()` when they are added to the system. The `EnsureRulesetIndexedAsync()` method is kept for interface compatibility but doesn't query EF entities.
 
-4. **Separate Storage**: The vector store (directory structure) is separate from the main application database, allowing for independent management and optimization.
+4. **Separate Storage**: The vector store (Redis) is separate from the main application database, allowing for independent management and optimization.
 
 ## References
 
 - **Kernel Memory Blog Post**: https://blog.leadingedje.com/post/ai/documents/kernelmemory.html
 - **Kernel Memory GitHub**: https://github.com/microsoft/kernel-memory
-- **Package**: `Microsoft.KernelMemory.Core` (NuGet)
+- **Packages**: 
+  - `Microsoft.KernelMemory.Core` (NuGet) - Core Kernel Memory functionality
+  - `Microsoft.KernelMemory.MemoryDb.Redis` (NuGet) - Redis memory database connector
 
 ## Future Considerations
 
