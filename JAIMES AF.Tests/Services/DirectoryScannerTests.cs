@@ -96,7 +96,7 @@ public class DirectoryScannerTests
         string testFile = Path.Combine(tempDir, $"test{extension}");
         File.WriteAllText(testFile, "test content");
 
-        List<string> supportedExtensions = new() { ".txt", ".md", ".pdf", ".docx" };
+        List<string> supportedExtensions = [".txt", ".md", ".pdf", ".docx"];
 
         try
         {
@@ -127,7 +127,7 @@ public class DirectoryScannerTests
     {
         // Arrange
         string nonExistentPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        List<string> supportedExtensions = new() { ".txt" };
+        List<string> supportedExtensions = [".txt"];
 
         // Act
         IEnumerable<string> result = _scanner.GetFiles(nonExistentPath, supportedExtensions);
@@ -154,7 +154,7 @@ public class DirectoryScannerTests
         File.WriteAllText(exeFile, "exe");
         File.WriteAllText(pdfFile, "pdf");
 
-        List<string> supportedExtensions = new() { ".txt", ".md", ".pdf" };
+        List<string> supportedExtensions = [".txt", ".md", ".pdf"];
 
         try
         {

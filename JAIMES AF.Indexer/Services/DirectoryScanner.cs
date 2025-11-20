@@ -22,7 +22,7 @@ public class DirectoryScanner(ILogger<DirectoryScanner> logger) : IDirectoryScan
         {
             // Only log warnings/errors, not informational messages
             logger.LogWarning("Directory does not exist: {DirectoryPath}", directoryPath);
-            return Enumerable.Empty<string>();
+            return [];
         }
 
         HashSet<string> extensions = new(supportedExtensions, StringComparer.OrdinalIgnoreCase);

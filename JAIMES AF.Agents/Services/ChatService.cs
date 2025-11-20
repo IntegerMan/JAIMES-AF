@@ -35,7 +35,7 @@ public class ChatService(
         IList<AITool>? tools = null;
         if (game != null)
         {
-            List<AITool> toolList = new();
+            List<AITool> toolList = [];
             
             PlayerInfoTool playerInfoTool = new(game);
             

@@ -32,7 +32,7 @@ public class DocumentListService : IDocumentListService
             IDatabase db = redis.GetDatabase();
             
             // Scan for all Kernel Memory keys (km-*) to extract unique index names
-            HashSet<string> indexes = new();
+            HashSet<string> indexes = [];
             string keyPattern = "km-*";
             
             int cursor = 0;
@@ -106,7 +106,7 @@ public class DocumentListService : IDocumentListService
 
         try
         {
-            List<IndexedDocumentInfo> allDocuments = new();
+            List<IndexedDocumentInfo> allDocuments = [];
 
             if (string.IsNullOrWhiteSpace(indexName))
             {
@@ -166,7 +166,7 @@ public class DocumentListService : IDocumentListService
             // km-{index}-doc-{documentId} or km-{index}-{documentId}
             // We'll scan for all keys matching the index pattern
             string keyPattern = $"km-{indexName}-*";
-            HashSet<string> seenDocumentIds = new();
+            HashSet<string> seenDocumentIds = [];
             
             // Use SCAN to iterate through keys without blocking Redis
             int cursor = 0;

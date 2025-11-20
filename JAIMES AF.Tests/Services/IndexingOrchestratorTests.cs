@@ -28,7 +28,9 @@ public class IndexingOrchestratorTests
             OpenAiEndpoint = "https://test.openai.azure.com/",
             OpenAiApiKey = "test-key",
             OpenAiDeployment = "test-deployment",
-            SupportedExtensions = new List<string> { ".txt", ".md", ".pdf" }
+            SupportedExtensions = [".txt", ".md", ".pdf"],
+            DocIntelApiKey = "test-key",
+            DocIntelEndpoint = "https://test.docintel.azure.com/"
         };
 
         _orchestrator = new IndexingOrchestrator(
@@ -46,11 +48,11 @@ public class IndexingOrchestratorTests
 
         _directoryScannerMock
             .Setup(s => s.GetSubdirectories(rootDir))
-            .Returns(Enumerable.Empty<string>());
+            .Returns([]);
 
         _directoryScannerMock
             .Setup(s => s.GetFiles(rootDir, _options.SupportedExtensions))
-            .Returns(new[] { Path.Combine(rootDir, "file1.txt") });
+            .Returns([Path.Combine(rootDir, "file1.txt")]);
 
         string rootIndexName = GetIndexName(rootDir);
         _documentIndexerMock
@@ -86,14 +88,14 @@ public class IndexingOrchestratorTests
         // Root directory has no files in this test
         _directoryScannerMock
             .Setup(s => s.GetFiles(rootDir, _options.SupportedExtensions))
-            .Returns(Enumerable.Empty<string>());
+            .Returns([]);
 
         int subdirIndex = 0;
         foreach (string subdir in subdirs)
         {
             subdirIndex++;
             string indexName = GetIndexName(subdir);
-            List<string> files = new();
+            List<string> files = [];
             
             // Add new files
             for (int i = 0; i < newFiles; i++)
@@ -140,11 +142,11 @@ public class IndexingOrchestratorTests
 
         _directoryScannerMock
             .Setup(s => s.GetSubdirectories(rootDir))
-            .Returns(Enumerable.Empty<string>());
+            .Returns([]);
 
         _directoryScannerMock
             .Setup(s => s.GetFiles(rootDir, _options.SupportedExtensions))
-            .Returns(new[] { filePath });
+            .Returns([filePath]);
 
         _documentIndexerMock
             .Setup(i => i.IndexDocumentAsync(filePath, rootIndexName, It.IsAny<CancellationToken>())); // Indexing fails
@@ -168,12 +170,12 @@ public class IndexingOrchestratorTests
 
         _directoryScannerMock
             .Setup(s => s.GetSubdirectories(rootDir))
-            .Returns(Enumerable.Empty<string>());
+            .Returns([]);
 
         string rootIndexName = GetIndexName(rootDir);
         _directoryScannerMock
             .Setup(s => s.GetFiles(rootDir, _options.SupportedExtensions))
-            .Returns(new[] { filePath1, filePath2 });
+            .Returns([filePath1, filePath2]);
 
         _documentIndexerMock
             .Setup(i => i.IndexDocumentAsync(filePath1, rootIndexName, It.IsAny<CancellationToken>()))
@@ -201,11 +203,11 @@ public class IndexingOrchestratorTests
 
         _directoryScannerMock
             .Setup(s => s.GetSubdirectories(rootDir))
-            .Returns(new[] { subdir });
+            .Returns([subdir]);
 
         _directoryScannerMock
             .Setup(s => s.GetFiles(subdir, _options.SupportedExtensions))
-            .Returns(new[] { Path.Combine(subdir, "file1.txt") });
+            .Returns([Path.Combine(subdir, "file1.txt")]);
 
         CancellationTokenSource cts = new CancellationTokenSource();
         cts.Cancel(); // Cancel immediately
@@ -230,15 +232,15 @@ public class IndexingOrchestratorTests
 
         _directoryScannerMock
             .Setup(s => s.GetSubdirectories(rootDir))
-            .Returns(new[] { directoryPath });
+            .Returns([directoryPath]);
 
         _directoryScannerMock
             .Setup(s => s.GetFiles(directoryPath, _options.SupportedExtensions))
-            .Returns(new[] { filePath });
+            .Returns([filePath]);
 
         _directoryScannerMock
             .Setup(s => s.GetFiles(rootDir, _options.SupportedExtensions))
-            .Returns(Enumerable.Empty<string>());
+            .Returns([]);
 
         _documentIndexerMock
             .Setup(i => i.IndexDocumentAsync(filePath, expectedIndexName, It.IsAny<CancellationToken>()));

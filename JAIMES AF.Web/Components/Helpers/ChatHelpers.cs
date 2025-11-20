@@ -64,12 +64,12 @@ public static class ChatHelpers
         }
 
         // Split by double newlines (standard paragraph breaks)
-        string[] paragraphs = text.Split(new[] { "\r\n\r\n", "\n\n" }, StringSplitOptions.RemoveEmptyEntries);
+        string[] paragraphs = text.Split(["\r\n\r\n", "\n\n"], StringSplitOptions.RemoveEmptyEntries);
 
         // If no double newlines found, try splitting by single newlines
         if (paragraphs.Length == 1 && text.Contains('\n'))
         {
-            paragraphs = text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+            paragraphs = text.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries);
         }
 
         // If still only one paragraph, return it as-is (unless it's header-like)

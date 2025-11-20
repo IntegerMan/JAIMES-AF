@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.KernelMemory;
-using Microsoft.KernelMemory.MemoryDb.Redis;
 using Spectre.Console;
 using MattEland.Jaimes.Indexer.Configuration;
 using MattEland.Jaimes.Indexer.Services;
@@ -43,13 +42,14 @@ builder.Services.AddSingleton(options);
 
 // Configure Kernel Memory
 // Normalize endpoint URL - remove trailing slash to avoid 404 errors
-string normalizedEndpoint = options.OpenAiEndpoint.TrimEnd('/');
+string openAiEndpoint = options.OpenAiEndpoint.TrimEnd('/');
+string docIntelEndpoint = options.DocIntelEndpoint.TrimEnd('/');
 
 AzureOpenAIConfig openAiConfig = new()
 {
     APIKey = options.OpenAiApiKey,
     Auth = AzureOpenAIConfig.AuthTypes.APIKey,
-    Endpoint = normalizedEndpoint,
+    Endpoint = openAiEndpoint,
     Deployment = options.OpenAiDeployment,
     MaxTokenTotal = 8191,
 };
@@ -70,15 +70,23 @@ RedisConfig redisConfig = new("km-", new Dictionary<string, char?>
 {
     { "__part_n", ',' }, // Used by Kernel Memory for document parts
     { "collection", ',' },
-    { "fileName", ',' }, // Used by DocumentIndexer
-    { "type", ',' }, // Used by DocumentIndexer
-    { "ruleset", ',' } // Used by DocumentIndexer
+    { "fileName", ',' },
+    { "type", ',' }, 
+    { "ruleset", ',' }
 });
 redisConfig.ConnectionString = redisConnectionString;
+
+AzureAIDocIntelConfig docIntelConfig = new()
+{
+    Auth = AzureAIDocIntelConfig.AuthTypes.APIKey,
+    APIKey = options.DocIntelApiKey,
+    Endpoint = docIntelEndpoint,
+};
 
 // Use Redis as the vector store for Kernel Memory
 IKernelMemory memory = new KernelMemoryBuilder()
     .WithAzureOpenAITextEmbeddingGeneration(openAiConfig)
+    .WithAzureAIDocIntel(docIntelConfig)
     .WithoutTextGenerator()
     .WithRedisMemoryDb(redisConfig)
     .Build();
@@ -114,9 +122,9 @@ try
             .AddRow("[dim]Source Directory:[/]", $"[cyan]{options.SourceDirectory}[/]")
             .AddRow("[dim]Redis Connection:[/]", $"[cyan]{redisConnectionString}[/]")
             .AddRow("[dim]Supported Extensions:[/]", $"[cyan]{string.Join(", ", options.SupportedExtensions)}[/]")
-            .AddRow("[dim]OpenAI Endpoint:[/]", $"[cyan]{normalizedEndpoint}[/]")
+            .AddRow("[dim]OpenAI Endpoint:[/]", $"[cyan]{openAiEndpoint}[/]")
             .AddRow("[dim]Embedding Deployment:[/]", $"[cyan]{options.OpenAiDeployment}[/]")
-            .AddRow("[dim]API Key Length:[/]", $"[cyan]{options.OpenAiApiKey.Length} characters[/]")
+            .AddRow("[dim]Azure Doc Intelligence Endpoint:[/]", $"[cyan]{docIntelEndpoint}[/]")
     )
     {
         Header = new PanelHeader("[bold yellow]Configuration[/]", Justify.Left),

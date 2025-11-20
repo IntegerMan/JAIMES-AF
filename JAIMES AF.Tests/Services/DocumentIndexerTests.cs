@@ -173,7 +173,7 @@ public class DocumentIndexerTests
         getDocumentIdMethod.ShouldNotBeNull();
 
         // Act
-        string actualDocumentId = (string)getDocumentIdMethod.Invoke(null, new object[] { filePath, indexName })!;
+        string actualDocumentId = (string)getDocumentIdMethod.Invoke(null, [filePath, indexName])!;
 
         // Assert
         actualDocumentId.ShouldBe(expectedDocumentId);
@@ -204,8 +204,8 @@ public class DocumentIndexerTests
         getDocumentIdMethod.ShouldNotBeNull();
 
         // Act
-        string id1 = (string)getDocumentIdMethod.Invoke(null, new object[] { filePath, indexName })!;
-        string id2 = (string)getDocumentIdMethod.Invoke(null, new object[] { filePath, indexName })!;
+        string id1 = (string)getDocumentIdMethod.Invoke(null, [filePath, indexName])!;
+        string id2 = (string)getDocumentIdMethod.Invoke(null, [filePath, indexName])!;
 
         // Assert
         id1.ShouldBe(id2);
@@ -222,8 +222,8 @@ public class DocumentIndexerTests
         getDocumentIdMethod.ShouldNotBeNull();
 
         // Act
-        string id1 = (string)getDocumentIdMethod.Invoke(null, new object[] { filePath1, indexName })!;
-        string id2 = (string)getDocumentIdMethod.Invoke(null, new object[] { filePath2, indexName })!;
+        string id1 = (string)getDocumentIdMethod.Invoke(null, [filePath1, indexName])!;
+        string id2 = (string)getDocumentIdMethod.Invoke(null, [filePath2, indexName])!;
 
         // Assert
         id1.ShouldNotBe(id2);
@@ -241,7 +241,7 @@ public class DocumentIndexerTests
         getDocumentIdMethod.ShouldNotBeNull();
 
         // Act
-        string documentId = (string)getDocumentIdMethod.Invoke(null, new object[] { filePath, indexName })!;
+        string documentId = (string)getDocumentIdMethod.Invoke(null, [filePath, indexName])!;
 
         // Assert
         documentId.ShouldBe("testruleset-filewithspacesspecialchars.pdf");

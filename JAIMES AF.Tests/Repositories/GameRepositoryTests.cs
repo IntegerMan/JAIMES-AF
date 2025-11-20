@@ -22,7 +22,7 @@ public class GameRepositoryTests : RepositoryTestBase
         Context.Games.Add(game);
         await Context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        Game? retrievedGame = await Context.Games.FindAsync(new object[] { game.Id }, TestContext.Current.CancellationToken);
+        Game? retrievedGame = await Context.Games.FindAsync([game.Id], TestContext.Current.CancellationToken);
 
         // Assert
         retrievedGame.ShouldNotBeNull();
@@ -62,7 +62,7 @@ public class GameRepositoryTests : RepositoryTestBase
         await Context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Assert
-        Message? deletedMessage = await Context.Messages.FindAsync(new object[] { messageId }, TestContext.Current.CancellationToken);
+        Message? deletedMessage = await Context.Messages.FindAsync([messageId], TestContext.Current.CancellationToken);
         deletedMessage.ShouldBeNull();
     }
 }

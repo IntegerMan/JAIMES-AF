@@ -85,7 +85,7 @@ public class RulesSearchService : IRulesSearchService
         }
 
         // Extract citations from the answer
-        List<CitationInfo> citations = new();
+        List<CitationInfo> citations = [];
         if (answer.RelevantSources != null)
         {
             foreach (Citation citation in answer.RelevantSources)
@@ -108,8 +108,8 @@ public class RulesSearchService : IRulesSearchService
         }
 
         // Extract document information
-        List<DocumentInfo> documents = new();
-        HashSet<string> seenDocumentIds = new();
+        List<DocumentInfo> documents = [];
+        HashSet<string> seenDocumentIds = [];
         
         if (answer.RelevantSources != null)
         {

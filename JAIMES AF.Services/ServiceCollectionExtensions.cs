@@ -89,8 +89,10 @@ public static class ServiceCollectionExtensions
                 { "rulesetId", ',' },
                 { "ruleId", ',' },
                 { "title", ',' }
-            });
-            redisConfig.ConnectionString = redisConnectionString;
+            })
+            {
+                ConnectionString = redisConnectionString
+            };
 
             // Use Redis extension method from the Redis package
             IKernelMemory memory = new KernelMemoryBuilder()
