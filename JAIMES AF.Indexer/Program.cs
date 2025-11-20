@@ -10,17 +10,9 @@ using MattEland.Jaimes.Indexer.Services;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
-// Configure logging - keep minimal to avoid cluttering Spectre.Console output
-// Only log warnings and errors to console, suppress informational messages
+// Configure logging
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
-builder.Logging.SetMinimumLevel(LogLevel.Warning);
-// Suppress verbose logging from Kernel Memory and OpenAI during indexing
-builder.Logging.AddFilter("Microsoft.KernelMemory", LogLevel.Warning);
-builder.Logging.AddFilter("Microsoft.SemanticKernel", LogLevel.Warning);
-builder.Logging.AddFilter("OpenAI", LogLevel.Warning);
-// Suppress our own informational logging - we use Spectre.Console instead
-builder.Logging.AddFilter("MattEland.Jaimes.Indexer", LogLevel.Warning);
 
 // Load configuration
 builder.Configuration

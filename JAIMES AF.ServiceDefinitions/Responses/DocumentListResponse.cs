@@ -9,6 +9,10 @@ public record DocumentListResponse
 {
     public required string IndexName { get; init; }
     public required IndexedDocumentInfo[] Documents { get; init; }
+    public int TotalCount { get; init; }
+    public int Page { get; init; }
+    public int PageSize { get; init; }
+    public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
 }
 
 public record IndexedDocumentInfo

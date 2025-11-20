@@ -17,11 +17,17 @@
 		<MudPaper Class="pa-4" Elevation="1">
 			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-4">Filter</MudText>
 			
+			@if (isLoadingIndexes)
+			{
+				<MudProgressLinear Indeterminate="true" Class="mb-4" />
+			}
+			
 			<MudSelect @bind-Value="selectedIndex" 
 			           Label="Index" 
 			           Variant="Variant.Outlined" 
 			           Class="mb-4"
 			           FullWidth="true"
+			           Disabled="@isLoadingIndexes"
 			           HelperText="Select an index to filter documents, or 'All' to view all documents">
 				<MudSelectItem Value="@((string?)null)">All Indexes</MudSelectItem>
 				@foreach (var index in indexes)
@@ -33,13 +39,13 @@
 			<MudButton Variant="Variant.Filled" 
 			           Color="Color.Primary" 
 			           OnClick="LoadDocumentsAsync" 
-			           Disabled="@isLoading"
+			           Disabled="@(isLoading || isLoadingIndexes)"
 			           Class="mb-4">
 				@if (isLoading)
 				{
 					<MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
 				}
-				Load
+				Load Documents
 			</MudButton>
 		</MudPaper>
 
@@ -55,12 +61,19 @@
 			</MudAlert>
 		}
 
-		@if (documentList != null)
+		@if (isLoading && documentList == null)
+		{
+			<MudDivider Class="my-6" />
+			<MudProgressLinear Indeterminate="true" Class="my-4" />
+			<MudText Class="text-center text-muted">Loading documents...</MudText>
+		}
+		else if (documentList != null)
 		{
 			<MudDivider Class="my-6" />
 
 			<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">
-				Documents in Index: <strong>@documentList.IndexName</strong> (@documentList.Documents.Length)
+				Documents in Index: <strong>@documentList.IndexName</strong> 
+				(@documentList.TotalCount total, showing @((documentList.Page - 1) * documentList.PageSize + 1)-@(Math.Min(documentList.Page * documentList.PageSize, documentList.TotalCount)))
 			</MudText>
 
 			@if (documentList.Documents.Length == 0)
@@ -69,7 +82,7 @@
 			}
 			else
 			{
-				<MudTable Items="@documentList.Documents" Hover="true" Dense="false" Striped="true" Elevation="1">
+				<MudTable Items="@documentList.Documents" Hover="true" Dense="false" Striped="true" Elevation="1" Loading="@isLoading">
 					<HeaderContent>
 						<MudTh>Document ID</MudTh>
 						<MudTh>Index</MudTh>
@@ -83,7 +96,7 @@
 						<MudTd DataLabel="Status">
 							<MudChip T="string" Size="Size.Small" 
 							         Color="@(context.Status == "Completed" ? Color.Success : context.Status == "Processing" ? Color.Warning : Color.Default)">
-								@context.Status
+								@(context.Status ?? "Unknown")
 							</MudChip>
 						</MudTd>
 						<MudTd DataLabel="Last Update">
@@ -115,6 +128,18 @@
 						</MudTd>
 					</RowTemplate>
 				</MudTable>
+
+				@if (documentList.TotalPages > 1)
+				{
+					<MudDivider Class="my-4" />
+					<MudPagination Count="@documentList.TotalPages" 
+					               Selected="@currentPage" 
+					               SelectedChanged="@(async (int page) => await LoadPageAsync(page))"
+					               BoundaryCount="2"
+					               ShowFirstButton="true"
+					               ShowLastButton="true"
+					               Disabled="@isLoading" />
+				}
 			}
 		}
 	</MudPaper>

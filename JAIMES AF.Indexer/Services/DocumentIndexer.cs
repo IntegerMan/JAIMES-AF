@@ -34,6 +34,8 @@ public class DocumentIndexer(ILogger<DocumentIndexer> logger, IKernelMemory memo
             string documentId = GetDocumentId(filePath, indexName);
             string fileName = Path.GetFileName(filePath);
             
+            logger.LogInformation("Indexing document: {FilePath} with index: {IndexName}, documentId: {DocumentId}", filePath, indexName, documentId);
+            
             await memory.ImportDocumentAsync(
                 new Document(documentId)
                     .AddFile(filePath)
@@ -47,8 +49,8 @@ public class DocumentIndexer(ILogger<DocumentIndexer> logger, IKernelMemory memo
         }
         catch (Exception ex)
         {
-            // Only log to logger for debugging - progress bars show error status
-            logger.LogError(ex, "Error indexing document: {FilePath}", filePath);
+            // Log detailed error including index name to help diagnose issues
+            logger.LogError(ex, "Error indexing document: {FilePath} with index: {IndexName}. Error: {ErrorMessage}", filePath, indexName, ex.Message);
             return false;
         }
     }

@@ -21,51 +21,26 @@ public class IndexingOrchestrator(
             
             // Add root directory to the list
             allDirectories.Add(options.SourceDirectory);
-            
-            int totalDirectories = allDirectories.Count;
-            int currentDirectory = 0;
 
-            await AnsiConsole.Progress()
-                .AutoRefresh(true)
-                .AutoClear(false)
-                .HideCompleted(false)
-                .Columns(new ProgressColumn[]
+            foreach (string directory in allDirectories)
+            {
+                if (cancellationToken.IsCancellationRequested)
                 {
-                    new TaskDescriptionColumn(),
-                    new ProgressBarColumn(),
-                    new PercentageColumn(),
-                    new SpinnerColumn()
-                })
-                .StartAsync(async ctx =>
-                {
-                    ProgressTask mainTask = ctx.AddTask("[bold cyan]Processing directories[/]", maxValue: totalDirectories);
+                    AnsiConsole.MarkupLine("[yellow]⚠[/] [yellow]Indexing process cancelled[/]");
+                    logger.LogWarning("Indexing process cancelled");
+                    break;
+                }
 
-                    foreach (string directory in allDirectories)
-                    {
-                        if (cancellationToken.IsCancellationRequested)
-                        {
-                            AnsiConsole.MarkupLine("[yellow]⚠[/] [yellow]Indexing process cancelled[/]");
-                            logger.LogWarning("Indexing process cancelled");
-                            break;
-                        }
+                string indexName = GetIndexName(directory);
+                logger.LogInformation("Processing directory: {Directory} -> Index name: {IndexName}", directory, indexName);
 
-                        currentDirectory++;
-                        string indexName = GetIndexName(directory);
-                        string displayName = directory == options.SourceDirectory ? "[bold]Root Directory[/]" : $"[bold]{Path.GetFileName(directory)}[/]";
-                        
-                        mainTask.Description = $"[cyan]Processing: {displayName}[/]";
-
-                        IndexingSummary dirSummary = await ProcessDirectoryAsync(directory, indexName, cancellationToken, ctx);
-                        summary.Add(dirSummary);
-                        
-                        mainTask.Increment(1);
-                    }
-                });
+                IndexingSummary dirSummary = await ProcessDirectoryAsync(directory, indexName, cancellationToken);
+                summary.Add(dirSummary);
+            }
         }
         catch (Exception ex)
         {
             AnsiConsole.MarkupLine($"[red]✗[/] [red]Error during indexing process: {ex.Message}[/]");
-            // Only log full exception details to logger for debugging, not to console
             logger.LogError(ex, "Error during indexing process");
             throw;
         }
@@ -73,7 +48,7 @@ public class IndexingOrchestrator(
         return summary;
     }
 
-    private async Task<IndexingSummary> ProcessDirectoryAsync(string directoryPath, string indexName, CancellationToken cancellationToken, ProgressContext? progressContext = null)
+    private async Task<IndexingSummary> ProcessDirectoryAsync(string directoryPath, string indexName, CancellationToken cancellationToken)
     {
         IndexingSummary summary = new();
         List<string> files = directoryScanner.GetFiles(directoryPath, options.SupportedExtensions).ToList();
@@ -83,16 +58,6 @@ public class IndexingOrchestrator(
             return summary;
         }
 
-        string directoryName = Path.GetFileName(directoryPath);
-        if (string.IsNullOrEmpty(directoryName))
-        {
-            directoryName = "Root";
-        }
-
-        ProgressTask? fileTask = progressContext?.AddTask(
-            $"[dim]  Files in {directoryName}[/]",
-            maxValue: files.Count);
-
         foreach (string filePath in files)
         {
             if (cancellationToken.IsCancellationRequested)
@@ -100,10 +65,8 @@ public class IndexingOrchestrator(
                 break;
             }
 
-            string fileName = Path.GetFileName(filePath);
-            fileTask?.Description($"[dim]  Processing: [cyan]{fileName}[/][/]");
-
             summary.TotalProcessed++;
+            
             try
             {
                 bool result = await ProcessFileAsync(filePath, indexName, cancellationToken);
@@ -111,23 +74,17 @@ public class IndexingOrchestrator(
                 if (result)
                 {
                     summary.TotalSucceeded++;
-                    fileTask?.Description($"[dim]  [green]✓[/] [green]{fileName}[/][/]");
                 }
                 else
                 {
                     summary.TotalErrors++;
-                    fileTask?.Description($"[dim]  [red]✗[/] [red]{fileName}[/][/]");
                 }
             }
             catch (Exception ex)
             {
                 summary.TotalErrors++;
-                fileTask?.Description($"[dim]  [red]✗[/] [red]{fileName}[/] ([red]{Markup.Escape(ex.Message)}[/])[/]");
-                // Only log full exception details to logger for debugging
                 logger.LogError(ex, "Unexpected error processing file: {FilePath}", filePath);
             }
-            
-            fileTask?.Increment(1);
         }
 
         return summary;

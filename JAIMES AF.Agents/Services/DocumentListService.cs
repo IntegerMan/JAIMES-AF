@@ -48,13 +48,37 @@ public class DocumentListService : IDocumentListService
                 {
                     string keyString = key.ToString();
                     // Extract index name from key pattern: km-{index}-...
+                    // Kernel Memory keys follow patterns like:
+                    // km-{index}-doc-{documentId} - Document metadata
+                    // km-{index}-part-{partNumber}-{documentId} - Document parts
+                    // km-{index}-{documentId} - Direct document reference
                     if (keyString.StartsWith("km-", StringComparison.OrdinalIgnoreCase))
                     {
                         string suffix = keyString.Substring(3); // Remove "km-" prefix
-                        int dashIndex = suffix.IndexOf('-');
-                        if (dashIndex > 0)
+                        
+                        // Look for known Kernel Memory key patterns to find where index name ends
+                        // Kernel Memory keys follow patterns like:
+                        // km-{index}-doc-{documentId} - Document metadata
+                        // km-{index}-part-{partNumber}-{documentId} - Document parts
+                        // km-{index}-{documentId} - Direct document reference (less common)
+                        int docIndex = suffix.IndexOf("-doc-", StringComparison.OrdinalIgnoreCase);
+                        int partIndex = suffix.IndexOf("-part-", StringComparison.OrdinalIgnoreCase);
+                        
+                        string? indexName = null;
+                        if (docIndex > 0)
                         {
-                            string indexName = suffix.Substring(0, dashIndex);
+                            indexName = suffix.Substring(0, docIndex);
+                        }
+                        else if (partIndex > 0)
+                        {
+                            indexName = suffix.Substring(0, partIndex);
+                        }
+                        // For pattern 3 (km-{index}-{documentId}), we skip these keys because
+                        // we can't reliably determine where the index name ends and the document ID begins
+                        // without knowing the document ID structure. Most keys should follow patterns 1 or 2.
+                        
+                        if (!string.IsNullOrWhiteSpace(indexName))
+                        {
                             indexes.Add(indexName);
                         }
                     }
@@ -76,13 +100,13 @@ public class DocumentListService : IDocumentListService
         }
     }
 
-    public async Task<DocumentListResponse> ListDocumentsAsync(string? indexName, CancellationToken cancellationToken = default)
+    public async Task<DocumentListResponse> ListDocumentsAsync(string? indexName, int page = 1, int pageSize = 50, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Listing documents for index: {IndexName}", indexName ?? "all");
+        _logger.LogInformation("Listing documents for index: {IndexName}, page: {Page}, pageSize: {PageSize}", indexName ?? "all", page, pageSize);
 
         try
         {
-            List<IndexedDocumentInfo> documents = new();
+            List<IndexedDocumentInfo> allDocuments = new();
 
             if (string.IsNullOrWhiteSpace(indexName))
             {
@@ -91,21 +115,33 @@ public class DocumentListService : IDocumentListService
                 
                 foreach (string index in indexResponse.Indexes)
                 {
-                    await AddDocumentsFromIndexAsync(index, documents, cancellationToken);
+                    await AddDocumentsFromIndexAsync(index, allDocuments, cancellationToken);
                 }
             }
             else
             {
                 // List documents from specific index
-                await AddDocumentsFromIndexAsync(indexName, documents, cancellationToken);
+                await AddDocumentsFromIndexAsync(indexName, allDocuments, cancellationToken);
             }
 
-            _logger.LogInformation("Found {Count} documents in index: {IndexName}", documents.Count, indexName ?? "all");
+            int totalCount = allDocuments.Count;
+            int skip = (page - 1) * pageSize;
+            IndexedDocumentInfo[] pagedDocuments = allDocuments
+                .OrderBy(d => d.DocumentId)
+                .Skip(skip)
+                .Take(pageSize)
+                .ToArray();
+
+            _logger.LogInformation("Found {TotalCount} documents in index: {IndexName}, returning page {Page} with {Count} documents", 
+                totalCount, indexName ?? "all", page, pagedDocuments.Length);
 
             return new DocumentListResponse
             {
                 IndexName = indexName ?? "all",
-                Documents = documents.ToArray()
+                Documents = pagedDocuments,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
             };
         }
         catch (Exception ex)
@@ -160,123 +196,70 @@ public class DocumentListService : IDocumentListService
                         
                         try
                         {
-                            // Try to read document metadata from Redis
-                            // Kernel Memory stores document metadata in keys like km-{index}-doc-{documentId}
-                            string docKey = $"km-{indexName}-doc-{documentId}";
+                            // Read tags from part keys - Kernel Memory stores document tags in part keys
+                            // Look for any part key that contains this document ID
+                            string partPattern = $"km-{indexName}-part-*";
+                            int partCursor = 0;
+                            bool foundTags = false;
                             
-                            // Check if the key exists and what type it is
-                            RedisType keyType = await db.KeyTypeAsync(docKey);
-                            
-                            if (keyType == RedisType.Hash)
+                            do
                             {
-                                // Read hash fields (tags and metadata)
-                                HashEntry[] hashFields = await db.HashGetAllAsync(docKey);
-                                foreach (HashEntry field in hashFields)
+                                RedisResult partResult = await db.ExecuteAsync("SCAN", partCursor.ToString(), "MATCH", partPattern, "COUNT", "100");
+                                RedisResult[] partScanResult = (RedisResult[])partResult!;
+                                partCursor = int.Parse(partScanResult[0].ToString()!);
+                                RedisResult partKeysResult = partScanResult[1];
+                                RedisValue[] partKeys = (RedisValue[])partKeysResult!;
+                                
+                                foreach (RedisValue partKeyValue in partKeys)
                                 {
-                                    string fieldName = field.Name.ToString();
-                                    string fieldValue = field.Value.ToString();
+                                    string partKey = partKeyValue.ToString()!;
                                     
-                                    // Extract tags (Kernel Memory stores tags with specific field names)
-                                    if (fieldName.StartsWith("tag:", StringComparison.OrdinalIgnoreCase))
+                                    // Check if this part key belongs to our document
+                                    // Part keys have format: km-{index}-part-{partNumber}-{documentId}
+                                    if (partKey.EndsWith($"-{documentId}", StringComparison.OrdinalIgnoreCase))
                                     {
-                                        string tagName = fieldName.Substring(4); // Remove "tag:" prefix
-                                        tags[tagName] = fieldValue;
-                                    }
-                                    else if (fieldName.Equals("lastUpdate", StringComparison.OrdinalIgnoreCase) ||
-                                             fieldName.Equals("updated", StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        // Try to parse timestamp
-                                        if (long.TryParse(fieldValue, out long timestamp))
-                                        {
-                                            lastUpdate = DateTimeOffset.FromUnixTimeSeconds(timestamp).DateTime;
-                                        }
-                                        else if (DateTime.TryParse(fieldValue, out DateTime parsedDate))
-                                        {
-                                            lastUpdate = parsedDate;
-                                        }
-                                    }
-                                    else if (fieldName.Equals("status", StringComparison.OrdinalIgnoreCase) ||
-                                             fieldName.Equals("completed", StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        if (bool.TryParse(fieldValue, out bool completed))
-                                        {
-                                            status = completed ? "Completed" : "Processing";
-                                        }
-                                        else
-                                        {
-                                            status = fieldValue;
-                                        }
-                                    }
-                                }
-                            }
-                            else if (keyType == RedisType.String)
-                            {
-                                // Try to parse as JSON
-                                string jsonValue = await db.StringGetAsync(docKey);
-                                if (!string.IsNullOrWhiteSpace(jsonValue))
-                                {
-                                    try
-                                    {
-                                        using JsonDocument doc = JsonDocument.Parse(jsonValue);
-                                        JsonElement root = doc.RootElement;
+                                        RedisType partKeyType = await db.KeyTypeAsync(partKey);
                                         
-                                        // Extract tags from JSON
-                                        if (root.TryGetProperty("tags", out JsonElement tagsElement))
+                                        if (partKeyType == RedisType.Hash)
                                         {
-                                            if (tagsElement.ValueKind == JsonValueKind.Object)
+                                            HashEntry[] partFields = await db.HashGetAllAsync(partKey);
+                                            foreach (HashEntry field in partFields)
                                             {
-                                                foreach (JsonProperty prop in tagsElement.EnumerateObject())
+                                                string fieldName = field.Name.ToString();
+                                                string fieldValue = field.Value.ToString();
+                                                
+                                                // Kernel Memory stores tags as hash fields in part keys
+                                                // Tags like sourcePath, fileName are stored directly
+                                                if (fieldName == "sourcePath" || fieldName == "fileName" || 
+                                                    fieldName == "rulesetId" || fieldName == "ruleId" || fieldName == "title")
                                                 {
-                                                    string? tagValue = prop.Value.GetString();
-                                                    if (!string.IsNullOrWhiteSpace(tagValue))
-                                                    {
-                                                        tags[prop.Name] = tagValue;
-                                                    }
+                                                    tags[fieldName] = fieldValue;
                                                 }
                                             }
-                                        }
-                                        
-                                        // Extract lastUpdate
-                                        if (root.TryGetProperty("lastUpdate", out JsonElement lastUpdateElement))
-                                        {
-                                            if (lastUpdateElement.ValueKind == JsonValueKind.String &&
-                                                DateTime.TryParse(lastUpdateElement.GetString(), out DateTime parsedDate))
+                                            
+                                            if (tags.Count > 0)
                                             {
-                                                lastUpdate = parsedDate;
+                                                foundTags = true;
+                                                break; // Found tags, no need to check more part keys
                                             }
                                         }
-                                        
-                                        // Extract status
-                                        if (root.TryGetProperty("status", out JsonElement statusElement))
-                                        {
-                                            status = statusElement.GetString() ?? "Unknown";
-                                        }
-                                        else if (root.TryGetProperty("completed", out JsonElement completedElement))
-                                        {
-                                            if (completedElement.ValueKind == JsonValueKind.True)
-                                            {
-                                                status = "Completed";
-                                            }
-                                            else if (completedElement.ValueKind == JsonValueKind.False)
-                                            {
-                                                status = "Processing";
-                                            }
-                                        }
-                                    }
-                                    catch (JsonException)
-                                    {
-                                        // Not JSON, ignore
                                     }
                                 }
-                            }
+                                
+                                if (foundTags)
+                                {
+                                    break;
+                                }
+                            } while (partCursor != 0);
                             
-                            // Also check for tags stored separately in Redis search indexes
-                            // Kernel Memory Redis uses tag fields that might be indexed separately
-                            // We can try to read tag values from the document key pattern
+                            // Set status to Completed if we found the document (it's indexed)
+                            status = "Completed";
                         }
                         catch (Exception ex)
                         {
                             _logger.LogWarning(ex, "Error reading metadata for document {DocumentId} in index {IndexName}", documentId, indexName);
+                            // Default to Completed since we found the document key
+                            status = "Completed";
                         }
 
                         documents.Add(new IndexedDocumentInfo

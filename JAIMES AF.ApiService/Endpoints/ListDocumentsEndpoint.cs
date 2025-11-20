@@ -21,10 +21,12 @@ public class ListDocumentsEndpoint : Ep.NoReq.Res<DocumentListResponse>
     public override async Task HandleAsync(CancellationToken ct)
     {
         string? indexName = Query<string>("index", isRequired: false);
+        int page = Query<int>("page", isRequired: false) is int p && p > 0 ? p : 1;
+        int pageSize = Query<int>("pageSize", isRequired: false) is int ps && ps > 0 && ps <= 1000 ? ps : 50;
 
         try
         {
-            DocumentListResponse response = await DocumentListService.ListDocumentsAsync(indexName, ct);
+            DocumentListResponse response = await DocumentListService.ListDocumentsAsync(indexName, page, pageSize, ct);
             await Send.OkAsync(response, cancellation: ct);
         }
         catch (Exception ex)
