@@ -61,10 +61,8 @@ string redisConnectionString = options.VectorDbConnectionString;
 
 // Configure Redis with tag fields that Kernel Memory uses internally and that we use in our code
 // IMPORTANT: All tag fields used when indexing documents MUST be declared here, or Redis will throw
-// an "un-indexed tag field" error. This includes:
+// an "un-indexed tag field" error.
 // - System tags: __part_n (document parts), collection (document organization)
-// - Document tags: sourcePath, fileName (used by DocumentIndexer)
-// - Rule tags: rulesetId, ruleId, title (used by RulesSearchService)
 // See: https://github.com/microsoft/kernel-memory/discussions/735
 RedisConfig redisConfig = new("km-", new Dictionary<string, char?>
 {
@@ -135,15 +133,6 @@ try
     AnsiConsole.Write(configPanel);
     AnsiConsole.WriteLine();
 
-    // Warn if deployment name doesn't match common patterns
-    if (!options.OpenAiDeployment.Contains("embedding", StringComparison.OrdinalIgnoreCase) && 
-        !options.OpenAiDeployment.Contains("ada", StringComparison.OrdinalIgnoreCase))
-    {
-        AnsiConsole.MarkupLine("[yellow]⚠[/] [yellow]Warning:[/] Deployment name doesn't match common embedding model patterns.");
-        AnsiConsole.MarkupLine("[dim]If you encounter 404 errors, verify this matches your Azure OpenAI deployment name exactly.[/]");
-        AnsiConsole.WriteLine();
-    }
-
     AnsiConsole.MarkupLine("[bold green]Starting indexing process...[/]");
     AnsiConsole.WriteLine();
 
@@ -176,7 +165,7 @@ try
 catch (Exception ex)
 {
     AnsiConsole.WriteLine();
-    AnsiConsole.WriteException(ex, ExceptionFormats.ShortenPaths | ExceptionFormats.ShortenTypes);
+    AnsiConsole.WriteException(ex, ExceptionFormats.ShortenEverything);
     logger.LogError(ex, "Fatal error during indexing");
     return 1;
 }
