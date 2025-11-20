@@ -26,12 +26,17 @@ public class IndexingOrchestrator(
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
-                    AnsiConsole.MarkupLine("[yellow]⚠[/] [yellow]Indexing process cancelled[/]");
                     logger.LogWarning("Indexing process cancelled");
                     break;
                 }
 
-                string indexName = GetIndexName(directory);
+                if (!directory.ToLowerInvariant().Contains("dnd")) {
+                    logger.LogInformation("Skipping directory: {Directory} because it does not contain 'dnd'", directory);
+                    continue;
+                }
+
+                DirectoryInfo directoryInfo = new DirectoryInfo(directory);
+                string indexName = directoryInfo.Name.ToLowerInvariant();
                 logger.LogInformation("Processing directory: {Directory} -> Index name: {IndexName}", directory, indexName);
 
                 IndexingSummary dirSummary = await ProcessDirectoryAsync(directory, indexName, cancellationToken);
@@ -51,12 +56,7 @@ public class IndexingOrchestrator(
     private async Task<IndexingSummary> ProcessDirectoryAsync(string directoryPath, string indexName, CancellationToken cancellationToken)
     {
         IndexingSummary summary = new();
-        List<string> files = directoryScanner.GetFiles(directoryPath, options.SupportedExtensions).ToList();
-        
-        if (files.Count == 0)
-        {
-            return summary;
-        }
+        string[] files = directoryScanner.GetFiles(directoryPath, options.SupportedExtensions).ToArray();
 
         foreach (string filePath in files)
         {
@@ -66,19 +66,11 @@ public class IndexingOrchestrator(
             }
 
             summary.TotalProcessed++;
-            
             try
             {
-                bool result = await ProcessFileAsync(filePath, indexName, cancellationToken);
-
-                if (result)
-                {
-                    summary.TotalSucceeded++;
-                }
-                else
-                {
-                    summary.TotalErrors++;
-                }
+                string id = await documentIndexer.IndexDocumentAsync(filePath, indexName, cancellationToken);
+                logger.LogInformation("Successfully indexed file: {FilePath} as {Id}", filePath, id);
+                summary.TotalSucceeded++;
             }
             catch (Exception ex)
             {
@@ -88,30 +80,6 @@ public class IndexingOrchestrator(
         }
 
         return summary;
-    }
-
-    private async Task<bool> ProcessFileAsync(string filePath, string indexName, CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await documentIndexer.IndexDocumentAsync(filePath, indexName, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error processing file: {FilePath}", filePath);
-            return false;
-        }
-    }
-
-    private static string GetIndexName(string directoryPath)
-    {
-        // Use directory name as index name, normalized
-        string directoryName = Path.GetFileName(directoryPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
-        if (string.IsNullOrEmpty(directoryName))
-        {
-            directoryName = "root";
-        }
-        return $"index-{directoryName.ToLowerInvariant().Replace(" ", "-")}";
     }
 
     public class IndexingSummary

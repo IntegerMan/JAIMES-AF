@@ -54,8 +54,7 @@ public class IndexingOrchestratorTests
 
         string rootIndexName = GetIndexName(rootDir);
         _documentIndexerMock
-            .Setup(i => i.IndexDocumentAsync(Path.Combine(rootDir, "file1.txt"), rootIndexName, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .Setup(i => i.IndexDocumentAsync(Path.Combine(rootDir, "file1.txt"), rootIndexName, It.IsAny<CancellationToken>()));
 
         // Act
         IndexingOrchestrator.IndexingSummary summary = await _orchestrator.ProcessAllDirectoriesAsync(CancellationToken.None);
@@ -115,8 +114,7 @@ public class IndexingOrchestratorTests
             foreach (string file in files)
             {
                 _documentIndexerMock
-                    .Setup(i => i.IndexDocumentAsync(file, indexName, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(true);
+                    .Setup(i => i.IndexDocumentAsync(file, indexName, It.IsAny<CancellationToken>()));
             }
         }
 
@@ -149,8 +147,7 @@ public class IndexingOrchestratorTests
             .Returns(new[] { filePath });
 
         _documentIndexerMock
-            .Setup(i => i.IndexDocumentAsync(filePath, rootIndexName, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false); // Indexing fails
+            .Setup(i => i.IndexDocumentAsync(filePath, rootIndexName, It.IsAny<CancellationToken>())); // Indexing fails
 
         // Act
         IndexingOrchestrator.IndexingSummary summary = await _orchestrator.ProcessAllDirectoriesAsync(CancellationToken.None);
@@ -183,8 +180,7 @@ public class IndexingOrchestratorTests
             .ThrowsAsync(new IOException("File access error"));
 
         _documentIndexerMock
-            .Setup(i => i.IndexDocumentAsync(filePath2, rootIndexName, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .Setup(i => i.IndexDocumentAsync(filePath2, rootIndexName, It.IsAny<CancellationToken>()));
 
         // Act
         IndexingOrchestrator.IndexingSummary summary = await _orchestrator.ProcessAllDirectoriesAsync(CancellationToken.None);
@@ -245,8 +241,7 @@ public class IndexingOrchestratorTests
             .Returns(Enumerable.Empty<string>());
 
         _documentIndexerMock
-            .Setup(i => i.IndexDocumentAsync(filePath, expectedIndexName, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .Setup(i => i.IndexDocumentAsync(filePath, expectedIndexName, It.IsAny<CancellationToken>()));
 
         // Act
         _ = await _orchestrator.ProcessAllDirectoriesAsync(TestContext.Current.CancellationToken);

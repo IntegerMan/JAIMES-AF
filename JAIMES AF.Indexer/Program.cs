@@ -51,20 +51,13 @@ AzureOpenAIConfig openAiConfig = new()
     Auth = AzureOpenAIConfig.AuthTypes.APIKey,
     Endpoint = normalizedEndpoint,
     Deployment = options.OpenAiDeployment,
+    MaxTokenTotal = 8191,
 };
 
 // Use Redis as the vector store for Kernel Memory
 // Redis provides better performance and document listing capabilities than SimpleVectorDb
 // Connection string format: "localhost:6379" or "localhost:6379,password=xxx" or full connection string
 string redisConnectionString = options.VectorDbConnectionString;
-
-// If connection string is in old format (Data Source=...), extract just the path
-// Otherwise use as-is for Redis connection string
-if (redisConnectionString.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase))
-{
-    // Legacy format - convert to Redis default
-    redisConnectionString = "localhost:6379";
-}
 
 // Configure Redis with tag fields that Kernel Memory uses internally and that we use in our code
 // IMPORTANT: All tag fields used when indexing documents MUST be declared here, or Redis will throw
@@ -75,16 +68,11 @@ if (redisConnectionString.StartsWith("Data Source=", StringComparison.OrdinalIgn
 // See: https://github.com/microsoft/kernel-memory/discussions/735
 RedisConfig redisConfig = new("km-", new Dictionary<string, char?>
 {
-    // System tags used by Kernel Memory internally
-    { "__part_n", ',' },
+    { "__part_n", ',' }, // Used by Kernel Memory for document parts
     { "collection", ',' },
-    // Document tags used by DocumentIndexer
-    { "sourcePath", ',' },
-    { "fileName", ',' },
-    // Rule tags used by RulesSearchService
-    { "rulesetId", ',' },
-    { "ruleId", ',' },
-    { "title", ',' }
+    { "fileName", ',' }, // Used by DocumentIndexer
+    { "type", ',' }, // Used by DocumentIndexer
+    { "ruleset", ',' } // Used by DocumentIndexer
 });
 redisConfig.ConnectionString = redisConnectionString;
 

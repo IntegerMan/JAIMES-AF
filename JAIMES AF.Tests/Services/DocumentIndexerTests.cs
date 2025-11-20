@@ -51,10 +51,9 @@ public class DocumentIndexerTests
         try
         {
             // Act
-            bool result = await _indexer.IndexDocumentAsync(tempFile, indexName, TestContext.Current.CancellationToken);
+            await _indexer.IndexDocumentAsync(tempFile, indexName, TestContext.Current.CancellationToken);
 
             // Assert
-            result.ShouldBeTrue();
             capturedDocument.ShouldNotBeNull();
             capturedDocument.Id.ShouldBe(expectedDocumentId);
         }
@@ -91,49 +90,6 @@ public class DocumentIndexerTests
             _memoryMock.Verify(
                 m => m.ImportDocumentAsync(It.IsAny<Document>(), It.IsAny<string?>(), It.IsAny<IEnumerable<string>?>(), It.IsAny<Microsoft.KernelMemory.Context.IContext?>(), It.IsAny<CancellationToken>()),
                 Times.Once);
-        }
-        finally
-        {
-            File.Delete(tempFile);
-        }
-    }
-
-    [Fact]
-    public async Task IndexDocumentAsync_WhenFileDoesNotExist_ReturnsFalse()
-    {
-        // Arrange
-        string nonExistentFile = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.txt");
-        string indexName = "test-index";
-
-        // Act
-        bool result = await _indexer.IndexDocumentAsync(nonExistentFile, indexName, TestContext.Current.CancellationToken);
-
-        // Assert
-        result.ShouldBeFalse();
-        _memoryMock.Verify(
-            m => m.ImportDocumentAsync(It.IsAny<Document>(), It.IsAny<string?>(), It.IsAny<IEnumerable<string>?>(), It.IsAny<Microsoft.KernelMemory.Context.IContext?>(), It.IsAny<CancellationToken>()),
-            Times.Never);
-    }
-
-    [Fact]
-    public async Task IndexDocumentAsync_WhenImportThrowsException_ReturnsFalse()
-    {
-        // Arrange
-        string tempFile = Path.Combine(Path.GetTempPath(), "test.txt");
-        await File.WriteAllTextAsync(tempFile, "test content");
-        string indexName = "test-index";
-
-        _memoryMock
-            .Setup(m => m.ImportDocumentAsync(It.IsAny<Document>(), It.IsAny<string?>(), It.IsAny<IEnumerable<string>?>(), It.IsAny<Microsoft.KernelMemory.Context.IContext?>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new Exception("Import failed"));
-
-        try
-        {
-            // Act
-            bool result = await _indexer.IndexDocumentAsync(tempFile, indexName, TestContext.Current.CancellationToken);
-
-            // Assert
-            result.ShouldBeFalse();
         }
         finally
         {

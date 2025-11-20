@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.KernelMemory;
 
@@ -20,54 +21,31 @@ public class DocumentIndexer(ILogger<DocumentIndexer> logger, IKernelMemory memo
         }
     }
 
-    public async Task<bool> IndexDocumentAsync(string filePath, string indexName, CancellationToken cancellationToken = default)
+    public async Task<string> IndexDocumentAsync(string filePath, string indexName, CancellationToken cancellationToken = default)
     {
-        if (!File.Exists(filePath))
-        {
-            // Only log to logger, not to console - progress bars handle user feedback
-            logger.LogWarning("File does not exist: {FilePath}", filePath);
-            return false;
-        }
-
-        try
-        {
-            string documentId = GetDocumentId(filePath, indexName);
-            string fileName = Path.GetFileName(filePath);
-            
-            logger.LogInformation("Indexing document: {FilePath} with index: {IndexName}, documentId: {DocumentId}", filePath, indexName, documentId);
-            
-            await memory.ImportDocumentAsync(
-                new Document(documentId)
-                    .AddFile(filePath)
-                    .AddTag("sourcePath", filePath)
-                    .AddTag("fileName", fileName),
-                index: indexName,
-                cancellationToken: cancellationToken);
-
-            // Success is shown via progress bars, no need for console logging
-            return true;
-        }
-        catch (Exception ex)
-        {
-            // Log detailed error including index name to help diagnose issues
-            logger.LogError(ex, "Error indexing document: {FilePath} with index: {IndexName}. Error: {ErrorMessage}", filePath, indexName, ex.Message);
-            return false;
-        }
+        string documentId = GetDocumentId(filePath, indexName);
+        FileInfo fileInfo = new FileInfo(filePath);
+        
+        logger.LogInformation("Indexing document: {FilePath} with index: {IndexName}, documentId: {DocumentId}", filePath, indexName, documentId);
+        
+        return await memory.ImportDocumentAsync(
+            new Document(documentId)
+                .AddFile(filePath)
+                .AddTag("type", "sourcebook")
+                .AddTag("ruleset", indexName)
+                .AddTag("fileName", fileInfo.Name),
+            index: indexName,
+            cancellationToken: cancellationToken);
     }
 
     private static string GetDocumentId(string filePath, string indexName)
     {
-        // Extract ruleset ID from indexName (remove "index-" prefix if present)
-        string rulesetId = indexName.StartsWith("index-", StringComparison.OrdinalIgnoreCase)
-            ? indexName[6..] // Remove "index-" prefix
-            : indexName;
-        
         // Get just the filename (no path)
         string fileName = Path.GetFileName(filePath);
         
         // Sanitize both ruleset ID and filename to only allow: letters, numbers, periods, underscores
         // Convert to lowercase and replace invalid characters
-        string sanitizedRulesetId = SanitizeIdentifier(rulesetId);
+        string sanitizedRulesetId = SanitizeIdentifier(indexName);
         string sanitizedFileName = SanitizeIdentifier(fileName);
         
         // Combine as rulesetId-filename.extension
@@ -81,7 +59,7 @@ public class DocumentIndexer(ILogger<DocumentIndexer> logger, IKernelMemory memo
         
         // Only keep letters, numbers, periods, and underscores
         // Replace all other characters with nothing (remove them)
-        System.Text.StringBuilder sb = new();
+        StringBuilder sb = new();
         foreach (char c in normalized)
         {
             if (char.IsLetterOrDigit(c) || c == '.' || c == '_')
