@@ -3,8 +3,10 @@ using MattEland.Jaimes.ServiceLayer.Services;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Services.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.KernelMemory;
 using Microsoft.KernelMemory.MemoryDb.Redis;
+using Microsoft.KernelMemory.MemoryStorage;
 
 namespace MattEland.Jaimes.Services;
 
@@ -72,12 +74,52 @@ public static class ServiceCollectionExtensions
             // Use centralized RedisConfig creation to ensure consistency
             RedisConfig redisConfig = RedisConfigHelper.CreateRedisConfig(redisConnectionString);
 
-            // Use Redis extension method from the Redis package
-            IKernelMemory memory = new KernelMemoryBuilder()
+            // Wrap Redis memory database with telemetry before building Kernel Memory
+            // We need to create the Redis memory database manually to wrap it
+            ILogger<TelemetryRedisMemoryDb> logger = serviceProvider.GetRequiredService<ILogger<TelemetryRedisMemoryDb>>();
+            ILoggerFactory loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+            
+            // Create the Redis memory database using the builder's internal factory
+            // Since RedisMemory constructor is not public, we'll use WithRedisMemoryDb and extract it
+            // Note: We need to include text generation in the temp builder for it to build successfully
+            IKernelMemoryBuilder tempBuilder = new KernelMemoryBuilder()
                 .WithAzureOpenAITextEmbeddingGeneration(embeddingConfig)
                 .WithAzureOpenAITextGeneration(textGenerationConfig)
-                .WithRedisMemoryDb(redisConfig)
-                .Build();
+                .WithRedisMemoryDb(redisConfig);
+            
+            // Build temporarily to get access to the memory database
+            IKernelMemory tempMemory = tempBuilder.Build();
+            
+            // Extract the memory database using reflection
+            System.Reflection.PropertyInfo? memoryDbProperty = tempMemory.GetType()
+                .GetProperty("MemoryDb", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+            
+            IMemoryDb? originalMemoryDb = memoryDbProperty?.GetValue(tempMemory) as IMemoryDb;
+            
+            IKernelMemory memory;
+            if (originalMemoryDb != null)
+            {
+                // Wrap with telemetry
+                IMemoryDb telemetryWrappedMemoryDb = new TelemetryRedisMemoryDb(originalMemoryDb, logger);
+                
+                // Rebuild Kernel Memory with the wrapped memory database
+                memory = new KernelMemoryBuilder()
+                    .WithAzureOpenAITextEmbeddingGeneration(embeddingConfig)
+                    .WithAzureOpenAITextGeneration(textGenerationConfig)
+                    .WithCustomMemoryDb(telemetryWrappedMemoryDb)
+                    .Build();
+            }
+            else
+            {
+                // Fallback: build normally without telemetry wrapper
+                ILogger logger2 = loggerFactory.CreateLogger("KernelMemory");
+                logger2.LogWarning("Could not extract memory database for telemetry wrapping, using unwrapped instance");
+                memory = new KernelMemoryBuilder()
+                    .WithAzureOpenAITextEmbeddingGeneration(embeddingConfig)
+                    .WithAzureOpenAITextGeneration(textGenerationConfig)
+                    .WithRedisMemoryDb(redisConfig)
+                    .Build();
+            }
 
             return memory;
         });

@@ -45,12 +45,11 @@ public class RulesSearchService : IRulesSearchService
         // SearchAsync returns SearchResult with results directly without needing a text generator
         string indexName = GetIndexName(rulesetId);
         
-        // Create OpenTelemetry activity for Redis search operation
+        // Create OpenTelemetry activity for the overall search operation
+        // Note: Individual Redis queries are automatically instrumented by TelemetryRedisMemoryDb
         using Activity? activity = ActivitySource.StartActivity("RulesSearch.Search");
         if (activity != null)
         {
-            activity.SetTag("db.system", "redis");
-            activity.SetTag("db.operation", "search");
             activity.SetTag("ruleset.id", rulesetId);
             activity.SetTag("search.index", indexName);
             activity.SetTag("search.query", query);
@@ -170,6 +169,8 @@ public class RulesSearchService : IRulesSearchService
                     foreach (Domain.RulesetDto ruleset in allRulesets)
                     {
                         string currentIndexName = GetIndexName(ruleset.Id);
+                        
+                        // Note: Individual Redis queries are automatically instrumented by TelemetryRedisMemoryDb
                         try
                         {
                             SearchResult indexResult = await _memory.SearchAsync(
@@ -226,6 +227,7 @@ public class RulesSearchService : IRulesSearchService
                     activity.SetTag("search.index", indexName);
                 }
                 
+                // Note: Individual Redis queries are automatically instrumented by TelemetryRedisMemoryDb
                 searchResult = await _memory.SearchAsync(
                     query: query,
                     index: indexName,

@@ -90,7 +90,8 @@ public static class Extensions
                         "Jaimes.Agents.Tools",
                         "Jaimes.Agents.ChatClient",
                         "Jaimes.Agents.Run",
-                        "Jaimes.Agents.RulesSearch")
+                        "Jaimes.Agents.RulesSearch",
+                        "Jaimes.KernelMemory.Redis")
                     .AddAspNetCoreInstrumentation(options =>
                         // Exclude health check requests from tracing
                         options.Filter = context =>
@@ -121,9 +122,12 @@ public static class Extensions
 
     private static TBuilder AddOpenTelemetryExporters<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
-        bool useOtlpExporter = !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]);
+        // Check both configuration and environment variables for OTLP endpoint
+        // Aspire sets this as an environment variable when services are added via AddProject
+        string? otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] 
+            ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
 
-        if (useOtlpExporter)
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
         {
             builder.Services.AddOpenTelemetry()
                 .UseOtlpExporter();
