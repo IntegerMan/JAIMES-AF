@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using Microsoft.KernelMemory;
-using Microsoft.KernelMemory.MemoryDb;
 using Microsoft.KernelMemory.MemoryStorage;
 
 namespace MattEland.Jaimes.Agents.Services;
@@ -11,22 +10,15 @@ namespace MattEland.Jaimes.Agents.Services;
 /// Telemetry wrapper for Redis memory database that instruments all Redis operations with OpenTelemetry.
 /// This allows tracking individual Redis queries and their durations in Aspire.
 /// </summary>
-public class TelemetryRedisMemoryDb : IMemoryDb
+public class TelemetryRedisMemoryDb(IMemoryDb inner) : IMemoryDb
 {
     private static readonly ActivitySource ActivitySource = new("Jaimes.KernelMemory.Redis");
     
-    private readonly IMemoryDb _inner;
-    private readonly ILogger<TelemetryRedisMemoryDb> _logger;
-
-    public TelemetryRedisMemoryDb(IMemoryDb inner, ILogger<TelemetryRedisMemoryDb> logger)
-    {
-        _inner = inner ?? throw new ArgumentNullException(nameof(inner));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
+    private readonly IMemoryDb _inner = inner ?? throw new ArgumentNullException(nameof(inner));
 
     public async Task CreateIndexAsync(string index, int vectorSize, CancellationToken cancellationToken = default)
     {
-        using Activity? activity = ActivitySource.StartActivity("Redis.CreateIndex");
+        using Activity? activity = ActivitySource.StartActivity("Redis.CreateIndex", ActivityKind.Client);
         if (activity != null)
         {
             activity.SetTag("db.system", "redis");
@@ -57,7 +49,7 @@ public class TelemetryRedisMemoryDb : IMemoryDb
 
     public async Task DeleteIndexAsync(string index, CancellationToken cancellationToken = default)
     {
-        using Activity? activity = ActivitySource.StartActivity("Redis.DeleteIndex");
+        using Activity? activity = ActivitySource.StartActivity("Redis.DeleteIndex", ActivityKind.Client);
         if (activity != null)
         {
             activity.SetTag("db.system", "redis");
@@ -92,7 +84,7 @@ public class TelemetryRedisMemoryDb : IMemoryDb
         bool withEmbeddings = false,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        using Activity? activity = ActivitySource.StartActivity("Redis.GetList");
+        using Activity? activity = ActivitySource.StartActivity("Redis.GetList", ActivityKind.Client);
         if (activity != null)
         {
             activity.SetTag("db.system", "redis");
@@ -134,7 +126,7 @@ public class TelemetryRedisMemoryDb : IMemoryDb
         MemoryRecord record,
         CancellationToken cancellationToken = default)
     {
-        using Activity? activity = ActivitySource.StartActivity("Redis.Delete");
+        using Activity? activity = ActivitySource.StartActivity("Redis.Delete", ActivityKind.Client);
         if (activity != null)
         {
             activity.SetTag("db.system", "redis");
@@ -168,7 +160,7 @@ public class TelemetryRedisMemoryDb : IMemoryDb
         MemoryRecord record,
         CancellationToken cancellationToken = default)
     {
-        using Activity? activity = ActivitySource.StartActivity("Redis.Upsert");
+        using Activity? activity = ActivitySource.StartActivity("Redis.Upsert", ActivityKind.Client);
         if (activity != null)
         {
             activity.SetTag("db.system", "redis");
@@ -207,7 +199,7 @@ public class TelemetryRedisMemoryDb : IMemoryDb
         bool withEmbeddings = false,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        using Activity? activity = ActivitySource.StartActivity("Redis.GetSimilarList");
+        using Activity? activity = ActivitySource.StartActivity("Redis.GetSimilarList", ActivityKind.Client);
         if (activity != null)
         {
             activity.SetTag("db.system", "redis");
@@ -249,7 +241,7 @@ public class TelemetryRedisMemoryDb : IMemoryDb
 
     public async Task<IEnumerable<string>> GetIndexesAsync(CancellationToken cancellationToken = default)
     {
-        using Activity? activity = ActivitySource.StartActivity("Redis.GetIndexes");
+        using Activity? activity = ActivitySource.StartActivity("Redis.GetIndexes", ActivityKind.Client);
         if (activity != null)
         {
             activity.SetTag("db.system", "redis");
