@@ -32,13 +32,16 @@ Testing
 
 - Tests are in `JAIMES AF.Tests/` with folders for endpoints, repositories, and services.
 - **CRITICAL**: When making code changes, you MUST:
-  1. Update existing tests to reflect any changes to data structures, behavior, or APIs
-  2. Add new tests when introducing new functionality or fixing bugs
-  3. Ensure all tests pass before considering a task complete
-  4. Use Shouldly for all assertions (never use `Assert.*` methods)
-  5. Verify that tests cover edge cases, especially when fixing bugs (e.g., if fixing ordering, test with identical timestamps)
+  1. **Build the solution** after modifying code: `dotnet build` - ensure it compiles successfully before proceeding
+  2. Update existing tests to reflect any changes to data structures, behavior, or APIs
+  3. Add new tests when introducing new functionality or fixing bugs
+  4. Ensure all tests pass before considering a task complete
+  5. Use Shouldly for all assertions (never use `Assert.*` methods)
+  6. Verify that tests cover edge cases, especially when fixing bugs (e.g., if fixing ordering, test with identical timestamps)
 - When adding properties to DTOs or responses, update tests to verify those properties are populated correctly
 - When changing ordering logic, add tests that verify the ordering works correctly, including edge cases
+- **Build verification**: Always run `dotnet build` after code modifications to catch compilation errors early
+- **Central Package Management**: When adding PackageReference items, ensure corresponding PackageVersion items exist in Directory.Packages.props
 
 Development notes
 

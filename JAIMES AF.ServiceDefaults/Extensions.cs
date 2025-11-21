@@ -105,6 +105,9 @@ public static class Extensions
                             activity.SetTag("db.name", stateDisplayName);
                         };
                     })
+                    // Add Redis instrumentation for Kernel Memory operations
+                    // This will capture Redis activities for debugging in Aspire
+                    .AddRedisInstrumentation()
                     // Uncomment the following line to enable gRPC instrumentation (requires the OpenTelemetry.Instrumentation.GrpcNetClient package)
                     //.AddGrpcClientInstrumentation()
                     .AddHttpClientInstrumentation();
