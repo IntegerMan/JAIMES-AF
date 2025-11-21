@@ -92,282 +92,62 @@ public static class ServiceCollectionExtensions
             // Build temporarily to get access to the memory database
             IKernelMemory tempMemory = tempBuilder.Build();
             
-            // Extract the memory database using reflection - try multiple property names
+            // Extract the memory database using reflection
+            // The MemoryDb is stored in the _memoryDbs field of handlers within the Orchestrator's _handlers dictionary
             IMemoryDb? originalMemoryDb = null;
             Type memoryType = tempMemory.GetType();
             
-            // First, try to get MemoryDb directly from the memory instance
-            string[] propertyNames = ["MemoryDb", "_memoryDb", "memoryDb", "Memory", "_memory"];
-            foreach (string propertyName in propertyNames)
-            {
-                System.Reflection.PropertyInfo? property = memoryType.GetProperty(
-                    propertyName,
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-                
-                if (property != null)
-                {
-                    object? value = property.GetValue(tempMemory);
-                    if (value is IMemoryDb db)
-                    {
-                        originalMemoryDb = db;
-                        kernelMemoryLogger.LogInformation(
-                            "Successfully extracted MemoryDb of type {DbType} using property {PropertyName}",
-                            db.GetType().Name,
-                            propertyName);
-                        break;
-                    }
-                }
-            }
+            // Navigate: MemoryServerless -> Orchestrator -> _handlers -> handler -> _memoryDbs -> first IMemoryDb
+            System.Reflection.PropertyInfo? orchestratorProperty = memoryType.GetProperty(
+                "Orchestrator",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
             
-            // If direct access failed, try to navigate through Orchestrator
-            if (originalMemoryDb == null)
+            if (orchestratorProperty != null)
             {
-                System.Reflection.PropertyInfo? orchestratorProperty = memoryType.GetProperty(
-                    "Orchestrator",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-                
-                if (orchestratorProperty != null)
+                object? orchestrator = orchestratorProperty.GetValue(tempMemory);
+                if (orchestrator != null)
                 {
-                    object? orchestrator = orchestratorProperty.GetValue(tempMemory);
-                    if (orchestrator != null)
+                    Type orchestratorType = orchestrator.GetType();
+                    System.Reflection.FieldInfo? handlersField = orchestratorType.GetField(
+                        "_handlers",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+                    
+                    if (handlersField != null && handlersField.GetValue(orchestrator) is System.Collections.IDictionary handlersDict)
                     {
-                        Type orchestratorType = orchestrator.GetType();
-                        kernelMemoryLogger.LogInformation(
-                            "Found Orchestrator property of type {OrchestratorType}, searching for MemoryDb within it",
-                            orchestratorType.Name);
-                        
-                        // Log all available properties and fields on Orchestrator for debugging
-                        System.Reflection.PropertyInfo[] orchestratorProperties = orchestratorType.GetProperties(
-                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-                        System.Reflection.FieldInfo[] orchestratorFields = orchestratorType.GetFields(
-                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-                        
-                        kernelMemoryLogger.LogInformation(
-                            "Orchestrator properties: {Properties}, fields: {Fields}",
-                            string.Join(", ", orchestratorProperties.Select(p => $"{p.Name}({p.PropertyType.Name})")),
-                            string.Join(", ", orchestratorFields.Select(f => $"{f.Name}({f.FieldType.Name})")));
-                        
-                        // Try to get MemoryDb from Orchestrator - try ALL properties first
-                        foreach (System.Reflection.PropertyInfo property in orchestratorProperties)
+                        // Find a handler with _memoryDbs field (e.g., SaveRecordsHandler, DeleteDocumentHandler)
+                        foreach (System.Collections.DictionaryEntry entry in handlersDict)
                         {
-                            try
+                            object? handler = entry.Value;
+                            if (handler != null)
                             {
-                                object? value = property.GetValue(orchestrator);
-                                if (value is IMemoryDb db)
+                                Type handlerType = handler.GetType();
+                                System.Reflection.FieldInfo? memoryDbsField = handlerType.GetField(
+                                    "_memoryDbs",
+                                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+                                
+                                if (memoryDbsField != null)
                                 {
-                                    originalMemoryDb = db;
-                                    kernelMemoryLogger.LogInformation(
-                                        "Successfully extracted MemoryDb of type {DbType} from Orchestrator using property {PropertyName}",
-                                        db.GetType().Name,
-                                        property.Name);
-                                    break;
-                                }
-                                // Also check if the property type implements IMemoryDb (for nested cases)
-                                else if (value != null && typeof(IMemoryDb).IsAssignableFrom(property.PropertyType))
-                                {
-                                    kernelMemoryLogger.LogDebug(
-                                        "Found property {PropertyName} of type {PropertyType} that implements IMemoryDb, but value is null or wrong type",
-                                        property.Name,
-                                        property.PropertyType.Name);
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                // Property might not be accessible, skip it
-                                kernelMemoryLogger.LogDebug(
-                                    "Could not access property {PropertyName} on Orchestrator: {Error}",
-                                    property.Name,
-                                    ex.Message);
-                            }
-                        }
-                        
-                        // Try ALL fields on Orchestrator if properties didn't work
-                        if (originalMemoryDb == null)
-                        {
-                            foreach (System.Reflection.FieldInfo field in orchestratorFields)
-                            {
-                                try
-                                {
-                                    object? value = field.GetValue(orchestrator);
-                                    if (value is IMemoryDb db)
+                                    object? memoryDbsValue = memoryDbsField.GetValue(handler);
+                                    if (memoryDbsValue is System.Collections.IEnumerable memoryDbsList)
                                     {
-                                        originalMemoryDb = db;
-                                        kernelMemoryLogger.LogInformation(
-                                            "Successfully extracted MemoryDb of type {DbType} from Orchestrator using field {FieldName}",
-                                            db.GetType().Name,
-                                            field.Name);
-                                        break;
-                                    }
-                                    // Check if this is the _handlers dictionary - MemoryDb might be in one of the handlers
-                                    else if (field.Name == "_handlers" && value is System.Collections.IDictionary handlersDict)
-                                    {
-                                        kernelMemoryLogger.LogInformation(
-                                            "Found _handlers dictionary with {Count} handlers, searching for MemoryDb within handlers",
-                                            handlersDict.Count);
-                                        
-                                        foreach (System.Collections.DictionaryEntry entry in handlersDict)
+                                        // Get the first IMemoryDb from the list
+                                        foreach (object? item in memoryDbsList)
                                         {
-                                            object? handler = entry.Value;
-                                            if (handler != null)
+                                            if (item is IMemoryDb db)
                                             {
-                                                Type handlerType = handler.GetType();
+                                                originalMemoryDb = db;
                                                 kernelMemoryLogger.LogInformation(
-                                                    "Checking handler {HandlerType} (key: {Key})",
-                                                    handlerType.Name,
-                                                    entry.Key);
-                                                
-                                                // Try to get MemoryDb from the handler
-                                                System.Reflection.PropertyInfo[] handlerProperties = handlerType.GetProperties(
-                                                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-                                                System.Reflection.FieldInfo[] handlerFields = handlerType.GetFields(
-                                                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-                                                
-                                                kernelMemoryLogger.LogInformation(
-                                                    "Handler {HandlerType} has properties: {Properties}, fields: {Fields}",
-                                                    handlerType.Name,
-                                                    string.Join(", ", handlerProperties.Select(p => $"{p.Name}({p.PropertyType.Name})")),
-                                                    string.Join(", ", handlerFields.Select(f => $"{f.Name}({f.FieldType.Name})")));
-                                                
-                                                foreach (System.Reflection.PropertyInfo handlerProperty in handlerProperties)
-                                                {
-                                                    try
-                                                    {
-                                                        object? handlerValue = handlerProperty.GetValue(handler);
-                                                        if (handlerValue is IMemoryDb handlerDb)
-                                                        {
-                                                            originalMemoryDb = handlerDb;
-                                                            kernelMemoryLogger.LogInformation(
-                                                                "Successfully extracted MemoryDb of type {DbType} from handler {HandlerType} using property {PropertyName}",
-                                                                handlerDb.GetType().Name,
-                                                                handlerType.Name,
-                                                                handlerProperty.Name);
-                                                            break;
-                                                        }
-                                                        // Check if it's a list of IMemoryDb
-                                                        else if (handlerValue is System.Collections.IEnumerable enumerable)
-                                                        {
-                                                            foreach (object? item in enumerable)
-                                                            {
-                                                                if (item is IMemoryDb listDb)
-                                                                {
-                                                                    originalMemoryDb = listDb;
-                                                                    kernelMemoryLogger.LogInformation(
-                                                                        "Successfully extracted MemoryDb of type {DbType} from handler {HandlerType} using property {PropertyName} (from list)",
-                                                                        listDb.GetType().Name,
-                                                                        handlerType.Name,
-                                                                        handlerProperty.Name);
-                                                                    break;
-                                                                }
-                                                            }
-                                                            if (originalMemoryDb != null) break;
-                                                        }
-                                                    }
-                                                    catch (Exception ex)
-                                                    {
-                                                        kernelMemoryLogger.LogDebug(
-                                                            "Could not access property {PropertyName} on handler {HandlerType}: {Error}",
-                                                            handlerProperty.Name,
-                                                            handlerType.Name,
-                                                            ex.Message);
-                                                    }
-                                                }
-                                                
-                                                if (originalMemoryDb != null) break;
-                                                
-                                                // Also try fields on the handler
-                                                foreach (System.Reflection.FieldInfo handlerField in handlerFields)
-                                                {
-                                                    try
-                                                    {
-                                                        object? handlerValue = handlerField.GetValue(handler);
-                                                        if (handlerValue is IMemoryDb handlerFieldDb)
-                                                        {
-                                                            originalMemoryDb = handlerFieldDb;
-                                                            kernelMemoryLogger.LogInformation(
-                                                                "Successfully extracted MemoryDb of type {DbType} from handler {HandlerType} using field {FieldName}",
-                                                                handlerFieldDb.GetType().Name,
-                                                                handlerType.Name,
-                                                                handlerField.Name);
-                                                            break;
-                                                        }
-                                                        // Check if it's a list of IMemoryDb
-                                                        else if (handlerValue is System.Collections.IEnumerable enumerable)
-                                                        {
-                                                            foreach (object? item in enumerable)
-                                                            {
-                                                                if (item is IMemoryDb listDb)
-                                                                {
-                                                                    originalMemoryDb = listDb;
-                                                                    kernelMemoryLogger.LogInformation(
-                                                                        "Successfully extracted MemoryDb of type {DbType} from handler {HandlerType} using field {FieldName} (from list)",
-                                                                        listDb.GetType().Name,
-                                                                        handlerType.Name,
-                                                                        handlerField.Name);
-                                                                    break;
-                                                                }
-                                                            }
-                                                            if (originalMemoryDb != null) break;
-                                                        }
-                                                    }
-                                                    catch (Exception ex)
-                                                    {
-                                                        kernelMemoryLogger.LogDebug(
-                                                            "Could not access field {FieldName} on handler {HandlerType}: {Error}",
-                                                            handlerField.Name,
-                                                            handlerType.Name,
-                                                            ex.Message);
-                                                    }
-                                                }
-                                                
-                                                if (originalMemoryDb != null) break;
+                                                    "Successfully extracted MemoryDb of type {DbType} from handler {HandlerType}",
+                                                    db.GetType().Name,
+                                                    handlerType.Name);
+                                                break;
                                             }
                                         }
                                         
                                         if (originalMemoryDb != null) break;
                                     }
-                                    // Also check if the field type implements IMemoryDb
-                                    else if (value != null && typeof(IMemoryDb).IsAssignableFrom(field.FieldType))
-                                    {
-                                        kernelMemoryLogger.LogDebug(
-                                            "Found field {FieldName} of type {FieldType} that implements IMemoryDb, but value is null or wrong type",
-                                            field.Name,
-                                            field.FieldType.Name);
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    // Field might not be accessible, skip it
-                                    kernelMemoryLogger.LogDebug(
-                                        "Could not access field {FieldName} on Orchestrator: {Error}",
-                                        field.Name,
-                                        ex.Message);
                                 }
                             }
-                        }
-                    }
-                }
-            }
-            
-            // If property access failed, try field access on the memory instance itself
-            if (originalMemoryDb == null)
-            {
-                foreach (string fieldName in propertyNames)
-                {
-                    System.Reflection.FieldInfo? field = memoryType.GetField(
-                        fieldName,
-                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-                    
-                    if (field != null)
-                    {
-                        object? value = field.GetValue(tempMemory);
-                        if (value is IMemoryDb db)
-                        {
-                            originalMemoryDb = db;
-                            kernelMemoryLogger.LogInformation(
-                                "Successfully extracted MemoryDb of type {DbType} using field {FieldName}",
-                                db.GetType().Name,
-                                fieldName);
-                            break;
                         }
                     }
                 }
@@ -430,25 +210,7 @@ public static class ServiceCollectionExtensions
     {
         Type memoryType = memory.GetType();
         
-        // Try to extract MemoryDb for verification - first try direct access
-        string[] propertyNames = ["MemoryDb", "_memoryDb", "memoryDb", "Memory", "_memory"];
-        foreach (string propertyName in propertyNames)
-        {
-            System.Reflection.PropertyInfo? property = memoryType.GetProperty(
-                propertyName,
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-            
-            if (property != null)
-            {
-                object? value = property.GetValue(memory);
-                if (value is IMemoryDb db)
-                {
-                    return db;
-                }
-            }
-        }
-        
-        // Try navigating through Orchestrator
+        // Navigate: MemoryServerless -> Orchestrator -> _handlers -> handler -> _memoryDbs -> first IMemoryDb
         System.Reflection.PropertyInfo? orchestratorProperty = memoryType.GetProperty(
             "Orchestrator",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
@@ -459,56 +221,40 @@ public static class ServiceCollectionExtensions
             if (orchestrator != null)
             {
                 Type orchestratorType = orchestrator.GetType();
+                System.Reflection.FieldInfo? handlersField = orchestratorType.GetField(
+                    "_handlers",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
                 
-                // Try properties on Orchestrator
-                foreach (string propertyName in propertyNames)
+                if (handlersField != null && handlersField.GetValue(orchestrator) is System.Collections.IDictionary handlersDict)
                 {
-                    System.Reflection.PropertyInfo? property = orchestratorType.GetProperty(
-                        propertyName,
-                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-                    
-                    if (property != null)
+                    // Find a handler with _memoryDbs field
+                    foreach (System.Collections.DictionaryEntry entry in handlersDict)
                     {
-                        object? value = property.GetValue(orchestrator);
-                        if (value is IMemoryDb db)
+                        object? handler = entry.Value;
+                        if (handler != null)
                         {
-                            return db;
+                            Type handlerType = handler.GetType();
+                            System.Reflection.FieldInfo? memoryDbsField = handlerType.GetField(
+                                "_memoryDbs",
+                                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+                            
+                            if (memoryDbsField != null)
+                            {
+                                object? memoryDbsValue = memoryDbsField.GetValue(handler);
+                                if (memoryDbsValue is System.Collections.IEnumerable memoryDbsList)
+                                {
+                                    // Get the first IMemoryDb from the list
+                                    foreach (object? item in memoryDbsList)
+                                    {
+                                        if (item is IMemoryDb db)
+                                        {
+                                            return db;
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
-                }
-                
-                // Try fields on Orchestrator
-                foreach (string fieldName in propertyNames)
-                {
-                    System.Reflection.FieldInfo? field = orchestratorType.GetField(
-                        fieldName,
-                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-                    
-                    if (field != null)
-                    {
-                        object? value = field.GetValue(orchestrator);
-                        if (value is IMemoryDb db)
-                        {
-                            return db;
-                        }
-                    }
-                }
-            }
-        }
-        
-        // Try fields on memory instance itself
-        foreach (string fieldName in propertyNames)
-        {
-            System.Reflection.FieldInfo? field = memoryType.GetField(
-                fieldName,
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-            
-            if (field != null)
-            {
-                object? value = field.GetValue(memory);
-                if (value is IMemoryDb db)
-                {
-                    return db;
                 }
             }
         }
