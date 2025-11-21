@@ -35,4 +35,8 @@
     <PackageReference Include="Spectre.Console" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\JAIMES AF.Services\JAIMES AF.ServiceLayer.csproj" />
+  </ItemGroup>
+
 </Project>

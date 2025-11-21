@@ -1,6 +1,7 @@
 using MattEland.Jaimes.Agents.Services;
 using MattEland.Jaimes.ServiceLayer.Services;
 using MattEland.Jaimes.ServiceDefinitions.Services;
+using MattEland.Jaimes.Services.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.KernelMemory;
 using Microsoft.KernelMemory.MemoryDb.Redis;
@@ -41,13 +42,11 @@ public static class ServiceCollectionExtensions
             string normalizedEndpoint = chatOptions.Endpoint.TrimEnd('/');
 
             // Create separate configs for embedding and text generation since they use different deployments
-            AzureOpenAIConfig embeddingConfig = new()
-            {
-                APIKey = chatOptions.ApiKey,
-                Auth = AzureOpenAIConfig.AuthTypes.APIKey,
-                Endpoint = normalizedEndpoint,
-                Deployment = chatOptions.EmbeddingDeployment,
-            };
+            // Use centralized helper to ensure embedding dimensions match between Indexer and Services
+            AzureOpenAIConfig embeddingConfig = EmbeddingConfigHelper.CreateEmbeddingConfig(
+                apiKey: chatOptions.ApiKey,
+                endpoint: normalizedEndpoint,
+                deployment: chatOptions.EmbeddingDeployment);
 
             AzureOpenAIConfig textGenerationConfig = new()
             {
@@ -70,29 +69,8 @@ public static class ServiceCollectionExtensions
                 redisConnectionString = "localhost:6379";
             }
 
-            // Configure Redis with tag fields that Kernel Memory uses internally and that we use in our code
-            // IMPORTANT: All tag fields used when indexing documents MUST be declared here, or Redis will throw
-            // an "un-indexed tag field" error. This includes:
-            // - System tags: __part_n (document parts), collection (document organization)
-            // - Document tags: sourcePath, fileName (used by DocumentIndexer)
-            // - Rule tags: rulesetId, ruleId, title (used by RulesSearchService)
-            // See: https://github.com/microsoft/kernel-memory/discussions/735
-            RedisConfig redisConfig = new("km-", new Dictionary<string, char?>
-            {
-                // System tags used by Kernel Memory internally
-                { "__part_n", ',' },
-                { "collection", ',' },
-                // Document tags used by DocumentIndexer
-                { "sourcePath", ',' },
-                { "fileName", ',' },
-                // Rule tags used by RulesSearchService
-                { "rulesetId", ',' },
-                { "ruleId", ',' },
-                { "title", ',' }
-            })
-            {
-                ConnectionString = redisConnectionString
-            };
+            // Use centralized RedisConfig creation to ensure consistency
+            RedisConfig redisConfig = RedisConfigHelper.CreateRedisConfig(redisConnectionString);
 
             // Use Redis extension method from the Redis package
             IKernelMemory memory = new KernelMemoryBuilder()

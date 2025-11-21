@@ -35,11 +35,11 @@ public class RulesSearchService : IRulesSearchService
         _logger.LogInformation("Searching rules for ruleset {RulesetId} with query: {Query}", rulesetId, query);
 
         // Use Kernel Memory's Ask method to search for relevant rules
-        // Filter by ruleset ID using tags - the rulesetId is used as an index/filter
+        // Use the same index format as the Indexer (just the ruleset ID in lowercase)
         MemoryAnswer answer = await _memory.AskAsync(
             question: query,
             index: GetIndexName(rulesetId),
-            filters: new List<MemoryFilter> { new MemoryFilter().ByTag("rulesetId", rulesetId) },
+            filters: null, // Index name is sufficient for filtering
             cancellationToken: cancellationToken);
 
         if (string.IsNullOrWhiteSpace(answer.Result))
@@ -62,41 +62,82 @@ public class RulesSearchService : IRulesSearchService
         _logger.LogInformation("Searching rules with query: {Query}, rulesetId: {RulesetId}", query, rulesetId ?? "all");
 
         MemoryAnswer answer;
+        string? indexName = null;
         
         if (string.IsNullOrWhiteSpace(rulesetId))
         {
-            // Search across all rulesets - use a wildcard or search all indexes
-            // For now, we'll search without a specific index filter
-            // Note: This may need adjustment based on Kernel Memory's capabilities
+            // Search across all rulesets - use null to search all indexes
+            // Kernel Memory searches across all indexes when index is null
+            // Note: AskAsync may not work well for cross-index searches - if this fails, consider
+            // using SearchAsync or listing indexes and searching them individually
+            _logger.LogInformation("Searching across all indexes (no specific ruleset)");
             answer = await _memory.AskAsync(
                 question: query,
-                index: null, // Search across all indexes
+                index: null, // null searches across all indexes
                 filters: null,
                 cancellationToken: cancellationToken);
         }
         else
         {
-            // Search within a specific ruleset
+            // Search within a specific ruleset using the same index format as the Indexer
+            indexName = GetIndexName(rulesetId);
+            _logger.LogInformation("Searching in index: {IndexName} for ruleset: {RulesetId}", indexName, rulesetId);
             answer = await _memory.AskAsync(
                 question: query,
-                index: GetIndexName(rulesetId),
-                filters: null, //new List<MemoryFilter> { new MemoryFilter().ByTag("rulesetId", rulesetId) },
+                index: indexName,
+                filters: null, // Index name is sufficient for filtering
                 cancellationToken: cancellationToken);
         }
-
-        // Extract citations from the answer
-        List<CitationInfo> citations = [];
-        if (answer.RelevantSources != null)
+        
+        _logger.LogInformation("AskAsync completed - Index: {IndexName}, Answer: {AnswerPreview}, RelevantSources: {SourceCount}", 
+            indexName ?? "(all indexes)",
+            string.IsNullOrWhiteSpace(answer.Result) ? "(empty)" : answer.Result.Length > 50 ? answer.Result.Substring(0, 50) + "..." : answer.Result,
+            answer.RelevantSources?.Count ?? 0);
+        
+        // Log detailed information about sources for debugging
+        if (answer.RelevantSources != null && answer.RelevantSources.Count > 0)
         {
+            _logger.LogDebug("Relevant sources details: {Sources}", 
+                string.Join(", ", answer.RelevantSources.Select(s => $"DocId: {s.DocumentId}, Index: {s.Index}")));
+        }
+        else
+        {
+            _logger.LogWarning("No relevant sources found for query: {Query} in index: {IndexName}", 
+                query, indexName ?? "(all indexes)");
+        }
+
+        // Extract citations from the answer with source and matched text
+        // Always extract citations even if the answer is empty or "INFO NOT FOUND"
+        List<CitationInfo> citations = [];
+        if (answer.RelevantSources != null && answer.RelevantSources.Count > 0)
+        {
+            _logger.LogInformation("Found {Count} relevant sources in answer", answer.RelevantSources.Count);
+            
             foreach (Citation citation in answer.RelevantSources)
             {
-                string source = citation.SourceUrl ?? citation.Link ?? citation.Index ?? "Unknown";
-                string text = string.Empty;
+                // Build a descriptive source string
+                string source = BuildSourceString(citation);
                 
+                // Extract matched text from partitions
+                // Get all partitions or the first one if available
+                string text = string.Empty;
                 if (citation.Partitions != null && citation.Partitions.Count > 0)
                 {
-                    text = citation.Partitions[0].Text ?? string.Empty;
+                    // Combine all partition texts, or use the first one if there's only one
+                    if (citation.Partitions.Count == 1)
+                    {
+                        text = citation.Partitions[0].Text ?? string.Empty;
+                    }
+                    else
+                    {
+                        // Combine multiple partitions with separators
+                        text = string.Join("\n\n---\n\n", 
+                            citation.Partitions.Select(p => p.Text ?? string.Empty).Where(t => !string.IsNullOrWhiteSpace(t)));
+                    }
                 }
+                
+                _logger.LogDebug("Extracted citation - Source: {Source}, TextLength: {TextLength}, Partitions: {PartitionCount}", 
+                    source, text.Length, citation.Partitions?.Count ?? 0);
                 
                 citations.Add(new CitationInfo
                 {
@@ -105,6 +146,11 @@ public class RulesSearchService : IRulesSearchService
                     Relevance = null // Citation doesn't have a Relevance property in Kernel Memory
                 });
             }
+        }
+        else
+        {
+            _logger.LogWarning("No RelevantSources found in MemoryAnswer. Answer.Result: {AnswerResult}", 
+                answer.Result ?? "(null)");
         }
 
         // Extract document information
@@ -134,14 +180,48 @@ public class RulesSearchService : IRulesSearchService
             }
         }
 
+        // Build response - always include citations and documents even if answer is empty or "INFO NOT FOUND"
+        // This allows users to see what sources were found even if no answer was generated
+        string answerText = answer.Result ?? string.Empty;
+        bool hasValidAnswer = !string.IsNullOrWhiteSpace(answerText) && 
+                              !answerText.Equals("INFO NOT FOUND", StringComparison.OrdinalIgnoreCase);
+        
+        if (!hasValidAnswer)
+        {
+            if (citations.Count > 0 || documents.Count > 0)
+            {
+                // We have sources but no answer - this is useful information
+                answerText = "No answer was generated, but relevant sources were found. See citations and documents below.";
+            }
+            else
+            {
+                // No sources and no answer
+                answerText = "No relevant rules found for your query. No matching documents or citations were found.";
+            }
+        }
+
         SearchRulesResponse response = new()
         {
-            Answer = answer.Result ?? "No relevant rules found for your query.",
+            Answer = answerText,
             Citations = citations.ToArray(),
             Documents = documents.ToArray()
         };
 
-        _logger.LogInformation("Found answer with {CitationCount} citations and {DocumentCount} documents", citations.Count, documents.Count);
+        _logger.LogInformation(
+            "Search completed - HasValidAnswer: {HasAnswer}, Citations: {CitationCount}, Documents: {DocumentCount}", 
+            hasValidAnswer, citations.Count, documents.Count);
+        
+        if (citations.Count > 0)
+        {
+            _logger.LogInformation("Citation sources found: {Sources}", 
+                string.Join(", ", citations.Select(c => c.Source)));
+        }
+        else
+        {
+            _logger.LogWarning("No citations found in search results. RelevantSources was {IsNull}", 
+                answer.RelevantSources == null ? "null" : $"not null (count: {answer.RelevantSources.Count})");
+        }
+        
         return response;
     }
 
@@ -192,9 +272,52 @@ public class RulesSearchService : IRulesSearchService
 
     private static string GetIndexName(string rulesetId)
     {
-        // Use a consistent index name format
-        // Kernel Memory uses indexes to organize documents
-        return $"ruleset-{rulesetId.ToLowerInvariant()}";
+        // Use the same index name format as the Indexer
+        // The Indexer uses just the directory name (ruleset ID) in lowercase
+        return rulesetId.ToLowerInvariant();
+    }
+
+    private static string BuildSourceString(Citation citation)
+    {
+        // Try to build a descriptive source string
+        // Priority: DocumentId (which may contain filename), then SourceUrl, then Link, then Index
+        string source = citation.DocumentId ?? string.Empty;
+        
+        // If DocumentId looks like a filename (contains extension or path info), use it
+        if (!string.IsNullOrWhiteSpace(source) && (source.Contains('.') || source.Contains('-')))
+        {
+            // For indexed documents, DocumentId format is: "rulesetId-filename.ext"
+            // Extract just the filename part for better readability
+            int lastDashIndex = source.LastIndexOf('-');
+            if (lastDashIndex >= 0 && lastDashIndex < source.Length - 1)
+            {
+                string filename = source.Substring(lastDashIndex + 1);
+                if (!string.IsNullOrWhiteSpace(filename))
+                {
+                    return filename;
+                }
+            }
+            return source;
+        }
+        
+        // Fallback to other available properties
+        if (!string.IsNullOrWhiteSpace(citation.SourceUrl))
+        {
+            return citation.SourceUrl;
+        }
+        
+        if (!string.IsNullOrWhiteSpace(citation.Link))
+        {
+            return citation.Link;
+        }
+        
+        if (!string.IsNullOrWhiteSpace(citation.Index))
+        {
+            return $"Index: {citation.Index}";
+        }
+        
+        // Last resort: use DocumentId even if it doesn't look like a filename
+        return !string.IsNullOrWhiteSpace(source) ? source : "Unknown Source";
     }
 }
 

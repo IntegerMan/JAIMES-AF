@@ -24,7 +24,8 @@
 				              Class="mb-4"
 				              FullWidth="true"
 				              Placeholder="Enter your search query here..."
-				              HelperText="Enter a natural language question about game rules" />
+				              HelperText="Enter a natural language question about game rules (press Enter to search)"
+				              OnKeyDown="HandleSearchQueryKeyDown" />
 
 				<MudSelect @bind-Value="selectedRulesetId" 
 				           Label="Ruleset (Optional)" 
@@ -66,18 +67,33 @@
 
 			<MudPaper Class="pa-4 mb-4" Elevation="1">
 				<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Answer</MudText>
-				<MudText Typo="Typo.body1" Style="white-space: pre-wrap;">@searchResult.Answer</MudText>
+				@if (string.IsNullOrWhiteSpace(searchResult.Answer) || searchResult.Answer == "INFO NOT FOUND")
+				{
+					<MudAlert Severity="Severity.Warning" Class="mb-2">No answer was generated for this query.</MudAlert>
+					<MudText Typo="Typo.body2" Class="text-muted">The search did not return a generated answer. Check the citations and documents below for relevant source material.</MudText>
+				}
+				else
+				{
+					<MudText Typo="Typo.body1" Style="white-space: pre-wrap;">@searchResult.Answer</MudText>
+				}
 			</MudPaper>
 
-			@if (searchResult.Citations.Length > 0)
-			{
-				<MudPaper Class="pa-4 mb-4" Elevation="1">
-					<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Citations (@searchResult.Citations.Length)</MudText>
+			<MudPaper Class="pa-4 mb-4" Elevation="1">
+				<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Citations (@searchResult.Citations.Length)</MudText>
+				@if (searchResult.Citations.Length > 0)
+				{
 					@foreach (var citation in searchResult.Citations)
 					{
 						<MudExpansionPanels Class="mb-2">
 							<MudExpansionPanel Text="@citation.Source">
-								<MudText Typo="Typo.body2" Style="white-space: pre-wrap;">@citation.Text</MudText>
+								@if (string.IsNullOrWhiteSpace(citation.Text))
+								{
+									<MudText Typo="Typo.body2" Class="text-muted">No text content available for this citation.</MudText>
+								}
+								else
+								{
+									<MudText Typo="Typo.body2" Style="white-space: pre-wrap;">@citation.Text</MudText>
+								}
 								@if (citation.Relevance.HasValue)
 								{
 									<MudText Typo="Typo.caption" Class="mt-2 text-muted">Relevance: @citation.Relevance.Value.ToString("P2")</MudText>
@@ -85,13 +101,17 @@
 							</MudExpansionPanel>
 						</MudExpansionPanels>
 					}
-				</MudPaper>
-			}
+				}
+				else
+				{
+					<MudText Typo="Typo.body2" Class="text-muted">No citations were found for this search query.</MudText>
+				}
+			</MudPaper>
 
-			@if (searchResult.Documents.Length > 0)
-			{
-				<MudPaper Class="pa-4 mb-4" Elevation="1">
-					<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Documents (@searchResult.Documents.Length)</MudText>
+			<MudPaper Class="pa-4 mb-4" Elevation="1">
+				<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Documents (@searchResult.Documents.Length)</MudText>
+				@if (searchResult.Documents.Length > 0)
+				{
 					@foreach (var document in searchResult.Documents)
 					{
 						<MudExpansionPanels Class="mb-2">
@@ -108,11 +128,19 @@
 										}
 									</ul>
 								}
+								else
+								{
+									<MudText Typo="Typo.body2" Class="text-muted">No tags available for this document.</MudText>
+								}
 							</MudExpansionPanel>
 						</MudExpansionPanels>
 					}
-				</MudPaper>
-			}
+				}
+				else
+				{
+					<MudText Typo="Typo.body2" Class="text-muted">No documents were found for this search query.</MudText>
+				}
+			</MudPaper>
 		}
 	</MudPaper>
 </MudContainer>

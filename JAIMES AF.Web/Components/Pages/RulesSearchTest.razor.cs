@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 
@@ -35,6 +36,14 @@ public partial class RulesSearchTest
         {
             LoggerFactory.CreateLogger("RulesSearchTest").LogError(ex, "Failed to load rulesets from API");
             errorMessage = "Failed to load rulesets: " + ex.Message;
+        }
+    }
+
+    private async Task HandleSearchQueryKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !isSearching && !string.IsNullOrWhiteSpace(searchQuery))
+        {
+            await SearchRulesAsync();
         }
     }
 

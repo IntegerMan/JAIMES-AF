@@ -3,9 +3,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.KernelMemory;
+using Microsoft.KernelMemory.MemoryDb.Redis;
 using Spectre.Console;
 using MattEland.Jaimes.Indexer.Configuration;
 using MattEland.Jaimes.Indexer.Services;
+using MattEland.Jaimes.Services.Configuration;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
@@ -45,35 +47,19 @@ builder.Services.AddSingleton(options);
 string openAiEndpoint = options.OpenAiEndpoint.TrimEnd('/');
 string docIntelEndpoint = options.DocIntelEndpoint.TrimEnd('/');
 
-AzureOpenAIConfig openAiConfig = new()
-{
-    APIKey = options.OpenAiApiKey,
-    Auth = AzureOpenAIConfig.AuthTypes.APIKey,
-    Endpoint = openAiEndpoint,
-    Deployment = options.OpenAiDeployment,
-    EmbeddingDimensions = 1536, // Only supported for text-embedding-3-small
-    MaxTokenTotal = 8191, // Common for ADA 002 and Text-embedding-3-small
-};
+// Use centralized helper to ensure embedding dimensions match between Indexer and Services
+AzureOpenAIConfig openAiConfig = EmbeddingConfigHelper.CreateEmbeddingConfig(
+    apiKey: options.OpenAiApiKey,
+    endpoint: openAiEndpoint,
+    deployment: options.OpenAiDeployment);
 
 // Use Redis as the vector store for Kernel Memory
 // Redis provides better performance and document listing capabilities than SimpleVectorDb
 // Connection string format: "localhost:6379" or "localhost:6379,password=xxx" or full connection string
 string redisConnectionString = options.VectorDbConnectionString;
 
-// Configure Redis with tag fields that Kernel Memory uses internally and that we use in our code
-// IMPORTANT: All tag fields used when indexing documents MUST be declared here, or Redis will throw
-// an "un-indexed tag field" error.
-// - System tags: __part_n (document parts), collection (document organization)
-// See: https://github.com/microsoft/kernel-memory/discussions/735
-RedisConfig redisConfig = new("km-", new Dictionary<string, char?>
-{
-    { "__part_n", ',' }, // Used by Kernel Memory for document parts
-    { "collection", ',' },
-    { "fileName", ',' },
-    { "type", ',' }, 
-    { "ruleset", ',' }
-});
-redisConfig.ConnectionString = redisConnectionString;
+// Use centralized RedisConfig creation to ensure consistency
+RedisConfig redisConfig = RedisConfigHelper.CreateRedisConfig(redisConnectionString);
 
 AzureAIDocIntelConfig docIntelConfig = new()
 {
