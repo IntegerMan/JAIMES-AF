@@ -21,8 +21,10 @@ public class TelemetryRedisMemoryDb(IMemoryDb inner) : IMemoryDb
         using Activity? activity = ActivitySource.StartActivity("Redis.CreateIndex", ActivityKind.Client);
         if (activity != null)
         {
+            activity.DisplayName = $"Redis.CreateIndex {index}";
             activity.SetTag("db.system", "redis");
             activity.SetTag("db.operation", "create_index");
+            activity.SetTag("db.name", "redis");
             activity.SetTag("db.index", index);
             activity.SetTag("db.vector_size", vectorSize);
         }
@@ -52,8 +54,10 @@ public class TelemetryRedisMemoryDb(IMemoryDb inner) : IMemoryDb
         using Activity? activity = ActivitySource.StartActivity("Redis.DeleteIndex", ActivityKind.Client);
         if (activity != null)
         {
+            activity.DisplayName = $"Redis.DeleteIndex {index}";
             activity.SetTag("db.system", "redis");
             activity.SetTag("db.operation", "delete_index");
+            activity.SetTag("db.name", "redis");
             activity.SetTag("db.index", index);
         }
 
@@ -87,8 +91,10 @@ public class TelemetryRedisMemoryDb(IMemoryDb inner) : IMemoryDb
         using Activity? activity = ActivitySource.StartActivity("Redis.GetList", ActivityKind.Client);
         if (activity != null)
         {
+            activity.DisplayName = $"Redis.GetList {index}";
             activity.SetTag("db.system", "redis");
             activity.SetTag("db.operation", "get_list");
+            activity.SetTag("db.name", "redis");
             activity.SetTag("db.index", index);
             activity.SetTag("db.limit", limit);
             activity.SetTag("db.with_embeddings", withEmbeddings);
@@ -129,8 +135,10 @@ public class TelemetryRedisMemoryDb(IMemoryDb inner) : IMemoryDb
         using Activity? activity = ActivitySource.StartActivity("Redis.Delete", ActivityKind.Client);
         if (activity != null)
         {
+            activity.DisplayName = $"Redis.Delete {index}";
             activity.SetTag("db.system", "redis");
             activity.SetTag("db.operation", "delete");
+            activity.SetTag("db.name", "redis");
             activity.SetTag("db.index", index);
             activity.SetTag("db.record_id", record.Id);
         }
@@ -163,8 +171,10 @@ public class TelemetryRedisMemoryDb(IMemoryDb inner) : IMemoryDb
         using Activity? activity = ActivitySource.StartActivity("Redis.Upsert", ActivityKind.Client);
         if (activity != null)
         {
+            activity.DisplayName = $"Redis.Upsert {index}";
             activity.SetTag("db.system", "redis");
             activity.SetTag("db.operation", "upsert");
+            activity.SetTag("db.name", "redis");
             activity.SetTag("db.index", index);
             activity.SetTag("db.record_id", record.Id);
         }
@@ -202,8 +212,10 @@ public class TelemetryRedisMemoryDb(IMemoryDb inner) : IMemoryDb
         using Activity? activity = ActivitySource.StartActivity("Redis.GetSimilarList", ActivityKind.Client);
         if (activity != null)
         {
+            activity.DisplayName = $"Redis.GetSimilarList {index}";
             activity.SetTag("db.system", "redis");
             activity.SetTag("db.operation", "get_similar_list");
+            activity.SetTag("db.name", "redis");
             activity.SetTag("db.index", index);
             activity.SetTag("db.limit", limit);
             activity.SetTag("db.min_relevance", minRelevance);
@@ -244,8 +256,10 @@ public class TelemetryRedisMemoryDb(IMemoryDb inner) : IMemoryDb
         using Activity? activity = ActivitySource.StartActivity("Redis.GetIndexes", ActivityKind.Client);
         if (activity != null)
         {
+            activity.DisplayName = "Redis.GetIndexes";
             activity.SetTag("db.system", "redis");
             activity.SetTag("db.operation", "get_indexes");
+            activity.SetTag("db.name", "redis");
         }
 
         try
