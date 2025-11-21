@@ -30,6 +30,7 @@ public class IndexingOrchestrator(
                     break;
                 }
 
+                // TODO: Remove this
                 if (!directory.ToLowerInvariant().Contains("dnd")) {
                     logger.LogInformation("Skipping directory: {Directory} because it does not contain 'dnd'", directory);
                     continue;

@@ -51,7 +51,8 @@ AzureOpenAIConfig openAiConfig = new()
     Auth = AzureOpenAIConfig.AuthTypes.APIKey,
     Endpoint = openAiEndpoint,
     Deployment = options.OpenAiDeployment,
-    MaxTokenTotal = 8191,
+    EmbeddingDimensions = 1536, // Only supported for text-embedding-3-small
+    MaxTokenTotal = 8191, // Common for ADA 002 and Text-embedding-3-small
 };
 
 // Use Redis as the vector store for Kernel Memory
