@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.KernelMemory;
+using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 
@@ -12,13 +13,16 @@ public class RulesSearchService : IRulesSearchService
     
     private readonly ILogger<RulesSearchService> _logger;
     private readonly IKernelMemory _memory;
+    private readonly IRulesetsService _rulesetsService;
 
     public RulesSearchService(
         ILogger<RulesSearchService> logger,
-        IKernelMemory memory)
+        IKernelMemory memory,
+        IRulesetsService rulesetsService)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _memory = memory ?? throw new ArgumentNullException(nameof(memory));
+        _rulesetsService = rulesetsService ?? throw new ArgumentNullException(nameof(rulesetsService));
 
         _logger.LogInformation("RulesSearchService initialized with Kernel Memory");
     }
@@ -136,7 +140,7 @@ public class RulesSearchService : IRulesSearchService
         {
             if (string.IsNullOrWhiteSpace(rulesetId))
             {
-                // Search across all indexes - try searching with null index
+                // Search across all indexes - Redis doesn't support null index, so we need to search each index individually
                 _logger.LogInformation("Searching across all indexes (no specific ruleset)");
                 
                 if (activity != null)
@@ -144,16 +148,71 @@ public class RulesSearchService : IRulesSearchService
                     activity.SetTag("search.scope", "all_indexes");
                 }
                 
-                // Note: Kernel Memory may not support null index for SearchAsync
-                // If this doesn't work, we may need to maintain a list of known indexes and search each one
-                searchResult = await _memory.SearchAsync(
-                    query: query,
-                    index: null, // null should search across all indexes
-                    filters: null,
-                    limit: 10, // Limit results
-                    cancellationToken: cancellationToken);
+                // Get all rulesets from the database
+                RulesetDto[] allRulesets = await _rulesetsService.GetRulesetsAsync(cancellationToken);
                 
-                _logger.LogInformation("Cross-index search found {Count} results", searchResult.Results?.Count ?? 0);
+                if (allRulesets.Length == 0)
+                {
+                    _logger.LogWarning("No rulesets found in database for cross-index search");
+                    searchResult = new SearchResult
+                    {
+                        Results = []
+                    };
+                }
+                else
+                {
+                    _logger.LogInformation("Searching across {Count} ruleset indexes", allRulesets.Length);
+                    
+                    // Search each index and collect all results
+                    List<Citation> allCitations = [];
+                    int totalSearched = 0;
+                    
+                    foreach (Domain.RulesetDto ruleset in allRulesets)
+                    {
+                        string currentIndexName = GetIndexName(ruleset.Id);
+                        try
+                        {
+                            SearchResult indexResult = await _memory.SearchAsync(
+                                query: query,
+                                index: currentIndexName,
+                                filters: null,
+                                limit: 10, // Get top 10 from each index
+                                cancellationToken: cancellationToken);
+                            
+                            if (indexResult.Results != null && indexResult.Results.Count > 0)
+                            {
+                                allCitations.AddRange(indexResult.Results);
+                                _logger.LogDebug("Found {Count} results in index: {IndexName}", 
+                                    indexResult.Results.Count, currentIndexName);
+                            }
+                            
+                            totalSearched++;
+                        }
+                        catch (Exception ex)
+                        {
+                            // Log but continue searching other indexes
+                            _logger.LogWarning(ex, "Error searching index {IndexName} for ruleset {RulesetId}, continuing with other indexes", 
+                                currentIndexName, ruleset.Id);
+                        }
+                    }
+                    
+                    if (activity != null)
+                    {
+                        activity.SetTag("search.indexes_searched", totalSearched);
+                        activity.SetTag("search.total_citations", allCitations.Count);
+                    }
+                    
+                    // Create combined search result with top results
+                    // Note: Citations don't expose relevance scores directly, so we'll take the first results
+                    // In practice, each index search already returns the most relevant results
+                    searchResult = new SearchResult
+                    {
+                        Results = allCitations.Take(10).ToList()
+                    };
+                    
+                    _logger.LogInformation("Cross-index search found {Count} total results across {IndexCount} indexes, returning top {ReturnedCount}", 
+                        allCitations.Count, totalSearched, searchResult.Results.Count);
+                }
             }
             else
             {
