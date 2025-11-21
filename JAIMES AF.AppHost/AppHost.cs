@@ -4,9 +4,20 @@
     
     // Use polling instead of inotify to avoid watcher limits
     Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER", "1", EnvironmentVariableTarget.Process);
+    
+    // Aspire will auto-detect the container runtime (Docker or Podman)
+    // Since Podman machine is already running, Aspire will use Podman automatically
+    Console.WriteLine("Using container runtime (Docker or Podman will be auto-detected by Aspire)");
 
     IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
     
+    Console.WriteLine("Adding Redis Stack with persistence...");
+    IResourceBuilder<ContainerResource> redis = builder.AddContainer("redis", "redis/redis-stack:latest")
+        .WithHttpEndpoint(8001, 8001, name: "redisinsight")
+        .WithEndpoint(6379, 6379, name: "redis")
+        .WithBindMount(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aspire", "jaimes-redis-data"), "/data")
+        .WithIconName("Redis", IconVariant.Regular);
+
     Console.WriteLine("Adding API service...");
     IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIMES_AF_ApiService>("apiservice")
         .WithIconName("DocumentGlobe", IconVariant.Regular)
@@ -29,6 +40,8 @@
             Url = "/health",
             DisplayText = "👨‍⚕️ Health"
         })
+        .WaitFor(redis)
+        .WithEnvironment("VectorDb__ConnectionString", "localhost:6379,abortConnect=false,connectRetry=5,connectTimeout=10000")
         // Configure debug-level logging for user namespaces and Agent Framework
         // Note: Dots in namespace names must be replaced with double underscores in environment variables
         .WithEnvironment("Logging__LogLevel__MattEland__Jaimes", "Debug")
@@ -54,6 +67,11 @@
         })
         .WithUrlForEndpoint("http", static _ => new()
         {
+            Url = "/admin",
+            DisplayText = "⚙️ Admin"
+        })
+        .WithUrlForEndpoint("http", static _ => new()
+        {
             Url = "/scenarios",
             DisplayText = "📖 Scenarios"
         })
@@ -62,11 +80,13 @@
             Url = "/players",
             DisplayText = "👤 Players"
         })
+        /*
         .WithUrlForEndpoint("http", static _ => new()
         {
             Url = "/rulesets",
             DisplayText = "📋 Rulesets"
         })
+        */
         .WithReference(apiService)
         .WaitFor(apiService)
         // Configure debug-level logging for user namespaces and Agent Framework

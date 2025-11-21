@@ -51,49 +51,36 @@ Note: You'll need to regenerate migrations for SQL Server (see instructions abov
 
 ## Redis Dependency
 
-The application uses Redis as the vector store backend for Kernel Memory. You must have Redis running locally before starting the application.
+The application uses Redis as the vector store backend for Kernel Memory. **Redis is automatically managed by Aspire** when you run the AppHost project - no manual setup is required.
 
-### Running Redis with Docker
+### Prerequisites
 
-```bash
-docker run -d --name redis-stack -p 6379:6379 -p 8001:8001 -v redis-data:/data redis/redis-stack:latest
-```
+**Important**: Aspire requires a container runtime to manage Redis. The application will auto-detect either Docker or Podman.
 
-This command:
-- Starts Redis Stack in detached mode
-- Maps Redis port 6379 to your host
-- Maps RedisInsight web UI to port 8001 (optional, for monitoring)
-- Creates a named volume `redis-data` for data persistence
+- **Docker Desktop**: If using Docker, ensure Docker Desktop is installed and running on Windows
+- **Podman**: If using Podman, ensure the default Podman machine is created and running:
+  ```bash
+  podman machine list  # Check if machine is running
+  podman machine init podman-machine-default  # Create default machine if it doesn't exist
+  podman machine start podman-machine-default  # Start the default machine
+  ```
+  
+  **Note**: Aspire looks for a Podman machine named `podman-machine-default`. If you have a different machine name, you'll need to create the default machine as shown above.
+  
+Aspire will automatically detect and use whichever container runtime is available and healthy.
 
-### Running Redis with Podman
+### Redis Management
 
-```bash
-podman run -d --name redis-stack -p 6379:6379 -p 8001:8001 -v redis-data:/data redis/redis-stack:latest
-```
-
-### Verifying Redis is Running
-
-Test the connection:
-```bash
-# Docker
-docker exec -it redis-stack redis-cli ping
-
-# Podman
-podman exec -it redis-stack redis-cli ping
-```
-
-You should receive a `PONG` response.
-
-### Accessing RedisInsight (Web UI)
-
-Open your browser and navigate to:
-```
-http://localhost:8001
-```
+- **Automatic Startup**: Redis Stack is automatically started when you run the Aspire AppHost
+- **Data Persistence**: Redis data is persisted between sessions in a local directory (`%LocalAppData%\Aspire\jaimes-redis-data` on Windows)
+- **RedisInsight**: RedisInsight web UI is available at `http://localhost:8001` for monitoring and managing Redis data
+- **Dashboard Integration**: Redis appears in the Aspire dashboard for monitoring and management
 
 ### Redis Configuration
 
-The application connects to Redis at `localhost:6379` by default. This can be configured in `appsettings.json`:
+The application automatically connects to the Redis instance managed by Aspire. The connection string is configured automatically and does not need to be set manually.
+
+For advanced scenarios, you can override the connection string in `appsettings.json`:
 
 ```json
 {
@@ -103,10 +90,7 @@ The application connects to Redis at `localhost:6379` by default. This can be co
 }
 ```
 
-For production or custom configurations, you can use full connection strings:
-- `localhost:6379` - Default local connection
-- `localhost:6379,password=yourpassword` - With password
-- `redis://localhost:6379` - Full Redis URL format
+**Note**: If you have an existing Redis instance running (e.g., from Podman/Docker), you should stop it before running the AppHost to avoid port conflicts.
 
 ## Chat Service Configuration
 
