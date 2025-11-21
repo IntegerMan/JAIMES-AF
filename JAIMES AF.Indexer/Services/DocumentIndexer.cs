@@ -11,7 +11,8 @@ public class DocumentIndexer(ILogger<DocumentIndexer> logger, IKernelMemory memo
         try
         {
             string documentId = GetDocumentId(filePath, indexName);
-            DataPipelineStatus? status = await memory.GetDocumentStatusAsync(documentId, indexName, cancellationToken);
+            // All documents are stored in the unified "rulesets" index
+            DataPipelineStatus? status = await memory.GetDocumentStatusAsync(documentId, "rulesets", cancellationToken);
             return status is { Completed: true };
         }
         catch (Exception ex)
@@ -26,15 +27,17 @@ public class DocumentIndexer(ILogger<DocumentIndexer> logger, IKernelMemory memo
         string documentId = GetDocumentId(filePath, indexName);
         FileInfo fileInfo = new FileInfo(filePath);
         
-        logger.LogInformation("Indexing document: {FilePath} with index: {IndexName}, documentId: {DocumentId}", filePath, indexName, documentId);
+        // indexName parameter represents the ruleset/directory identifier, used as a tag for filtering
+        // All documents are stored in the unified "rulesets" index
+        logger.LogInformation("Indexing document: {FilePath} with ruleset tag: {RulesetTag}, documentId: {DocumentId}", filePath, indexName, documentId);
         
         return await memory.ImportDocumentAsync(
             new Document(documentId)
                 .AddFile(filePath)
                 .AddTag("type", "sourcebook")
-                .AddTag("ruleset", indexName)
+                .AddTag("ruleset", indexName)  // Use indexName as the ruleset tag for filtering
                 .AddTag("fileName", fileInfo.Name),
-            index: indexName,
+            index: "rulesets",  // All documents go to the unified rulesets index
             cancellationToken: cancellationToken);
     }
 

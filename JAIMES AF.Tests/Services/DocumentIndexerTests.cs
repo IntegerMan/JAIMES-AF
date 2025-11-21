@@ -37,10 +37,11 @@ public class DocumentIndexerTests
 
         Document? capturedDocument = null;
         // Mock ImportDocumentAsync - signature: ImportDocumentAsync(Document, string?, IEnumerable<string>?, IContext?, CancellationToken)
+        // All documents are stored in the unified "rulesets" index
         _memoryMock
             .Setup(m => m.ImportDocumentAsync(
                 It.IsAny<Document>(), 
-                It.IsAny<string?>(), 
+                "rulesets",  // Verify it uses the unified "rulesets" index
                 It.IsAny<IEnumerable<string>?>(), 
                 It.IsAny<Microsoft.KernelMemory.Context.IContext?>(), 
                 It.IsAny<CancellationToken>()))
@@ -86,9 +87,9 @@ public class DocumentIndexerTests
             capturedDocument.ShouldNotBeNull();
             // Note: We can't easily verify tags without accessing internal Document structure
             // But we can verify the method was called correctly
-            // Verify the call was made
+            // Verify the call was made with the unified "rulesets" index
             _memoryMock.Verify(
-                m => m.ImportDocumentAsync(It.IsAny<Document>(), It.IsAny<string?>(), It.IsAny<IEnumerable<string>?>(), It.IsAny<Microsoft.KernelMemory.Context.IContext?>(), It.IsAny<CancellationToken>()),
+                m => m.ImportDocumentAsync(It.IsAny<Document>(), "rulesets", It.IsAny<IEnumerable<string>?>(), It.IsAny<Microsoft.KernelMemory.Context.IContext?>(), It.IsAny<CancellationToken>()),
                 Times.Once);
         }
         finally
@@ -109,8 +110,9 @@ public class DocumentIndexerTests
             ? new DataPipelineStatus { Completed = true }
             : null;
 
+        // All documents are stored in the unified "rulesets" index
         _memoryMock
-            .Setup(m => m.GetDocumentStatusAsync(expectedDocumentId, indexName, It.IsAny<CancellationToken>()))
+            .Setup(m => m.GetDocumentStatusAsync(expectedDocumentId, "rulesets", It.IsAny<CancellationToken>()))
             .ReturnsAsync(status);
 
         // Act
@@ -130,8 +132,9 @@ public class DocumentIndexerTests
 
         DataPipelineStatus status = new DataPipelineStatus { Completed = false };
 
+        // All documents are stored in the unified "rulesets" index
         _memoryMock
-            .Setup(m => m.GetDocumentStatusAsync(documentId, indexName, It.IsAny<CancellationToken>()))
+            .Setup(m => m.GetDocumentStatusAsync(documentId, "rulesets", It.IsAny<CancellationToken>()))
             .ReturnsAsync(status);
 
         // Act

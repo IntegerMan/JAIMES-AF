@@ -37,10 +37,11 @@ public class IndexingOrchestrator(
                 }
 
                 DirectoryInfo directoryInfo = new DirectoryInfo(directory);
-                string indexName = directoryInfo.Name.ToLowerInvariant();
-                logger.LogInformation("Processing directory: {Directory} -> Index name: {IndexName}", directory, indexName);
+                // Directory name is used as the ruleset tag for filtering within the unified "rulesets" index
+                string rulesetTag = directoryInfo.Name.ToLowerInvariant();
+                logger.LogInformation("Processing directory: {Directory} -> Ruleset tag: {RulesetTag}", directory, rulesetTag);
 
-                IndexingSummary dirSummary = await ProcessDirectoryAsync(directory, indexName, cancellationToken);
+                IndexingSummary dirSummary = await ProcessDirectoryAsync(directory, rulesetTag, cancellationToken);
                 summary.Add(dirSummary);
             }
         }
@@ -54,7 +55,7 @@ public class IndexingOrchestrator(
         return summary;
     }
 
-    private async Task<IndexingSummary> ProcessDirectoryAsync(string directoryPath, string indexName, CancellationToken cancellationToken)
+    private async Task<IndexingSummary> ProcessDirectoryAsync(string directoryPath, string rulesetTag, CancellationToken cancellationToken)
     {
         IndexingSummary summary = new();
         string[] files = directoryScanner.GetFiles(directoryPath, options.SupportedExtensions).ToArray();
@@ -69,7 +70,8 @@ public class IndexingOrchestrator(
             summary.TotalProcessed++;
             try
             {
-                string id = await documentIndexer.IndexDocumentAsync(filePath, indexName, cancellationToken);
+                // rulesetTag is used as the "ruleset" tag value for filtering within the unified "rulesets" index
+                string id = await documentIndexer.IndexDocumentAsync(filePath, rulesetTag, cancellationToken);
                 logger.LogInformation("Successfully indexed file: {FilePath} as {Id}", filePath, id);
                 summary.TotalSucceeded++;
             }

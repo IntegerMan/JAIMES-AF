@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.KernelMemory;
-using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 
@@ -13,16 +12,13 @@ public class RulesSearchService : IRulesSearchService
     
     private readonly ILogger<RulesSearchService> _logger;
     private readonly IKernelMemory _memory;
-    private readonly IRulesetsService _rulesetsService;
 
     public RulesSearchService(
         ILogger<RulesSearchService> logger,
-        IKernelMemory memory,
-        IRulesetsService rulesetsService)
+        IKernelMemory memory)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _memory = memory ?? throw new ArgumentNullException(nameof(memory));
-        _rulesetsService = rulesetsService ?? throw new ArgumentNullException(nameof(rulesetsService));
 
         _logger.LogInformation("RulesSearchService initialized with Kernel Memory");
     }
@@ -43,7 +39,10 @@ public class RulesSearchService : IRulesSearchService
 
         // Use SearchAsync instead of AskAsync to avoid text generation requirement and version mismatch issues
         // SearchAsync returns SearchResult with results directly without needing a text generator
-        string indexName = GetIndexName(rulesetId);
+        string indexName = GetIndexName();
+        
+        // Create filter to search only within the specified ruleset
+        List<MemoryFilter> filters = [new MemoryFilter().ByTag("rulesetId", rulesetId)];
         
         // Create OpenTelemetry activity for the overall search operation
         // Note: Individual Redis queries are automatically instrumented by TelemetryRedisMemoryDb
@@ -62,7 +61,7 @@ public class RulesSearchService : IRulesSearchService
             searchResult = await _memory.SearchAsync(
                 query: query,
                 index: indexName,
-                filters: null,
+                filters: filters,
                 limit: 5, // Limit to top 5 results
                 cancellationToken: cancellationToken);
             
@@ -121,8 +120,14 @@ public class RulesSearchService : IRulesSearchService
 
         _logger.LogInformation("Searching rules with query: {Query}, rulesetId: {RulesetId}", query, rulesetId ?? "all");
 
-        string? indexName = null;
-        SearchResult searchResult;
+        string indexName = GetIndexName();
+        List<MemoryFilter>? filters = null;
+        
+        // Create filter if searching within a specific ruleset
+        if (!string.IsNullOrWhiteSpace(rulesetId))
+        {
+            filters = [new MemoryFilter().ByTag("rulesetId", rulesetId)];
+        }
         
         // Create OpenTelemetry activity for Redis search operation
         using Activity? activity = ActivitySource.StartActivity("RulesSearch.SearchDetailed");
@@ -131,113 +136,27 @@ public class RulesSearchService : IRulesSearchService
             activity.SetTag("db.system", "redis");
             activity.SetTag("db.operation", "search");
             activity.SetTag("ruleset.id", rulesetId ?? "all");
+            activity.SetTag("search.index", indexName);
             activity.SetTag("search.query", query);
             activity.SetTag("search.limit", 10);
+            activity.SetTag("search.scope", string.IsNullOrWhiteSpace(rulesetId) ? "all_rulesets" : "single_ruleset");
         }
         
+        SearchResult searchResult;
         try
         {
-            if (string.IsNullOrWhiteSpace(rulesetId))
-            {
-                // Search across all indexes - Redis doesn't support null index, so we need to search each index individually
-                _logger.LogInformation("Searching across all indexes (no specific ruleset)");
-                
-                if (activity != null)
-                {
-                    activity.SetTag("search.scope", "all_indexes");
-                }
-                
-                // Get all rulesets from the database
-                RulesetDto[] allRulesets = await _rulesetsService.GetRulesetsAsync(cancellationToken);
-                
-                if (allRulesets.Length == 0)
-                {
-                    _logger.LogWarning("No rulesets found in database for cross-index search");
-                    searchResult = new SearchResult
-                    {
-                        Results = []
-                    };
-                }
-                else
-                {
-                    _logger.LogInformation("Searching across {Count} ruleset indexes", allRulesets.Length);
-                    
-                    // Search each index and collect all results
-                    List<Citation> allCitations = [];
-                    int totalSearched = 0;
-                    
-                    foreach (Domain.RulesetDto ruleset in allRulesets)
-                    {
-                        string currentIndexName = GetIndexName(ruleset.Id);
-                        
-                        // Note: Individual Redis queries are automatically instrumented by TelemetryRedisMemoryDb
-                        try
-                        {
-                            SearchResult indexResult = await _memory.SearchAsync(
-                                query: query,
-                                index: currentIndexName,
-                                filters: null,
-                                limit: 10, // Get top 10 from each index
-                                cancellationToken: cancellationToken);
-                            
-                            if (indexResult.Results != null && indexResult.Results.Count > 0)
-                            {
-                                allCitations.AddRange(indexResult.Results);
-                                _logger.LogDebug("Found {Count} results in index: {IndexName}", 
-                                    indexResult.Results.Count, currentIndexName);
-                            }
-                            
-                            totalSearched++;
-                        }
-                        catch (Exception ex)
-                        {
-                            // Log but continue searching other indexes
-                            _logger.LogWarning(ex, "Error searching index {IndexName} for ruleset {RulesetId}, continuing with other indexes", 
-                                currentIndexName, ruleset.Id);
-                        }
-                    }
-                    
-                    if (activity != null)
-                    {
-                        activity.SetTag("search.indexes_searched", totalSearched);
-                        activity.SetTag("search.total_citations", allCitations.Count);
-                    }
-                    
-                    // Create combined search result with top results
-                    // Note: Citations don't expose relevance scores directly, so we'll take the first results
-                    // In practice, each index search already returns the most relevant results
-                    searchResult = new SearchResult
-                    {
-                        Results = allCitations.Take(10).ToList()
-                    };
-                    
-                    _logger.LogInformation("Cross-index search found {Count} total results across {IndexCount} indexes, returning top {ReturnedCount}", 
-                        allCitations.Count, totalSearched, searchResult.Results.Count);
-                }
-            }
-            else
-            {
-                // Search within a specific ruleset using the same index format as the Indexer
-                indexName = GetIndexName(rulesetId);
-                _logger.LogInformation("Searching in index: {IndexName} for ruleset: {RulesetId}", indexName, rulesetId);
-                
-                if (activity != null)
-                {
-                    activity.SetTag("search.scope", "single_index");
-                    activity.SetTag("search.index", indexName);
-                }
-                
-                // Note: Individual Redis queries are automatically instrumented by TelemetryRedisMemoryDb
-                searchResult = await _memory.SearchAsync(
-                    query: query,
-                    index: indexName,
-                    filters: null,
-                    limit: 10, // Limit to top 10 results
-                    cancellationToken: cancellationToken);
-                
-                _logger.LogInformation("Single-index search found {Count} results in index: {IndexName}", 
-                    searchResult.Results?.Count ?? 0, indexName);
-            }
+            // Search the unified rulesets index, with optional filtering by rulesetId tag
+            // Note: Individual Redis queries are automatically instrumented by TelemetryRedisMemoryDb
+            searchResult = await _memory.SearchAsync(
+                query: query,
+                index: indexName,
+                filters: filters,
+                limit: 10, // Limit to top 10 results
+                cancellationToken: cancellationToken);
+            
+            _logger.LogInformation("Search found {Count} results in index: {IndexName} with filter: {Filter}", 
+                searchResult.Results?.Count ?? 0, indexName, 
+                string.IsNullOrWhiteSpace(rulesetId) ? "none (all rulesets)" : $"rulesetId={rulesetId}");
             
             if (activity != null)
             {
@@ -302,7 +221,7 @@ public class RulesSearchService : IRulesSearchService
                     documents.Add(new DocumentInfo
                     {
                         DocumentId = documentId,
-                        Index = citation.Index ?? indexName ?? "Unknown",
+                        Index = citation.Index ?? indexName,
                         Tags = tags
                     });
                 }
@@ -333,7 +252,7 @@ public class RulesSearchService : IRulesSearchService
 
         _logger.LogInformation(
             "Search completed - Index: {IndexName}, Results: {ResultCount}, Citations: {CitationCount}, Documents: {DocumentCount}", 
-            indexName ?? "(all indexes)", searchResult.Results?.Count ?? 0, citations.Count, documents.Count);
+            indexName, searchResult.Results?.Count ?? 0, citations.Count, documents.Count);
         
         if (citations.Count > 0)
         {
@@ -343,7 +262,7 @@ public class RulesSearchService : IRulesSearchService
         else
         {
             _logger.LogWarning("No citations found in search results for query: {Query} in index: {IndexName}", 
-                query, indexName ?? "(all indexes)");
+                query, indexName);
         }
         
         return response;
@@ -365,7 +284,7 @@ public class RulesSearchService : IRulesSearchService
 
         // Create a document ID that includes the rule ID
         string documentId = $"rule-{ruleId}";
-        string indexName = GetIndexName(rulesetId);
+        string indexName = GetIndexName();
         
         // Combine title and content for indexing
         string fullContent = $"Title: {title}\n\nContent: {content}";
@@ -385,7 +304,7 @@ public class RulesSearchService : IRulesSearchService
 
         try
         {
-            // Index the rule with tags for filtering - rulesetId is used as an index
+            // Index the rule in the unified rulesets index with tags for filtering
             await _memory.ImportTextAsync(
                 text: fullContent,
                 documentId: documentId,
@@ -426,11 +345,11 @@ public class RulesSearchService : IRulesSearchService
         await Task.CompletedTask;
     }
 
-    private static string GetIndexName(string rulesetId)
+    private static string GetIndexName()
     {
-        // Use the same index name format as the Indexer
-        // The Indexer uses just the directory name (ruleset ID) in lowercase
-        return rulesetId.ToLowerInvariant();
+        // All rulesets are stored in a single "rulesets" index
+        // Filtering by specific ruleset is done via tags
+        return "rulesets";
     }
 
     private static string BuildSourceString(Citation citation)

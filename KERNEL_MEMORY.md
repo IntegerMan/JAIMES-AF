@@ -114,16 +114,16 @@ IKernelMemory memory = new KernelMemoryBuilder()
 
 ### Indexing Rules
 
-Rules are indexed into Kernel Memory using `ImportTextAsync()`. The data is stored in Redis:
+Rules are indexed into Kernel Memory using `ImportTextAsync()`. All rulesets are stored in a single unified "rulesets" index, with filtering by specific ruleset done via tags:
 
 ```csharp
 await memory.ImportTextAsync(
     text: fullContent,                    // Rule content (title + content)
     documentId: $"rule-{ruleId}",         // Unique document ID
-    index: GetIndexName(rulesetId),       // Index name based on rulesetId
+    index: "rulesets",                     // All rulesets use the same index
     tags: new TagCollection
     {
-        { "rulesetId", rulesetId },      // Primary filter tag
+        { "rulesetId", rulesetId },      // Primary filter tag for ruleset filtering
         { "ruleId", ruleId },
         { "title", title }
     },
@@ -132,30 +132,38 @@ await memory.ImportTextAsync(
 
 ### Searching Rules
 
-Rules are searched using `AskAsync()` with filtering by `rulesetId`:
+Rules are searched using `SearchAsync()` with optional filtering by `rulesetId` tag:
 
 ```csharp
-MemoryAnswer answer = await memory.AskAsync(
-    question: query,                      // Natural language query
-    index: GetIndexName(rulesetId),       // Search within ruleset index
-    filters: new List<MemoryFilter> 
-    { 
-        new MemoryFilter().ByTag("rulesetId", rulesetId) 
-    },
+// Search within a specific ruleset
+List<MemoryFilter> filters = [new MemoryFilter().ByTag("rulesetId", rulesetId)];
+SearchResult result = await memory.SearchAsync(
+    query: query,                          // Natural language query
+    index: "rulesets",                     // Search the unified rulesets index
+    filters: filters,                      // Filter by rulesetId tag
+    limit: 10,
     cancellationToken: cancellationToken);
 
-string result = answer.Result;           // LLM-generated answer based on relevant rules
+// Search across all rulesets (no filter)
+SearchResult result = await memory.SearchAsync(
+    query: query,
+    index: "rulesets",                     // Search the unified rulesets index
+    filters: null,                          // No filter = search all rulesets
+    limit: 10,
+    cancellationToken: cancellationToken);
 ```
 
 ### Index Naming
 
-Index names are generated from ruleset IDs:
+All rulesets are stored in a single unified index:
 ```csharp
-private static string GetIndexName(string rulesetId)
+private static string GetIndexName()
 {
-    return $"ruleset-{rulesetId.ToLowerInvariant()}";
+    return "rulesets";  // All rulesets use the same index
 }
 ```
+
+Filtering by specific ruleset is done via the `rulesetId` tag when searching.
 
 ## Integration with AI Agents
 

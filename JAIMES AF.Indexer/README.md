@@ -160,10 +160,10 @@ Based on this project's configuration:
 
 ## Index Organization
 
-Documents are organized by directory:
-- Each subdirectory becomes its own Kernel Memory index
-- Index names are generated from directory names (normalized and prefixed with `index-`)
-- Files in the root directory are indexed under an index named `index-root`
+All documents are stored in a unified "rulesets" index:
+- All documents from all directories are indexed into the same "rulesets" index
+- Directory names are used as "ruleset" tags for filtering and organization
+- Documents can be filtered by ruleset tag when searching
 
 ## Change Tracking
 
@@ -195,6 +195,7 @@ This indexer uses the same vector store as `RulesSearchService`:
 - **Shared Storage**: Both services use the same Redis instance (specified in `VectorDbConnectionString` configuration)
 - **Same Configuration**: The `VectorDbConnectionString` in `appsettings.json` should match the Redis connection string used by `RulesSearchService` (e.g., `"localhost:6379"`)
 - **Document Access**: Documents indexed here are searchable via the RulesSearchService
-- **Index Organization**: Index names are generated from directory names (prefixed with `index-`), while RulesSearchService uses `ruleset-` prefix for ruleset indexes
+- **Unified Index**: Both services use the same "rulesets" index - sourcebooks indexed here and rules indexed by RulesSearchService are all in the same index
+- **Filtering**: Documents are tagged with "ruleset" tag (using directory name) for filtering when searching
 - **Storage Format**: The vector store uses Redis, managed by Kernel Memory's `WithRedisMemoryDb()` method
 
