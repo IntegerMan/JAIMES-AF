@@ -89,7 +89,8 @@ public static class Extensions
                         "agent-framework-source",
                         "Jaimes.Agents.Tools",
                         "Jaimes.Agents.ChatClient",
-                        "Jaimes.Agents.Run")
+                        "Jaimes.Agents.Run",
+                        "Jaimes.Agents.RulesSearch")
                     .AddAspNetCoreInstrumentation(options =>
                         // Exclude health check requests from tracing
                         options.Filter = context =>

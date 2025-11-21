@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.KernelMemory;
 using MattEland.Jaimes.ServiceDefinitions.Services;
@@ -7,6 +8,8 @@ namespace MattEland.Jaimes.Agents.Services;
 
 public class RulesSearchService : IRulesSearchService
 {
+    private static readonly ActivitySource ActivitySource = new("Jaimes.Agents.RulesSearch");
+    
     private readonly ILogger<RulesSearchService> _logger;
     private readonly IKernelMemory _memory;
 
@@ -37,12 +40,45 @@ public class RulesSearchService : IRulesSearchService
         // Use SearchAsync instead of AskAsync to avoid text generation requirement and version mismatch issues
         // SearchAsync returns SearchResult with results directly without needing a text generator
         string indexName = GetIndexName(rulesetId);
-        SearchResult searchResult = await _memory.SearchAsync(
-            query: query,
-            index: indexName,
-            filters: null,
-            limit: 5, // Limit to top 5 results
-            cancellationToken: cancellationToken);
+        
+        // Create OpenTelemetry activity for Redis search operation
+        using Activity? activity = ActivitySource.StartActivity("RulesSearch.Search");
+        if (activity != null)
+        {
+            activity.SetTag("db.system", "redis");
+            activity.SetTag("db.operation", "search");
+            activity.SetTag("ruleset.id", rulesetId);
+            activity.SetTag("search.index", indexName);
+            activity.SetTag("search.query", query);
+            activity.SetTag("search.limit", 5);
+        }
+        
+        SearchResult searchResult;
+        try
+        {
+            searchResult = await _memory.SearchAsync(
+                query: query,
+                index: indexName,
+                filters: null,
+                limit: 5, // Limit to top 5 results
+                cancellationToken: cancellationToken);
+            
+            if (activity != null)
+            {
+                activity.SetTag("search.result_count", searchResult.Results?.Count ?? 0);
+                activity.SetStatus(ActivityStatusCode.Ok);
+            }
+        }
+        catch (Exception ex)
+        {
+            if (activity != null)
+            {
+                activity.SetTag("error", true);
+                activity.SetTag("error.message", ex.Message);
+                activity.SetStatus(ActivityStatusCode.Error, ex.Message);
+            }
+            throw;
+        }
 
         List<string> resultTexts = [];
         if (searchResult.Results != null)
@@ -85,37 +121,78 @@ public class RulesSearchService : IRulesSearchService
         string? indexName = null;
         SearchResult searchResult;
         
-        if (string.IsNullOrWhiteSpace(rulesetId))
+        // Create OpenTelemetry activity for Redis search operation
+        using Activity? activity = ActivitySource.StartActivity("RulesSearch.SearchDetailed");
+        if (activity != null)
         {
-            // Search across all indexes - try searching with null index
-            _logger.LogInformation("Searching across all indexes (no specific ruleset)");
-            
-            // Note: Kernel Memory may not support null index for SearchAsync
-            // If this doesn't work, we may need to maintain a list of known indexes and search each one
-            searchResult = await _memory.SearchAsync(
-                query: query,
-                index: null, // null should search across all indexes
-                filters: null,
-                limit: 10, // Limit results
-                cancellationToken: cancellationToken);
-            
-            _logger.LogInformation("Cross-index search found {Count} results", searchResult.Results?.Count ?? 0);
+            activity.SetTag("db.system", "redis");
+            activity.SetTag("db.operation", "search");
+            activity.SetTag("ruleset.id", rulesetId ?? "all");
+            activity.SetTag("search.query", query);
+            activity.SetTag("search.limit", 10);
         }
-        else
+        
+        try
         {
-            // Search within a specific ruleset using the same index format as the Indexer
-            indexName = GetIndexName(rulesetId);
-            _logger.LogInformation("Searching in index: {IndexName} for ruleset: {RulesetId}", indexName, rulesetId);
+            if (string.IsNullOrWhiteSpace(rulesetId))
+            {
+                // Search across all indexes - try searching with null index
+                _logger.LogInformation("Searching across all indexes (no specific ruleset)");
+                
+                if (activity != null)
+                {
+                    activity.SetTag("search.scope", "all_indexes");
+                }
+                
+                // Note: Kernel Memory may not support null index for SearchAsync
+                // If this doesn't work, we may need to maintain a list of known indexes and search each one
+                searchResult = await _memory.SearchAsync(
+                    query: query,
+                    index: null, // null should search across all indexes
+                    filters: null,
+                    limit: 10, // Limit results
+                    cancellationToken: cancellationToken);
+                
+                _logger.LogInformation("Cross-index search found {Count} results", searchResult.Results?.Count ?? 0);
+            }
+            else
+            {
+                // Search within a specific ruleset using the same index format as the Indexer
+                indexName = GetIndexName(rulesetId);
+                _logger.LogInformation("Searching in index: {IndexName} for ruleset: {RulesetId}", indexName, rulesetId);
+                
+                if (activity != null)
+                {
+                    activity.SetTag("search.scope", "single_index");
+                    activity.SetTag("search.index", indexName);
+                }
+                
+                searchResult = await _memory.SearchAsync(
+                    query: query,
+                    index: indexName,
+                    filters: null,
+                    limit: 10, // Limit to top 10 results
+                    cancellationToken: cancellationToken);
+                
+                _logger.LogInformation("Single-index search found {Count} results in index: {IndexName}", 
+                    searchResult.Results?.Count ?? 0, indexName);
+            }
             
-            searchResult = await _memory.SearchAsync(
-                query: query,
-                index: indexName,
-                filters: null,
-                limit: 10, // Limit to top 10 results
-                cancellationToken: cancellationToken);
-            
-            _logger.LogInformation("Single-index search found {Count} results in index: {IndexName}", 
-                searchResult.Results?.Count ?? 0, indexName);
+            if (activity != null)
+            {
+                activity.SetTag("search.result_count", searchResult.Results?.Count ?? 0);
+                activity.SetStatus(ActivityStatusCode.Ok);
+            }
+        }
+        catch (Exception ex)
+        {
+            if (activity != null)
+            {
+                activity.SetTag("error", true);
+                activity.SetTag("error.message", ex.Message);
+                activity.SetStatus(ActivityStatusCode.Error, ex.Message);
+            }
+            throw;
         }
         
         // Convert SearchResult citations to response format
@@ -227,24 +304,56 @@ public class RulesSearchService : IRulesSearchService
 
         // Create a document ID that includes the rule ID
         string documentId = $"rule-{ruleId}";
+        string indexName = GetIndexName(rulesetId);
         
         // Combine title and content for indexing
         string fullContent = $"Title: {title}\n\nContent: {content}";
 
-        // Index the rule with tags for filtering - rulesetId is used as an index
-        await _memory.ImportTextAsync(
-            text: fullContent,
-            documentId: documentId,
-            index: GetIndexName(rulesetId),
-            tags: new TagCollection
-            {
-                { "rulesetId", rulesetId },
-                { "ruleId", ruleId },
-                { "title", title }
-            },
-            cancellationToken: cancellationToken);
+        // Create OpenTelemetry activity for Redis indexing operation
+        using Activity? activity = ActivitySource.StartActivity("RulesSearch.Index");
+        if (activity != null)
+        {
+            activity.SetTag("db.system", "redis");
+            activity.SetTag("db.operation", "index");
+            activity.SetTag("ruleset.id", rulesetId);
+            activity.SetTag("rule.id", ruleId);
+            activity.SetTag("document.id", documentId);
+            activity.SetTag("search.index", indexName);
+            activity.SetTag("document.title", title);
+        }
 
-        _logger.LogInformation("Successfully indexed rule {RuleId} for ruleset {RulesetId}", ruleId, rulesetId);
+        try
+        {
+            // Index the rule with tags for filtering - rulesetId is used as an index
+            await _memory.ImportTextAsync(
+                text: fullContent,
+                documentId: documentId,
+                index: indexName,
+                tags: new TagCollection
+                {
+                    { "rulesetId", rulesetId },
+                    { "ruleId", ruleId },
+                    { "title", title }
+                },
+                cancellationToken: cancellationToken);
+
+            if (activity != null)
+            {
+                activity.SetStatus(ActivityStatusCode.Ok);
+            }
+
+            _logger.LogInformation("Successfully indexed rule {RuleId} for ruleset {RulesetId}", ruleId, rulesetId);
+        }
+        catch (Exception ex)
+        {
+            if (activity != null)
+            {
+                activity.SetTag("error", true);
+                activity.SetTag("error.message", ex.Message);
+                activity.SetStatus(ActivityStatusCode.Error, ex.Message);
+            }
+            throw;
+        }
     }
 
     public async Task EnsureRulesetIndexedAsync(string rulesetId, CancellationToken cancellationToken = default)
