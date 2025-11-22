@@ -3,9 +3,19 @@
 
     IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
     
+    // Add Ollama with nomic-embed-text model for embeddings
+    IResourceBuilder<OllamaResource> ollama = builder.AddOllama("ollama-models")
+        //.WithIconName("BrainCircuit")
+        // .WithContainerRuntimeArgs("--device", "nvidia.com/gpu=all") // Podman GPU config
+        .WithDataVolume()
+        .WithOpenWebUI(); // Persist models across container restarts
+    
+    var embedModel = ollama.AddModel("nomic-embed-text").WithIconName("DocumentTextExtract");
+    var chatModel = ollama.AddModel("gemma3").WithIconName("CommentText");
+    
     // NOTE: There is an Aspire integration for Redis, but it doesn't support Redis-Stack. If you customize the image, it still doesn't start Redis-Stack afterwards.
     // It's simpler just to use a known good image with good default behavior.
-    IResourceBuilder<ContainerResource> redis = builder.AddContainer("redis-embeddings", "redis/redis-stack:latest")
+    IResourceBuilder<ContainerResource> redis = builder.AddContainer("embeddings", "redis/redis-stack:latest")
         .WithIconName("BookDatabase")
         .WithHttpEndpoint(8001, 8001, name: "redisinsight")
         .WithUrlForEndpoint("http", static url => url.DisplayText = "🔬 RedisInsight")
@@ -17,7 +27,7 @@
     static string CreateRedisConnectionString(EndpointReference endpoint) =>
         $"{endpoint.Host}:{endpoint.Port},abortConnect=false,connectRetry=5,connectTimeout=10000";
 
-    IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIMES_AF_ApiService>("apiservice")
+    IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIMES_AF_ApiService>("jaimes-api")
         .WithIconName("DocumentGlobe", IconVariant.Regular)
         .WithExternalHttpEndpoints()
         //.WithUrls(u => u.Urls.Clear())
@@ -38,14 +48,17 @@
             Url = "/health",
             DisplayText = "👨‍⚕️ Health"
         })
+        .WithReference(chatModel)
+        .WithReference(embedModel)
         .WaitFor(redis)
+        .WaitFor(ollama)
         .WithEnvironment(context =>
         {
             EndpointReference redisEndpoint = redis.GetEndpoint("redis");
             context.EnvironmentVariables["VectorDb__ConnectionString"] = CreateRedisConnectionString(redisEndpoint);
         });
 
-    builder.AddProject<Projects.JAIMES_AF_Web>("webfrontend")
+    builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")
         .WithIconName("GameChat")
         .WithExternalHttpEndpoints()
         .WithHttpHealthCheck("/health")
@@ -78,9 +91,11 @@
         .WithReference(apiService)
         .WaitFor(apiService);
 
-    IResourceBuilder<ProjectResource> indexer = builder.AddProject<Projects.JAIMES_AF_Indexer>("indexer")
+    builder.AddProject<Projects.JAIMES_AF_Indexer>("indexer")
         .WithIconName("DocumentSearch", IconVariant.Regular)
         .WithExplicitStart()
+        .WithReference(embedModel)
+        .WaitFor(ollama)
         .WithEnvironment(context =>
         {
             EndpointReference redisEndpoint = redis.GetEndpoint("redis");
