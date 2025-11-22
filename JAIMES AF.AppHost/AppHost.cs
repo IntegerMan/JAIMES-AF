@@ -6,11 +6,11 @@
     // NOTE: There is an Aspire integration for Redis, but it doesn't support Redis-Stack. If you customize the image, it still doesn't start Redis-Stack afterwards.
     // It's simpler just to use a known good image with good default behavior.
     IResourceBuilder<ContainerResource> redis = builder.AddContainer("redis-embeddings", "redis/redis-stack:latest")
+        .WithIconName("BookDatabase")
         .WithHttpEndpoint(8001, 8001, name: "redisinsight")
         .WithUrlForEndpoint("http", static url => url.DisplayText = "🔬 RedisInsight")
         .WithEndpoint(6379, 6379, name: "redis")
-        .WithBindMount(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aspire", "jaimes-redis-data"), "/data")
-        .WithIconName("BookDatabase");
+        .WithBindMount(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aspire", "jaimes-redis-data"), "/data");
 
     IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIMES_AF_ApiService>("apiservice")
         .WithIconName("DocumentGlobe", IconVariant.Regular)
