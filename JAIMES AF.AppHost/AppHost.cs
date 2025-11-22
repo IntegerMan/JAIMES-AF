@@ -3,6 +3,8 @@
 
     IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
     
+    // NOTE: There is an Aspire integration for Redis, but it doesn't support Redis-Stack. If you customize the image, it still doesn't start Redis-Stack afterwards.
+    // It's simpler just to use a known good image with good default behavior.
     IResourceBuilder<ContainerResource> redis = builder.AddContainer("redis-embeddings", "redis/redis-stack:latest")
         .WithHttpEndpoint(8001, 8001, name: "redisinsight")
         .WithUrlForEndpoint("http", static url => url.DisplayText = "🔬 RedisInsight")
@@ -32,12 +34,7 @@
             DisplayText = "👨‍⚕️ Health"
         })
         .WaitFor(redis)
-        .WithEnvironment("VectorDb__ConnectionString", "localhost:6379,abortConnect=false,connectRetry=5,connectTimeout=10000")
-        // Configure debug-level logging for user namespaces and Agent Framework
-        // Note: Dots in namespace names must be replaced with double underscores in environment variables
-        .WithEnvironment("Logging__LogLevel__MattEland__Jaimes", "Debug")
-        .WithEnvironment("Logging__LogLevel__Microsoft__Agents__AI", "Debug")
-        .WithEnvironment("Logging__LogLevel__Microsoft__Extensions__AI", "Debug");
+        .WithEnvironment("VectorDb__ConnectionString", "localhost:6379,abortConnect=false,connectRetry=5,connectTimeout=10000");
 
     builder.AddProject<Projects.JAIMES_AF_Web>("webfrontend")
         .WithIconName("GameChat")
@@ -70,22 +67,14 @@
             DisplayText = "👤 Players"
         })
         .WithReference(apiService)
-        .WaitFor(apiService)
-        // Configure debug-level logging for user namespaces and Agent Framework
-        // Note: Dots in namespace names must be replaced with double underscores in environment variables
-        .WithEnvironment("Logging__LogLevel__MattEland__Jaimes", "Debug")
-        .WithEnvironment("Logging__LogLevel__Microsoft__Agents__AI", "Debug")
-        .WithEnvironment("Logging__LogLevel__Microsoft__Extensions__AI", "Debug");
+        .WaitFor(apiService);
 
     IResourceBuilder<ProjectResource> indexer = builder.AddProject<Projects.JAIMES_AF_Indexer>("indexer")
         .WithIconName("DocumentSearch", IconVariant.Regular)
         .WaitFor(redis)
         .WithExplicitStart()
         // Connect to Redis - using localhost since Redis container is accessible on localhost when managed by Aspire
-        .WithEnvironment("Indexer__VectorDbConnectionString", "localhost:6379,abortConnect=false,connectRetry=5,connectTimeout=10000")
-        // Configure debug-level logging for user namespaces
-        .WithEnvironment("Logging__LogLevel__MattEland__Jaimes", "Debug")
-        .WithEnvironment("Logging__LogLevel__Microsoft__Extensions__AI", "Debug");
+        .WithEnvironment("Indexer__VectorDbConnectionString", "localhost:6379,abortConnect=false,connectRetry=5,connectTimeout=10000");
 
     var app = builder.Build();
 
