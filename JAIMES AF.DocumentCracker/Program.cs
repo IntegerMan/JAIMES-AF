@@ -1,16 +1,25 @@
-﻿using MattEland.Jaimes.DocumentCracker.Services;
+﻿using System.Diagnostics;
+using MattEland.Jaimes.DocumentCracker.Services;
 using MattEland.Jaimes.DocumentProcessing.Options;
 using MattEland.Jaimes.DocumentProcessing.Services;
+using MattEland.Jaimes.ServiceDefaults;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Spectre.Console;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
 // Add Seq endpoint for advanced log monitoring
 builder.AddSeqEndpoint("seq");
+
+// Configure OpenTelemetry for Aspire telemetry
+builder.ConfigureOpenTelemetry();
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
@@ -30,6 +39,21 @@ builder.AddMongoDBClient("documents");
 
 // Add RabbitMQ client integration
 builder.AddRabbitMQClient(connectionName: "messaging");
+
+// Configure OpenTelemetry ActivitySource for document cracking
+const string activitySourceName = "Jaimes.DocumentCracker";
+ActivitySource activitySource = new(activitySourceName);
+
+// Add ActivitySource to OpenTelemetry tracing
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing =>
+    {
+        tracing.AddSource(activitySourceName)
+            .AddHttpClientInstrumentation();
+    });
+
+// Register ActivitySource for dependency injection
+builder.Services.AddSingleton(activitySource);
 
 builder.Services.AddSingleton(options);
 builder.Services.AddSingleton<IDirectoryScanner, DirectoryScanner>();
@@ -65,8 +89,23 @@ try
     AnsiConsole.WriteLine();
     AnsiConsole.MarkupLine("[bold green]Starting cracking process...[/]");
 
+    // Wrap the entire cracking process in a trace
+    ActivitySource mainActivitySource = host.Services.GetRequiredService<ActivitySource>();
+    using Activity? mainActivity = mainActivitySource.StartActivity("DocumentCracking.ProcessAll");
+    mainActivity?.SetTag("cracker.source_directory", options.SourceDirectory);
+    mainActivity?.SetTag("cracker.supported_extensions", string.Join(", ", options.SupportedExtensions));
+
     DocumentCrackingOrchestrator.DocumentCrackingSummary summary =
         await orchestrator.CrackAllAsync(CancellationToken.None);
+    
+    if (mainActivity != null)
+    {
+        mainActivity.SetTag("cracker.total_discovered", summary.TotalDiscovered);
+        mainActivity.SetTag("cracker.total_cracked", summary.TotalCracked);
+        mainActivity.SetTag("cracker.total_failures", summary.TotalFailures);
+        mainActivity.SetTag("cracker.skipped_unsupported", summary.SkippedUnsupported);
+        mainActivity.SetStatus(summary.TotalFailures > 0 ? ActivityStatusCode.Error : ActivityStatusCode.Ok);
+    }
 
     Table summaryTable = new Table()
         .AddColumn(new TableColumn("[bold]Metric[/]").RightAligned())

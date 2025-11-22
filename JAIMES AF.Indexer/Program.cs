@@ -14,11 +14,15 @@ using MattEland.Jaimes.DocumentProcessing.Services;
 using MattEland.Jaimes.Indexer.Configuration;
 using MattEland.Jaimes.Indexer.Services;
 using MattEland.Jaimes.Services.Configuration;
+using MattEland.Jaimes.ServiceDefaults;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
 // Add Seq endpoint for advanced log monitoring
 builder.AddSeqEndpoint("seq");
+
+// Configure OpenTelemetry for Aspire telemetry
+builder.ConfigureOpenTelemetry();
 
 // Configure logging with OpenTelemetry
 builder.Logging.ClearProviders();
@@ -119,15 +123,12 @@ IKernelMemory memory = new KernelMemoryBuilder()
 
 builder.Services.AddSingleton(memory);
 
-// Configure OpenTelemetry
+// Configure OpenTelemetry ActivitySource
 const string activitySourceName = "Jaimes.Indexer";
 ActivitySource activitySource = new(activitySourceName);
 
-// Check for OTLP endpoint configuration
-string? otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] 
-    ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
-
-OpenTelemetryBuilder otelBuilder = builder.Services.AddOpenTelemetry()
+// Add ActivitySource to OpenTelemetry tracing (ConfigureOpenTelemetry already sets up OTLP exporter)
+builder.Services.AddOpenTelemetry()
     .ConfigureResource(resource => resource
         .AddService(activitySourceName))
     .WithMetrics(metrics =>
@@ -142,12 +143,6 @@ OpenTelemetryBuilder otelBuilder = builder.Services.AddOpenTelemetry()
             .AddHttpClientInstrumentation()
             .AddRedisInstrumentation();
     });
-
-// Configure OTLP exporter if endpoint is configured
-if (!string.IsNullOrWhiteSpace(otlpEndpoint))
-{
-    otelBuilder.UseOtlpExporter();
-}
 
 // Register ActivitySource for dependency injection
 builder.Services.AddSingleton(activitySource);

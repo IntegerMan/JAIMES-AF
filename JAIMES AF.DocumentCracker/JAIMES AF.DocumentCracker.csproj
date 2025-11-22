@@ -18,6 +18,7 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+    <PackageReference Include="RabbitMQ.Client" />
     <PackageReference Include="Spectre.Console" />
     <PackageReference Include="UglyToad.PdfPig" />
     <PackageReference Include="UglyToad.PdfPig.DocumentLayoutAnalysis" />
@@ -25,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\JAIMES AF.DocumentProcessing\JAIMES AF.DocumentProcessing.csproj" />
+    <ProjectReference Include="..\JAIMES AF.ServiceDefaults\JAIMES AF.ServiceDefaults.csproj" />
   </ItemGroup>
 
   <ItemGroup>

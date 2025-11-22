@@ -44,6 +44,7 @@
   <ItemGroup>
     <ProjectReference Include="..\JAIMES AF.Services\JAIMES AF.ServiceLayer.csproj" />
     <ProjectReference Include="..\JAIMES AF.DocumentProcessing\JAIMES AF.DocumentProcessing.csproj" />
+    <ProjectReference Include="..\JAIMES AF.ServiceDefaults\JAIMES AF.ServiceDefaults.csproj" />
   </ItemGroup>
 
 </Project>

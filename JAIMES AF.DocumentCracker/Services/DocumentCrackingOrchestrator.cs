@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -19,7 +20,8 @@ public class DocumentCrackingOrchestrator(
     IDirectoryScanner directoryScanner,
     DocumentScanOptions options,
     IMongoClient mongoClient,
-    RabbitMQ.Client.IConnection rabbitmqConnection)
+    RabbitMQ.Client.IConnection rabbitmqConnection,
+    ActivitySource activitySource)
 {
     public async Task<DocumentCrackingSummary> CrackAllAsync(CancellationToken cancellationToken = default)
     {
@@ -31,6 +33,8 @@ public class DocumentCrackingOrchestrator(
         // Get database from connection string - the database name is "documents" as configured in AppHost
         IMongoDatabase mongoDatabase = mongoClient.GetDatabase("documents");
         IMongoCollection<CrackedDocument> collection = mongoDatabase.GetCollection<CrackedDocument>("crackedDocuments");
+
+        RabbitMQ.Client.IChannel channel = await rabbitmqConnection.CreateChannelAsync();
 
         DocumentCrackingSummary summary = new();
 
@@ -52,7 +56,14 @@ public class DocumentCrackingOrchestrator(
                 relativeDirectory = string.Empty;
             }
 
+            using Activity? directoryActivity = activitySource.StartActivity("DocumentCracking.ProcessDirectory");
+            directoryActivity?.SetTag("cracker.directory", directory);
+            directoryActivity?.SetTag("cracker.relative_directory", relativeDirectory);
+
             IEnumerable<string> files = directoryScanner.GetFiles(directory, options.SupportedExtensions);
+            int directoryCracked = 0;
+            int directoryFailures = 0;
+            
             foreach (string filePath in files)
             {
                 if (cancellationToken.IsCancellationRequested)
@@ -71,25 +82,43 @@ public class DocumentCrackingOrchestrator(
 
                 try
                 {
-                    await CrackDocumentAsync(filePath, relativeDirectory, collection, cancellationToken);
+                    await CrackDocumentAsync(filePath, relativeDirectory, collection, channel, cancellationToken);
                     summary.TotalCracked++;
+                    directoryCracked++;
                 }
                 catch (Exception ex)
                 {
                     summary.TotalFailures++;
+                    directoryFailures++;
                     logger.LogError(ex, "Failed to crack document: {FilePath}", filePath);
                 }
+            }
+            
+            if (directoryActivity != null)
+            {
+                directoryActivity.SetTag("cracker.directory_cracked", directoryCracked);
+                directoryActivity.SetTag("cracker.directory_failures", directoryFailures);
+                directoryActivity.SetStatus(directoryFailures > 0 ? ActivityStatusCode.Error : ActivityStatusCode.Ok);
             }
         }
 
         return summary;
     }
 
-    private async Task CrackDocumentAsync(string filePath, string relativeDirectory, IMongoCollection<CrackedDocument> collection, CancellationToken cancellationToken)
+    private async Task CrackDocumentAsync(string filePath, string relativeDirectory, IMongoCollection<CrackedDocument> collection, RabbitMQ.Client.IChannel channel, CancellationToken cancellationToken)
     {
         logger.LogInformation("Starting to crack document: {FilePath}", filePath);
+        
+        using Activity? activity = activitySource.StartActivity("DocumentCracking.CrackDocument");
         FileInfo fileInfo = new(filePath);
+        activity?.SetTag("cracker.file_path", filePath);
+        activity?.SetTag("cracker.file_name", fileInfo.Name);
+        activity?.SetTag("cracker.file_size", fileInfo.Exists ? fileInfo.Length : 0);
+        activity?.SetTag("cracker.relative_directory", relativeDirectory);
+        
         (string contents, int pageCount) = ExtractPdfText(filePath);
+        
+        activity?.SetTag("cracker.page_count", pageCount);
 
         // Use UpdateOneAsync with upsert to avoid _id conflicts
         // This will update if the document exists (by FilePath) or insert if it doesn't
@@ -115,154 +144,58 @@ public class DocumentCrackingOrchestrator(
         logger.LogInformation("Cracked and saved to MongoDB: {FilePath} ({PageCount} pages, {FileSize} bytes)", 
             filePath, pageCount, fileInfo.Length);
         
+        activity?.SetTag("cracker.document_id", documentId);
+        activity?.SetStatus(ActivityStatusCode.Ok);
+        
         // Publish message to RabbitMQ
-        PublishDocumentCrackedMessage(documentId, filePath, relativeDirectory, 
-            Path.GetFileName(filePath), fileInfo.Length, pageCount);
+        await PublishDocumentCrackedMessageAsync(documentId, filePath, relativeDirectory, 
+            Path.GetFileName(filePath), fileInfo.Length, pageCount, channel, cancellationToken);
     }
     
-    private void PublishDocumentCrackedMessage(string documentId, string filePath, 
-        string relativeDirectory, string fileName, long fileSize, int pageCount)
+    private async Task PublishDocumentCrackedMessageAsync(string documentId, string filePath, 
+        string relativeDirectory, string fileName, long fileSize, int pageCount, 
+        RabbitMQ.Client.IChannel channel, CancellationToken cancellationToken)
     {
         try
         {
-            // Check if the connection is actually a RabbitMQ.Client.IConnection
-            if (rabbitmqConnection is not RabbitMQ.Client.IConnection rmqConnection)
-            {
-                logger.LogWarning("RabbitMQ connection is not the expected type. Actual type: {Type}", 
-                    rabbitmqConnection?.GetType().FullName ?? "null");
-                return;
-            }
+            // Declare exchange and queue (idempotent - safe to call multiple times)
+            const string exchangeName = "document-events";
+            const string queueName = "document-cracked";
+            const string routingKey = "document.cracked";
             
-            // Use reflection to call CreateModel - search on the interface type and base types
-            Type connectionType = rmqConnection.GetType();
-            MethodInfo? createModelMethod = connectionType.GetMethod("CreateModel", Type.EmptyTypes);
+            await channel.ExchangeDeclareAsync(exchangeName, ExchangeType.Topic, durable: true, cancellationToken: cancellationToken);
+            await channel.QueueDeclareAsync(queueName, durable: true, exclusive: false, autoDelete: false, arguments: null, cancellationToken: cancellationToken);
+            await channel.QueueBindAsync(queueName, exchangeName, routingKey, arguments: null, cancellationToken: cancellationToken);
             
-            // If not found on concrete type, try the interface
-            if (createModelMethod == null)
+            // Create message
+            DocumentCrackedMessage message = new()
             {
-                createModelMethod = typeof(RabbitMQ.Client.IConnection).GetMethod("CreateModel", Type.EmptyTypes);
-            }
+                DocumentId = documentId,
+                FilePath = filePath,
+                FileName = fileName,
+                RelativeDirectory = relativeDirectory,
+                FileSize = fileSize,
+                PageCount = pageCount,
+                CrackedAt = DateTime.UtcNow
+            };
             
-            // If still not found, search in base types and interfaces
-            if (createModelMethod == null)
-            {
-                Type? currentType = connectionType;
-                while (currentType != null && createModelMethod == null)
-                {
-                    createModelMethod = currentType.GetMethod("CreateModel", 
-                        BindingFlags.Public | BindingFlags.Instance, 
-                        null, Type.EmptyTypes, null);
-                    
-                    if (createModelMethod == null)
-                    {
-                        foreach (Type interfaceType in currentType.GetInterfaces())
-                        {
-                            createModelMethod = interfaceType.GetMethod("CreateModel", Type.EmptyTypes);
-                            if (createModelMethod != null) break;
-                        }
-                    }
-                    
-                    currentType = currentType.BaseType;
-                    if (currentType == typeof(object)) break;
-                }
-            }
+            // Serialize message
+            string messageBody = JsonSerializer.Serialize(message);
+            ReadOnlyMemory<byte> body = Encoding.UTF8.GetBytes(messageBody);
             
-            if (createModelMethod == null)
+            // Publish message with persistent delivery
+            // In RabbitMQ.Client 7.x, create BasicProperties directly
+            RabbitMQ.Client.BasicProperties properties = new()
             {
-                logger.LogWarning("CreateModel method not found on RabbitMQ connection type: {Type}. Available methods: {Methods}", 
-                    connectionType.FullName,
-                    string.Join(", ", connectionType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                        .Where(m => m.Name.Contains("Model"))
-                        .Select(m => m.Name)));
-                return;
-            }
+                Persistent = true,
+                ContentType = "application/json",
+                Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+            };
             
-            var channelObj = createModelMethod.Invoke(rmqConnection, null);
-            if (channelObj == null)
-            {
-                logger.LogWarning("CreateModel returned null");
-                return;
-            }
+            await channel.BasicPublishAsync(exchangeName, routingKey, mandatory: false, basicProperties: properties, body: body, cancellationToken: cancellationToken);
             
-            // Use reflection to call methods on the channel
-            var exchangeDeclareMethod = channelObj.GetType().GetMethod("ExchangeDeclare", 
-                new[] { typeof(string), typeof(string), typeof(bool) });
-            var queueDeclareMethod = channelObj.GetType().GetMethod("QueueDeclare", 
-                new[] { typeof(string), typeof(bool), typeof(bool), typeof(bool), typeof(IDictionary<string, object>) });
-            var queueBindMethod = channelObj.GetType().GetMethod("QueueBind", 
-                new[] { typeof(string), typeof(string), typeof(string) });
-            var createBasicPropertiesMethod = channelObj.GetType().GetMethod("CreateBasicProperties");
-            var basicPublishMethod = channelObj.GetType().GetMethod("BasicPublish", 
-                new[] { typeof(string), typeof(string), typeof(object), typeof(ReadOnlyMemory<byte>) });
-            
-            if (exchangeDeclareMethod == null || queueDeclareMethod == null || queueBindMethod == null || 
-                createBasicPropertiesMethod == null || basicPublishMethod == null)
-            {
-                logger.LogWarning("Required RabbitMQ channel methods not found");
-                return;
-            }
-            
-            try
-            {
-                // Declare exchange and queue
-                const string exchangeName = "document-events";
-                const string queueName = "document-cracked";
-                const string routingKey = "document.cracked";
-                
-                exchangeDeclareMethod.Invoke(channelObj, new object[] { exchangeName, "topic", true });
-                IDictionary<string, object>? arguments = null;
-                queueDeclareMethod.Invoke(channelObj, new object[] { queueName, true, false, false, arguments! });
-                queueBindMethod.Invoke(channelObj, new object[] { queueName, exchangeName, routingKey });
-                
-                // Create message
-                DocumentCrackedMessage message = new()
-                {
-                    DocumentId = documentId,
-                    FilePath = filePath,
-                    FileName = fileName,
-                    RelativeDirectory = relativeDirectory,
-                    FileSize = fileSize,
-                    PageCount = pageCount,
-                    CrackedAt = DateTime.UtcNow
-                };
-                
-                // Serialize message
-                string messageBody = JsonSerializer.Serialize(message);
-                ReadOnlyMemory<byte> body = Encoding.UTF8.GetBytes(messageBody);
-                
-                // Publish message
-                var properties = createBasicPropertiesMethod.Invoke(channelObj, null);
-                if (properties == null)
-                {
-                    logger.LogWarning("CreateBasicProperties returned null");
-                    return;
-                }
-                
-                var persistentProp = properties.GetType().GetProperty("Persistent");
-                var contentTypeProp = properties.GetType().GetProperty("ContentType");
-                var timestampProp = properties.GetType().GetProperty("Timestamp");
-                
-                persistentProp?.SetValue(properties, true);
-                contentTypeProp?.SetValue(properties, "application/json");
-                if (timestampProp != null)
-                {
-                    var timestampValue = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-                    timestampProp.SetValue(properties, timestampValue);
-                }
-                
-                basicPublishMethod.Invoke(channelObj, new object[] { exchangeName, routingKey, properties, body });
-                
-                logger.LogInformation("Successfully enqueued document cracked message to RabbitMQ. DocumentId: {DocumentId}, FilePath: {FilePath}, Queue: {QueueName}, Exchange: {ExchangeName}, RoutingKey: {RoutingKey}", 
-                    documentId, filePath, queueName, exchangeName, routingKey);
-            }
-            finally
-            {
-                // Dispose channel if it implements IDisposable
-                if (channelObj is IDisposable disposable)
-                {
-                    disposable.Dispose();
-                }
-            }
+            logger.LogInformation("Successfully enqueued document cracked message to RabbitMQ. DocumentId: {DocumentId}, FilePath: {FilePath}, Queue: {QueueName}, Exchange: {ExchangeName}, RoutingKey: {RoutingKey}", 
+                documentId, filePath, queueName, exchangeName, routingKey);
         }
         catch (Exception ex)
         {
