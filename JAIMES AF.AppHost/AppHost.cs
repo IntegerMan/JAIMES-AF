@@ -55,7 +55,7 @@ IResourceBuilder<IResourceWithConnectionString> sqliteDb = builder.AddSqlite("ja
 // Add MongoDB for document storage
 IResourceBuilder<MongoDBServerResource> mongo = builder.AddMongoDB("mongo")
     .WithIconName("BookDatabase")
-    .WithMongoExpress()
+    .WithMongoExpress(exp => exp.WithIconName("NotebookAdd"))
     .WithLifetime(ContainerLifetime.Persistent)
     .WithDataVolume();
 
@@ -68,6 +68,7 @@ IResourceBuilder<SeqResource> seq = builder.AddSeq("seq")
     .WithLifetime(ContainerLifetime.Persistent)
     .WithDataVolume()
     .WithEnvironment("ACCEPT_EULA", "Y")
+    .WithEnvironment("SEQ_LISTEN_URI", "http://0.0.0.0:80")
     .WithUrlForEndpoint("http", static url => url.DisplayText = "🔍 Seq");
 
 // Add Kernel Memory service container
@@ -211,6 +212,8 @@ builder.AddProject<Projects.JAIMES_AF_Indexer>("indexer")
 builder.AddProject<Projects.JAIMES_AF_DocumentCracker>("document-cracker")
     .WithIconName("ClipboardTextLtr")
     .WithExplicitStart()
+    .WithReference(seq)
+    .WaitFor(seq)
     .WithReference(mongoDb)
     .WaitFor(mongo);
 

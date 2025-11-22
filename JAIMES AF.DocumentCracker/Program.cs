@@ -1,6 +1,4 @@
-﻿using System.Linq;
-using Aspire.MongoDB.Driver;
-using MattEland.Jaimes.DocumentCracker.Services;
+﻿using MattEland.Jaimes.DocumentCracker.Services;
 using MattEland.Jaimes.DocumentProcessing.Options;
 using MattEland.Jaimes.DocumentProcessing.Services;
 using Microsoft.Extensions.Configuration;
@@ -12,7 +10,7 @@ using Spectre.Console;
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
 // Add Seq endpoint for advanced log monitoring
-// builder.AddSeqEndpoint("seq");
+builder.AddSeqEndpoint("seq");
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
