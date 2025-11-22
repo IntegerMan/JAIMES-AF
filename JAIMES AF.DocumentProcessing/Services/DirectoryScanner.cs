@@ -1,6 +1,7 @@
+using System.Linq;
 using Microsoft.Extensions.Logging;
 
-namespace MattEland.Jaimes.Indexer.Services;
+namespace MattEland.Jaimes.DocumentProcessing.Services;
 
 public class DirectoryScanner(ILogger<DirectoryScanner> logger) : IDirectoryScanner
 {
@@ -12,7 +13,6 @@ public class DirectoryScanner(ILogger<DirectoryScanner> logger) : IDirectoryScan
             throw new DirectoryNotFoundException($"Source directory does not exist: {rootPath}");
         }
 
-        // Suppress informational logging - progress bars show this information
         return Directory.EnumerateDirectories(rootPath);
     }
 
@@ -20,16 +20,15 @@ public class DirectoryScanner(ILogger<DirectoryScanner> logger) : IDirectoryScan
     {
         if (!Directory.Exists(directoryPath))
         {
-            // Only log warnings/errors, not informational messages
             logger.LogWarning("Directory does not exist: {DirectoryPath}", directoryPath);
             return [];
         }
 
-        HashSet<string> extensions = new(supportedExtensions, StringComparer.OrdinalIgnoreCase);
-        
-        // Suppress debug/info logging - progress bars show file processing
+        HashSet<string> extensions = new(supportedExtensions ?? [], StringComparer.OrdinalIgnoreCase);
+
         return Directory.EnumerateFiles(directoryPath)
             .Where(file => extensions.Contains(Path.GetExtension(file)));
     }
 }
+
 

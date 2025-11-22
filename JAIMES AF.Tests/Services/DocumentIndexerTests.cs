@@ -25,12 +25,12 @@ public class DocumentIndexerTests
     }
 
     [Theory]
-    [InlineData("C:\\Test\\rulesetA\\rules.pdf", "index-ruleseta", "ruleseta-rules.pdf")]
-    [InlineData("C:\\Test\\rulesetB\\rules.pdf", "index-rulesetb", "rulesetb-rules.pdf")]
-    [InlineData("/home/test/rulesetA/file.txt", "index-ruleseta", "ruleseta-file.txt")]
-    [InlineData("D:\\Documents\\My Rules\\guide.md", "index-my-rules", "myrules-guide.md")]
-    [InlineData("C:\\Users\\MattE\\OneDrive\\Sourcebooks\\Battletech\\ATOW_QSR.pdf", "index-battletech", "battletech-atow_qsr.pdf")]
-    [InlineData("C:\\Users\\MattE\\OneDrive\\Sourcebooks\\Battletech\\E-CAT35260_Combat_Manual_Mercenaries.pdf", "index-battletech", "battletech-ecat35260_combat_manual_mercenaries.pdf")]
+    [InlineData("C:\\Test\\rulesetA\\rules.pdf", "index-ruleseta", "indexruleseta-rules.pdf")]
+    [InlineData("C:\\Test\\rulesetB\\rules.pdf", "index-rulesetb", "indexrulesetb-rules.pdf")]
+    [InlineData("/home/test/rulesetA/file.txt", "index-ruleseta", "indexruleseta-file.txt")]
+    [InlineData("D:\\Documents\\My Rules\\guide.md", "index-my-rules", "indexmyrules-guide.md")]
+    [InlineData("C:\\Users\\MattE\\OneDrive\\Sourcebooks\\Battletech\\ATOW_QSR.pdf", "index-battletech", "indexbattletech-atow_qsr.pdf")]
+    [InlineData("C:\\Users\\MattE\\OneDrive\\Sourcebooks\\Battletech\\E-CAT35260_Combat_Manual_Mercenaries.pdf", "index-battletech", "indexbattletech-ecat35260_combat_manual_mercenaries.pdf")]
     public async Task IndexDocumentAsync_WhenFileExists_CallsImportDocumentAsyncWithCorrectDocumentId(
         string filePath, string indexName, string expectedDocumentId)
     {
@@ -102,9 +102,9 @@ public class DocumentIndexerTests
     }
 
     [Theory]
-    [InlineData("C:\\Test\\rulesetA\\rules.pdf", "index-ruleseta", "ruleseta-rules.pdf", true)]
-    [InlineData("C:\\Test\\rulesetB\\rules.pdf", "index-rulesetb", "rulesetb-rules.pdf", false)]
-    [InlineData("/home/test/file.txt", "index-test", "test-file.txt", true)]
+    [InlineData("C:\\Test\\rulesetA\\rules.pdf", "index-ruleseta", "indexruleseta-rules.pdf", true)]
+    [InlineData("C:\\Test\\rulesetB\\rules.pdf", "index-rulesetb", "indexrulesetb-rules.pdf", false)]
+    [InlineData("/home/test/file.txt", "index-test", "indextest-file.txt", true)]
     public async Task DocumentExistsAsync_WhenDocumentExists_ReturnsTrue(
         string filePath, string indexName, string expectedDocumentId, bool documentExists)
     {
@@ -131,7 +131,7 @@ public class DocumentIndexerTests
         // Arrange
         string filePath = "C:\\Test\\file.txt";
         string indexName = "index-test";
-        string documentId = "test-file.txt";
+        string documentId = "indextest-file.txt";
 
         DataPipelineStatus status = new DataPipelineStatus { Completed = false };
 
@@ -166,12 +166,12 @@ public class DocumentIndexerTests
     }
 
     [Theory]
-    [InlineData("C:\\Test\\RulesetA\\Rules.pdf", "index-ruleseta", "ruleseta-rules.pdf")]
-    [InlineData("C:\\Test\\RulesetB\\Rules.pdf", "index-rulesetb", "rulesetb-rules.pdf")]
-    [InlineData("D:\\Documents\\My Rules\\Guide.md", "index-my-rules", "myrules-guide.md")]
-    [InlineData("/home/user/rulesetA/file.txt", "index-ruleseta", "ruleseta-file.txt")]
-    [InlineData("C:\\Users\\MattE\\OneDrive\\Sourcebooks\\Battletech\\ATOW_QSR.pdf", "index-battletech", "battletech-atow_qsr.pdf")]
-    [InlineData("C:\\Users\\MattE\\OneDrive\\Sourcebooks\\Battletech\\E-CAT35260_Combat_Manual_Mercenaries.pdf", "index-battletech", "battletech-ecat35260_combat_manual_mercenaries.pdf")]
+    [InlineData("C:\\Test\\RulesetA\\Rules.pdf", "index-ruleseta", "indexruleseta-rules.pdf")]
+    [InlineData("C:\\Test\\RulesetB\\Rules.pdf", "index-rulesetb", "indexrulesetb-rules.pdf")]
+    [InlineData("D:\\Documents\\My Rules\\Guide.md", "index-my-rules", "indexmyrules-guide.md")]
+    [InlineData("/home/user/rulesetA/file.txt", "index-ruleseta", "indexruleseta-file.txt")]
+    [InlineData("C:\\Users\\MattE\\OneDrive\\Sourcebooks\\Battletech\\ATOW_QSR.pdf", "index-battletech", "indexbattletech-atow_qsr.pdf")]
+    [InlineData("C:\\Users\\MattE\\OneDrive\\Sourcebooks\\Battletech\\E-CAT35260_Combat_Manual_Mercenaries.pdf", "index-battletech", "indexbattletech-ecat35260_combat_manual_mercenaries.pdf")]
     public void GetDocumentId_GeneratesRulesetIdFilenameFormat(string filePath, string indexName, string expectedDocumentId)
     {
         // Arrange - Use reflection to access the private static method
@@ -233,8 +233,8 @@ public class DocumentIndexerTests
 
         // Assert
         id1.ShouldNotBe(id2);
-        id1.ShouldBe("test-file1.pdf");
-        id2.ShouldBe("test-file2.pdf");
+        id1.ShouldBe("indextest-file1.pdf");
+        id2.ShouldBe("indextest-file2.pdf");
     }
     
     [Fact]
@@ -250,7 +250,7 @@ public class DocumentIndexerTests
         string documentId = (string)getDocumentIdMethod.Invoke(null, [filePath, indexName])!;
 
         // Assert
-        documentId.ShouldBe("testruleset-filewithspacesspecialchars.pdf");
+        documentId.ShouldBe("indextestruleset-filewithspacesspecialchars.pdf");
         // Verify no invalid characters
         foreach (char c in documentId)
         {

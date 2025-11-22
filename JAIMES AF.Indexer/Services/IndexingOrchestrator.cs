@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
+using MattEland.Jaimes.DocumentProcessing.Services;
 using MattEland.Jaimes.Indexer.Configuration;
 
 namespace MattEland.Jaimes.Indexer.Services;
@@ -18,11 +19,14 @@ public class IndexingOrchestrator(
 
         try
         {
-            IEnumerable<string> subdirectories = directoryScanner.GetSubdirectories(options.SourceDirectory);
+            string sourceDirectory = options.SourceDirectory
+                ?? throw new InvalidOperationException("Indexer source directory is not configured.");
+
+            IEnumerable<string> subdirectories = directoryScanner.GetSubdirectories(sourceDirectory);
             List<string> allDirectories = subdirectories.ToList();
             
             // Add root directory to the list
-            allDirectories.Add(options.SourceDirectory);
+            allDirectories.Add(sourceDirectory);
 
             foreach (string directory in allDirectories)
             {

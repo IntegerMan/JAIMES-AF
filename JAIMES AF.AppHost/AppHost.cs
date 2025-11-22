@@ -8,7 +8,7 @@ IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(ar
 
 // Add Ollama with nomic-embed-text model for embeddings
 IResourceBuilder<OllamaResource> ollama = builder.AddOllama("ollama-models")
-    .WithIconName("BrainCircuit")
+    .WithIconName("BrainSparkle")
     //.WithContainerRuntimeArgs("--device", "nvidia.com/gpu=all") // Podman GPU config
     .WithDataVolume();
     /*
@@ -28,7 +28,7 @@ var chatModel = ollama.AddModel("gemma3").WithIconName("CommentText");
 // NOTE: There is an Aspire integration for Redis, but it doesn't support Redis-Stack. If you customize the image, it still doesn't start Redis-Stack afterwards.
 // It's simpler just to use a known good image with good default behavior.
 IResourceBuilder<ContainerResource> redis = builder.AddContainer("embeddings", "redis/redis-stack:latest")
-    .WithIconName("BookDatabase")
+    .WithIconName("DatabaseLink")
     .WithHttpEndpoint(8001, 8001, name: "redisinsight")
     .WithUrlForEndpoint("http", static url => url.DisplayText = "🔬 RedisInsight")
     .WithEndpoint(6379, 6379, name: "redis")
@@ -36,10 +36,12 @@ IResourceBuilder<ContainerResource> redis = builder.AddContainer("embeddings", "
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aspire",
             "jaimes-redis-data"), "/data");
 
-var qdrantApiKey = builder.AddParameter("qdrant-api-key", "qdrant", secret: true)
-    .WithDescription("API key for Qdrant");
-
 // Add Qdrant for vector embeddings
+// Note: Qdrant API key is an Aspire parameter (not user secret) because it's required by the Aspire-managed Qdrant resource.
+// Application-level secrets (e.g., Azure OpenAI API keys) are managed via user secrets.
+var qdrantApiKey = builder.AddParameter("qdrant-api-key", "qdrant", secret: true)
+    .WithDescription("API key for Qdrant vector database");
+
 IResourceBuilder<QdrantServerResource> qdrant = builder.AddQdrant("qdrant-embeddings", qdrantApiKey)
     .WithIconName("DatabaseSearch")
     .WithLifetime(ContainerLifetime.Persistent)
@@ -49,6 +51,24 @@ IResourceBuilder<QdrantServerResource> qdrant = builder.AddQdrant("qdrant-embedd
 IResourceBuilder<IResourceWithConnectionString> sqliteDb = builder.AddSqlite("jaimes-db")
     .WithIconName("Database")
     .WithSqliteWeb(web => web.WithIconName("DatabaseSearch"));
+
+// Add MongoDB for document storage
+IResourceBuilder<MongoDBServerResource> mongo = builder.AddMongoDB("mongo")
+    .WithIconName("BookDatabase")
+    .WithMongoExpress()
+    .WithLifetime(ContainerLifetime.Persistent)
+    .WithDataVolume();
+
+IResourceBuilder<MongoDBDatabaseResource> mongoDb = mongo.AddDatabase("documents");
+
+// Add Seq for advanced log monitoring and analysis
+IResourceBuilder<SeqResource> seq = builder.AddSeq("seq")
+    .WithIconName("DeveloperBoardSearch")
+    .ExcludeFromManifest()
+    .WithLifetime(ContainerLifetime.Persistent)
+    .WithDataVolume()
+    .WithEnvironment("ACCEPT_EULA", "Y")
+    .WithUrlForEndpoint("http", static url => url.DisplayText = "🔍 Seq");
 
 // Add Kernel Memory service container
 IResourceBuilder<ContainerResource> kernelMemory = builder.AddContainer("kernel-memory", "kernelmemory/service:latest")
@@ -62,16 +82,19 @@ IResourceBuilder<ContainerResource> kernelMemory = builder.AddContainer("kernel-
         // Set environment to Production (required by Kernel Memory service)
         context.EnvironmentVariables["ASPNETCORE_ENVIRONMENT"] = "Production";
         
-        // Configure Kernel Memory to use Ollama for embeddings
+        // Configure Ollama endpoint and models (shared configuration)
         EndpointReference ollamaEndpoint = ollama.GetEndpoint("http");
-        context.EnvironmentVariables["KernelMemory__Services__EmbeddingGeneration__Type"] = "Ollama";
-        context.EnvironmentVariables["KernelMemory__Services__EmbeddingGeneration__Ollama__Endpoint"] = $"http://{ollamaEndpoint.Host}:{ollamaEndpoint.Port}";
-        context.EnvironmentVariables["KernelMemory__Services__EmbeddingGeneration__Ollama__Model"] = "nomic-embed-text";
+        string ollamaUrl = $"http://{ollamaEndpoint.Host}:{ollamaEndpoint.Port}";
+        context.EnvironmentVariables["KernelMemory__Services__Ollama__Endpoint"] = ollamaUrl;
         
-        // Configure Kernel Memory to use Ollama for text generation (required by service)
-        context.EnvironmentVariables["KernelMemory__Services__TextGeneration__Type"] = "Ollama";
-        context.EnvironmentVariables["KernelMemory__Services__TextGeneration__Ollama__Endpoint"] = $"http://{ollamaEndpoint.Host}:{ollamaEndpoint.Port}";
-        context.EnvironmentVariables["KernelMemory__Services__TextGeneration__Ollama__Model"] = "gemma3";
+        // Configure text generation (required by service)
+        context.EnvironmentVariables["KernelMemory__TextGeneratorType"] = "Ollama";
+        context.EnvironmentVariables["KernelMemory__Services__Ollama__TextModel"] = "gemma3";
+        
+        // Configure embedding generation
+        context.EnvironmentVariables["KernelMemory__DataIngestion__EmbeddingGeneratorTypes__0"] = "Ollama";
+        context.EnvironmentVariables["KernelMemory__Services__Ollama__EmbeddingModel"] = "nomic-embed-text";
+        context.EnvironmentVariables["KernelMemory__Retrieval__EmbeddingGeneratorType"] = "Ollama";
         
         // Configure Redis as the vector store
         EndpointReference redisEndpoint = redis.GetEndpoint("redis");
@@ -112,10 +135,12 @@ IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIME
     .WithReference(embedModel)
     .WithReference(sqliteDb)
     .WithReference(qdrant)
+    .WithReference(seq)
     .WaitFor(redis)
     .WaitFor(qdrant)
     .WaitFor(ollama)
     .WaitFor(sqliteDb)
+    .WaitFor(seq)
     .WithEnvironment(context =>
     {
         EndpointReference redisEndpoint = redis.GetEndpoint("redis");
@@ -157,15 +182,19 @@ builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")
         DisplayText = "👤 Players"
     })
     .WithReference(apiService)
-    .WaitFor(apiService);
+    .WithReference(seq)
+    .WaitFor(apiService)
+    .WaitFor(seq);
 
 builder.AddProject<Projects.JAIMES_AF_Indexer>("indexer")
     .WithIconName("DocumentSearch", IconVariant.Regular)
     .WithExplicitStart()
     .WithReference(embedModel)
     .WithReference(qdrant)
+    .WithReference(seq)
     .WaitFor(ollama)
     .WaitFor(qdrant)
+    .WaitFor(seq)
     .WithEnvironment(context =>
     {
         EndpointReference redisEndpoint = redis.GetEndpoint("redis");
@@ -178,6 +207,12 @@ builder.AddProject<Projects.JAIMES_AF_Indexer>("indexer")
         context.EnvironmentVariables["Indexer__OllamaEndpoint"] = $"http://{ollamaEndpoint.Host}:{ollamaEndpoint.Port}";
         context.EnvironmentVariables["Indexer__OllamaModel"] = "nomic-embed-text";
     });
+
+builder.AddProject<Projects.JAIMES_AF_DocumentCracker>("document-cracker")
+    .WithIconName("ClipboardTextLtr")
+    .WithExplicitStart()
+    .WithReference(mongoDb)
+    .WaitFor(mongo);
 
 var app = builder.Build();
 

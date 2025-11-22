@@ -14,11 +14,14 @@
     <ProjectReference Include="..\JAIMES AF.ApiService\JAIMES AF.ApiService.csproj" />
     <ProjectReference Include="..\JAIMES AF.Web\JAIMES AF.Web.csproj" />
     <ProjectReference Include="..\JAIMES AF.Indexer\JAIMES AF.Indexer.csproj" />
+    <ProjectReference Include="..\JAIMES AF.DocumentCracker\JAIMES AF.DocumentCracker.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" />
+    <PackageReference Include="Aspire.Hosting.MongoDB" />
     <PackageReference Include="Aspire.Hosting.Qdrant" />
+    <PackageReference Include="Aspire.Hosting.Seq" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.Ollama" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.SQLite" />
   </ItemGroup>

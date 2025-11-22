@@ -18,6 +18,9 @@ public class Program
         // Add service defaults & Aspire client integrations.
         builder.AddServiceDefaults();
 
+        // Add Seq endpoint for advanced log monitoring
+        builder.AddSeqEndpoint("seq");
+
         // Add services to the container.
         builder.Services.AddProblemDetails();
 

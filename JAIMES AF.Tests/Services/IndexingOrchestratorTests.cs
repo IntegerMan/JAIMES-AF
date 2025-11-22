@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using MattEland.Jaimes.DocumentProcessing.Services;
 using MattEland.Jaimes.Indexer.Configuration;
 using MattEland.Jaimes.Indexer.Services;
 using Microsoft.Extensions.Logging;
@@ -16,6 +17,7 @@ public class IndexingOrchestratorTests
     private readonly IndexerOptions _options;
     private readonly ActivitySource _activitySource;
     private readonly IndexingOrchestrator _orchestrator;
+    private string RootDirectory => _options.SourceDirectory ?? throw new InvalidOperationException("Test source directory is not configured.");
 
     public IndexingOrchestratorTests()
     {
@@ -45,7 +47,7 @@ public class IndexingOrchestratorTests
     public async Task ProcessAllDirectoriesAsync_WhenNoSubdirectories_ProcessesRootDirectoryOnly()
     {
         // Arrange
-        string rootDir = _options.SourceDirectory;
+        string rootDir = RootDirectory;
 
         _directoryScannerMock
             .Setup(s => s.GetSubdirectories(rootDir))
@@ -78,7 +80,7 @@ public class IndexingOrchestratorTests
         int subdirectoryCount, int newFiles, int existingFiles)
     {
         // Arrange
-        string rootDir = _options.SourceDirectory;
+        string rootDir = RootDirectory;
         List<string> subdirs = Enumerable.Range(1, subdirectoryCount)
             .Select(i => Path.Combine(rootDir, $"dndsubdir{i}"))  // Include "dnd" to pass the filter
             .ToList();
@@ -139,7 +141,7 @@ public class IndexingOrchestratorTests
     public async Task ProcessAllDirectoriesAsync_WhenFileIndexingFails_IncrementsErrorCount()
     {
         // Arrange
-        string rootDir = _options.SourceDirectory;
+        string rootDir = RootDirectory;
         string filePath = Path.Combine(rootDir, "file.txt");
         string rootIndexName = GetIndexName(rootDir);
 
@@ -168,7 +170,7 @@ public class IndexingOrchestratorTests
     public async Task ProcessAllDirectoriesAsync_WhenExceptionThrown_LogsErrorAndContinues()
     {
         // Arrange
-        string rootDir = _options.SourceDirectory;
+        string rootDir = RootDirectory;
         string filePath1 = Path.Combine(rootDir, "file1.txt");
         string filePath2 = Path.Combine(rootDir, "file2.txt");
 
@@ -203,7 +205,7 @@ public class IndexingOrchestratorTests
     public async Task ProcessAllDirectoriesAsync_WhenCancellationRequested_StopsProcessing()
     {
         // Arrange
-        string rootDir = _options.SourceDirectory;
+        string rootDir = RootDirectory;
         string subdir = Path.Combine(rootDir, "dndsubdir1");  // Include "dnd" to pass the filter
 
         _directoryScannerMock
@@ -232,7 +234,7 @@ public class IndexingOrchestratorTests
     public async Task GetIndexName_GeneratesCorrectIndexName(string directoryPath, string expectedIndexName)
     {
         // Arrange
-        string rootDir = _options.SourceDirectory;
+        string rootDir = RootDirectory;
         string filePath = Path.Combine(directoryPath, "file.txt");
 
         _directoryScannerMock

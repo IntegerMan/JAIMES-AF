@@ -10,11 +10,15 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Spectre.Console;
+using MattEland.Jaimes.DocumentProcessing.Services;
 using MattEland.Jaimes.Indexer.Configuration;
 using MattEland.Jaimes.Indexer.Services;
 using MattEland.Jaimes.Services.Configuration;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
+
+// Add Seq endpoint for advanced log monitoring
+builder.AddSeqEndpoint("seq");
 
 // Configure logging with OpenTelemetry
 builder.Logging.ClearProviders();

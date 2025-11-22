@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Seq" />
     <PackageReference Include="Markdig" />
     <PackageReference Include="MudBlazor" />
   </ItemGroup>
