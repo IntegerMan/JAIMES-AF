@@ -28,9 +28,7 @@ public class IndexingOrchestratorTests
             OpenAiEndpoint = "https://test.openai.azure.com/",
             OpenAiApiKey = "test-key",
             OpenAiDeployment = "test-deployment",
-            SupportedExtensions = [".txt", ".md", ".pdf"],
-            DocIntelApiKey = "test-key",
-            DocIntelEndpoint = "https://test.docintel.azure.com/"
+            SupportedExtensions = [".txt", ".md", ".pdf"]
         };
 
         _orchestrator = new IndexingOrchestrator(

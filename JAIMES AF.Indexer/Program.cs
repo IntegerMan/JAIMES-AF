@@ -45,7 +45,6 @@ builder.Services.AddSingleton(options);
 // Configure Kernel Memory
 // Normalize endpoint URL - remove trailing slash to avoid 404 errors
 string openAiEndpoint = options.OpenAiEndpoint.TrimEnd('/');
-string docIntelEndpoint = options.DocIntelEndpoint.TrimEnd('/');
 
 // Use centralized helper to ensure embedding dimensions match between Indexer and Services
 AzureOpenAIConfig openAiConfig = EmbeddingConfigHelper.CreateEmbeddingConfig(
@@ -61,17 +60,9 @@ string redisConnectionString = options.VectorDbConnectionString;
 // Use centralized RedisConfig creation to ensure consistency
 RedisConfig redisConfig = RedisConfigHelper.CreateRedisConfig(redisConnectionString);
 
-AzureAIDocIntelConfig docIntelConfig = new()
-{
-    Auth = AzureAIDocIntelConfig.AuthTypes.APIKey,
-    APIKey = options.DocIntelApiKey,
-    Endpoint = docIntelEndpoint,
-};
-
 // Use Redis as the vector store for Kernel Memory
 IKernelMemory memory = new KernelMemoryBuilder()
     .WithAzureOpenAITextEmbeddingGeneration(openAiConfig)
-    .WithAzureAIDocIntel(docIntelConfig)
     .WithoutTextGenerator()
     .WithRedisMemoryDb(redisConfig)
     .Build();
@@ -109,7 +100,6 @@ try
             .AddRow("[dim]Supported Extensions:[/]", $"[cyan]{string.Join(", ", options.SupportedExtensions)}[/]")
             .AddRow("[dim]OpenAI Endpoint:[/]", $"[cyan]{openAiEndpoint}[/]")
             .AddRow("[dim]Embedding Deployment:[/]", $"[cyan]{options.OpenAiDeployment}[/]")
-            .AddRow("[dim]Azure Doc Intelligence Endpoint:[/]", $"[cyan]{docIntelEndpoint}[/]")
     )
     {
         Header = new PanelHeader("[bold yellow]Configuration[/]", Justify.Left),
