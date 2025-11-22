@@ -83,6 +83,7 @@ public class DocumentCrackingOrchestrator(
 
     private async Task CrackDocumentAsync(string filePath, string relativeDirectory, IMongoCollection<CrackedDocument> collection, CancellationToken cancellationToken)
     {
+        logger.LogInformation("Starting to crack document: {FilePath}", filePath);
         FileInfo fileInfo = new(filePath);
         (string contents, int pageCount) = ExtractPdfText(filePath);
 
