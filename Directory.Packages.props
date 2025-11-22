@@ -53,5 +53,6 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="xunit.v3" Version="3.2.0" />
     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Ollama" Version="9.9.0" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.SQLite" Version="9.9.0" />
   </ItemGroup>
 </Project>
