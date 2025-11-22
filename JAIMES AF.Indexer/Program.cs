@@ -1,9 +1,14 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using System.Diagnostics;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.KernelMemory;
 using Microsoft.KernelMemory.MemoryDb.Redis;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Spectre.Console;
 using MattEland.Jaimes.Indexer.Configuration;
 using MattEland.Jaimes.Indexer.Services;
@@ -11,9 +16,14 @@ using MattEland.Jaimes.Services.Configuration;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
-// Configure logging
+// Configure logging with OpenTelemetry
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
+builder.Logging.AddOpenTelemetry(logging =>
+{
+    logging.IncludeFormattedMessage = true;
+    logging.IncludeScopes = true;
+});
 
 // Load configuration
 builder.Configuration
@@ -34,23 +44,58 @@ if (string.IsNullOrWhiteSpace(options.SourceDirectory))
     throw new InvalidOperationException("SourceDirectory configuration is required");
 }
 
-if (string.IsNullOrWhiteSpace(options.OpenAiEndpoint) || string.IsNullOrWhiteSpace(options.OpenAiApiKey))
+if (string.IsNullOrWhiteSpace(options.OllamaEndpoint) || string.IsNullOrWhiteSpace(options.OllamaModel))
 {
-    throw new InvalidOperationException("OpenAI configuration (Endpoint and ApiKey) is required");
+    throw new InvalidOperationException("Ollama configuration (Endpoint and Model) is required");
 }
 
 // Register services
 builder.Services.AddSingleton(options);
 
 // Configure Kernel Memory
-// Normalize endpoint URL - remove trailing slash to avoid 404 errors
-string openAiEndpoint = options.OpenAiEndpoint.TrimEnd('/');
+// Get the Ollama endpoint - Aspire should resolve connection string expressions at runtime
+string? rawEndpoint = options.OllamaEndpoint;
 
-// Use centralized helper to ensure embedding dimensions match between Indexer and Services
-AzureOpenAIConfig openAiConfig = EmbeddingConfigHelper.CreateEmbeddingConfig(
-    apiKey: options.OpenAiApiKey,
-    endpoint: openAiEndpoint,
-    deployment: options.OpenAiDeployment);
+if (string.IsNullOrWhiteSpace(rawEndpoint))
+{
+    throw new InvalidOperationException(
+        "Ollama endpoint is not configured. " +
+        "Expected a valid absolute URI (e.g., 'http://localhost:11434'). " +
+        "Check that the Ollama endpoint is properly configured in AppHost.");
+}
+
+// Normalize endpoint URL - remove trailing slash to avoid 404 errors
+string ollamaEndpoint = rawEndpoint.TrimEnd('/');
+
+// If the endpoint contains connection string expressions (curly braces), it hasn't been resolved by Aspire
+if (ollamaEndpoint.Contains('{'))
+{
+    // Try to get the endpoint from the Ollama connection string that Aspire injects
+    string? ollamaConnectionString = builder.Configuration.GetConnectionString("ollama-models")
+        ?? builder.Configuration["ConnectionStrings:ollama-models"]
+        ?? builder.Configuration["ConnectionStrings__ollama-models"];
+    
+    if (!string.IsNullOrWhiteSpace(ollamaConnectionString) && Uri.TryCreate(ollamaConnectionString, UriKind.Absolute, out Uri? connectionUri))
+    {
+        ollamaEndpoint = connectionUri.ToString().TrimEnd('/');
+    }
+    else
+    {
+        throw new InvalidOperationException(
+            $"Ollama endpoint contains unresolved connection string expressions: '{ollamaEndpoint}'. " +
+            "This indicates Aspire did not resolve the endpoint expression. " +
+            "Check that the Ollama endpoint is properly configured in AppHost.cs.");
+    }
+}
+
+// Validate that the Ollama endpoint is a valid URI
+if (!Uri.TryCreate(ollamaEndpoint, UriKind.Absolute, out Uri? validatedUri))
+{
+    throw new InvalidOperationException(
+        $"Invalid Ollama endpoint URI: '{ollamaEndpoint}'. " +
+        "Expected a valid absolute URI (e.g., 'http://localhost:11434'). " +
+        "Check that the Ollama endpoint is properly configured in AppHost.");
+}
 
 // Use Redis as the vector store for Kernel Memory
 // Redis provides better performance and document listing capabilities than SimpleVectorDb
@@ -61,13 +106,47 @@ string redisConnectionString = options.VectorDbConnectionString;
 RedisConfig redisConfig = RedisConfigHelper.CreateRedisConfig(redisConnectionString);
 
 // Use Redis as the vector store for Kernel Memory
+// Note: WithOllamaTextEmbeddingGeneration parameter order is (model, endpoint)
 IKernelMemory memory = new KernelMemoryBuilder()
-    .WithAzureOpenAITextEmbeddingGeneration(openAiConfig)
+    .WithOllamaTextEmbeddingGeneration(options.OllamaModel, ollamaEndpoint)
     .WithoutTextGenerator()
     .WithRedisMemoryDb(redisConfig)
     .Build();
 
 builder.Services.AddSingleton(memory);
+
+// Configure OpenTelemetry
+const string activitySourceName = "Jaimes.Indexer";
+ActivitySource activitySource = new(activitySourceName);
+
+// Check for OTLP endpoint configuration
+string? otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] 
+    ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
+
+OpenTelemetryBuilder otelBuilder = builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource
+        .AddService(activitySourceName))
+    .WithMetrics(metrics =>
+    {
+        metrics.AddRuntimeInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddMeter(activitySourceName);
+    })
+    .WithTracing(tracing =>
+    {
+        tracing.AddSource(activitySourceName)
+            .AddHttpClientInstrumentation()
+            .AddRedisInstrumentation();
+    });
+
+// Configure OTLP exporter if endpoint is configured
+if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+{
+    otelBuilder.UseOtlpExporter();
+}
+
+// Register ActivitySource for dependency injection
+builder.Services.AddSingleton(activitySource);
 
 // Register application services
 builder.Services.AddSingleton<IDirectoryScanner, DirectoryScanner>();
@@ -98,8 +177,8 @@ try
             .AddRow("[dim]Source Directory:[/]", $"[cyan]{options.SourceDirectory}[/]")
             .AddRow("[dim]Redis Connection:[/]", $"[cyan]{redisConnectionString}[/]")
             .AddRow("[dim]Supported Extensions:[/]", $"[cyan]{string.Join(", ", options.SupportedExtensions)}[/]")
-            .AddRow("[dim]OpenAI Endpoint:[/]", $"[cyan]{openAiEndpoint}[/]")
-            .AddRow("[dim]Embedding Deployment:[/]", $"[cyan]{options.OpenAiDeployment}[/]")
+            .AddRow("[dim]Ollama Endpoint:[/]", $"[cyan]{ollamaEndpoint}[/]")
+            .AddRow("[dim]Embedding Model:[/]", $"[cyan]{options.OllamaModel}[/]")
     )
     {
         Header = new PanelHeader("[bold yellow]Configuration[/]", Justify.Left),
@@ -113,7 +192,22 @@ try
     AnsiConsole.MarkupLine("[bold green]Starting indexing process...[/]");
     AnsiConsole.WriteLine();
 
+    // Wrap the entire indexing process in a trace
+    ActivitySource mainActivitySource = host.Services.GetRequiredService<ActivitySource>();
+    using Activity? mainActivity = mainActivitySource.StartActivity("Indexing.ProcessAll");
+    mainActivity?.SetTag("indexer.source_directory", options.SourceDirectory);
+    mainActivity?.SetTag("indexer.ollama_endpoint", ollamaEndpoint);
+    mainActivity?.SetTag("indexer.ollama_model", options.OllamaModel);
+
     IndexingOrchestrator.IndexingSummary summary = await orchestrator.ProcessAllDirectoriesAsync(CancellationToken.None);
+    
+    if (mainActivity != null)
+    {
+        mainActivity.SetTag("indexer.total_processed", summary.TotalProcessed);
+        mainActivity.SetTag("indexer.total_succeeded", summary.TotalSucceeded);
+        mainActivity.SetTag("indexer.total_errors", summary.TotalErrors);
+        mainActivity.SetStatus(summary.TotalErrors > 0 ? ActivityStatusCode.Error : ActivityStatusCode.Ok);
+    }
 
     AnsiConsole.WriteLine();
     

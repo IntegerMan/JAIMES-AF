@@ -4,9 +4,8 @@ public class IndexerOptions
 {
     public required string SourceDirectory { get; init; }
     public required string VectorDbConnectionString { get; init; }
-    public required string OpenAiEndpoint { get; init; }
-    public required string OpenAiApiKey { get; init; }
-    public required string OpenAiDeployment { get; init; }
+    public required string OllamaEndpoint { get; init; }
+    public required string OllamaModel { get; init; }
     public List<string> SupportedExtensions { get; init; } = [".txt", ".md", ".pdf", ".docx"];
 }
 

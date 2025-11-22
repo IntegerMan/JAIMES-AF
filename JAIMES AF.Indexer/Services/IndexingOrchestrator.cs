@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using MattEland.Jaimes.Indexer.Configuration;
@@ -8,7 +9,8 @@ public class IndexingOrchestrator(
     ILogger<IndexingOrchestrator> logger,
     IDirectoryScanner directoryScanner,
     IDocumentIndexer documentIndexer,
-    IndexerOptions options)
+    IndexerOptions options,
+    ActivitySource activitySource)
 {
     public async Task<IndexingSummary> ProcessAllDirectoriesAsync(CancellationToken cancellationToken = default)
     {
@@ -41,7 +43,20 @@ public class IndexingOrchestrator(
                 string rulesetTag = directoryInfo.Name.ToLowerInvariant();
                 logger.LogInformation("Processing directory: {Directory} -> Ruleset tag: {RulesetTag}", directory, rulesetTag);
 
+                using Activity? directoryActivity = activitySource.StartActivity("Indexing.ProcessDirectory");
+                directoryActivity?.SetTag("indexer.directory", directory);
+                directoryActivity?.SetTag("indexer.ruleset_tag", rulesetTag);
+
                 IndexingSummary dirSummary = await ProcessDirectoryAsync(directory, rulesetTag, cancellationToken);
+                
+                if (directoryActivity != null)
+                {
+                    directoryActivity.SetTag("indexer.directory_processed", dirSummary.TotalProcessed);
+                    directoryActivity.SetTag("indexer.directory_succeeded", dirSummary.TotalSucceeded);
+                    directoryActivity.SetTag("indexer.directory_errors", dirSummary.TotalErrors);
+                    directoryActivity.SetStatus(dirSummary.TotalErrors > 0 ? ActivityStatusCode.Error : ActivityStatusCode.Ok);
+                }
+                
                 summary.Add(dirSummary);
             }
         }

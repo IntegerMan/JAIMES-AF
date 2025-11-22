@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reflection;
 using MattEland.Jaimes.Indexer.Services;
 using Microsoft.Extensions.Logging;
@@ -12,13 +13,15 @@ public class DocumentIndexerTests
 {
     private readonly Mock<ILogger<DocumentIndexer>> _loggerMock;
     private readonly Mock<IKernelMemory> _memoryMock;
+    private readonly ActivitySource _activitySource;
     private readonly DocumentIndexer _indexer;
 
     public DocumentIndexerTests()
     {
         _loggerMock = new Mock<ILogger<DocumentIndexer>>();
         _memoryMock = new Mock<IKernelMemory>();
-        _indexer = new DocumentIndexer(_loggerMock.Object, _memoryMock.Object);
+        _activitySource = new ActivitySource("Jaimes.Indexer.Test");
+        _indexer = new DocumentIndexer(_loggerMock.Object, _memoryMock.Object, _activitySource);
     }
 
     [Theory]
@@ -33,7 +36,7 @@ public class DocumentIndexerTests
     {
         // Arrange
         string tempFile = Path.Combine(Path.GetTempPath(), Path.GetFileName(filePath));
-        await File.WriteAllTextAsync(tempFile, "test content");
+        await File.WriteAllTextAsync(tempFile, "test content", TestContext.Current.CancellationToken);
 
         Document? capturedDocument = null;
         // Mock ImportDocumentAsync - signature: ImportDocumentAsync(Document, string?, IEnumerable<string>?, IContext?, CancellationToken)
@@ -69,7 +72,7 @@ public class DocumentIndexerTests
     {
         // Arrange
         string tempFile = Path.Combine(Path.GetTempPath(), "test.txt");
-        await File.WriteAllTextAsync(tempFile, "test content");
+        await File.WriteAllTextAsync(tempFile, "test content", TestContext.Current.CancellationToken);
         string indexName = "test-index";
 
         Document? capturedDocument = null;

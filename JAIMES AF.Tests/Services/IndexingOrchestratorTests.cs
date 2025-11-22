@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using MattEland.Jaimes.Indexer.Configuration;
 using MattEland.Jaimes.Indexer.Services;
 using Microsoft.Extensions.Logging;
@@ -13,6 +14,7 @@ public class IndexingOrchestratorTests
     private readonly Mock<IDirectoryScanner> _directoryScannerMock;
     private readonly Mock<IDocumentIndexer> _documentIndexerMock;
     private readonly IndexerOptions _options;
+    private readonly ActivitySource _activitySource;
     private readonly IndexingOrchestrator _orchestrator;
 
     public IndexingOrchestratorTests()
@@ -20,14 +22,14 @@ public class IndexingOrchestratorTests
         _loggerMock = new Mock<ILogger<IndexingOrchestrator>>();
         _directoryScannerMock = new Mock<IDirectoryScanner>();
         _documentIndexerMock = new Mock<IDocumentIndexer>();
+        _activitySource = new ActivitySource("Jaimes.Indexer.Test");
 
         _options = new IndexerOptions
         {
-            SourceDirectory = "C:\\Test\\Documents",
+            SourceDirectory = "C:\\Test\\DndDocuments",  // Include "dnd" to pass the filter
             VectorDbConnectionString = "Data Source=test.db",
-            OpenAiEndpoint = "https://test.openai.azure.com/",
-            OpenAiApiKey = "test-key",
-            OpenAiDeployment = "test-deployment",
+            OllamaEndpoint = "http://localhost:11434",
+            OllamaModel = "nomic-embed-text",
             SupportedExtensions = [".txt", ".md", ".pdf"]
         };
 
@@ -35,7 +37,8 @@ public class IndexingOrchestratorTests
             _loggerMock.Object,
             _directoryScannerMock.Object,
             _documentIndexerMock.Object,
-            _options);
+            _options,
+            _activitySource);
     }
 
     [Fact]
@@ -54,7 +57,8 @@ public class IndexingOrchestratorTests
 
         string rootIndexName = GetIndexName(rootDir);
         _documentIndexerMock
-            .Setup(i => i.IndexDocumentAsync(Path.Combine(rootDir, "file1.txt"), rootIndexName, It.IsAny<CancellationToken>()));
+            .Setup(i => i.IndexDocumentAsync(Path.Combine(rootDir, "file1.txt"), rootIndexName, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("document-id-1");
 
         // Act
         IndexingOrchestrator.IndexingSummary summary = await _orchestrator.ProcessAllDirectoriesAsync(CancellationToken.None);
@@ -76,7 +80,7 @@ public class IndexingOrchestratorTests
         // Arrange
         string rootDir = _options.SourceDirectory;
         List<string> subdirs = Enumerable.Range(1, subdirectoryCount)
-            .Select(i => Path.Combine(rootDir, $"subdir{i}"))
+            .Select(i => Path.Combine(rootDir, $"dndsubdir{i}"))  // Include "dnd" to pass the filter
             .ToList();
 
         _directoryScannerMock
@@ -114,7 +118,8 @@ public class IndexingOrchestratorTests
             foreach (string file in files)
             {
                 _documentIndexerMock
-                    .Setup(i => i.IndexDocumentAsync(file, indexName, It.IsAny<CancellationToken>()));
+                    .Setup(i => i.IndexDocumentAsync(file, indexName, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync($"document-id-{file}");
             }
         }
 
@@ -147,7 +152,8 @@ public class IndexingOrchestratorTests
             .Returns([filePath]);
 
         _documentIndexerMock
-            .Setup(i => i.IndexDocumentAsync(filePath, rootIndexName, It.IsAny<CancellationToken>())); // Indexing fails
+            .Setup(i => i.IndexDocumentAsync(filePath, rootIndexName, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("Indexing failed"));
 
         // Act
         IndexingOrchestrator.IndexingSummary summary = await _orchestrator.ProcessAllDirectoriesAsync(CancellationToken.None);
@@ -180,7 +186,8 @@ public class IndexingOrchestratorTests
             .ThrowsAsync(new IOException("File access error"));
 
         _documentIndexerMock
-            .Setup(i => i.IndexDocumentAsync(filePath2, rootIndexName, It.IsAny<CancellationToken>()));
+            .Setup(i => i.IndexDocumentAsync(filePath2, rootIndexName, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("document-id-2");
 
         // Act
         IndexingOrchestrator.IndexingSummary summary = await _orchestrator.ProcessAllDirectoriesAsync(CancellationToken.None);
@@ -197,7 +204,7 @@ public class IndexingOrchestratorTests
     {
         // Arrange
         string rootDir = _options.SourceDirectory;
-        string subdir = Path.Combine(rootDir, "subdir1");
+        string subdir = Path.Combine(rootDir, "dndsubdir1");  // Include "dnd" to pass the filter
 
         _directoryScannerMock
             .Setup(s => s.GetSubdirectories(rootDir))
@@ -218,10 +225,10 @@ public class IndexingOrchestratorTests
     }
 
     [Theory]
-    [InlineData("C:\\Test\\RulesetA", "index-ruleseta")]
-    [InlineData("C:\\Test\\RulesetB", "index-rulesetb")]
-    [InlineData("C:\\Test\\My Rules", "index-my-rules")]
-    [InlineData("/home/test/rulesetA", "index-ruleseta")]
+    [InlineData("C:\\Test\\DndRulesetA", "dndruleseta")]  // Include "dnd" to pass the filter
+    [InlineData("C:\\Test\\DndRulesetB", "dndrulesetb")]  // Include "dnd" to pass the filter
+    [InlineData("C:\\Test\\DndMy Rules", "dndmy rules")]  // Include "dnd" to pass the filter
+    [InlineData("/home/test/dndrulesetA", "dndruleseta")]  // Include "dnd" to pass the filter
     public async Task GetIndexName_GeneratesCorrectIndexName(string directoryPath, string expectedIndexName)
     {
         // Arrange
@@ -241,7 +248,8 @@ public class IndexingOrchestratorTests
             .Returns([]);
 
         _documentIndexerMock
-            .Setup(i => i.IndexDocumentAsync(filePath, expectedIndexName, It.IsAny<CancellationToken>()));
+            .Setup(i => i.IndexDocumentAsync(filePath, expectedIndexName, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("document-id");
 
         // Act
         _ = await _orchestrator.ProcessAllDirectoriesAsync(TestContext.Current.CancellationToken);
@@ -254,13 +262,9 @@ public class IndexingOrchestratorTests
 
     private static string GetIndexName(string directoryPath)
     {
-        // Replicate the logic from IndexingOrchestrator.GetIndexName
-        string directoryName = Path.GetFileName(directoryPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
-        if (string.IsNullOrEmpty(directoryName))
-        {
-            directoryName = "root";
-        }
-        return $"index-{directoryName.ToLowerInvariant().Replace(" ", "-")}";
+        // Replicate the logic from IndexingOrchestrator - uses directory name (lowercased) as ruleset tag
+        DirectoryInfo directoryInfo = new DirectoryInfo(directoryPath);
+        return directoryInfo.Name.ToLowerInvariant();
     }
 
     [Fact]

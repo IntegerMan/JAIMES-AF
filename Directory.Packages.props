@@ -54,5 +54,6 @@
     <PackageVersion Include="xunit.v3" Version="3.2.0" />
     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Ollama" Version="9.9.0" />
     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.SQLite" Version="9.9.0" />
+    <PackageVersion Include="Aspire.Hosting.Qdrant" Version="13.0.0" />
   </ItemGroup>
 </Project>

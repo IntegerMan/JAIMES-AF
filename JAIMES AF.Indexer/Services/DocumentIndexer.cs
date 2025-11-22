@@ -1,10 +1,11 @@
+using System.Diagnostics;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.KernelMemory;
 
 namespace MattEland.Jaimes.Indexer.Services;
 
-public class DocumentIndexer(ILogger<DocumentIndexer> logger, IKernelMemory memory) : IDocumentIndexer
+public class DocumentIndexer(ILogger<DocumentIndexer> logger, IKernelMemory memory, ActivitySource activitySource) : IDocumentIndexer
 {
     public async Task<bool> DocumentExistsAsync(string filePath, string indexName, CancellationToken cancellationToken = default)
     {
@@ -31,14 +32,36 @@ public class DocumentIndexer(ILogger<DocumentIndexer> logger, IKernelMemory memo
         // All documents are stored in the unified "rulesets" index
         logger.LogInformation("Indexing document: {FilePath} with ruleset tag: {RulesetTag}, documentId: {DocumentId}", filePath, indexName, documentId);
         
-        return await memory.ImportDocumentAsync(
-            new Document(documentId)
-                .AddFile(filePath)
-                .AddTag("type", "sourcebook")
-                .AddTag("ruleset", indexName)  // Use indexName as the ruleset tag for filtering
-                .AddTag("fileName", fileInfo.Name),
-            index: "rulesets",  // All documents go to the unified rulesets index
-            cancellationToken: cancellationToken);
+        using Activity? activity = activitySource.StartActivity("Indexing.ImportDocument");
+        activity?.SetTag("indexer.document_id", documentId);
+        activity?.SetTag("indexer.file_path", filePath);
+        activity?.SetTag("indexer.file_name", fileInfo.Name);
+        activity?.SetTag("indexer.ruleset_tag", indexName);
+        activity?.SetTag("indexer.file_size", fileInfo.Exists ? fileInfo.Length : 0);
+        
+        try
+        {
+            string result = await memory.ImportDocumentAsync(
+                new Document(documentId)
+                    .AddFile(filePath)
+                    .AddTag("type", "sourcebook")
+                    .AddTag("ruleset", indexName)  // Use indexName as the ruleset tag for filtering
+                    .AddTag("fileName", fileInfo.Name),
+                index: "rulesets",  // All documents go to the unified rulesets index
+                cancellationToken: cancellationToken);
+            
+            activity?.SetTag("indexer.import_status", "success");
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            activity?.SetTag("indexer.import_status", "error");
+            activity?.SetTag("indexer.error_message", ex.Message);
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            throw;
+        }
     }
 
     private static string GetDocumentId(string filePath, string indexName)
