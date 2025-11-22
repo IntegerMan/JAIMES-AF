@@ -28,6 +28,9 @@ DocumentScanOptions options = BindOptions(builder);
 // Add MongoDB client integration
 builder.AddMongoDBClient("documents");
 
+// Add RabbitMQ client integration
+builder.AddRabbitMQClient(connectionName: "messaging");
+
 builder.Services.AddSingleton(options);
 builder.Services.AddSingleton<IDirectoryScanner, DirectoryScanner>();
 builder.Services.AddSingleton<DocumentCrackingOrchestrator>();

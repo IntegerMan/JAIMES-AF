@@ -61,6 +61,13 @@ IResourceBuilder<MongoDBServerResource> mongo = builder.AddMongoDB("mongo")
 
 IResourceBuilder<MongoDBDatabaseResource> mongoDb = mongo.AddDatabase("documents");
 
+// Add RabbitMQ for messaging
+var username = builder.AddParameter("rabbit-username", "guest", secret: false);
+var password = builder.AddParameter("rabbit-password", "guest", secret: true);
+IResourceBuilder<RabbitMQServerResource> rabbitmq = builder.AddRabbitMQ("messaging", username, password)
+    .WithIconName("AnimalRabbit")
+    .WithManagementPlugin();
+
 // Add Seq for advanced log monitoring and analysis
 IResourceBuilder<SeqResource> seq = builder.AddSeq("seq")
     .WithIconName("DeveloperBoardSearch")
@@ -215,7 +222,9 @@ builder.AddProject<Projects.JAIMES_AF_DocumentCracker>("document-cracker")
     .WithReference(seq)
     .WaitFor(seq)
     .WithReference(mongoDb)
-    .WaitFor(mongo);
+    .WaitFor(mongo)
+    .WithReference(rabbitmq)
+    .WaitFor(rabbitmq);
 
 var app = builder.Build();
 

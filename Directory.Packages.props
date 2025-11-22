@@ -62,5 +62,7 @@
     <PackageVersion Include="Aspire.Seq" Version="13.0.0" />
     <PackageVersion Include="Aspire.Hosting.MongoDB" Version="13.0.0" />
     <PackageVersion Include="Aspire.MongoDB.Driver" Version="13.0.0" />
+    <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="13.0.0" />
+    <PackageVersion Include="Aspire.RabbitMQ.Client" Version="13.0.0" />
   </ItemGroup>
 </Project>
