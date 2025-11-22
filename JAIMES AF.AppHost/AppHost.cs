@@ -12,6 +12,11 @@
         .WithEndpoint(6379, 6379, name: "redis")
         .WithBindMount(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aspire", "jaimes-redis-data"), "/data");
 
+    // Helper function to create standardized Redis connection string from endpoint reference
+    // Note: ContainerResource doesn't support WithReference directly, so we use WithEnvironment with endpoint references
+    static string CreateRedisConnectionString(EndpointReference endpoint) =>
+        $"{endpoint.Host}:{endpoint.Port},abortConnect=false,connectRetry=5,connectTimeout=10000";
+
     IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIMES_AF_ApiService>("apiservice")
         .WithIconName("DocumentGlobe", IconVariant.Regular)
         .WithExternalHttpEndpoints()
@@ -34,7 +39,11 @@
             DisplayText = "👨‍⚕️ Health"
         })
         .WaitFor(redis)
-        .WithEnvironment("VectorDb__ConnectionString", "localhost:6379,abortConnect=false,connectRetry=5,connectTimeout=10000");
+        .WithEnvironment(context =>
+        {
+            EndpointReference redisEndpoint = redis.GetEndpoint("redis");
+            context.EnvironmentVariables["VectorDb__ConnectionString"] = CreateRedisConnectionString(redisEndpoint);
+        });
 
     builder.AddProject<Projects.JAIMES_AF_Web>("webfrontend")
         .WithIconName("GameChat")
@@ -71,10 +80,12 @@
 
     IResourceBuilder<ProjectResource> indexer = builder.AddProject<Projects.JAIMES_AF_Indexer>("indexer")
         .WithIconName("DocumentSearch", IconVariant.Regular)
-        .WaitFor(redis)
         .WithExplicitStart()
-        // Connect to Redis - using localhost since Redis container is accessible on localhost when managed by Aspire
-        .WithEnvironment("Indexer__VectorDbConnectionString", "localhost:6379,abortConnect=false,connectRetry=5,connectTimeout=10000");
+        .WithEnvironment(context =>
+        {
+            EndpointReference redisEndpoint = redis.GetEndpoint("redis");
+            context.EnvironmentVariables["Indexer__VectorDbConnectionString"] = CreateRedisConnectionString(redisEndpoint);
+        });
 
     var app = builder.Build();
 
