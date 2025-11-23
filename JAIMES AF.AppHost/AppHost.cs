@@ -55,11 +55,12 @@ IResourceBuilder<IResourceWithConnectionString> sqliteDb = builder.AddSqlite("ja
 // Add MongoDB for document storage
 IResourceBuilder<MongoDBServerResource> mongo = builder.AddMongoDB("mongo")
     .WithIconName("BookDatabase")
-    .WithMongoExpress(exp => exp.WithIconName("NotebookAdd"))
+    .WithMongoExpress(exp => exp.WithIconName("DocumentAdd"))
     .WithLifetime(ContainerLifetime.Persistent)
     .WithDataVolume();
 
-IResourceBuilder<MongoDBDatabaseResource> mongoDb = mongo.AddDatabase("documents");
+IResourceBuilder<MongoDBDatabaseResource> mongoDb = mongo.AddDatabase("documents")
+    .WithIconName("DocumentData");
 
 // Add RabbitMQ for messaging
 var username = builder.AddParameter("rabbit-username", "guest", secret: false);
@@ -149,6 +150,7 @@ IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIME
     .WaitFor(ollama)
     .WaitFor(sqliteDb)
     .WaitFor(seq)
+    .WaitFor(kernelMemory)
     .WithEnvironment(context =>
     {
         EndpointReference redisEndpoint = redis.GetEndpoint("redis");
@@ -157,6 +159,10 @@ IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIME
         // Explicitly set the SQLite connection string to ensure it's available as DefaultConnection
         context.EnvironmentVariables["ConnectionStrings__DefaultConnection"] =
             sqliteDb.Resource.ConnectionStringExpression;
+
+        // Set Kernel Memory endpoint for MemoryWebClient
+        EndpointReference kernelMemoryEndpoint = kernelMemory.GetEndpoint("http");
+        context.EnvironmentVariables["KernelMemory__Endpoint"] = $"http://{kernelMemoryEndpoint.Host}:{kernelMemoryEndpoint.Port}";
     });
 
 builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")
@@ -203,12 +209,14 @@ builder.AddProject<Projects.JAIMES_AF_Indexer>("indexer")
     .WaitFor(ollama)
     .WaitFor(qdrant)
     .WaitFor(seq)
+    .WaitFor(kernelMemory)
     .WithEnvironment(context =>
     {
-        EndpointReference redisEndpoint = redis.GetEndpoint("redis");
-        context.EnvironmentVariables["Indexer__VectorDbConnectionString"] = CreateRedisConnectionString(redisEndpoint);
+        // Set Kernel Memory endpoint for MemoryWebClient
+        EndpointReference kernelMemoryEndpoint = kernelMemory.GetEndpoint("http");
+        context.EnvironmentVariables["KernelMemory__Endpoint"] = $"http://{kernelMemoryEndpoint.Host}:{kernelMemoryEndpoint.Port}";
         
-        // Set Ollama endpoint URL for the indexer
+        // Set Ollama endpoint URL for the indexer (if still needed for other purposes)
         // Use endpoint reference that resolves at runtime when endpoint is allocated
         EndpointReference ollamaEndpoint = ollama.GetEndpoint("http");
         // Construct the URI expression - Aspire will resolve the {host} and {port} expressions at runtime
@@ -217,7 +225,7 @@ builder.AddProject<Projects.JAIMES_AF_Indexer>("indexer")
     });
 
 builder.AddProject<Projects.JAIMES_AF_DocumentCracker>("document-cracker")
-    .WithIconName("ClipboardTextLtr")
+    .WithIconName("ClipboardText")
     .WithExplicitStart()
     .WithReference(seq)
     .WaitFor(seq)
