@@ -100,6 +100,10 @@ public class QdrantEmbeddingStore(
 
         try
         {
+            // Ensure collection exists before storing (in case it wasn't created earlier)
+            // This provides a safety net if EnsureCollectionExistsAsync failed during ProcessDocumentAsync
+            await EnsureCollectionExistsAsync(cancellationToken);
+
             // Convert metadata to Qdrant payload
             Dictionary<string, Value> payload = new();
             foreach ((string key, string value) in metadata)

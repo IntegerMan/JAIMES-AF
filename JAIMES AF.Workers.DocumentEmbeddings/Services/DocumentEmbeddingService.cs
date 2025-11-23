@@ -26,13 +26,14 @@ public class DocumentEmbeddingService(
                 message.DocumentId, message.FileName);
 
             // Ensure collection exists before processing (in case it wasn't created on startup)
+            // Note: StoreEmbeddingAsync will also ensure collection exists as a safety net
             try
             {
                 await qdrantStore.EnsureCollectionExistsAsync(cancellationToken);
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Failed to ensure collection exists, will retry. Continuing with document processing...");
+                logger.LogWarning(ex, "Failed to ensure collection exists during initial check, will retry during storage. Continuing with document processing...");
             }
 
             // Step 1: Download document content from MongoDB
