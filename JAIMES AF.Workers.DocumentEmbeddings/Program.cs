@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -59,38 +60,17 @@ string? qdrantHost = builder.Configuration["EmbeddingWorker:QdrantHost"]
 string? qdrantPortStr = builder.Configuration["EmbeddingWorker:QdrantPort"]
     ?? builder.Configuration["EmbeddingWorker__QdrantPort"];
 
-if (string.IsNullOrWhiteSpace(qdrantHost) || string.IsNullOrWhiteSpace(qdrantPortStr))
-{
-    // Fallback: try to parse from connection string if provided
-    string? qdrantConnectionString = builder.Configuration.GetConnectionString("qdrant-embeddings")
-        ?? builder.Configuration["ConnectionStrings:qdrant-embeddings"]
-        ?? builder.Configuration["ConnectionStrings__qdrant-embeddings"];
+string? qdrantConnectionString = builder.Configuration.GetConnectionString("qdrant-embeddings")
+    ?? builder.Configuration["ConnectionStrings:qdrant-embeddings"]
+    ?? builder.Configuration["ConnectionStrings__qdrant-embeddings"];
 
-    if (!string.IsNullOrWhiteSpace(qdrantConnectionString))
-    {
-        // Try to parse as URI, but handle non-URI formats gracefully
-        if (Uri.TryCreate(qdrantConnectionString, UriKind.Absolute, out Uri? qdrantUri))
-        {
-            qdrantHost = qdrantUri.Host;
-            qdrantPortStr = qdrantUri.Port > 0 ? qdrantUri.Port.ToString() : "6333";
-        }
-        else
-        {
-            // Try parsing as host:port format
-            string[] parts = qdrantConnectionString.Split(':');
-            if (parts.Length >= 2)
-            {
-                qdrantHost = parts[0];
-                qdrantPortStr = parts[1];
-            }
-            else if (parts.Length == 1)
-            {
-                // Just hostname, use default port
-                qdrantHost = parts[0];
-                qdrantPortStr = "6333";
-            }
-        }
-    }
+string? qdrantApiKey = builder.Configuration["Qdrant__ApiKey"]
+    ?? builder.Configuration["Qdrant:ApiKey"];
+
+if ((string.IsNullOrWhiteSpace(qdrantHost) || string.IsNullOrWhiteSpace(qdrantPortStr) || string.IsNullOrWhiteSpace(qdrantApiKey))
+    && !string.IsNullOrWhiteSpace(qdrantConnectionString))
+{
+    ApplyQdrantConnectionString(qdrantConnectionString, ref qdrantHost, ref qdrantPortStr, ref qdrantApiKey);
 }
 
 if (string.IsNullOrWhiteSpace(qdrantHost) || string.IsNullOrWhiteSpace(qdrantPortStr))
@@ -106,22 +86,15 @@ if (!int.TryParse(qdrantPortStr, out int qdrantPort))
         $"Invalid Qdrant port: '{qdrantPortStr}'. Expected a valid integer.");
 }
 
-// Get API key from configuration (Aspire injects this)
-string? qdrantApiKey = builder.Configuration["Qdrant__ApiKey"]
-    ?? builder.Configuration["Qdrant:ApiKey"];
-
-// QdrantClient uses gRPC which requires port 6334 and https: true
+// QdrantClient uses the gRPC endpoint (container port 6334, though Aspire may map it to another host port)
 // Port 6333 is for HTTP REST API, port 6334 is for gRPC
-if (qdrantPort != 6334)
-{
-    throw new InvalidOperationException(
-        $"QdrantClient requires gRPC port 6334, but got port {qdrantPort}. " +
-        "QdrantClient uses gRPC protocol, not HTTP REST API.");
-}
+// For local development, Qdrant typically doesn't use HTTPS, so use http: false
+// In production with proper TLS setup, this should be set to true
+bool useHttps = builder.Configuration.GetValue<bool>("EmbeddingWorker:QdrantUseHttps", defaultValue: false);
 
 QdrantClient qdrantClient = string.IsNullOrWhiteSpace(qdrantApiKey)
-    ? new QdrantClient(qdrantHost, port: qdrantPort, https: true)
-    : new QdrantClient(qdrantHost, port: qdrantPort, https: true, apiKey: qdrantApiKey);
+    ? new QdrantClient(qdrantHost, port: qdrantPort, https: useHttps)
+    : new QdrantClient(qdrantHost, port: qdrantPort, https: useHttps, apiKey: qdrantApiKey);
 
 builder.Services.AddSingleton(qdrantClient);
 
@@ -355,7 +328,7 @@ ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 IQdrantEmbeddingStore qdrantStore = host.Services.GetRequiredService<IQdrantEmbeddingStore>();
 
 logger.LogInformation("Starting Document Embeddings Worker");
-logger.LogInformation("Qdrant: {Host}:{Port}", qdrantHost, qdrantPort);
+logger.LogInformation("Qdrant: {Host}:{Port} (HTTPS: {UseHttps})", qdrantHost, qdrantPort, useHttps);
 logger.LogInformation("Ollama Model: {Model}", options.OllamaModel ?? "nomic-embed-text");
 
 // Ensure Qdrant collection exists on startup
@@ -376,4 +349,133 @@ catch (Exception ex)
 }
 
 await host.RunAsync();
+
+static void ApplyQdrantConnectionString(
+    string connectionString,
+    ref string? host,
+    ref string? port,
+    ref string? apiKey)
+{
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        return;
+    }
+
+    if (Uri.TryCreate(connectionString, UriKind.Absolute, out Uri? uri))
+    {
+        host ??= uri.Host;
+        if (uri.Port > 0)
+        {
+            port ??= uri.Port.ToString(CultureInfo.InvariantCulture);
+        }
+
+        ExtractApiKeyFromQuery(uri.Query, ref apiKey);
+        return;
+    }
+
+    if (TryParseHostAndPort(connectionString, out string? parsedHost, out string? parsedPort))
+    {
+        host ??= parsedHost;
+        if (string.IsNullOrWhiteSpace(port) && !string.IsNullOrWhiteSpace(parsedPort))
+        {
+            port = parsedPort;
+        }
+    }
+
+    string[] segments = connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries);
+    foreach (string segment in segments)
+    {
+        string[] keyValue = segment.Split('=', 2, StringSplitOptions.TrimEntries);
+        if (keyValue.Length != 2)
+        {
+            continue;
+        }
+
+        string key = keyValue[0];
+        string value = keyValue[1];
+
+        if (string.Equals(key, "Endpoint", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(key, "Uri", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(key, "GrpcUri", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyQdrantConnectionString(value, ref host, ref port, ref apiKey);
+            continue;
+        }
+
+        if (string.Equals(key, "Host", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(key, "Hostname", StringComparison.OrdinalIgnoreCase))
+        {
+            host ??= value;
+            continue;
+        }
+
+        if (string.Equals(key, "Port", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(key, "GrpcPort", StringComparison.OrdinalIgnoreCase))
+        {
+            port ??= value;
+            continue;
+        }
+
+        if (string.Equals(key, "ApiKey", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(key, "Api-Key", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(key, "Api_Key", StringComparison.OrdinalIgnoreCase))
+        {
+            apiKey ??= value;
+        }
+    }
+}
+
+static bool TryParseHostAndPort(string value, out string? host, out string? port)
+{
+    host = null;
+    port = null;
+
+    if (string.IsNullOrWhiteSpace(value) || value.Contains('='))
+    {
+        return false;
+    }
+
+    string[] hostParts = value.Split(':', StringSplitOptions.RemoveEmptyEntries);
+    if (hostParts.Length == 0)
+    {
+        return false;
+    }
+
+    host = hostParts[0];
+    if (hostParts.Length > 1)
+    {
+        port = hostParts[1];
+    }
+
+    return true;
+}
+
+static void ExtractApiKeyFromQuery(string query, ref string? apiKey)
+{
+    if (string.IsNullOrWhiteSpace(query) || !string.IsNullOrWhiteSpace(apiKey))
+    {
+        return;
+    }
+
+    string trimmedQuery = query.TrimStart('?');
+    string[] pairs = trimmedQuery.Split('&', StringSplitOptions.RemoveEmptyEntries);
+
+    foreach (string pair in pairs)
+    {
+        string[] keyValue = pair.Split('=', 2);
+        if (keyValue.Length != 2)
+        {
+            continue;
+        }
+
+        string key = keyValue[0];
+        if (string.Equals(key, "api-key", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(key, "apikey", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(key, "api_key", StringComparison.OrdinalIgnoreCase))
+        {
+            apiKey = Uri.UnescapeDataString(keyValue[1]);
+            break;
+        }
+    }
+}
 

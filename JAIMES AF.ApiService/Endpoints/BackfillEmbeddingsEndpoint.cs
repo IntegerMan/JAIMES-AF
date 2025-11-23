@@ -37,10 +37,9 @@ public class BackfillEmbeddingsEndpoint : Ep.NoReq.Res<BackfillEmbeddingsRespons
 
         Logger.LogInformation("Found {Count} unprocessed documents", unprocessedDocuments.Count);
 
-        List<string> documentIds = new();
-        int queuedCount = 0;
-
-        // Publish messages for each unprocessed document
+        // Filter out documents with empty IDs and create publish tasks
+        List<(CrackedDocument Document, Task PublishTask)> publishTasks = new();
+        
         foreach (CrackedDocument document in unprocessedDocuments)
         {
             if (string.IsNullOrWhiteSpace(document.Id))
@@ -49,37 +48,79 @@ public class BackfillEmbeddingsEndpoint : Ep.NoReq.Res<BackfillEmbeddingsRespons
                 continue;
             }
 
+            DocumentCrackedMessage message = new()
+            {
+                DocumentId = document.Id,
+                FilePath = document.FilePath,
+                FileName = document.FileName,
+                RelativeDirectory = document.RelativeDirectory,
+                FileSize = document.FileSize,
+                PageCount = document.PageCount,
+                CrackedAt = document.CrackedAt
+            };
+
+            // Create publish task - don't await yet, we'll await all in parallel
+            Task publishTask = PublishEndpoint.Publish(message, ct)
+                .ContinueWith(t =>
+                {
+                    if (t.IsFaulted && t.Exception != null)
+                    {
+                        Logger.LogError(t.Exception.GetBaseException(), "Failed to queue document {DocumentId} for embedding: {FilePath}", 
+                            document.Id, document.FilePath);
+                    }
+                    else if (t.IsCompletedSuccessfully)
+                    {
+                        Logger.LogDebug("Queued document {DocumentId} for embedding: {FilePath}", document.Id, document.FilePath);
+                    }
+                    return t;
+                }, TaskContinuationOptions.ExecuteSynchronously);
+
+            publishTasks.Add((document, publishTask));
+        }
+
+        // Publish all messages in parallel (fire-and-forget)
+        Logger.LogInformation("Starting to publish {Count} messages to RabbitMQ in parallel (fire-and-forget)", publishTasks.Count);
+        
+        // Start all publish operations but don't wait for them - return immediately
+        // The publishes will continue in the background
+        List<string> documentIds = publishTasks
+            .Select(t => t.Document.Id!)
+            .ToList();
+        
+        // Fire off all publishes in the background - don't await
+        _ = Task.Run(async () =>
+        {
             try
             {
-                DocumentCrackedMessage message = new()
+                await Task.WhenAll(publishTasks.Select(t => t.PublishTask));
+                
+                // Count successes after all complete
+                int successCount = publishTasks.Count(t => t.PublishTask.IsCompletedSuccessfully);
+                int failedCount = publishTasks.Count - successCount;
+                
+                if (failedCount > 0)
                 {
-                    DocumentId = document.Id,
-                    FilePath = document.FilePath,
-                    FileName = document.FileName,
-                    RelativeDirectory = document.RelativeDirectory,
-                    FileSize = document.FileSize,
-                    PageCount = document.PageCount,
-                    CrackedAt = document.CrackedAt
-                };
-
-                await PublishEndpoint.Publish(message, ct);
-                documentIds.Add(document.Id);
-                queuedCount++;
-
-                Logger.LogDebug("Queued document {DocumentId} for embedding: {FilePath}", document.Id, document.FilePath);
+                    Logger.LogWarning("Background publish completed: {SuccessCount} succeeded, {FailedCount} failed out of {TotalCount} documents", 
+                        successCount, failedCount, publishTasks.Count);
+                }
+                else
+                {
+                    Logger.LogInformation("Background publish completed: Successfully queued all {Count} documents for embedding", 
+                        publishTasks.Count);
+                }
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Failed to queue document {DocumentId} for embedding: {FilePath}", document.Id, document.FilePath);
+                Logger.LogError(ex, "Error during background publish of documents");
             }
-        }
-
-        Logger.LogInformation("Successfully queued {QueuedCount} of {TotalCount} unprocessed documents for embedding", 
-            queuedCount, unprocessedDocuments.Count);
-
+        }, ct);
+        
+        // Return immediately with the count of documents that will be processed
+        Logger.LogInformation("Returning immediately. {Count} documents are being queued in the background", documentIds.Count);
+        
         await Send.OkAsync(new BackfillEmbeddingsResponse
         {
-            DocumentsQueued = queuedCount,
+            DocumentsQueued = documentIds.Count,
             TotalUnprocessed = unprocessedDocuments.Count,
             DocumentIds = documentIds.ToArray()
         }, cancellation: ct);

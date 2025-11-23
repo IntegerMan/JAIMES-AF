@@ -179,8 +179,13 @@ public static class Extensions
     /// </summary>
     public static void ConfigureResilienceHandlerExcludingPost(HttpStandardResilienceOptions options)
     {
-        // Configure a longer timeout (5 minutes) for operations that may take significant time
-        options.TotalRequestTimeout.Timeout = TimeSpan.FromMinutes(5);
+        // Configure longer per-attempt and total request timeouts for operations that may take significant time
+        TimeSpan extendedTimeout = TimeSpan.FromMinutes(5);
+        options.AttemptTimeout.Timeout = extendedTimeout;
+        options.TotalRequestTimeout.Timeout = extendedTimeout;
+
+        // Ensure the circuit breaker sampling window is at least double the attempt timeout per Polly requirements
+        options.CircuitBreaker.SamplingDuration = extendedTimeout + extendedTimeout;
         
         options.Retry.ShouldHandle = args =>
         {

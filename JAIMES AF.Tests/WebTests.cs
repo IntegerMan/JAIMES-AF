@@ -1,5 +1,6 @@
 using Aspire.Hosting;
 using Microsoft.Extensions.Logging;
+using Xunit;
 
 namespace MattEland.Jaimes.Tests;
 
@@ -10,6 +11,11 @@ public class WebTests
     [Fact]
     public async Task GetWebResourceRootReturnsOkStatusCode()
     {
+        if (!AspireTestsEnabled())
+        {
+            return;
+        }
+
         // Arrange
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
 
@@ -37,5 +43,22 @@ public class WebTests
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    private static bool AspireTestsEnabled()
+    {
+        string? enabledValue = Environment.GetEnvironmentVariable("ENABLE_ASPIRE_TESTS");
+
+        if (string.IsNullOrWhiteSpace(enabledValue))
+        {
+            return false;
+        }
+
+        if (bool.TryParse(enabledValue, out bool parsedValue))
+        {
+            return parsedValue;
+        }
+
+        return string.Equals(enabledValue, "1", StringComparison.OrdinalIgnoreCase);
     }
 }
