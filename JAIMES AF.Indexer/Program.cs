@@ -4,7 +4,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.KernelMemory;
-using Microsoft.KernelMemory.MemoryDb.Redis;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -13,7 +12,6 @@ using Spectre.Console;
 using MattEland.Jaimes.DocumentProcessing.Services;
 using MattEland.Jaimes.Indexer.Configuration;
 using MattEland.Jaimes.Indexer.Services;
-using MattEland.Jaimes.Services.Configuration;
 using MattEland.Jaimes.ServiceDefaults;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
@@ -105,21 +103,28 @@ if (!Uri.TryCreate(ollamaEndpoint, UriKind.Absolute, out Uri? validatedUri))
         "Check that the Ollama endpoint is properly configured in AppHost.");
 }
 
-// Use Redis as the vector store for Kernel Memory
-// Redis provides better performance and document listing capabilities than SimpleVectorDb
-// Connection string format: "localhost:6379" or "localhost:6379,password=xxx" or full connection string
-string redisConnectionString = options.VectorDbConnectionString;
+// Connect to Kernel Memory service container via MemoryWebClient
+// The Kernel Memory service is running in a container and exposed via HTTP
+string? kernelMemoryEndpoint = builder.Configuration["KernelMemory__Endpoint"]
+    ?? builder.Configuration["ConnectionStrings:kernel-memory"]
+    ?? builder.Configuration["ConnectionStrings__kernel-memory"];
 
-// Use centralized RedisConfig creation to ensure consistency
-RedisConfig redisConfig = RedisConfigHelper.CreateRedisConfig(redisConnectionString);
+if (string.IsNullOrWhiteSpace(kernelMemoryEndpoint))
+{
+    // Fallback to default localhost endpoint if not configured
+    kernelMemoryEndpoint = "http://localhost:9001";
+    ILogger<Program> tempLogger = builder.Services.BuildServiceProvider().GetRequiredService<ILogger<Program>>();
+    tempLogger.LogWarning(
+        "Kernel Memory endpoint not found in configuration. Using default: {Endpoint}",
+        kernelMemoryEndpoint);
+}
 
-// Use Redis as the vector store for Kernel Memory
-// Note: WithOllamaTextEmbeddingGeneration parameter order is (model, endpoint)
-IKernelMemory memory = new KernelMemoryBuilder()
-    .WithOllamaTextEmbeddingGeneration(options.OllamaModel, ollamaEndpoint)
-    .WithoutTextGenerator()
-    .WithRedisMemoryDb(redisConfig)
-    .Build();
+// Normalize endpoint URL - remove trailing slash to avoid 404 errors
+string normalizedKernelMemoryEndpoint = kernelMemoryEndpoint.TrimEnd('/');
+
+// Create MemoryWebClient to connect to the Kernel Memory container
+// MemoryWebClient implements IKernelMemory and communicates via HTTP
+IKernelMemory memory = new MemoryWebClient(normalizedKernelMemoryEndpoint);
 
 builder.Services.AddSingleton(memory);
 
@@ -174,7 +179,7 @@ try
             .HideHeaders()
             .Border(TableBorder.None)
             .AddRow("[dim]Source Directory:[/]", $"[cyan]{options.SourceDirectory}[/]")
-            .AddRow("[dim]Redis Connection:[/]", $"[cyan]{redisConnectionString}[/]")
+            .AddRow("[dim]Kernel Memory Endpoint:[/]", $"[cyan]{normalizedKernelMemoryEndpoint}[/]")
             .AddRow("[dim]Supported Extensions:[/]", $"[cyan]{string.Join(", ", options.SupportedExtensions)}[/]")
             .AddRow("[dim]Ollama Endpoint:[/]", $"[cyan]{ollamaEndpoint}[/]")
             .AddRow("[dim]Embedding Model:[/]", $"[cyan]{options.OllamaModel}[/]")

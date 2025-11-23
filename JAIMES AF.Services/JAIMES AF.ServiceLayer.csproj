@@ -24,7 +24,7 @@
     <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Http.Polly" />
     <PackageReference Include="Microsoft.KernelMemory.Core" />
-    <PackageReference Include="Microsoft.KernelMemory.MemoryDb.Redis" />
+    <PackageReference Include="Microsoft.KernelMemory.WebClient" />
     <PackageReference Include="Riok.Mapperly" />
     <PackageReference Include="Scrutor" />
   </ItemGroup>

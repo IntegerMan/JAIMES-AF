@@ -21,8 +21,14 @@ builder.AddSeqEndpoint("seq");
 // Configure OpenTelemetry for Aspire telemetry
 builder.ConfigureOpenTelemetry();
 
+// Configure logging with OpenTelemetry
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
+builder.Logging.AddOpenTelemetry(logging =>
+{
+    logging.IncludeFormattedMessage = true;
+    logging.IncludeScopes = true;
+});
 
 builder.Configuration
     .SetBasePath(Directory.GetCurrentDirectory())
@@ -44,8 +50,16 @@ builder.AddRabbitMQClient(connectionName: "messaging");
 const string activitySourceName = "Jaimes.DocumentCracker";
 ActivitySource activitySource = new(activitySourceName);
 
-// Add ActivitySource to OpenTelemetry tracing
+// Add ActivitySource to OpenTelemetry tracing (ConfigureOpenTelemetry already sets up OTLP exporter)
 builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource
+        .AddService(activitySourceName))
+    .WithMetrics(metrics =>
+    {
+        metrics.AddRuntimeInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddMeter(activitySourceName);
+    })
     .WithTracing(tracing =>
     {
         tracing.AddSource(activitySourceName)

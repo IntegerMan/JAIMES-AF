@@ -45,7 +45,7 @@ public class RulesSearchService : IRulesSearchService
         List<MemoryFilter> filters = [new MemoryFilter().ByTag("rulesetId", rulesetId)];
         
         // Create OpenTelemetry activity for the overall search operation
-        // Note: Individual Redis queries are automatically instrumented by TelemetryRedisMemoryDb
+        // Note: HTTP requests to Kernel Memory service are automatically instrumented by HttpClient instrumentation
         using Activity? activity = ActivitySource.StartActivity("RulesSearch.Search");
         if (activity != null)
         {
@@ -129,12 +129,12 @@ public class RulesSearchService : IRulesSearchService
             filters = [new MemoryFilter().ByTag("rulesetId", rulesetId)];
         }
         
-        // Create OpenTelemetry activity for Redis search operation
+        // Create OpenTelemetry activity for search operation
         using Activity? activity = ActivitySource.StartActivity("RulesSearch.SearchDetailed");
         if (activity != null)
         {
-            activity.SetTag("db.system", "redis");
-            activity.SetTag("db.operation", "search");
+            activity.SetTag("http.method", "POST");
+            activity.SetTag("http.route", "/memory/search");
             activity.SetTag("ruleset.id", rulesetId ?? "all");
             activity.SetTag("search.index", indexName);
             activity.SetTag("search.query", query);
@@ -146,7 +146,7 @@ public class RulesSearchService : IRulesSearchService
         try
         {
             // Search the unified rulesets index, with optional filtering by rulesetId tag
-            // Note: Individual Redis queries are automatically instrumented by TelemetryRedisMemoryDb
+            // Note: HTTP requests to Kernel Memory service are automatically instrumented by HttpClient instrumentation
             searchResult = await _memory.SearchAsync(
                 query: query,
                 index: indexName,
@@ -289,12 +289,12 @@ public class RulesSearchService : IRulesSearchService
         // Combine title and content for indexing
         string fullContent = $"Title: {title}\n\nContent: {content}";
 
-        // Create OpenTelemetry activity for Redis indexing operation
+        // Create OpenTelemetry activity for indexing operation
         using Activity? activity = ActivitySource.StartActivity("RulesSearch.Index");
         if (activity != null)
         {
-            activity.SetTag("db.system", "redis");
-            activity.SetTag("db.operation", "index");
+            activity.SetTag("http.method", "POST");
+            activity.SetTag("http.route", "/memory/documents");
             activity.SetTag("ruleset.id", rulesetId);
             activity.SetTag("rule.id", ruleId);
             activity.SetTag("document.id", documentId);
