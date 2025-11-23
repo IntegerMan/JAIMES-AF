@@ -22,7 +22,7 @@ IResourceBuilder<OllamaResource> ollama = builder.AddOllama("ollama-models")
     }, "open-webUI");
     */
 
-var embedModel = ollama.AddModel("nomic-embed-text").WithIconName("DocumentTextExtract");
+var embedModel = ollama.AddModel("nomic-embed-text").WithIconName("CodeTextEdit");
 var chatModel = ollama.AddModel("gemma3").WithIconName("CommentText");
 
 // NOTE: There is an Aspire integration for Redis, but it doesn't support Redis-Stack. If you customize the image, it still doesn't start Redis-Stack afterwards.
@@ -225,7 +225,7 @@ builder.AddProject<Projects.JAIMES_AF_Indexer>("indexer")
     });
 
 builder.AddProject<Projects.JAIMES_AF_DocumentCracker>("document-cracker")
-    .WithIconName("ClipboardText")
+    .WithIconName("DocumentTextExtract")
     .WithExplicitStart()
     .WithReference(seq)
     .WaitFor(seq)
