@@ -143,6 +143,13 @@ logger.LogInformation("Starting Document Scanner Worker");
 
 await host.RunAsync();
 
+// Log and use the exit code set by the background service
+int exitCode = Environment.ExitCode;
+logger.LogInformation("Application exiting with code: {ExitCode}", exitCode);
+
+// Explicitly exit with the code (though Environment.ExitCode would be used automatically)
+Environment.Exit(exitCode);
+
 
 
 

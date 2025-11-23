@@ -37,12 +37,13 @@ public class DocumentScannerService(
         scanActivity?.SetTag("scanner.content_directory", contentDirectory);
         scanActivity?.SetTag("scanner.supported_extensions", string.Join(", ", options.SupportedExtensions));
 
-        // Get MongoDB collection
+        // Get MongoDB collections
         IMongoDatabase database = mongoClient.GetDatabase("documents");
-        IMongoCollection<DocumentMetadata> collection = database.GetCollection<DocumentMetadata>("documentMetadata");
+        IMongoCollection<DocumentMetadata> metadataCollection = database.GetCollection<DocumentMetadata>("documentMetadata");
+        IMongoCollection<CrackedDocument> crackedCollection = database.GetCollection<CrackedDocument>("crackedDocuments");
 
         // Ensure index on FilePath for fast lookups
-        await collection.Indexes.CreateOneAsync(
+        await metadataCollection.Indexes.CreateOneAsync(
             new CreateIndexModel<DocumentMetadata>(
                 Builders<DocumentMetadata>.IndexKeys.Ascending(x => x.FilePath),
                 new CreateIndexOptions { Unique = true }),
@@ -60,7 +61,7 @@ public class DocumentScannerService(
                 break;
             }
 
-            await ProcessDirectoryAsync(directory, contentDirectory, collection, summary, cancellationToken);
+            await ProcessDirectoryAsync(directory, contentDirectory, metadataCollection, crackedCollection, summary, cancellationToken);
         }
 
         if (scanActivity != null)
@@ -82,7 +83,8 @@ public class DocumentScannerService(
     private async Task ProcessDirectoryAsync(
         string directory,
         string rootDirectory,
-        IMongoCollection<DocumentMetadata> collection,
+        IMongoCollection<DocumentMetadata> metadataCollection,
+        IMongoCollection<CrackedDocument> crackedCollection,
         DocumentScanSummary summary,
         CancellationToken cancellationToken)
     {
@@ -107,23 +109,40 @@ public class DocumentScannerService(
                 fileActivity?.SetTag("scanner.file_hash", currentHash);
 
                 // Get stored metadata
-                DocumentMetadata? storedMetadata = await GetStoredMetadataAsync(collection, filePath, cancellationToken);
+                DocumentMetadata? storedMetadata = await GetStoredMetadataAsync(metadataCollection, filePath, cancellationToken);
 
                 // Check if file has changed
                 if (storedMetadata != null && storedMetadata.Hash == currentHash)
                 {
-                    // File unchanged, update last scanned time
-                    await UpdateMetadataAsync(collection, filePath, currentHash, cancellationToken);
-                    summary.FilesUnchanged++;
-                    logger.LogDebug("File unchanged, skipping: {FilePath}", filePath);
-                    fileActivity?.SetTag("scanner.status", "unchanged");
+                    // File hash matches - check if document was successfully cracked
+                    bool isCracked = await IsDocumentCrackedAsync(crackedCollection, filePath, cancellationToken);
+                    
+                    if (isCracked)
+                    {
+                        // File unchanged and successfully cracked, update last scanned time
+                        await UpdateMetadataAsync(metadataCollection, filePath, currentHash, cancellationToken);
+                        summary.FilesUnchanged++;
+                        logger.LogDebug("File unchanged and cracked, skipping: {FilePath}", filePath);
+                        fileActivity?.SetTag("scanner.status", "unchanged");
+                    }
+                    else
+                    {
+                        // File hash matches but document wasn't cracked (likely failed previously)
+                        // Enqueue for retry
+                        string? relativeDirectory = GetRelativeDirectory(filePath, rootDirectory);
+                        await EnqueueDocumentAsync(filePath, relativeDirectory, cancellationToken);
+                        await UpdateMetadataAsync(metadataCollection, filePath, currentHash, cancellationToken);
+                        summary.FilesEnqueued++;
+                        logger.LogInformation("File hash unchanged but not cracked, enqueuing for retry: {FilePath} (Hash: {Hash})", filePath, currentHash);
+                        fileActivity?.SetTag("scanner.status", "retry_uncracked");
+                    }
                 }
                 else
                 {
                     // File is new or changed, enqueue for processing
                     string? relativeDirectory = GetRelativeDirectory(filePath, rootDirectory);
                     await EnqueueDocumentAsync(filePath, relativeDirectory, cancellationToken);
-                    await UpdateMetadataAsync(collection, filePath, currentHash, cancellationToken);
+                    await UpdateMetadataAsync(metadataCollection, filePath, currentHash, cancellationToken);
                     summary.FilesEnqueued++;
                     logger.LogInformation("File enqueued for processing: {FilePath} (Hash: {Hash})", filePath, currentHash);
                     fileActivity?.SetTag("scanner.status", storedMetadata == null ? "new" : "changed");
@@ -149,8 +168,18 @@ public class DocumentScannerService(
         return await collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
     }
 
+    private async Task<bool> IsDocumentCrackedAsync(
+        IMongoCollection<CrackedDocument> collection,
+        string filePath,
+        CancellationToken cancellationToken)
+    {
+        FilterDefinition<CrackedDocument> filter = Builders<CrackedDocument>.Filter.Eq(x => x.FilePath, filePath);
+        CrackedDocument? crackedDocument = await collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
+        return crackedDocument != null && !string.IsNullOrWhiteSpace(crackedDocument.Content);
+    }
+
     private async Task UpdateMetadataAsync(
-        IMongoCollection<DocumentMetadata> collection,
+        IMongoCollection<DocumentMetadata> metadataCollection,
         string filePath,
         string hash,
         CancellationToken cancellationToken)
@@ -162,7 +191,7 @@ public class DocumentScannerService(
 
         UpdateOptions options = new() { IsUpsert = true };
 
-        await collection.UpdateOneAsync(filter, update, options, cancellationToken);
+        await metadataCollection.UpdateOneAsync(filter, update, options, cancellationToken);
     }
 
     private async Task EnqueueDocumentAsync(

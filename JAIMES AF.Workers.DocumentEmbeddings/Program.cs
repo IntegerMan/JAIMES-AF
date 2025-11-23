@@ -1,8 +1,11 @@
 using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
 using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
@@ -142,8 +145,57 @@ builder.Services.AddSingleton(new OllamaEmbeddingOptions
     Model = options.OllamaModel ?? "nomic-embed-text"
 });
 
-// Register HttpClient for Ollama API calls
-builder.Services.AddHttpClient<IOllamaEmbeddingService, OllamaEmbeddingService>();
+// Register HttpClient for Ollama API calls with extended timeout and resilience
+// Embedding generation can take a long time for large documents, so we need:
+// 1. A longer timeout (configurable, default 15 minutes)
+// 2. Retry logic for transient errors (socket exceptions, timeouts)
+// 3. Allow POST retries since embedding generation is idempotent
+TimeSpan httpClientTimeout = TimeSpan.FromMinutes(options.HttpClientTimeoutMinutes);
+builder.Services.AddHttpClient<IOllamaEmbeddingService, OllamaEmbeddingService>(client =>
+{
+    client.Timeout = httpClientTimeout;
+})
+.AddStandardResilienceHandler(resilienceOptions =>
+{
+    // Configure a longer total request timeout (slightly longer than HttpClient timeout)
+    resilienceOptions.TotalRequestTimeout.Timeout = httpClientTimeout.Add(TimeSpan.FromMinutes(1));
+    
+    // Configure retry policy for transient errors
+    // Allow POST retries since embedding generation is idempotent
+    resilienceOptions.Retry.ShouldHandle = args =>
+    {
+        // Retry on socket exceptions (connection aborted, connection refused, etc.)
+        if (args.Outcome.Exception != null)
+        {
+            // Check for socket exceptions and timeout exceptions (including inner exceptions)
+            Exception? ex = args.Outcome.Exception;
+            while (ex != null)
+            {
+                if (ex is HttpRequestException ||
+                    ex is SocketException ||
+                    ex is TaskCanceledException ||
+                    ex is TimeoutException)
+                {
+                    return ValueTask.FromResult(true);
+                }
+                ex = ex.InnerException;
+            }
+        }
+        
+        // Retry on HTTP error status codes
+        if (args.Outcome.Result != null)
+        {
+            return ValueTask.FromResult(
+                args.Outcome.Result.StatusCode == HttpStatusCode.RequestTimeout ||
+                args.Outcome.Result.StatusCode == HttpStatusCode.ServiceUnavailable ||
+                args.Outcome.Result.StatusCode == HttpStatusCode.GatewayTimeout ||
+                (args.Outcome.Result.StatusCode >= HttpStatusCode.InternalServerError &&
+                 args.Outcome.Result.StatusCode <= (HttpStatusCode)599));
+        }
+        
+        return ValueTask.FromResult(false);
+    };
+});
 
 // Register services
 builder.Services.AddSingleton<IDocumentEmbeddingService, DocumentEmbeddingService>();
@@ -243,6 +295,7 @@ logger.LogInformation("Starting Document Embeddings Worker");
 logger.LogInformation("Qdrant: {Host}:{Port}", qdrantHost, qdrantPort);
 logger.LogInformation("Ollama: {Endpoint}", normalizedOllamaEndpoint);
 logger.LogInformation("Ollama Model: {Model}", options.OllamaModel ?? "nomic-embed-text");
+logger.LogInformation("HttpClient Timeout: {TimeoutMinutes} minutes", options.HttpClientTimeoutMinutes);
 
 // Ensure Qdrant collection exists on startup
 // Note: WaitFor(qdrant) should ensure Qdrant is ready, but gRPC service might need a moment
