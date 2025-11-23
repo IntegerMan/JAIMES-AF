@@ -27,7 +27,7 @@ var chatModel = ollama.AddModel("gemma3").WithIconName("CommentText");
 
 // NOTE: There is an Aspire integration for Redis, but it doesn't support Redis-Stack. If you customize the image, it still doesn't start Redis-Stack afterwards.
 // It's simpler just to use a known good image with good default behavior.
-IResourceBuilder<ContainerResource> redis = builder.AddContainer("embeddings", "redis/redis-stack:latest")
+IResourceBuilder<ContainerResource> redis = builder.AddContainer("redis-embeddings", "redis/redis-stack:latest")
     .WithIconName("DatabaseLink")
     .WithHttpEndpoint(8001, 8001, name: "redisinsight")
     .WithUrlForEndpoint("http", static url => url.DisplayText = "🔬 RedisInsight")
@@ -233,6 +233,33 @@ builder.AddProject<Projects.JAIMES_AF_DocumentCracker>("document-cracker")
     .WaitFor(mongo)
     .WithReference(rabbitmq)
     .WaitFor(rabbitmq);
+
+builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbeddings>("embedding-worker")
+    .WithIconName("TextGrammarSettings")
+    .WithReference(rabbitmq)
+    .WithReference(mongoDb)
+    .WithReference(qdrant)
+    .WithReference(embedModel)
+    .WithReference(seq)
+    .WaitFor(rabbitmq)
+    .WaitFor(mongo)
+    .WaitFor(qdrant)
+    .WaitFor(ollama)
+    .WaitFor(seq)
+    .WithEnvironment(context =>
+    {
+        // Set Ollama endpoint for embedding generation
+        EndpointReference ollamaEndpoint = ollama.GetEndpoint("http");
+        context.EnvironmentVariables["EmbeddingWorker__OllamaEndpoint"] = $"http://{ollamaEndpoint.Host}:{ollamaEndpoint.Port}";
+        
+        // Set Qdrant endpoint and API key
+        // QdrantServerResource uses "http" endpoint for the REST API (port 6333)
+        EndpointReference qdrantEndpoint = qdrant.GetEndpoint("http");
+        context.EnvironmentVariables["EmbeddingWorker__QdrantHost"] = qdrantEndpoint.Host;
+        context.EnvironmentVariables["EmbeddingWorker__QdrantPort"] = qdrantEndpoint.Port.ToString();
+        
+        context.EnvironmentVariables["Qdrant__ApiKey"] = qdrantApiKey.Resource.ValueExpression;
+    });
 
 var app = builder.Build();
 

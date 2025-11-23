@@ -1,7 +1,7 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
-namespace MattEland.Jaimes.DocumentCracker.Models;
+namespace MattEland.Jaimes.ServiceDefinitions.Messages;
 
 public class CrackedDocument
 {
@@ -30,5 +30,4 @@ public class CrackedDocument
     [BsonElement("pageCount")]
     public int PageCount { get; set; }
 }
-
 

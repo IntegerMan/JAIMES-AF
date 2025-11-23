@@ -3,7 +3,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
-using MattEland.Jaimes.DocumentCracker.Models;
+using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.DocumentProcessing.Options;
 using MattEland.Jaimes.DocumentProcessing.Services;
 using Microsoft.Extensions.Logging;
@@ -110,6 +110,12 @@ public class DocumentCrackingOrchestrator(
         logger.LogInformation("Starting to crack document: {FilePath}", filePath);
         
         using Activity? activity = activitySource.StartActivity("DocumentCracking.CrackDocument");
+        
+        if (activity == null)
+        {
+            logger.LogWarning("Failed to create activity for document: {FilePath} - ActivitySource may not be registered or sampled", filePath);
+        }
+        
         FileInfo fileInfo = new(filePath);
         activity?.SetTag("cracker.file_path", filePath);
         activity?.SetTag("cracker.file_name", fileInfo.Name);

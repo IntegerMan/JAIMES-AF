@@ -19,7 +19,21 @@ HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 builder.AddSeqEndpoint("seq");
 
 // Configure OpenTelemetry for Aspire telemetry
+// This sets up OTLP exporter, logging, metrics, and tracing
 builder.ConfigureOpenTelemetry();
+
+// Verify OTLP exporter is configured (for debugging)
+string? otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] 
+    ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
+if (string.IsNullOrWhiteSpace(otlpEndpoint))
+{
+    // Log warning but don't fail - exporter might be configured differently
+    Console.WriteLine("WARNING: OTEL_EXPORTER_OTLP_ENDPOINT not found - telemetry may not be exported to Aspire");
+}
+else
+{
+    Console.WriteLine($"OTLP Exporter configured: {otlpEndpoint}");
+}
 
 // Configure logging with OpenTelemetry
 builder.Logging.ClearProviders();
@@ -50,10 +64,13 @@ builder.AddRabbitMQClient(connectionName: "messaging");
 const string activitySourceName = "Jaimes.DocumentCracker";
 ActivitySource activitySource = new(activitySourceName);
 
-// Add ActivitySource to OpenTelemetry tracing (ConfigureOpenTelemetry already sets up OTLP exporter)
+// Register ActivitySource with OpenTelemetry tracing
+// The issue: Multiple AddOpenTelemetry() calls should be additive, but the ActivitySource isn't being registered.
+// The wildcard "Jaimes.*" in ConfigureOpenTelemetry should match "Jaimes.DocumentCracker", but it's not working.
+// We're explicitly registering it here to ensure it's registered.
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(resource => resource
-        .AddService(activitySourceName))
+        .AddService(serviceName: activitySourceName, serviceVersion: "1.0.0"))
     .WithMetrics(metrics =>
     {
         metrics.AddRuntimeInstrumentation()
@@ -62,8 +79,9 @@ builder.Services.AddOpenTelemetry()
     })
     .WithTracing(tracing =>
     {
-        tracing.AddSource(activitySourceName)
-            .AddHttpClientInstrumentation();
+        // CRITICAL: Explicitly add the ActivitySource - this MUST register the listener
+        // If this doesn't work, the issue is that multiple AddOpenTelemetry() calls aren't chaining properly
+        tracing.AddSource(activitySourceName);
     });
 
 // Register ActivitySource for dependency injection
@@ -74,6 +92,10 @@ builder.Services.AddSingleton<IDirectoryScanner, DirectoryScanner>();
 builder.Services.AddSingleton<DocumentCrackingOrchestrator>();
 
 using IHost host = builder.Build();
+
+// CRITICAL: Start the host to ensure OpenTelemetry TracerProvider is built and ActivitySource listeners are registered
+// The TracerProvider is only active after the host is started
+await host.StartAsync();
 
 ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 DocumentCrackingOrchestrator orchestrator = host.Services.GetRequiredService<DocumentCrackingOrchestrator>();
@@ -104,8 +126,30 @@ try
     AnsiConsole.MarkupLine("[bold green]Starting cracking process...[/]");
 
     // Wrap the entire cracking process in a trace
+    // IMPORTANT: Get ActivitySource AFTER host is started so TracerProvider is built and listeners are registered
     ActivitySource mainActivitySource = host.Services.GetRequiredService<ActivitySource>();
+    
+    // Verify ActivitySource has listeners (for debugging)
+    if (!mainActivitySource.HasListeners())
+    {
+        logger.LogWarning("ActivitySource '{ActivitySourceName}' has no listeners - activities will not be created. Check OpenTelemetry configuration.", activitySourceName);
+    }
+    else
+    {
+        logger.LogDebug("ActivitySource '{ActivitySourceName}' has listeners registered", activitySourceName);
+    }
+    
     using Activity? mainActivity = mainActivitySource.StartActivity("DocumentCracking.ProcessAll");
+    
+    if (mainActivity == null)
+    {
+        logger.LogWarning("Failed to create main activity - ActivitySource may not be registered or sampled. ActivitySource name: {ActivitySourceName}", activitySourceName);
+    }
+    else
+    {
+        logger.LogDebug("Created main activity: {ActivityId}", mainActivity.Id);
+    }
+    
     mainActivity?.SetTag("cracker.source_directory", options.SourceDirectory);
     mainActivity?.SetTag("cracker.supported_extensions", string.Join(", ", options.SupportedExtensions));
 

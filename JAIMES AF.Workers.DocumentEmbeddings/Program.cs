@@ -1,0 +1,264 @@
+using System.Diagnostics;
+using MassTransit;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using Qdrant.Client;
+using Qdrant.Client.Grpc;
+using MattEland.Jaimes.Workers.DocumentEmbeddings.Consumers;
+using MattEland.Jaimes.Workers.DocumentEmbeddings.Configuration;
+using MattEland.Jaimes.Workers.DocumentEmbeddings.Services;
+using MattEland.Jaimes.ServiceDefaults;
+
+HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
+
+// Add Seq endpoint for advanced log monitoring
+builder.AddSeqEndpoint("seq");
+
+// Configure OpenTelemetry for Aspire telemetry
+builder.ConfigureOpenTelemetry();
+
+// Configure logging with OpenTelemetry
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddOpenTelemetry(logging =>
+{
+    logging.IncludeFormattedMessage = true;
+    logging.IncludeScopes = true;
+});
+
+// Load configuration
+builder.Configuration
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
+    .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: false)
+    .AddUserSecrets(typeof(Program).Assembly)
+    .AddEnvironmentVariables()
+    .AddCommandLine(args);
+
+// Bind configuration
+EmbeddingWorkerOptions options = builder.Configuration.GetSection("EmbeddingWorker").Get<EmbeddingWorkerOptions>()
+    ?? throw new InvalidOperationException("EmbeddingWorker configuration section is required");
+
+builder.Services.AddSingleton(options);
+
+// Configure Qdrant client
+// Get Qdrant endpoint from Aspire environment variables
+string? qdrantHost = builder.Configuration["EmbeddingWorker:QdrantHost"]
+    ?? builder.Configuration["EmbeddingWorker__QdrantHost"];
+
+string? qdrantPortStr = builder.Configuration["EmbeddingWorker:QdrantPort"]
+    ?? builder.Configuration["EmbeddingWorker__QdrantPort"];
+
+if (string.IsNullOrWhiteSpace(qdrantHost) || string.IsNullOrWhiteSpace(qdrantPortStr))
+{
+    // Fallback: try to parse from connection string if provided
+    string? qdrantConnectionString = builder.Configuration.GetConnectionString("qdrant-embeddings")
+        ?? builder.Configuration["ConnectionStrings:qdrant-embeddings"]
+        ?? builder.Configuration["ConnectionStrings__qdrant-embeddings"];
+
+    if (!string.IsNullOrWhiteSpace(qdrantConnectionString))
+    {
+        // Try to parse as URI, but handle non-URI formats gracefully
+        if (Uri.TryCreate(qdrantConnectionString, UriKind.Absolute, out Uri? qdrantUri))
+        {
+            qdrantHost = qdrantUri.Host;
+            qdrantPortStr = qdrantUri.Port > 0 ? qdrantUri.Port.ToString() : "6333";
+        }
+        else
+        {
+            // Try parsing as host:port format
+            string[] parts = qdrantConnectionString.Split(':');
+            if (parts.Length >= 2)
+            {
+                qdrantHost = parts[0];
+                qdrantPortStr = parts[1];
+            }
+            else if (parts.Length == 1)
+            {
+                // Just hostname, use default port
+                qdrantHost = parts[0];
+                qdrantPortStr = "6333";
+            }
+        }
+    }
+}
+
+if (string.IsNullOrWhiteSpace(qdrantHost) || string.IsNullOrWhiteSpace(qdrantPortStr))
+{
+    throw new InvalidOperationException(
+        "Qdrant host and port are not configured. " +
+        "Expected 'EmbeddingWorker:QdrantHost' and 'EmbeddingWorker:QdrantPort' from Aspire.");
+}
+
+if (!int.TryParse(qdrantPortStr, out int qdrantPort))
+{
+    throw new InvalidOperationException(
+        $"Invalid Qdrant port: '{qdrantPortStr}'. Expected a valid integer.");
+}
+
+// Get API key from configuration (Aspire injects this)
+string? qdrantApiKey = builder.Configuration["Qdrant__ApiKey"]
+    ?? builder.Configuration["Qdrant:ApiKey"];
+
+// Qdrant typically uses HTTP (port 6333) or HTTPS (port 6334)
+bool useHttps = qdrantPort == 6334;
+
+QdrantClient qdrantClient = string.IsNullOrWhiteSpace(qdrantApiKey)
+    ? new QdrantClient(qdrantHost, port: qdrantPort, https: useHttps)
+    : new QdrantClient(qdrantHost, port: qdrantPort, https: useHttps, apiKey: qdrantApiKey);
+
+builder.Services.AddSingleton(qdrantClient);
+
+// Configure Ollama endpoint for embeddings
+string? ollamaEndpoint = builder.Configuration["EmbeddingWorker:OllamaEndpoint"]
+    ?? builder.Configuration.GetConnectionString("ollama-models");
+
+if (string.IsNullOrWhiteSpace(ollamaEndpoint))
+{
+    throw new InvalidOperationException(
+        "Ollama endpoint is not configured. " +
+        "Expected Ollama endpoint from Aspire connection string 'ollama-models'.");
+}
+
+string normalizedOllamaEndpoint = ollamaEndpoint.TrimEnd('/');
+builder.Services.AddSingleton(new OllamaEmbeddingOptions
+{
+    Endpoint = normalizedOllamaEndpoint,
+    Model = options.OllamaModel ?? "nomic-embed-text"
+});
+
+// Register HttpClient for Ollama API calls
+builder.Services.AddHttpClient<IOllamaEmbeddingService, OllamaEmbeddingService>();
+
+// Register services
+builder.Services.AddSingleton<IDocumentEmbeddingService, DocumentEmbeddingService>();
+builder.Services.AddSingleton<IQdrantEmbeddingStore, QdrantEmbeddingStore>();
+
+// Configure MassTransit
+builder.Services.AddMassTransit(x =>
+{
+    x.AddConsumer<DocumentCrackedConsumer>();
+
+    x.UsingRabbitMq((context, cfg) =>
+    {
+        // Get RabbitMQ connection string from Aspire
+        string? connectionString = builder.Configuration.GetConnectionString("messaging")
+            ?? builder.Configuration["ConnectionStrings:messaging"]
+            ?? builder.Configuration["ConnectionStrings__messaging"];
+
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException(
+                "RabbitMQ connection string is not configured. " +
+                "Expected connection string 'messaging' from Aspire.");
+        }
+
+        // Parse connection string (format: amqp://username:password@host:port/vhost)
+        Uri rabbitUri = new(connectionString);
+        string host = rabbitUri.Host;
+        ushort port = rabbitUri.Port > 0 ? (ushort)rabbitUri.Port : (ushort)5672;
+        string? username = null;
+        string? password = null;
+        
+        if (!string.IsNullOrEmpty(rabbitUri.UserInfo))
+        {
+            string[] userInfo = rabbitUri.UserInfo.Split(':');
+            username = userInfo[0];
+            if (userInfo.Length > 1)
+            {
+                password = userInfo[1];
+            }
+        }
+
+        cfg.Host(host, port, "/", h =>
+        {
+            if (!string.IsNullOrEmpty(username))
+            {
+                h.Username(username);
+            }
+            if (!string.IsNullOrEmpty(password))
+            {
+                h.Password(password);
+            }
+        });
+
+        // Configure retry policy
+        cfg.UseMessageRetry(r => r.Exponential(
+            retryLimit: 5,
+            minInterval: TimeSpan.FromSeconds(1),
+            maxInterval: TimeSpan.FromSeconds(30),
+            intervalDelta: TimeSpan.FromSeconds(2)));
+
+        // Configure consumer endpoint to bind to the document-events exchange
+        cfg.ReceiveEndpoint("document-cracked", e =>
+        {
+            e.ConfigureConsumer<DocumentCrackedConsumer>(context);
+            
+            // Bind to the exchange and routing key used by DocumentCracker
+            e.Bind("document-events", s =>
+            {
+                s.RoutingKey = "document.cracked";
+                s.ExchangeType = "topic";
+            });
+        });
+    });
+});
+
+// Configure OpenTelemetry ActivitySource
+const string activitySourceName = "Jaimes.Workers.DocumentEmbeddings";
+ActivitySource activitySource = new(activitySourceName);
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource
+        .AddService(activitySourceName))
+    .WithMetrics(metrics =>
+    {
+        metrics.AddRuntimeInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddMeter(activitySourceName);
+    })
+    .WithTracing(tracing =>
+    {
+        tracing.AddSource(activitySourceName)
+            .AddHttpClientInstrumentation();
+    });
+
+// Register ActivitySource for dependency injection
+builder.Services.AddSingleton(activitySource);
+
+// Build host
+using IHost host = builder.Build();
+
+ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
+IQdrantEmbeddingStore qdrantStore = host.Services.GetRequiredService<IQdrantEmbeddingStore>();
+
+logger.LogInformation("Starting Document Embeddings Worker");
+logger.LogInformation("Qdrant: {Host}:{Port}", qdrantHost, qdrantPort);
+logger.LogInformation("Ollama: {Endpoint}", normalizedOllamaEndpoint);
+logger.LogInformation("Ollama Model: {Model}", options.OllamaModel ?? "nomic-embed-text");
+
+// Ensure Qdrant collection exists on startup
+// Note: WaitFor(qdrant) should ensure Qdrant is ready, but gRPC service might need a moment
+// to fully initialize after the HTTP health check passes
+try
+{
+    await qdrantStore.EnsureCollectionExistsAsync();
+    logger.LogInformation("Qdrant collection verified/created successfully");
+}
+catch (Exception ex)
+{
+    // If WaitFor passed but gRPC isn't ready yet, log and continue
+    // Collection will be created when first document is processed
+    logger.LogWarning(ex, 
+        "Failed to ensure Qdrant collection exists on startup (gRPC might not be fully ready yet). " +
+        "Collection will be created when processing the first document.");
+}
+
+await host.RunAsync();
+

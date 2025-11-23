@@ -1,4 +1,4 @@
-namespace MattEland.Jaimes.DocumentCracker.Models;
+namespace MattEland.Jaimes.ServiceDefinitions.Messages;
 
 public class DocumentCrackedMessage
 {
