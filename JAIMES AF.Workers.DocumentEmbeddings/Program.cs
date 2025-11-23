@@ -54,23 +54,75 @@ builder.AddMongoDBClient("documents");
 
 // Configure Qdrant client
 // Get Qdrant endpoint from Aspire environment variables
+// When using WithReference(qdrant), Aspire automatically provides environment variables
+// in the format: QDRANT_EMBEDDINGS_<PROPERTY> (e.g., QDRANT_EMBEDDINGS_APIKEY)
 string? qdrantHost = builder.Configuration["EmbeddingWorker:QdrantHost"]
-    ?? builder.Configuration["EmbeddingWorker__QdrantHost"];
+    ?? builder.Configuration["EmbeddingWorker__QdrantHost"]
+    ?? builder.Configuration["QDRANT_EMBEDDINGS_GRPCHOST"]
+    ?? builder.Configuration["QdrantEmbeddings__GrpcHost"];
 
 string? qdrantPortStr = builder.Configuration["EmbeddingWorker:QdrantPort"]
-    ?? builder.Configuration["EmbeddingWorker__QdrantPort"];
+    ?? builder.Configuration["EmbeddingWorker__QdrantPort"]
+    ?? builder.Configuration["QDRANT_EMBEDDINGS_GRPCPORT"]
+    ?? builder.Configuration["QdrantEmbeddings__GrpcPort"];
 
 string? qdrantConnectionString = builder.Configuration.GetConnectionString("qdrant-embeddings")
     ?? builder.Configuration["ConnectionStrings:qdrant-embeddings"]
     ?? builder.Configuration["ConnectionStrings__qdrant-embeddings"];
 
-string? qdrantApiKey = builder.Configuration["Qdrant__ApiKey"]
-    ?? builder.Configuration["Qdrant:ApiKey"];
+// Initialize API key variable
+string? qdrantApiKey = null;
 
-if ((string.IsNullOrWhiteSpace(qdrantHost) || string.IsNullOrWhiteSpace(qdrantPortStr) || string.IsNullOrWhiteSpace(qdrantApiKey))
-    && !string.IsNullOrWhiteSpace(qdrantConnectionString))
+// Try to extract API key from connection string first (this is the most reliable source)
+// The connection string from WithReference(qdrant) should be resolved by Aspire and may contain the API key
+if (!string.IsNullOrWhiteSpace(qdrantConnectionString))
 {
     ApplyQdrantConnectionString(qdrantConnectionString, ref qdrantHost, ref qdrantPortStr, ref qdrantApiKey);
+}
+
+// Try multiple possible API key locations
+// Note: When using WithReference(qdrant), Aspire may automatically provide the API key
+// Also check environment variables directly (bypassing configuration system)
+qdrantApiKey ??= builder.Configuration["Qdrant__ApiKey"]
+    ?? builder.Configuration["Qdrant:ApiKey"]
+    ?? builder.Configuration["QDRANT_EMBEDDINGS_APIKEY"]
+    ?? builder.Configuration["QdrantEmbeddings__ApiKey"]
+    ?? builder.Configuration["QDRANT_EMBEDDINGS_API_KEY"]
+    ?? Environment.GetEnvironmentVariable("Qdrant__ApiKey")
+    ?? Environment.GetEnvironmentVariable("QDRANT_EMBEDDINGS_APIKEY")
+    ?? Environment.GetEnvironmentVariable("QdrantEmbeddings__ApiKey")
+    ?? Environment.GetEnvironmentVariable("QDRANT_EMBEDDINGS_API_KEY")
+    ?? Environment.GetEnvironmentVariable("qdrant-api-key");
+
+// If the API key looks like an unresolved Aspire expression (contains { and }), 
+// try to resolve it by reading from the actual parameter value or use default
+if (!string.IsNullOrWhiteSpace(qdrantApiKey) && qdrantApiKey.Contains('{') && qdrantApiKey.Contains('}'))
+{
+    // This is likely an unresolved Aspire expression - try to get the actual value
+    // Aspire parameters are typically available as environment variables with the parameter name
+    // Try various formats that Aspire might use
+    string? resolvedApiKey = Environment.GetEnvironmentVariable("qdrant-api-key")
+        ?? Environment.GetEnvironmentVariable("QDRANT_API_KEY")
+        ?? Environment.GetEnvironmentVariable("Qdrant__ApiKey")
+        ?? Environment.GetEnvironmentVariable("QDRANT_EMBEDDINGS_APIKEY");
+    
+    if (!string.IsNullOrWhiteSpace(resolvedApiKey) && !resolvedApiKey.Contains('{'))
+    {
+        qdrantApiKey = resolvedApiKey;
+    }
+    else
+    {
+        // If still unresolved, use the default value from the parameter definition
+        // The default value is "qdrant" as defined in AppHost
+        qdrantApiKey = "qdrant";
+    }
+}
+
+// If API key is still not found, use the default value from the parameter definition
+// The Qdrant resource was created with a parameter that defaults to "qdrant"
+if (string.IsNullOrWhiteSpace(qdrantApiKey))
+{
+    qdrantApiKey = "qdrant";
 }
 
 if (string.IsNullOrWhiteSpace(qdrantHost) || string.IsNullOrWhiteSpace(qdrantPortStr))
@@ -330,6 +382,24 @@ IQdrantEmbeddingStore qdrantStore = host.Services.GetRequiredService<IQdrantEmbe
 logger.LogInformation("Starting Document Embeddings Worker");
 logger.LogInformation("Qdrant: {Host}:{Port} (HTTPS: {UseHttps})", qdrantHost, qdrantPort, useHttps);
 logger.LogInformation("Ollama Model: {Model}", options.OllamaModel ?? "nomic-embed-text");
+
+// Log Qdrant API key configuration for debugging (without exposing the actual key)
+// Check if the API key looks like an unresolved Aspire expression (shouldn't happen after our resolution logic)
+if (qdrantApiKey.Contains('{') && qdrantApiKey.Contains('}'))
+{
+    logger.LogWarning(
+        "Qdrant API key still appears to be an unresolved Aspire expression: {Expression}. " +
+        "Using default value 'qdrant'. If this doesn't match your Qdrant configuration, " +
+        "set the 'qdrant-api-key' parameter in Aspire.",
+        qdrantApiKey.Substring(0, Math.Min(50, qdrantApiKey.Length)));
+    
+    // Use default value as fallback
+    qdrantApiKey = "qdrant";
+}
+
+logger.LogInformation("Qdrant API key is configured (length: {Length}, using default: {IsDefault})", 
+    qdrantApiKey.Length, 
+    qdrantApiKey == "qdrant" ? "yes" : "no");
 
 // Ensure Qdrant collection exists on startup
 // Note: WaitFor(qdrant) should ensure Qdrant is ready, but gRPC service might need a moment

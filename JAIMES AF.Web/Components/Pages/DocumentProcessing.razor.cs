@@ -47,19 +47,17 @@ flowchart LR
     E -->|Generates| F[Embeddings]
     F -->|Stores| G[(Qdrant<br/>Vector Database)]
     
-    A1[Documents are scanned<br/>and cracked before processing]:::note
-    C1[Cracked documents are<br/>stored in MongoDB]:::note
-    D1[DocumentCrackedMessage<br/>publishes work to RabbitMQ]:::note
-    E1[Embedding worker processes<br/>the queue and generates embeddings]:::note
-    G1[Embeddings are stored<br/>in the Qdrant vector database]:::note
+    A1@{ shape: braces, label: ""Documents are scanned and cracked before processing"" }
+    C1@{ shape: braces, label: ""Cracked documents are stored in MongoDB"" }
+    D1@{ shape: braces, label: ""DocumentCrackedMessage publishes work to RabbitMQ"" }
+    E1@{ shape: braces, label: ""Embedding worker processes the queue and generates embeddings"" }
+    G1@{ shape: braces, label: ""Embeddings are stored in the Qdrant vector database"" }
     
-    A -.-> A1
-    C -.-> C1
-    D -.-> D1
-    E -.-> E1
-    G -.-> G1
-    
-    classDef note fill:#f9f9f9,stroke:#ccc,stroke-width:1px,stroke-dasharray: 3 3,color:#666
+    A --- A1
+    C --- C1
+    D --- D1
+    E --- E1
+    G --- G1
     
     style A fill:#e1f5ff
     style B fill:#fff4e1

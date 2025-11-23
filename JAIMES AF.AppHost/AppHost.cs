@@ -271,14 +271,16 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbeddings>("embedding-wor
         EndpointReference ollamaEndpoint = ollama.GetEndpoint("http");
         context.EnvironmentVariables["EmbeddingWorker__OllamaEndpoint"] = $"http://{ollamaEndpoint.Host}:{ollamaEndpoint.Port}";
         
-        // Set Qdrant endpoint and API key
+        // Set Qdrant endpoint
         // Use the gRPC endpoint (Primary endpoint) so host port mappings are respected
         EndpointReference qdrantGrpcEndpoint = qdrant.GetEndpoint("grpc");
         context.EnvironmentVariables["EmbeddingWorker__QdrantHost"] = qdrantGrpcEndpoint.Host;
         context.EnvironmentVariables["EmbeddingWorker__QdrantPort"] = qdrantGrpcEndpoint.Port;
         context.EnvironmentVariables["ConnectionStrings__qdrant-embeddings"] = qdrant.Resource.ConnectionStringExpression;
         
-        context.EnvironmentVariables["Qdrant__ApiKey"] = qdrantApiKey.Resource.ValueExpression;
+        // Note: API key should be extracted from the connection string by the worker
+        // The connection string from WithReference(qdrant) should include the API key
+        // We don't set it manually here because ValueExpression doesn't resolve in WithEnvironment
     });
 
 var app = builder.Build();
