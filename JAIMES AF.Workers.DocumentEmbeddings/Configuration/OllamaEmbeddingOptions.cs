@@ -6,3 +6,6 @@ public class OllamaEmbeddingOptions
     public required string Model { get; init; }
 }
 
+
+
+

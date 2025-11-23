@@ -6,3 +6,6 @@ public interface IQdrantEmbeddingStore
     Task EnsureCollectionExistsAsync(CancellationToken cancellationToken = default);
 }
 
+
+
+

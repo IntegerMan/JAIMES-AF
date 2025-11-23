@@ -1,5 +1,9 @@
 using System.Diagnostics;
 using MassTransit;
+using MattEland.Jaimes.DocumentProcessing.Services;
+using MattEland.Jaimes.ServiceDefaults;
+using MattEland.Jaimes.Workers.DocumentScanner.Configuration;
+using MattEland.Jaimes.Workers.DocumentScanner.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -8,10 +12,6 @@ using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using MattEland.Jaimes.Workers.DocumentCracker.Consumers;
-using MattEland.Jaimes.Workers.DocumentCracker.Configuration;
-using MattEland.Jaimes.Workers.DocumentCracker.Services;
-using MattEland.Jaimes.ServiceDefaults;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
@@ -40,22 +40,30 @@ builder.Configuration
     .AddCommandLine(args);
 
 // Bind configuration
-DocumentCrackerWorkerOptions options = builder.Configuration.GetSection("DocumentCrackerWorker").Get<DocumentCrackerWorkerOptions>()
-    ?? throw new InvalidOperationException("DocumentCrackerWorker configuration section is required");
+DocumentScannerOptions options = builder.Configuration.GetSection("DocumentScanner").Get<DocumentScannerOptions>()
+    ?? throw new InvalidOperationException("DocumentScanner configuration section is required");
+
+if (string.IsNullOrWhiteSpace(options.ContentDirectory))
+{
+    throw new InvalidOperationException("DocumentScanner:ContentDirectory configuration is required");
+}
 
 builder.Services.AddSingleton(options);
 
 // Add MongoDB client integration
 builder.AddMongoDBClient("documents");
 
-// Register services
-builder.Services.AddSingleton<IDocumentCrackingService, DocumentCrackingService>();
+// Register document processing services
+builder.Services.AddSingleton<IDirectoryScanner, DirectoryScanner>();
+builder.Services.AddSingleton<IChangeTracker, ChangeTracker>();
+
+// Register scanner services
+builder.Services.AddSingleton<IDocumentScannerService, DocumentScannerService>();
+builder.Services.AddHostedService<DocumentScannerBackgroundService>();
 
 // Configure MassTransit
 builder.Services.AddMassTransit(x =>
 {
-    x.AddConsumer<CrackDocumentConsumer>();
-
     x.UsingRabbitMq((context, cfg) =>
     {
         // Get RabbitMQ connection string from Aspire
@@ -99,27 +107,18 @@ builder.Services.AddMassTransit(x =>
             }
         });
 
-        // Configure retry policy
-        cfg.UseMessageRetry(r => r.Exponential(
-            retryLimit: 5,
-            minInterval: TimeSpan.FromSeconds(1),
-            maxInterval: TimeSpan.FromSeconds(30),
-            intervalDelta: TimeSpan.FromSeconds(2)));
-
-        // Configure consumer endpoint
-        // MassTransit will automatically create the queue and bind to the appropriate exchange
-        // based on the message type (CrackDocumentMessage)
+        // Configure endpoints (MassTransit will auto-create exchanges/queues as needed)
         cfg.ConfigureEndpoints(context);
     });
 });
 
 // Configure OpenTelemetry ActivitySource
-const string activitySourceName = "Jaimes.Workers.DocumentCracker";
+const string activitySourceName = "Jaimes.Workers.DocumentScanner";
 ActivitySource activitySource = new(activitySourceName);
 
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(resource => resource
-        .AddService(activitySourceName))
+        .AddService(serviceName: activitySourceName, serviceVersion: "1.0.0"))
     .WithMetrics(metrics =>
     {
         metrics.AddRuntimeInstrumentation()
@@ -140,7 +139,7 @@ using IHost host = builder.Build();
 
 ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 
-logger.LogInformation("Starting Document Cracker Worker");
+logger.LogInformation("Starting Document Scanner Worker");
 
 await host.RunAsync();
 

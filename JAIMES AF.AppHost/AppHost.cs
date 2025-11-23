@@ -69,6 +69,10 @@ IResourceBuilder<RabbitMQServerResource> rabbitmq = builder.AddRabbitMQ("messagi
     .WithIconName("AnimalRabbit")
     .WithManagementPlugin();
 
+// Add parameter for DocumentScanner content directory
+var documentScannerContentDirectory = builder.AddParameter("document-scanner-content-directory", "C:\\Dev\\Sourcebooks", secret: false)
+    .WithDescription("Directory path to monitor for documents (e.g., C:\\Dev\\Sourcebooks)");
+
 // Add Seq for advanced log monitoring and analysis
 IResourceBuilder<SeqResource> seq = builder.AddSeq("seq")
     .WithIconName("DeveloperBoardSearch")
@@ -233,6 +237,16 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentCrackerWorker>("document-c
     .WaitFor(mongo)
     .WaitFor(seq);
 
+builder.AddProject<Projects.JAIMES_AF_Workers_DocumentScanner>("document-scanner")
+    .WithIconName("DocumentSearch")
+    .WithReference(rabbitmq)
+    .WithReference(mongoDb)
+    .WithReference(seq)
+    .WaitFor(rabbitmq)
+    .WaitFor(mongo)
+    .WaitFor(seq)
+    .WithEnvironment("DocumentScanner__ContentDirectory", documentScannerContentDirectory);
+
 builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbeddings>("embedding-worker")
     .WithIconName("TextGrammarSettings")
     .WithReference(rabbitmq)
@@ -254,7 +268,7 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbeddings>("embedding-wor
         // Set Qdrant endpoint and API key
         // QdrantServerResource uses "http" endpoint for the REST API (port 6333)
         // But QdrantClient uses gRPC which requires port 6334
-Can         EndpointReference qdrantEndpoint = qdrant.GetEndpoint("http");
+        EndpointReference qdrantEndpoint = qdrant.GetEndpoint("http");
         context.EnvironmentVariables["EmbeddingWorker__QdrantHost"] = qdrantEndpoint.Host;
         // Use port 6334 for gRPC (QdrantClient uses gRPC, not HTTP REST API)
         context.EnvironmentVariables["EmbeddingWorker__QdrantPort"] = "6334";

@@ -7,3 +7,6 @@ public class EmbeddingWorkerOptions
     public int EmbeddingDimensions { get; set; } = 768; // nomic-embed-text produces 768-dimensional vectors
 }
 
+
+
+

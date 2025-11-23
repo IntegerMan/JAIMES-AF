@@ -2,10 +2,10 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <RootNamespace>MattEland.Jaimes.Workers.DocumentCracker</RootNamespace>
+    <RootNamespace>MattEland.Jaimes.Workers.DocumentScanner</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <UserSecretsId>a8f3c2e1-4b5d-4a9e-8c7f-1d2e3f4a5b6d</UserSecretsId>
+    <UserSecretsId>document-scanner-worker-secrets</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,8 +23,6 @@
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
-    <PackageReference Include="UglyToad.PdfPig" />
-    <PackageReference Include="UglyToad.PdfPig.DocumentLayoutAnalysis" />
   </ItemGroup>
 
   <ItemGroup>

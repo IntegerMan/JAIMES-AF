@@ -6,3 +6,6 @@ public class DocumentCrackerWorkerOptions
     public List<string> SupportedExtensions { get; set; } = [".pdf"];
 }
 
+
+
+
