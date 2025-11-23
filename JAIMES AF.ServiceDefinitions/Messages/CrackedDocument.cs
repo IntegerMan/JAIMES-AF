@@ -29,6 +29,9 @@ public class CrackedDocument
 
     [BsonElement("pageCount")]
     public int PageCount { get; set; }
+
+    [BsonElement("isProcessed")]
+    public bool IsProcessed { get; set; } = false;
 }
 
 

@@ -69,8 +69,8 @@ IResourceBuilder<RabbitMQServerResource> rabbitmq = builder.AddRabbitMQ("messagi
     .WithIconName("AnimalRabbit")
     .WithManagementPlugin();
 
-// Add parameter for DocumentScanner content directory
-var documentScannerContentDirectory = builder.AddParameter("document-scanner-content-directory", "C:\\Dev\\Sourcebooks", secret: false)
+// Add parameter for DocumentChangeDetector content directory
+var documentChangeDetectorContentDirectory = builder.AddParameter("document-change-detector-content-directory", "C:\\Dev\\Sourcebooks", secret: false)
     .WithDescription("Directory path to monitor for documents (e.g., C:\\Dev\\Sourcebooks)");
 
 // Add Seq for advanced log monitoring and analysis
@@ -237,7 +237,7 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentCrackerWorker>("document-c
     .WaitFor(mongo)
     .WaitFor(seq);
 
-builder.AddProject<Projects.JAIMES_AF_Workers_DocumentScanner>("document-scanner")
+builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChangeDetector>("document-change-detector")
     .WithIconName("DocumentSearch")
     .WithReference(rabbitmq)
     .WithReference(mongoDb)
@@ -245,7 +245,7 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentScanner>("document-scanner
     .WaitFor(rabbitmq)
     .WaitFor(mongo)
     .WaitFor(seq)
-    .WithEnvironment("DocumentScanner__ContentDirectory", documentScannerContentDirectory);
+    .WithEnvironment("DocumentChangeDetector__ContentDirectory", documentChangeDetectorContentDirectory);
 
 builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbeddings>("embedding-worker")
     .WithIconName("TextGrammarSettings")
@@ -262,6 +262,8 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbeddings>("embedding-wor
     .WithEnvironment(context =>
     {
         // Set Ollama endpoint for embedding generation
+        // The connection string from the model reference might not be automatically provided,
+        // so we explicitly set the endpoint here
         EndpointReference ollamaEndpoint = ollama.GetEndpoint("http");
         context.EnvironmentVariables["EmbeddingWorker__OllamaEndpoint"] = $"http://{ollamaEndpoint.Host}:{ollamaEndpoint.Port}";
         

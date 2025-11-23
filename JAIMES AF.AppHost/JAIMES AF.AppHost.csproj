@@ -16,7 +16,7 @@
     <ProjectReference Include="..\JAIMES AF.Indexer\JAIMES AF.Indexer.csproj" />
     <ProjectReference Include="..\JAIMES AF.Workers.DocumentCrackerWorker\JAIMES AF.Workers.DocumentCrackerWorker.csproj" />
     <ProjectReference Include="..\JAIMES AF.Workers.DocumentEmbeddings\JAIMES AF.Workers.DocumentEmbeddings.csproj" />
-    <ProjectReference Include="..\JAIMES AF.Workers.DocumentScanner\JAIMES AF.Workers.DocumentScanner.csproj" />
+    <ProjectReference Include="..\JAIMES AF.Workers.DocumentChangeDetector\JAIMES AF.Workers.DocumentChangeDetector.csproj" />
   </ItemGroup>
 
   <ItemGroup>

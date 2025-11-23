@@ -1,6 +1,4 @@
 using System.Diagnostics;
-using System.Net;
-using System.Net.Sockets;
 using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -127,22 +125,85 @@ QdrantClient qdrantClient = string.IsNullOrWhiteSpace(qdrantApiKey)
 
 builder.Services.AddSingleton(qdrantClient);
 
-// Configure Ollama endpoint for embeddings
-string? ollamaEndpoint = builder.Configuration["EmbeddingWorker:OllamaEndpoint"]
-    ?? builder.Configuration.GetConnectionString("ollama-models");
+// Configure Ollama client using connection string from Aspire
+// When referencing an OllamaModelResource, Aspire provides a connection string
+// Try multiple possible connection string names that Aspire might use
+string? ollamaConnectionString = builder.Configuration.GetConnectionString("nomic-embed-text")
+    ?? builder.Configuration.GetConnectionString("ollama-models")
+    ?? builder.Configuration.GetConnectionString("embedModel")
+    ?? builder.Configuration["ConnectionStrings:nomic-embed-text"]
+    ?? builder.Configuration["ConnectionStrings:ollama-models"]
+    ?? builder.Configuration["ConnectionStrings:embedModel"]
+    ?? builder.Configuration["ConnectionStrings__nomic-embed-text"]
+    ?? builder.Configuration["ConnectionStrings__ollama-models"]
+    ?? builder.Configuration["ConnectionStrings__embedModel"];
 
-if (string.IsNullOrWhiteSpace(ollamaEndpoint))
+if (string.IsNullOrWhiteSpace(ollamaConnectionString))
 {
-    throw new InvalidOperationException(
-        "Ollama endpoint is not configured. " +
-        "Expected Ollama endpoint from Aspire connection string 'ollama-models'.");
+    // Fallback: Try to construct from Ollama endpoint if available
+    // This handles cases where the connection string isn't provided but we have the endpoint
+    string? ollamaEndpointFromConfig = builder.Configuration["EmbeddingWorker:OllamaEndpoint"]
+        ?? builder.Configuration["EmbeddingWorker__OllamaEndpoint"];
+    
+    if (!string.IsNullOrWhiteSpace(ollamaEndpointFromConfig))
+    {
+        // Construct connection string from endpoint
+        ollamaConnectionString = ollamaEndpointFromConfig.TrimEnd('/');
+    }
+    else
+    {
+        // Last resort: try to get from Ollama resource connection string
+        string? ollamaResourceConnectionString = builder.Configuration.GetConnectionString("ollama-models")
+            ?? builder.Configuration["ConnectionStrings:ollama-models"]
+            ?? builder.Configuration["ConnectionStrings__ollama-models"];
+        
+        if (!string.IsNullOrWhiteSpace(ollamaResourceConnectionString))
+        {
+            ollamaConnectionString = ollamaResourceConnectionString;
+        }
+    }
 }
 
-string normalizedOllamaEndpoint = ollamaEndpoint.TrimEnd('/');
+if (string.IsNullOrWhiteSpace(ollamaConnectionString))
+{
+    throw new InvalidOperationException(
+        "Ollama connection string is not configured. " +
+        "Expected connection string from Aspire model reference. " +
+        "Tried: 'nomic-embed-text', 'ollama-models', 'embedModel'. " +
+        "Check that the embedding worker has a reference to the Ollama model resource in AppHost.");
+}
+
+// Parse connection string (format: Endpoint=http://host:port;Model=model-name or just http://host:port)
+string ollamaEndpoint;
+string ollamaModel = options.OllamaModel ?? "nomic-embed-text";
+
+if (ollamaConnectionString.Contains("Endpoint=", StringComparison.OrdinalIgnoreCase))
+{
+    // Parse connection string format: Endpoint=http://host:port;Model=model-name
+    string[] parts = ollamaConnectionString.Split(';');
+    ollamaEndpoint = parts.FirstOrDefault(p => p.StartsWith("Endpoint=", StringComparison.OrdinalIgnoreCase))
+        ?.Substring("Endpoint=".Length)
+        ?? throw new InvalidOperationException("Invalid Ollama connection string format: missing Endpoint");
+    
+    string? modelPart = parts.FirstOrDefault(p => p.StartsWith("Model=", StringComparison.OrdinalIgnoreCase));
+    if (!string.IsNullOrWhiteSpace(modelPart))
+    {
+        ollamaModel = modelPart.Substring("Model=".Length);
+    }
+}
+else
+{
+    // Assume it's just the endpoint URL
+    ollamaEndpoint = ollamaConnectionString;
+}
+
+// Normalize endpoint (remove trailing slash)
+ollamaEndpoint = ollamaEndpoint.TrimEnd('/');
+
 builder.Services.AddSingleton(new OllamaEmbeddingOptions
 {
-    Endpoint = normalizedOllamaEndpoint,
-    Model = options.OllamaModel ?? "nomic-embed-text"
+    Endpoint = ollamaEndpoint,
+    Model = ollamaModel
 });
 
 // Register HttpClient for Ollama API calls with extended timeout and resilience
@@ -153,6 +214,7 @@ builder.Services.AddSingleton(new OllamaEmbeddingOptions
 TimeSpan httpClientTimeout = TimeSpan.FromMinutes(options.HttpClientTimeoutMinutes);
 builder.Services.AddHttpClient<IOllamaEmbeddingService, OllamaEmbeddingService>(client =>
 {
+    client.BaseAddress = new Uri(ollamaEndpoint);
     client.Timeout = httpClientTimeout;
 })
 .AddStandardResilienceHandler(resilienceOptions =>
@@ -172,7 +234,7 @@ builder.Services.AddHttpClient<IOllamaEmbeddingService, OllamaEmbeddingService>(
             while (ex != null)
             {
                 if (ex is HttpRequestException ||
-                    ex is SocketException ||
+                    ex is System.Net.Sockets.SocketException ||
                     ex is TaskCanceledException ||
                     ex is TimeoutException)
                 {
@@ -186,11 +248,11 @@ builder.Services.AddHttpClient<IOllamaEmbeddingService, OllamaEmbeddingService>(
         if (args.Outcome.Result != null)
         {
             return ValueTask.FromResult(
-                args.Outcome.Result.StatusCode == HttpStatusCode.RequestTimeout ||
-                args.Outcome.Result.StatusCode == HttpStatusCode.ServiceUnavailable ||
-                args.Outcome.Result.StatusCode == HttpStatusCode.GatewayTimeout ||
-                (args.Outcome.Result.StatusCode >= HttpStatusCode.InternalServerError &&
-                 args.Outcome.Result.StatusCode <= (HttpStatusCode)599));
+                args.Outcome.Result.StatusCode == System.Net.HttpStatusCode.RequestTimeout ||
+                args.Outcome.Result.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable ||
+                args.Outcome.Result.StatusCode == System.Net.HttpStatusCode.GatewayTimeout ||
+                (args.Outcome.Result.StatusCode >= System.Net.HttpStatusCode.InternalServerError &&
+                 args.Outcome.Result.StatusCode <= (System.Net.HttpStatusCode)599));
         }
         
         return ValueTask.FromResult(false);
@@ -198,6 +260,7 @@ builder.Services.AddHttpClient<IOllamaEmbeddingService, OllamaEmbeddingService>(
 });
 
 // Register services
+builder.Services.AddSingleton<IOllamaEmbeddingService, OllamaEmbeddingService>();
 builder.Services.AddSingleton<IDocumentEmbeddingService, DocumentEmbeddingService>();
 builder.Services.AddSingleton<IQdrantEmbeddingStore, QdrantEmbeddingStore>();
 
@@ -293,9 +356,7 @@ IQdrantEmbeddingStore qdrantStore = host.Services.GetRequiredService<IQdrantEmbe
 
 logger.LogInformation("Starting Document Embeddings Worker");
 logger.LogInformation("Qdrant: {Host}:{Port}", qdrantHost, qdrantPort);
-logger.LogInformation("Ollama: {Endpoint}", normalizedOllamaEndpoint);
 logger.LogInformation("Ollama Model: {Model}", options.OllamaModel ?? "nomic-embed-text");
-logger.LogInformation("HttpClient Timeout: {TimeoutMinutes} minutes", options.HttpClientTimeoutMinutes);
 
 // Ensure Qdrant collection exists on startup
 // Note: WaitFor(qdrant) should ensure Qdrant is ready, but gRPC service might need a moment

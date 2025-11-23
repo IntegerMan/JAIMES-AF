@@ -126,6 +126,12 @@ public class DocumentCrackingOrchestrator(
         // Use UpdateOneAsync with upsert to avoid _id conflicts
         // This will update if the document exists (by FilePath) or insert if it doesn't
         FilterDefinition<CrackedDocument> filter = Builders<CrackedDocument>.Filter.Eq(d => d.FilePath, filePath);
+        
+        // Check existing document to see if content changed and if it's already processed
+        CrackedDocument? existingDocument = await collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
+        bool contentChanged = existingDocument == null || existingDocument.Content != contents;
+        
+        // Update document - reset IsProcessed to false if content changed, otherwise preserve current state
         UpdateDefinition<CrackedDocument> update = Builders<CrackedDocument>.Update
             .Set(d => d.FilePath, filePath)
             .Set(d => d.RelativeDirectory, relativeDirectory)
@@ -134,6 +140,12 @@ public class DocumentCrackingOrchestrator(
             .Set(d => d.CrackedAt, DateTime.UtcNow)
             .Set(d => d.FileSize, fileInfo.Length)
             .Set(d => d.PageCount, pageCount);
+        
+        // Reset processed flag only if content changed
+        if (contentChanged)
+        {
+            update = update.Set(d => d.IsProcessed, false);
+        }
         
         UpdateOptions updateOptions = new() { IsUpsert = true };
         
@@ -151,9 +163,21 @@ public class DocumentCrackingOrchestrator(
         activity?.SetTag("cracker.document_id", documentId);
         activity?.SetStatus(ActivityStatusCode.Ok);
         
-        // Publish message using MassTransit
-        await PublishDocumentCrackedMessageAsync(documentId, filePath, relativeDirectory, 
-            Path.GetFileName(filePath), fileInfo.Length, pageCount, cancellationToken);
+        // Check if document needs processing (not processed yet)
+        // Re-query to get the current IsProcessed state after update
+        CrackedDocument? updatedDocument = await collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
+        bool needsProcessing = updatedDocument == null || !updatedDocument.IsProcessed;
+        
+        if (needsProcessing)
+        {
+            // Publish message using MassTransit to generate documentMetadata
+            await PublishDocumentCrackedMessageAsync(documentId, filePath, relativeDirectory, 
+                Path.GetFileName(filePath), fileInfo.Length, pageCount, cancellationToken);
+        }
+        else
+        {
+            logger.LogDebug("Document {DocumentId} already processed, skipping enqueue", documentId);
+        }
     }
     
     private async Task PublishDocumentCrackedMessageAsync(string documentId, string filePath, 

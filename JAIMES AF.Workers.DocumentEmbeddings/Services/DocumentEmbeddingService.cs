@@ -68,6 +68,9 @@ public class DocumentEmbeddingService(
             // Step 4: Store embedding in Qdrant
             await qdrantStore.StoreEmbeddingAsync(message.DocumentId, embedding, metadata, cancellationToken);
 
+            // Step 5: Mark document as processed in crackedDocuments collection
+            await MarkDocumentAsProcessedAsync(message.DocumentId, cancellationToken);
+
             logger.LogInformation("Successfully processed embedding for document {DocumentId}", message.DocumentId);
             activity?.SetStatus(ActivityStatusCode.Ok);
         }
@@ -109,6 +112,42 @@ public class DocumentEmbeddingService(
             logger.LogError(ex, "Failed to download document {DocumentId} from MongoDB", documentId);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             throw;
+        }
+    }
+
+    private async Task MarkDocumentAsProcessedAsync(string documentId, CancellationToken cancellationToken)
+    {
+        using Activity? activity = activitySource.StartActivity("DocumentEmbedding.MarkAsProcessed");
+        activity?.SetTag("embedding.document_id", documentId);
+
+        try
+        {
+            // Get database from connection string - the database name is "documents" as configured in AppHost
+            IMongoDatabase mongoDatabase = mongoClient.GetDatabase("documents");
+            IMongoCollection<CrackedDocument> collection = mongoDatabase.GetCollection<CrackedDocument>("crackedDocuments");
+
+            FilterDefinition<CrackedDocument> filter = Builders<CrackedDocument>.Filter.Eq(d => d.Id, documentId);
+            UpdateDefinition<CrackedDocument> update = Builders<CrackedDocument>.Update
+                .Set(d => d.IsProcessed, true);
+
+            UpdateResult result = await collection.UpdateOneAsync(filter, update, cancellationToken: cancellationToken);
+
+            if (result.MatchedCount == 0)
+            {
+                logger.LogWarning("Document {DocumentId} not found when marking as processed", documentId);
+            }
+            else
+            {
+                logger.LogDebug("Marked document {DocumentId} as processed", documentId);
+            }
+
+            activity?.SetStatus(ActivityStatusCode.Ok);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to mark document {DocumentId} as processed", documentId);
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            // Don't throw - this is a non-critical operation
         }
     }
 }
