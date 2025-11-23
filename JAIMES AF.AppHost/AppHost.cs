@@ -149,12 +149,16 @@ IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIME
     .WithReference(sqliteDb)
     .WithReference(qdrant)
     .WithReference(seq)
+    .WithReference(rabbitmq)
+    .WithReference(mongoDb)
     .WaitFor(redis)
     .WaitFor(qdrant)
     .WaitFor(ollama)
     .WaitFor(sqliteDb)
     .WaitFor(seq)
     .WaitFor(kernelMemory)
+    .WaitFor(rabbitmq)
+    .WaitFor(mongo)
     .WithEnvironment(context =>
     {
         EndpointReference redisEndpoint = redis.GetEndpoint("redis");

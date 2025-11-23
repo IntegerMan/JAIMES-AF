@@ -3,6 +3,7 @@
         "ms-azuretools.vscode-containers",
         "patcx.vscode-nuget-gallery",
         "jetbrains.resharper-code",
-        "anysphere.csharp"
+        "anysphere.csharp",
+        "humao.rest-client"
     ]
 }

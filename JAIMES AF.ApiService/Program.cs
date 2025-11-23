@@ -6,6 +6,7 @@ using System.Diagnostics;
 using MattEland.Jaimes.ApiService.Helpers;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Services;
+using MassTransit;
 
 namespace MattEland.Jaimes.ApiService;
 
@@ -20,6 +21,60 @@ public class Program
 
         // Add Seq endpoint for advanced log monitoring
         builder.AddSeqEndpoint("seq");
+
+        // Add MongoDB client integration
+        builder.AddMongoDBClient("documents");
+
+        // Configure MassTransit for publishing messages
+        builder.Services.AddMassTransit(x =>
+        {
+            x.UsingRabbitMq((context, cfg) =>
+            {
+                // Get RabbitMQ connection string from Aspire
+                string? connectionString = builder.Configuration.GetConnectionString("messaging")
+                    ?? builder.Configuration["ConnectionStrings:messaging"]
+                    ?? builder.Configuration["ConnectionStrings__messaging"];
+
+                if (string.IsNullOrWhiteSpace(connectionString))
+                {
+                    throw new InvalidOperationException(
+                        "RabbitMQ connection string is not configured. " +
+                        "Expected connection string 'messaging' from Aspire.");
+                }
+
+                // Parse connection string (format: amqp://username:password@host:port/vhost)
+                Uri rabbitUri = new(connectionString);
+                string host = rabbitUri.Host;
+                ushort port = rabbitUri.Port > 0 ? (ushort)rabbitUri.Port : (ushort)5672;
+                string? username = null;
+                string? password = null;
+                
+                if (!string.IsNullOrEmpty(rabbitUri.UserInfo))
+                {
+                    string[] userInfo = rabbitUri.UserInfo.Split(':');
+                    username = userInfo[0];
+                    if (userInfo.Length > 1)
+                    {
+                        password = userInfo[1];
+                    }
+                }
+
+                cfg.Host(host, port, "/", h =>
+                {
+                    if (!string.IsNullOrEmpty(username))
+                    {
+                        h.Username(username);
+                    }
+                    if (!string.IsNullOrEmpty(password))
+                    {
+                        h.Password(password);
+                    }
+                });
+
+                // Configure endpoints (MassTransit will auto-create exchanges/queues as needed)
+                cfg.ConfigureEndpoints(context);
+            });
+        });
 
         // Add services to the container.
         builder.Services.AddProblemDetails();
