@@ -141,7 +141,8 @@ public class DocumentCrackingOrchestrator(
         
         // Get the document ID after upsert
         // If it was an insert, use the UpsertedId; otherwise, query the document by FilePath
-        string documentId = result.UpsertedId?.AsString ?? 
+        // UpsertedId is a BsonObjectId, so we use ToString() instead of AsString
+        string documentId = result.UpsertedId?.ToString() ?? 
             (await collection.Find(filter).FirstOrDefaultAsync(cancellationToken))?.Id ?? string.Empty;
         
         logger.LogInformation("Cracked and saved to MongoDB: {FilePath} ({PageCount} pages, {FileSize} bytes)", 
