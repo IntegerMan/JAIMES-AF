@@ -49,7 +49,7 @@ IResourceBuilder<QdrantServerResource> qdrant = builder.AddQdrant("qdrant-embedd
 
 // Add SQLite database
 IResourceBuilder<IResourceWithConnectionString> sqliteDb = builder.AddSqlite("jaimes-db")
-    .WithIconName("Database")
+    .WithIconName("WindowDatabase")
     .WithSqliteWeb(web => web.WithIconName("DatabaseSearch"));
 
 // Add MongoDB for document storage
