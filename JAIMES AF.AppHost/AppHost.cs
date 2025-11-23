@@ -224,15 +224,14 @@ builder.AddProject<Projects.JAIMES_AF_Indexer>("indexer")
         context.EnvironmentVariables["Indexer__OllamaModel"] = "nomic-embed-text";
     });
 
-builder.AddProject<Projects.JAIMES_AF_DocumentCracker>("document-cracker")
+builder.AddProject<Projects.JAIMES_AF_Workers_DocumentCrackerWorker>("document-cracker-worker")
     .WithIconName("DocumentTextExtract")
-    .WithExplicitStart()
-    .WithReference(seq)
-    .WaitFor(seq)
-    .WithReference(mongoDb)
-    .WaitFor(mongo)
     .WithReference(rabbitmq)
-    .WaitFor(rabbitmq);
+    .WithReference(mongoDb)
+    .WithReference(seq)
+    .WaitFor(rabbitmq)
+    .WaitFor(mongo)
+    .WaitFor(seq);
 
 builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbeddings>("embedding-worker")
     .WithIconName("TextGrammarSettings")
@@ -255,7 +254,7 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbeddings>("embedding-wor
         // Set Qdrant endpoint and API key
         // QdrantServerResource uses "http" endpoint for the REST API (port 6333)
         // But QdrantClient uses gRPC which requires port 6334
-        EndpointReference qdrantEndpoint = qdrant.GetEndpoint("http");
+Can         EndpointReference qdrantEndpoint = qdrant.GetEndpoint("http");
         context.EnvironmentVariables["EmbeddingWorker__QdrantHost"] = qdrantEndpoint.Host;
         // Use port 6334 for gRPC (QdrantClient uses gRPC, not HTTP REST API)
         context.EnvironmentVariables["EmbeddingWorker__QdrantPort"] = "6334";
