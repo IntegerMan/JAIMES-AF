@@ -254,9 +254,11 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbeddings>("embedding-wor
         
         // Set Qdrant endpoint and API key
         // QdrantServerResource uses "http" endpoint for the REST API (port 6333)
+        // But QdrantClient uses gRPC which requires port 6334
         EndpointReference qdrantEndpoint = qdrant.GetEndpoint("http");
         context.EnvironmentVariables["EmbeddingWorker__QdrantHost"] = qdrantEndpoint.Host;
-        context.EnvironmentVariables["EmbeddingWorker__QdrantPort"] = qdrantEndpoint.Port.ToString();
+        // Use port 6334 for gRPC (QdrantClient uses gRPC, not HTTP REST API)
+        context.EnvironmentVariables["EmbeddingWorker__QdrantPort"] = "6334";
         
         context.EnvironmentVariables["Qdrant__ApiKey"] = qdrantApiKey.Resource.ValueExpression;
     });

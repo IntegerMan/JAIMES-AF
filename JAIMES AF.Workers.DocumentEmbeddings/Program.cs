@@ -47,6 +47,9 @@ EmbeddingWorkerOptions options = builder.Configuration.GetSection("EmbeddingWork
 
 builder.Services.AddSingleton(options);
 
+// Add MongoDB client integration
+builder.AddMongoDBClient("documents");
+
 // Configure Qdrant client
 // Get Qdrant endpoint from Aspire environment variables
 string? qdrantHost = builder.Configuration["EmbeddingWorker:QdrantHost"]
@@ -106,12 +109,18 @@ if (!int.TryParse(qdrantPortStr, out int qdrantPort))
 string? qdrantApiKey = builder.Configuration["Qdrant__ApiKey"]
     ?? builder.Configuration["Qdrant:ApiKey"];
 
-// Qdrant typically uses HTTP (port 6333) or HTTPS (port 6334)
-bool useHttps = qdrantPort == 6334;
+// QdrantClient uses gRPC which requires port 6334 and https: true
+// Port 6333 is for HTTP REST API, port 6334 is for gRPC
+if (qdrantPort != 6334)
+{
+    throw new InvalidOperationException(
+        $"QdrantClient requires gRPC port 6334, but got port {qdrantPort}. " +
+        "QdrantClient uses gRPC protocol, not HTTP REST API.");
+}
 
 QdrantClient qdrantClient = string.IsNullOrWhiteSpace(qdrantApiKey)
-    ? new QdrantClient(qdrantHost, port: qdrantPort, https: useHttps)
-    : new QdrantClient(qdrantHost, port: qdrantPort, https: useHttps, apiKey: qdrantApiKey);
+    ? new QdrantClient(qdrantHost, port: qdrantPort, https: true)
+    : new QdrantClient(qdrantHost, port: qdrantPort, https: true, apiKey: qdrantApiKey);
 
 builder.Services.AddSingleton(qdrantClient);
 
@@ -195,18 +204,10 @@ builder.Services.AddMassTransit(x =>
             maxInterval: TimeSpan.FromSeconds(30),
             intervalDelta: TimeSpan.FromSeconds(2)));
 
-        // Configure consumer endpoint to bind to the document-events exchange
-        cfg.ReceiveEndpoint("document-cracked", e =>
-        {
-            e.ConfigureConsumer<DocumentCrackedConsumer>(context);
-            
-            // Bind to the exchange and routing key used by DocumentCracker
-            e.Bind("document-events", s =>
-            {
-                s.RoutingKey = "document.cracked";
-                s.ExchangeType = "topic";
-            });
-        });
+        // Configure consumer endpoint
+        // MassTransit will automatically create the queue and bind to the appropriate exchange
+        // based on the message type (DocumentCrackedMessage)
+        cfg.ConfigureEndpoints(context);
     });
 });
 
