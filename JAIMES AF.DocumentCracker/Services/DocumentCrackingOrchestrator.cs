@@ -2,13 +2,12 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using System.Text.Json;
+using MassTransit;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.DocumentProcessing.Options;
 using MattEland.Jaimes.DocumentProcessing.Services;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
-using RabbitMQ.Client;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
@@ -20,7 +19,7 @@ public class DocumentCrackingOrchestrator(
     IDirectoryScanner directoryScanner,
     DocumentScanOptions options,
     IMongoClient mongoClient,
-    RabbitMQ.Client.IConnection rabbitmqConnection,
+    IPublishEndpoint publishEndpoint,
     ActivitySource activitySource)
 {
     public async Task<DocumentCrackingSummary> CrackAllAsync(CancellationToken cancellationToken = default)
@@ -33,8 +32,6 @@ public class DocumentCrackingOrchestrator(
         // Get database from connection string - the database name is "documents" as configured in AppHost
         IMongoDatabase mongoDatabase = mongoClient.GetDatabase("documents");
         IMongoCollection<CrackedDocument> collection = mongoDatabase.GetCollection<CrackedDocument>("crackedDocuments");
-
-        RabbitMQ.Client.IChannel channel = await rabbitmqConnection.CreateChannelAsync();
 
         DocumentCrackingSummary summary = new();
 
@@ -82,7 +79,7 @@ public class DocumentCrackingOrchestrator(
 
                 try
                 {
-                    await CrackDocumentAsync(filePath, relativeDirectory, collection, channel, cancellationToken);
+                    await CrackDocumentAsync(filePath, relativeDirectory, collection, cancellationToken);
                     summary.TotalCracked++;
                     directoryCracked++;
                 }
@@ -105,7 +102,7 @@ public class DocumentCrackingOrchestrator(
         return summary;
     }
 
-    private async Task CrackDocumentAsync(string filePath, string relativeDirectory, IMongoCollection<CrackedDocument> collection, RabbitMQ.Client.IChannel channel, CancellationToken cancellationToken)
+    private async Task CrackDocumentAsync(string filePath, string relativeDirectory, IMongoCollection<CrackedDocument> collection, CancellationToken cancellationToken)
     {
         logger.LogInformation("Starting to crack document: {FilePath}", filePath);
         
@@ -153,26 +150,17 @@ public class DocumentCrackingOrchestrator(
         activity?.SetTag("cracker.document_id", documentId);
         activity?.SetStatus(ActivityStatusCode.Ok);
         
-        // Publish message to RabbitMQ
+        // Publish message using MassTransit
         await PublishDocumentCrackedMessageAsync(documentId, filePath, relativeDirectory, 
-            Path.GetFileName(filePath), fileInfo.Length, pageCount, channel, cancellationToken);
+            Path.GetFileName(filePath), fileInfo.Length, pageCount, cancellationToken);
     }
     
     private async Task PublishDocumentCrackedMessageAsync(string documentId, string filePath, 
         string relativeDirectory, string fileName, long fileSize, int pageCount, 
-        RabbitMQ.Client.IChannel channel, CancellationToken cancellationToken)
+        CancellationToken cancellationToken)
     {
         try
         {
-            // Declare exchange and queue (idempotent - safe to call multiple times)
-            const string exchangeName = "document-events";
-            const string queueName = "document-cracked";
-            const string routingKey = "document.cracked";
-            
-            await channel.ExchangeDeclareAsync(exchangeName, ExchangeType.Topic, durable: true, cancellationToken: cancellationToken);
-            await channel.QueueDeclareAsync(queueName, durable: true, exclusive: false, autoDelete: false, arguments: null, cancellationToken: cancellationToken);
-            await channel.QueueBindAsync(queueName, exchangeName, routingKey, arguments: null, cancellationToken: cancellationToken);
-            
             // Create message
             DocumentCrackedMessage message = new()
             {
@@ -185,28 +173,16 @@ public class DocumentCrackingOrchestrator(
                 CrackedAt = DateTime.UtcNow
             };
             
-            // Serialize message
-            string messageBody = JsonSerializer.Serialize(message);
-            ReadOnlyMemory<byte> body = Encoding.UTF8.GetBytes(messageBody);
+            // Publish using MassTransit - it will handle serialization and routing
+            await publishEndpoint.Publish(message, cancellationToken);
             
-            // Publish message with persistent delivery
-            // In RabbitMQ.Client 7.x, create BasicProperties directly
-            RabbitMQ.Client.BasicProperties properties = new()
-            {
-                Persistent = true,
-                ContentType = "application/json",
-                Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds())
-            };
-            
-            await channel.BasicPublishAsync(exchangeName, routingKey, mandatory: false, basicProperties: properties, body: body, cancellationToken: cancellationToken);
-            
-            logger.LogInformation("Successfully enqueued document cracked message to RabbitMQ. DocumentId: {DocumentId}, FilePath: {FilePath}, Queue: {QueueName}, Exchange: {ExchangeName}, RoutingKey: {RoutingKey}", 
-                documentId, filePath, queueName, exchangeName, routingKey);
+            logger.LogInformation("Successfully published document cracked message via MassTransit. DocumentId: {DocumentId}, FilePath: {FilePath}", 
+                documentId, filePath);
         }
         catch (Exception ex)
         {
             // Log error but don't fail the document cracking process
-            logger.LogError(ex, "Failed to publish document cracked message to RabbitMQ: {FilePath}", filePath);
+            logger.LogError(ex, "Failed to publish document cracked message via MassTransit: {FilePath}", filePath);
         }
     }
 

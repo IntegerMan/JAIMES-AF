@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using MassTransit;
 using MattEland.Jaimes.DocumentCracker.Services;
 using MattEland.Jaimes.DocumentProcessing.Options;
 using MattEland.Jaimes.DocumentProcessing.Services;
@@ -57,8 +58,56 @@ DocumentScanOptions options = BindOptions(builder);
 // Add MongoDB client integration
 builder.AddMongoDBClient("documents");
 
-// Add RabbitMQ client integration
-builder.AddRabbitMQClient(connectionName: "messaging");
+// Configure MassTransit for publishing messages
+builder.Services.AddMassTransit(x =>
+{
+    x.UsingRabbitMq((context, cfg) =>
+    {
+        // Get RabbitMQ connection string from Aspire
+        string? connectionString = builder.Configuration.GetConnectionString("messaging")
+            ?? builder.Configuration["ConnectionStrings:messaging"]
+            ?? builder.Configuration["ConnectionStrings__messaging"];
+
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException(
+                "RabbitMQ connection string is not configured. " +
+                "Expected connection string 'messaging' from Aspire.");
+        }
+
+        // Parse connection string (format: amqp://username:password@host:port/vhost)
+        Uri rabbitUri = new(connectionString);
+        string host = rabbitUri.Host;
+        ushort port = rabbitUri.Port > 0 ? (ushort)rabbitUri.Port : (ushort)5672;
+        string? username = null;
+        string? password = null;
+        
+        if (!string.IsNullOrEmpty(rabbitUri.UserInfo))
+        {
+            string[] userInfo = rabbitUri.UserInfo.Split(':');
+            username = userInfo[0];
+            if (userInfo.Length > 1)
+            {
+                password = userInfo[1];
+            }
+        }
+
+        cfg.Host(host, port, "/", h =>
+        {
+            if (!string.IsNullOrEmpty(username))
+            {
+                h.Username(username);
+            }
+            if (!string.IsNullOrEmpty(password))
+            {
+                h.Password(password);
+            }
+        });
+
+        // Configure endpoints (MassTransit will auto-create exchanges/queues as needed)
+        cfg.ConfigureEndpoints(context);
+    });
+});
 
 // Configure OpenTelemetry ActivitySource for document cracking
 const string activitySourceName = "Jaimes.DocumentCracker";
@@ -95,6 +144,7 @@ using IHost host = builder.Build();
 
 // CRITICAL: Start the host to ensure OpenTelemetry TracerProvider is built and ActivitySource listeners are registered
 // The TracerProvider is only active after the host is started
+// Also starts MassTransit bus so we can publish messages
 await host.StartAsync();
 
 ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
@@ -193,6 +243,11 @@ catch (Exception ex)
     logger.LogError(ex, "Fatal error during document cracking.");
     AnsiConsole.WriteException(ex, ExceptionFormats.ShortenEverything);
     return 1;
+}
+finally
+{
+    // Stop the host to ensure telemetry is flushed
+    await host.StopAsync();
 }
 
 static DocumentScanOptions BindOptions(HostApplicationBuilder builder)
