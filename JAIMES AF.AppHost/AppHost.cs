@@ -81,16 +81,6 @@ var lavinmq = builder.AddLavinMQ("lavinmq")
 var documentChangeDetectorContentDirectory = builder.AddParameter("document-change-detector-content-directory", "C:\\Dev\\Sourcebooks", secret: false)
     .WithDescription("Directory path to monitor for documents (e.g., C:\\Dev\\Sourcebooks)");
 
-// Add Seq for advanced log monitoring and analysis
-IResourceBuilder<SeqResource> seq = builder.AddSeq("seq")
-    .WithIconName("DeveloperBoardSearch")
-    .ExcludeFromManifest()
-    .WithLifetime(ContainerLifetime.Persistent)
-    .WithDataVolume()
-    .WithEnvironment("ACCEPT_EULA", "Y")
-    .WithEnvironment("SEQ_LISTEN_URI", "http://0.0.0.0:80")
-    .WithUrlForEndpoint("http", static url => url.DisplayText = "🔍 Seq");
-
 // Add Kernel Memory service container
 IResourceBuilder<ContainerResource> kernelMemory = builder.AddContainer("kernel-memory", "kernelmemory/service:latest")
     .WithIconName("BrainCircuit")
@@ -156,14 +146,12 @@ IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIME
     .WithReference(embedModel)
     .WithReference(sqliteDb)
     .WithReference(qdrant)
-    .WithReference(seq)
     .WithReference(rabbitmq)
     .WithReference(mongoDb)
     .WaitFor(redis)
     .WaitFor(qdrant)
     .WaitFor(ollama)
     .WaitFor(sqliteDb)
-    .WaitFor(seq)
     .WaitFor(kernelMemory)
     .WaitFor(rabbitmq)
     .WaitFor(mongo)
@@ -212,19 +200,15 @@ builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")
         DisplayText = "👤 Players"
     })
     .WithReference(apiService)
-    .WithReference(seq)
-    .WaitFor(apiService)
-    .WaitFor(seq);
+    .WaitFor(apiService);
 
 builder.AddProject<Projects.JAIMES_AF_Indexer>("indexer")
     .WithIconName("DocumentSearch", IconVariant.Regular)
     .WithExplicitStart()
     .WithReference(embedModel)
     .WithReference(qdrant)
-    .WithReference(seq)
     .WaitFor(ollama)
     .WaitFor(qdrant)
-    .WaitFor(seq)
     .WaitFor(kernelMemory)
     .WithEnvironment(context =>
     {
@@ -244,19 +228,15 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentCrackerWorker>("document-c
     .WithIconName("DocumentTextExtract")
     .WithReference(rabbitmq)
     .WithReference(mongoDb)
-    .WithReference(seq)
     .WaitFor(rabbitmq)
-    .WaitFor(mongo)
-    .WaitFor(seq);
+    .WaitFor(mongo);
 
 builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChangeDetector>("document-change-detector")
     .WithIconName("DocumentSearch")
     .WithReference(rabbitmq)
     .WithReference(mongoDb)
-    .WithReference(seq)
     .WaitFor(rabbitmq)
     .WaitFor(mongo)
-    .WaitFor(seq)
     .WithEnvironment("DocumentChangeDetector__ContentDirectory", documentChangeDetectorContentDirectory);
 
 builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbeddings>("embedding-worker")
@@ -265,12 +245,10 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbeddings>("embedding-wor
     .WithReference(mongoDb)
     .WithReference(qdrant)
     .WithReference(embedModel)
-    .WithReference(seq)
     .WaitFor(rabbitmq)
     .WaitFor(mongo)
     .WaitFor(qdrant)
     .WaitFor(ollama)
-    .WaitFor(seq)
     .WithEnvironment(context =>
     {
         // Set Ollama endpoint for embedding generation

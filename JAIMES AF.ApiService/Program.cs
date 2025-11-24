@@ -25,13 +25,6 @@ public class Program
         // Add service defaults & Aspire client integrations.
         builder.AddServiceDefaults();
 
-        // Add Seq endpoint only when configuration is available (e.g., running under Aspire)
-        string? seqServerUrl = builder.Configuration["Aspire:Resources:seq:ServerUrl"];
-        if (!string.IsNullOrWhiteSpace(seqServerUrl))
-        {
-            builder.AddSeqEndpoint("seq");
-        }
-
         // Add MongoDB client integration when connection information is available (Aspire/local config)
         string? mongoConnectionString = builder.Configuration.GetConnectionString("documents")
             ?? builder.Configuration["ConnectionStrings:documents"]

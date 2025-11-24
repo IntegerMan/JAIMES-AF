@@ -65,8 +65,6 @@
     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.SQLite" Version="9.9.0" />
     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.LavinMQ" Version="9.9.0" />
     <PackageVersion Include="Aspire.Hosting.Qdrant" Version="13.0.0" />
-    <PackageVersion Include="Aspire.Hosting.Seq" Version="13.0.0" />
-    <PackageVersion Include="Aspire.Seq" Version="13.0.0" />
     <PackageVersion Include="Aspire.Hosting.MongoDB" Version="13.0.0" />
     <PackageVersion Include="Aspire.MongoDB.Driver" Version="13.0.0" />
     <PackageVersion Include="MongoDB.Bson" Version="3.1.0" />

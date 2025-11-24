@@ -7,13 +7,6 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 // Add service defaults & Aspire client integrations.
 builder.AddServiceDefaults();
 
-// Add Seq endpoint for advanced log monitoring when configured (e.g., Aspire)
-string? seqServerUrl = builder.Configuration["Aspire:Resources:seq:ServerUrl"];
-if (!string.IsNullOrWhiteSpace(seqServerUrl))
-{
-    builder.AddSeqEndpoint("seq");
-}
-
 // Register a named HttpClient that targets the Aspire API resource name 'apiservice'.
 // Service discovery handlers added by AddServiceDefaults will resolve this logical host to the real address at runtime.
 // Configure longer timeout for AI chat requests which can take significant time

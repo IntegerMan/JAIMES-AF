@@ -11,7 +11,6 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.MongoDB.Driver" />
-    <PackageReference Include="Aspire.Seq" />
     <PackageReference Include="CommunityToolkit.Aspire.OllamaSharp" />
     <PackageReference Include="MassTransit" />
     <PackageReference Include="MassTransit.RabbitMQ" />

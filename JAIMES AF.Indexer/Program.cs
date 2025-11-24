@@ -16,9 +16,6 @@ using MattEland.Jaimes.ServiceDefaults;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
-// Add Seq endpoint for advanced log monitoring
-builder.AddSeqEndpoint("seq");
-
 // Configure OpenTelemetry for Aspire telemetry
 builder.ConfigureOpenTelemetry();
 
