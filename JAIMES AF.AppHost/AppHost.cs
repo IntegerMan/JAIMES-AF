@@ -1,15 +1,11 @@
 ﻿// Use polling instead of inotify to avoid watcher limits
 Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER", "1", EnvironmentVariableTarget.Process);
 
-// Force Aspire to use Podman instead of Docker
-Environment.SetEnvironmentVariable("ASPIRE_CONTAINER_RUNTIME", "podman", EnvironmentVariableTarget.Process);
-
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
 // Add Ollama with nomic-embed-text model for embeddings
 IResourceBuilder<OllamaResource> ollama = builder.AddOllama("ollama-models")
     .WithIconName("BrainSparkle")
-    //.WithContainerRuntimeArgs("--device", "nvidia.com/gpu=all") // Podman GPU config
     .WithDataVolume();
     /*
     .WithOpenWebUI(webUi => {

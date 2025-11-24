@@ -22,7 +22,7 @@
             },
             "serverReadyAction": {
                 "action": "openExternally",
-                "pattern": "Login to the dashboard at (https?://\\S+)",
+                "pattern": "Login to the dashboard at (https?://[^\\s]*login[^\\s]*t=[^\\s]+)",
                 "uriFormat": "%s",
                 "killOnServerStop": true
             }

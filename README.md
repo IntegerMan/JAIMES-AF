@@ -55,19 +55,46 @@ The application uses Redis as the vector store backend for Kernel Memory. **Redi
 
 ### Prerequisites
 
-**Important**: Aspire requires a container runtime to manage Redis. The application will auto-detect either Docker or Podman.
+**Important**: Aspire requires a container runtime to manage Redis. The application uses Docker Desktop.
 
-- **Docker Desktop**: If using Docker, ensure Docker Desktop is installed and running on Windows
-- **Podman**: If using Podman, ensure the default Podman machine is created and running:
-  ```bash
-  podman machine list  # Check if machine is running
-  podman machine init podman-machine-default  # Create default machine if it doesn't exist
-  podman machine start podman-machine-default  # Start the default machine
-  ```
-  
-  **Note**: Aspire looks for a Podman machine named `podman-machine-default`. If you have a different machine name, you'll need to create the default machine as shown above.
-  
-Aspire will automatically detect and use whichever container runtime is available and healthy.
+- **Docker Desktop**: Ensure Docker Desktop is installed and running on Windows
+  - Download from: https://www.docker.com/products/docker-desktop/
+  - After installation, ensure Docker Desktop is running before starting the AppHost
+  - You can verify Docker is running by executing `docker ps` in a terminal
+
+Aspire will automatically detect and use Docker when it's available and healthy.
+
+### Troubleshooting Docker Issues
+
+If you see an error message like "Container runtime 'docker' was found but appears to be unhealthy":
+
+1. **Verify Docker Desktop is running**:
+   - Look for the Docker Desktop icon in your system tray (whale icon)
+   - If it's not running, start Docker Desktop from the Start menu
+   - Wait for Docker Desktop to fully start (the icon should be steady, not animating)
+
+2. **Test Docker connectivity**:
+   ```bash
+   docker ps
+   ```
+   - If this command succeeds (shows a list of containers or an empty list), Docker is working
+   - If it fails with a connection error, Docker Desktop is not running or not accessible
+
+3. **Check Docker Desktop settings**:
+   - Open Docker Desktop
+   - Go to Settings → General
+   - Ensure "Use the WSL 2 based engine" is enabled (if using WSL)
+   - Ensure "Start Docker Desktop when you log in" is enabled (optional, for convenience)
+
+4. **Restart Docker Desktop**:
+   - Right-click the Docker Desktop icon in the system tray
+   - Select "Quit Docker Desktop"
+   - Wait a few seconds, then start Docker Desktop again
+   - Wait for it to fully start before running the AppHost
+
+5. **Check for port conflicts**:
+   - Ensure no other containers are using the ports required by Aspire (e.g., 6379 for Redis)
+   - Stop any manually started Redis containers: `docker stop redis-stack` (if applicable)
 
 ### Redis Management
 
@@ -90,7 +117,7 @@ For advanced scenarios, you can override the connection string in `appsettings.j
 }
 ```
 
-**Note**: If you have an existing Redis instance running (e.g., from Podman/Docker), you should stop it before running the AppHost to avoid port conflicts.
+**Note**: If you have an existing Redis instance running (e.g., from Docker), you should stop it before running the AppHost to avoid port conflicts.
 
 ## Chat Service Configuration
 

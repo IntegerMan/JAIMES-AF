@@ -48,21 +48,11 @@ This command:
 - Maps RedisInsight web UI to port 8001 (optional, for monitoring)
 - Creates a named volume `redis-data` for data persistence
 
-### Running Redis with Podman
-
-```bash
-podman run -d --name redis-stack -p 6379:6379 -p 8001:8001 -v redis-data:/data redis/redis-stack:latest
-```
-
 ### Verifying Redis is Running
 
 Test the connection:
 ```bash
-# Docker
 docker exec -it redis-stack redis-cli ping
-
-# Podman
-podman exec -it redis-stack redis-cli ping
 ```
 
 You should receive a `PONG` response.
