@@ -119,16 +119,3 @@
 	</MudPaper>
 </MudContainer>
 
-<MudDialog @bind-IsVisible="showDeleteAllDialog" Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small })">
-	<DialogContent>
-		<MudText Typo="Typo.h6">Delete All Embeddings?</MudText>
-		<MudText Typo="Typo.body2" Class="mt-4">
-			Are you sure you want to delete all @(embeddings?.Length ?? 0) embeddings? This action cannot be undone.
-		</MudText>
-	</DialogContent>
-	<DialogActions>
-		<MudButton OnClick="HideDeleteAllDialog">Cancel</MudButton>
-		<MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="DeleteAllEmbeddingsAsync">Delete All</MudButton>
-	</DialogActions>
-</MudDialog>
-

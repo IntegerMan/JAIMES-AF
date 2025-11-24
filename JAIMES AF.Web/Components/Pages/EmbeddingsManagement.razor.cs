@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Components;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
+using MudBlazor;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 
@@ -12,13 +13,15 @@ public partial class EmbeddingsManagement
     [Inject]
     public ILoggerFactory LoggerFactory { get; set; } = null!;
 
+    [Inject]
+    public IDialogService DialogService { get; set; } = null!;
+
     private EmbeddingListItem[]? embeddings;
     private bool isLoadingEmbeddings;
     private bool isDeletingAll;
     private string? errorMessage;
     private string? successMessage;
     private HashSet<string> deletingEmbeddings = new(StringComparer.OrdinalIgnoreCase);
-    private bool showDeleteAllDialog;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -137,16 +140,19 @@ public partial class EmbeddingsManagement
         }
     }
 
-    private void ShowDeleteAllDialog()
+    private async Task ShowDeleteAllDialog()
     {
-        showDeleteAllDialog = true;
-        StateHasChanged();
-    }
+        int embeddingCount = embeddings?.Length ?? 0;
+        bool? result = await DialogService.ShowMessageBox(
+            "Delete All Embeddings?",
+            $"Are you sure you want to delete all {embeddingCount} embeddings? This action cannot be undone.",
+            yesText: "Delete All",
+            cancelText: "Cancel");
 
-    private void HideDeleteAllDialog()
-    {
-        showDeleteAllDialog = false;
-        StateHasChanged();
+        if (result == true)
+        {
+            await DeleteAllEmbeddingsAsync();
+        }
     }
 
     private async Task DeleteAllEmbeddingsAsync()
@@ -155,7 +161,6 @@ public partial class EmbeddingsManagement
         errorMessage = null;
         successMessage = null;
         isDeletingAll = true;
-        showDeleteAllDialog = false;
         StateHasChanged();
 
         try

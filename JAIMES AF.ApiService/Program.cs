@@ -200,9 +200,11 @@ public class Program
         
         // Always register QdrantClient - always pass API key if we have one (even if it's "qdrant")
         // Qdrant requires authentication, so we must pass the API key
+        // Ensure qdrantHost is never null (fallback to localhost if not configured)
+        string qdrantHostFinal = qdrantHost ?? "localhost";
         QdrantClient qdrantClient = string.IsNullOrWhiteSpace(qdrantApiKey)
-            ? new QdrantClient(qdrantHost, port: qdrantPort, https: useHttps)
-            : new QdrantClient(qdrantHost, port: qdrantPort, https: useHttps, apiKey: qdrantApiKey);
+            ? new QdrantClient(qdrantHostFinal, port: qdrantPort, https: useHttps)
+            : new QdrantClient(qdrantHostFinal, port: qdrantPort, https: useHttps, apiKey: qdrantApiKey);
         builder.Services.AddSingleton(qdrantClient);
 
         // Configure EmbeddingWorkerOptions
