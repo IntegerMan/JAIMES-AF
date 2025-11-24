@@ -69,6 +69,14 @@ IResourceBuilder<RabbitMQServerResource> rabbitmq = builder.AddRabbitMQ("messagi
     .WithIconName("AnimalRabbit")
     .WithManagementPlugin();
 
+// Add LavinMQ for messaging (wire-compatible with RabbitMQ)
+var lavinmq = builder.AddLavinMQ("lavinmq")
+    .WithIconName("DocumentQueue")
+    .WithLifetime(ContainerLifetime.Persistent)
+    .WithBindMount(
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aspire",
+            "jaimes-lavinmq-data"), "/var/lib/lavinmq");
+
 // Add parameter for DocumentChangeDetector content directory
 var documentChangeDetectorContentDirectory = builder.AddParameter("document-change-detector-content-directory", "C:\\Dev\\Sourcebooks", secret: false)
     .WithDescription("Directory path to monitor for documents (e.g., C:\\Dev\\Sourcebooks)");

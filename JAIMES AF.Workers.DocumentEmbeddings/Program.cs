@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using MassTransit;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -12,6 +13,7 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
+using SemanticChunkerNET;
 using MattEland.Jaimes.Workers.DocumentEmbeddings.Consumers;
 using MattEland.Jaimes.Workers.DocumentEmbeddings.Configuration;
 using MattEland.Jaimes.Workers.DocumentEmbeddings.Services;
@@ -283,6 +285,21 @@ builder.Services.AddHttpClient<IOllamaEmbeddingService, OllamaEmbeddingService>(
         return ValueTask.FromResult(false);
     };
 });
+
+// Register embedding generator adapter for SemanticChunker.NET
+builder.Services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>, OllamaEmbeddingGeneratorAdapter>();
+
+// Register SemanticChunker and chunking strategy
+builder.Services.AddSingleton<SemanticChunker>(sp =>
+{
+    IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator = 
+        sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
+    
+    SemanticChunker chunker = new(embeddingGenerator, tokenLimit: options.TokenLimit);
+    
+    return chunker;
+});
+builder.Services.AddSingleton<ITextChunkingStrategy, SemanticChunkerStrategy>();
 
 // Register services
 builder.Services.AddSingleton<IOllamaEmbeddingService, OllamaEmbeddingService>();

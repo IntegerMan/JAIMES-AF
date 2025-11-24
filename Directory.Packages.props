@@ -7,6 +7,7 @@
     <PackageVersion Include="Aspire.Hosting.Testing" Version="13.0.0" />
     <PackageVersion Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
     <PackageVersion Include="Azure.AI.OpenAI" Version="2.5.0-beta.1" />
+    <PackageVersion Include="Microsoft.Extensions.AI" Version="10.0.1" />
     <PackageVersion Include="OllamaSharp" Version="5.4.11" />
     <PackageVersion Include="OpenAI" Version="2.6.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
@@ -49,6 +50,7 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.StackExchangeRedis" Version="1.14.0-beta.1" />
     <PackageVersion Include="Riok.Mapperly" Version="4.3.0" />
     <PackageVersion Include="Scrutor" Version="6.1.0" />
+    <PackageVersion Include="SemanticChunker.NET" Version="1.1.0" />
     <PackageVersion Include="Serilog.AspNetCore" Version="9.0.0" />
     <PackageVersion Include="StackExchange.Redis" Version="2.8.16" />
     <PackageVersion Include="Spectre.Console" Version="0.49.0" />
@@ -61,6 +63,7 @@
     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Ollama" Version="9.9.0" />
     <PackageVersion Include="CommunityToolkit.Aspire.OllamaSharp" Version="9.9.0" />
     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.SQLite" Version="9.9.0" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.LavinMQ" Version="9.9.0" />
     <PackageVersion Include="Aspire.Hosting.Qdrant" Version="13.0.0" />
     <PackageVersion Include="Aspire.Hosting.Seq" Version="13.0.0" />
     <PackageVersion Include="Aspire.Seq" Version="13.0.0" />

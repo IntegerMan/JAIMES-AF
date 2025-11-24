@@ -3,6 +3,7 @@ using MongoDB.Driver;
 using Microsoft.Extensions.Logging;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.Workers.DocumentEmbeddings.Configuration;
+using MattEland.Jaimes.Workers.DocumentEmbeddings.Models;
 
 namespace MattEland.Jaimes.Workers.DocumentEmbeddings.Services;
 
@@ -10,6 +11,7 @@ public class DocumentEmbeddingService(
     IMongoClient mongoClient,
     IOllamaEmbeddingService ollamaEmbeddingService,
     IQdrantEmbeddingStore qdrantStore,
+    ITextChunkingStrategy chunkingStrategy,
     ILogger<DocumentEmbeddingService> logger,
     ActivitySource activitySource) : IDocumentEmbeddingService
 {
@@ -48,30 +50,78 @@ public class DocumentEmbeddingService(
                 return;
             }
 
-            // Step 2: Generate embedding using Ollama
-            float[] embedding = await ollamaEmbeddingService.GenerateEmbeddingAsync(documentContent, cancellationToken);
-            activity?.SetTag("embedding.dimensions", embedding.Length);
+            // Step 2: Chunk the document
+            List<TextChunk> chunks = chunkingStrategy.ChunkText(documentContent, message.DocumentId).ToList();
+            activity?.SetTag("embedding.chunk_count", chunks.Count);
+            logger.LogInformation("Document {DocumentId} split into {ChunkCount} chunks", message.DocumentId, chunks.Count);
 
-            // Step 3: Prepare metadata
-            Dictionary<string, string> metadata = new()
+            if (chunks.Count == 0)
             {
-                { "documentId", message.DocumentId },
-                { "fileName", message.FileName },
-                { "filePath", message.FilePath },
-                { "relativeDirectory", message.RelativeDirectory },
-                { "fileSize", message.FileSize.ToString() },
-                { "pageCount", message.PageCount.ToString() },
-                { "crackedAt", message.CrackedAt.ToString("O") },
-                { "embeddedAt", DateTime.UtcNow.ToString("O") }
-            };
+                logger.LogWarning("Document {DocumentId} produced no chunks, skipping embedding generation", 
+                    message.DocumentId);
+                activity?.SetStatus(ActivityStatusCode.Error, "No chunks produced");
+                return;
+            }
 
-            // Step 4: Store embedding in Qdrant
-            await qdrantStore.StoreEmbeddingAsync(message.DocumentId, embedding, metadata, cancellationToken);
+            // Step 3: Process each chunk
+            int processedChunks = 0;
+            int failedChunks = 0;
 
-            // Step 5: Mark document as processed in crackedDocuments collection
+            foreach (TextChunk chunk in chunks)
+            {
+                try
+                {
+                    // Generate embedding for this chunk
+                    float[] embedding = await ollamaEmbeddingService.GenerateEmbeddingAsync(chunk.Text, cancellationToken);
+                    activity?.SetTag("embedding.dimensions", embedding.Length);
+
+                    // Prepare metadata for this chunk
+                    Dictionary<string, string> metadata = new()
+                    {
+                        { "chunkId", chunk.Id },
+                        { "chunkIndex", chunk.Index.ToString() },
+                        { "chunkText", chunk.Text },
+                        { "documentId", message.DocumentId },
+                        { "fileName", message.FileName },
+                        { "filePath", message.FilePath },
+                        { "relativeDirectory", message.RelativeDirectory },
+                        { "fileSize", message.FileSize.ToString() },
+                        { "pageCount", message.PageCount.ToString() },
+                        { "crackedAt", message.CrackedAt.ToString("O") },
+                        { "embeddedAt", DateTime.UtcNow.ToString("O") }
+                    };
+
+                    // Store chunk embedding in Qdrant
+                    await qdrantStore.StoreEmbeddingAsync(chunk.Id, embedding, metadata, cancellationToken);
+                    processedChunks++;
+
+                    logger.LogDebug("Processed chunk {ChunkId} (index {ChunkIndex}) for document {DocumentId}", 
+                        chunk.Id, chunk.Index, message.DocumentId);
+                }
+                catch (Exception ex)
+                {
+                    failedChunks++;
+                    logger.LogError(ex, "Failed to process chunk {ChunkId} (index {ChunkIndex}) for document {DocumentId}", 
+                        chunk.Id, chunk.Index, message.DocumentId);
+                    // Continue processing other chunks even if one fails
+                }
+            }
+
+            activity?.SetTag("embedding.processed_chunks", processedChunks);
+            activity?.SetTag("embedding.failed_chunks", failedChunks);
+
+            if (processedChunks == 0)
+            {
+                logger.LogError("Failed to process any chunks for document {DocumentId}", message.DocumentId);
+                activity?.SetStatus(ActivityStatusCode.Error, "No chunks processed successfully");
+                throw new InvalidOperationException($"Failed to process any chunks for document {message.DocumentId}");
+            }
+
+            // Step 4: Mark document as processed in crackedDocuments collection
             await MarkDocumentAsProcessedAsync(message.DocumentId, cancellationToken);
 
-            logger.LogInformation("Successfully processed embedding for document {DocumentId}", message.DocumentId);
+            logger.LogInformation("Successfully processed {ProcessedChunks}/{TotalChunks} chunks for document {DocumentId}", 
+                processedChunks, chunks.Count, message.DocumentId);
             activity?.SetStatus(ActivityStatusCode.Ok);
         }
         catch (Exception ex)

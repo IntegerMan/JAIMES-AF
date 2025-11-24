@@ -27,6 +27,7 @@
     <PackageReference Include="Aspire.Hosting.Seq" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.Ollama" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.SQLite" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.LavinMQ" />
   </ItemGroup>
 
 </Project>
