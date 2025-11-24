@@ -24,6 +24,5 @@
     <Project Path="JAIMES AF.ServiceDefaults/JAIMES AF.ServiceDefaults.csproj" />
     <Project Path="JAIMES AF.Tests/JAIMES AF.Tests.csproj" />
   </Folder>
-  <Project Path="JAIMES AF.Indexer/JAIMES AF.Indexer.csproj" />
   <Project Path="JAIMES AF.DocumentCracker/JAIMES AF.DocumentCracker.csproj" />
 </Solution>

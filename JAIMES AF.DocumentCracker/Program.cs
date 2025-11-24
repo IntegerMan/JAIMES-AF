@@ -252,30 +252,6 @@ static DocumentScanOptions BindOptions(HostApplicationBuilder builder)
     DocumentScanOptions options = new();
     builder.Configuration.GetSection("DocumentCracker").Bind(options);
 
-    bool requiresFallback = string.IsNullOrWhiteSpace(options.SourceDirectory) ||
-        options.SupportedExtensions.Count == 0;
-
-    if (requiresFallback)
-    {
-        DocumentScanOptions? indexerOptions = builder.Configuration
-            .GetSection("Indexer")
-            .Get<DocumentScanOptions>();
-
-        if (indexerOptions != null)
-        {
-            if (string.IsNullOrWhiteSpace(options.SourceDirectory))
-            {
-                options.SourceDirectory = indexerOptions.SourceDirectory;
-            }
-
-            if (options.SupportedExtensions.Count == 0 &&
-                indexerOptions.SupportedExtensions is { Count: > 0 })
-            {
-                options.SupportedExtensions = indexerOptions.SupportedExtensions;
-            }
-        }
-    }
-
     if (options.SupportedExtensions.Count == 0)
     {
         options.SupportedExtensions = [".pdf"];

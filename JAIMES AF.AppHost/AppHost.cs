@@ -198,28 +198,6 @@ builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")
     .WithReference(apiService)
     .WaitFor(apiService);
 
-builder.AddProject<Projects.JAIMES_AF_Indexer>("indexer")
-    .WithIconName("DocumentSearch", IconVariant.Regular)
-    .WithExplicitStart()
-    .WithReference(embedModel)
-    .WithReference(qdrant)
-    .WaitFor(ollama)
-    .WaitFor(qdrant)
-    .WaitFor(kernelMemory)
-    .WithEnvironment(context =>
-    {
-        // Set Kernel Memory endpoint for MemoryWebClient
-        EndpointReference kernelMemoryEndpoint = kernelMemory.GetEndpoint("http");
-        context.EnvironmentVariables["KernelMemory__Endpoint"] = $"http://{kernelMemoryEndpoint.Host}:{kernelMemoryEndpoint.Port}";
-        
-        // Set Ollama endpoint URL for the indexer (if still needed for other purposes)
-        // Use endpoint reference that resolves at runtime when endpoint is allocated
-        EndpointReference ollamaEndpoint = ollama.GetEndpoint("http");
-        // Construct the URI expression - Aspire will resolve the {host} and {port} expressions at runtime
-        context.EnvironmentVariables["Indexer__OllamaEndpoint"] = $"http://{ollamaEndpoint.Host}:{ollamaEndpoint.Port}";
-        context.EnvironmentVariables["Indexer__OllamaModel"] = "nomic-embed-text";
-    });
-
 builder.AddProject<Projects.JAIMES_AF_Workers_DocumentCrackerWorker>("document-cracker-worker")
     .WithIconName("DocumentTextExtract")
     .WithReference(rabbitmq)

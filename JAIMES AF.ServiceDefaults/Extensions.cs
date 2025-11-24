@@ -91,8 +91,7 @@ public static class Extensions
                         "Jaimes.*",
                         // Explicitly add known ActivitySources to ensure they're registered
                         // (wildcards should match, but explicit registration is more reliable)
-                        "Jaimes.DocumentCracker",
-                        "Jaimes.Indexer")
+                        "Jaimes.DocumentCracker")
                     .AddAspNetCoreInstrumentation(options =>
                         // Exclude health check requests from tracing
                         options.Filter = context =>
