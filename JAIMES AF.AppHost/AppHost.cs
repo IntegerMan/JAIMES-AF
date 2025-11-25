@@ -20,18 +20,6 @@ IResourceBuilder<OllamaResource> ollama = builder.AddOllama("ollama-models")
 
 var embedModel = ollama.AddModel("nomic-embed-text").WithIconName("CodeTextEdit");
 var chatModel = ollama.AddModel("gemma3").WithIconName("CommentText");
-
-// NOTE: There is an Aspire integration for Redis, but it doesn't support Redis-Stack. If you customize the image, it still doesn't start Redis-Stack afterwards.
-// It's simpler just to use a known good image with good default behavior.
-IResourceBuilder<ContainerResource> redis = builder.AddContainer("redis-embeddings", "redis/redis-stack:latest")
-    .WithIconName("DatabaseLink")
-    .WithHttpEndpoint(8001, 8001, name: "redisinsight")
-    .WithUrlForEndpoint("http", static url => url.DisplayText = "🔬 RedisInsight")
-    .WithEndpoint(6379, 6379, name: "redis")
-    .WithBindMount(
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aspire",
-            "jaimes-redis-data"), "/data");
-
 // Add Qdrant for vector embeddings
 // Note: Qdrant API key is an Aspire parameter (not user secret) because it's required by the Aspire-managed Qdrant resource.
 // Application-level secrets (e.g., Azure OpenAI API keys) are managed via user secrets.
@@ -61,16 +49,17 @@ IResourceBuilder<MongoDBDatabaseResource> mongoDb = mongo.AddDatabase("documents
 // Add LavinMQ for messaging (wire-compatible with RabbitMQ)
 var lavinmq = builder.AddLavinMQ("messaging")
     .WithIconName("DocumentQueue")
-    .WithLifetime(ContainerLifetime.Persistent);
+    .WithLifetime(ContainerLifetime.Persistent)
+    .WithUrls(u => {
+        u.Urls.Clear();
+        u.Urls.Add(new() { Url = "http://localhost:15672", DisplayText = "📋 Management" });
+        u.Urls.Add(new() { Url = "http://localhost:15672/queues", DisplayText = "📬 Queues" });
+        u.Urls.Add(new() { Url = "http://localhost:15672/consumers", DisplayText = "👥 Consumers" });
+    });
 
 // Add parameter for DocumentChangeDetector content directory
 var documentChangeDetectorContentDirectory = builder.AddParameter("document-change-detector-content-directory", "C:\\Dev\\Sourcebooks", secret: false)
     .WithDescription("Directory path to monitor for documents (e.g., C:\\Dev\\Sourcebooks)");
-
-// Helper function to create standardized Redis connection string from endpoint reference
-// Note: ContainerResource doesn't support WithReference directly, so we use WithEnvironment with endpoint references
-static string CreateRedisConnectionString(EndpointReference endpoint) =>
-    $"{endpoint.Host}:{endpoint.Port},abortConnect=false,connectRetry=5,connectTimeout=10000";
 
 IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIMES_AF_ApiService>("jaimes-api")
     .WithIconName("DocumentGlobe", IconVariant.Regular)
@@ -99,7 +88,6 @@ IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIME
     .WithReference(qdrant)
     .WithReference(lavinmq)
     .WithReference(mongoDb)
-    .WaitFor(redis)
     .WaitFor(qdrant)
     .WaitFor(ollama)
     .WaitFor(sqliteDb)
@@ -107,9 +95,6 @@ IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIME
     .WaitFor(mongo)
     .WithEnvironment(context =>
     {
-        EndpointReference redisEndpoint = redis.GetEndpoint("redis");
-        context.EnvironmentVariables["VectorDb__ConnectionString"] = CreateRedisConnectionString(redisEndpoint);
-
         // Explicitly set the SQLite connection string to ensure it's available as DefaultConnection
         context.EnvironmentVariables["ConnectionStrings__DefaultConnection"] =
             sqliteDb.Resource.ConnectionStringExpression;
