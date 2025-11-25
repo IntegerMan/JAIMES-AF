@@ -26,6 +26,7 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
     <PackageReference Include="Qdrant.Client" />
     <PackageReference Include="SemanticChunker.NET" />
+    <PackageReference Include="drittich.SemanticSlicer" />
   </ItemGroup>
 
   <ItemGroup>

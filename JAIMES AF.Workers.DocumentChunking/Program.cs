@@ -121,36 +121,58 @@ if (string.IsNullOrWhiteSpace(ollamaEndpoint))
 
 string ollamaModel = options.OllamaModel ?? "nomic-embed-text";
 
-// Register OllamaApiClient from OllamaSharp as the embedding generator
-// OllamaApiClient implements IEmbeddingGenerator<string, Embedding<float>>
-builder.Services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(sp =>
-{
-    Uri ollamaUri = new(ollamaEndpoint);
-    OllamaApiClient client = new(ollamaUri, ollamaModel);
-    return client;
-});
+// Register IMessagePublisher for queuing chunks without embeddings
+builder.Services.AddSingleton<IMessagePublisher, MessagePublisher>();
 
-// Register SemanticChunker and chunking strategy
-builder.Services.AddSingleton<SemanticChunker>(sp =>
+// Register chunking strategy based on configuration
+string chunkingStrategy = options.ChunkingStrategy ?? "SemanticChunker";
+bool useSemanticChunker = string.Equals(chunkingStrategy, "SemanticChunker", StringComparison.OrdinalIgnoreCase);
+bool useSemanticSlicer = string.Equals(chunkingStrategy, "SemanticSlicer", StringComparison.OrdinalIgnoreCase);
+
+if (useSemanticChunker)
 {
-    IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator = 
-        sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
-    
-    BreakpointThresholdType thresholdType = Enum.Parse<BreakpointThresholdType>(options.ThresholdType, ignoreCase: true);
-    
-    // Create SemanticChunker with all available configuration options
-    // Note: SemanticChunker.NET may not support all parameters - adjust based on actual API
-    SemanticChunker chunker = new(
-        embeddingGenerator, 
-        tokenLimit: options.TokenLimit, 
-        thresholdType: thresholdType,
-        bufferSize: options.BufferSize,
-        thresholdAmount: options.ThresholdAmount,
-        targetChunkCount: options.TargetChunkCount);
-    
-    return chunker;
-});
-builder.Services.AddSingleton<ITextChunkingStrategy, SemanticChunkerStrategy>();
+    // Register OllamaApiClient from OllamaSharp as the embedding generator
+    // OllamaApiClient implements IEmbeddingGenerator<string, Embedding<float>>
+    builder.Services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(sp =>
+    {
+        Uri ollamaUri = new(ollamaEndpoint);
+        OllamaApiClient client = new(ollamaUri, ollamaModel);
+        return client;
+    });
+
+    // Register SemanticChunker and chunking strategy
+    builder.Services.AddSingleton<SemanticChunker>(sp =>
+    {
+        IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator = 
+            sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
+        
+        BreakpointThresholdType thresholdType = Enum.Parse<BreakpointThresholdType>(options.ThresholdType, ignoreCase: true);
+        
+        // Create SemanticChunker with all available configuration options
+        // Note: SemanticChunker.NET may not support all parameters - adjust based on actual API
+        SemanticChunker chunker = new(
+            embeddingGenerator, 
+            tokenLimit: options.TokenLimit, 
+            thresholdType: thresholdType,
+            bufferSize: options.BufferSize,
+            thresholdAmount: options.ThresholdAmount,
+            targetChunkCount: options.TargetChunkCount);
+        
+        return chunker;
+    });
+    builder.Services.AddSingleton<ITextChunkingStrategy, SemanticChunkerStrategy>();
+}
+else if (useSemanticSlicer)
+{
+    // Register SemanticSlicer strategy (does not require embedding model)
+    builder.Services.AddSingleton<ITextChunkingStrategy, SemanticSlicerStrategy>();
+}
+else
+{
+    throw new InvalidOperationException(
+        $"Invalid chunking strategy '{chunkingStrategy}'. " +
+        "Valid options are 'SemanticChunker' or 'SemanticSlicer'.");
+}
 
 // Register services
 builder.Services.AddSingleton<IQdrantEmbeddingStore, QdrantEmbeddingStore>();
@@ -195,8 +217,12 @@ ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 IQdrantEmbeddingStore qdrantStore = host.Services.GetRequiredService<IQdrantEmbeddingStore>();
 
 logger.LogInformation("Starting Document Chunking and Embedding Worker");
-logger.LogInformation("Ollama Endpoint: {Endpoint}", ollamaEndpoint);
-logger.LogInformation("Ollama Model: {Model}", ollamaModel);
+logger.LogInformation("Chunking Strategy: {Strategy}", chunkingStrategy);
+if (useSemanticChunker)
+{
+    logger.LogInformation("Ollama Endpoint: {Endpoint}", ollamaEndpoint);
+    logger.LogInformation("Ollama Model: {Model}", ollamaModel);
+}
 logger.LogInformation("Qdrant: {Host}:{Port} (HTTPS: {UseHttps})", qdrantHost, qdrantPort, useHttps);
 logger.LogInformation("Worker ready and listening for DocumentReadyForChunkingMessage on queue");
 

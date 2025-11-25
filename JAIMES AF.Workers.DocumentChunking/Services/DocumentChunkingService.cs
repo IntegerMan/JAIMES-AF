@@ -12,6 +12,7 @@ public class DocumentChunkingService(
     IMongoClient mongoClient,
     ITextChunkingStrategy chunkingStrategy,
     IQdrantEmbeddingStore qdrantStore,
+    IMessagePublisher messagePublisher,
     ILogger<DocumentChunkingService> logger,
     ActivitySource activitySource) : IDocumentChunkingService
 {
@@ -74,16 +75,36 @@ public class DocumentChunkingService(
             // Step 4: Update CrackedDocument with TotalChunks
             await UpdateDocumentChunkCountAsync(message.DocumentId, chunks.Count, cancellationToken);
 
-            // Step 5: Store chunks with embeddings in Qdrant
+            // Step 5: Store chunks with embeddings in Qdrant, or queue chunks without embeddings for embedding generation
             int storedCount = 0;
+            int queuedCount = 0;
             foreach (TextChunk chunk in chunks)
             {
                 try
                 {
                     if (chunk.Embedding == null || chunk.Embedding.Length == 0)
                     {
-                        logger.LogWarning("Chunk {ChunkId} (index {ChunkIndex}) has no embedding, skipping Qdrant storage", 
-                            chunk.Id, chunk.Index);
+                        // Chunk has no embedding - queue it for embedding generation
+                        ChunkReadyForEmbeddingMessage embeddingMessage = new()
+                        {
+                            ChunkId = chunk.Id,
+                            ChunkText = chunk.Text,
+                            ChunkIndex = chunk.Index,
+                            DocumentId = message.DocumentId,
+                            FileName = message.FileName,
+                            FilePath = message.FilePath,
+                            RelativeDirectory = message.RelativeDirectory,
+                            FileSize = message.FileSize,
+                            PageCount = message.PageCount,
+                            CrackedAt = message.CrackedAt,
+                            TotalChunks = chunks.Count
+                        };
+
+                        await messagePublisher.PublishAsync(embeddingMessage, cancellationToken);
+                        queuedCount++;
+
+                        logger.LogDebug("Queued chunk {ChunkId} (index {ChunkIndex}) for embedding generation for document {DocumentId}", 
+                            chunk.Id, chunk.Index, message.DocumentId);
                         continue;
                     }
 
@@ -112,9 +133,9 @@ public class DocumentChunkingService(
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "Failed to store chunk {ChunkId} (index {ChunkIndex}) in Qdrant for document {DocumentId}", 
+                    logger.LogError(ex, "Failed to process chunk {ChunkId} (index {ChunkIndex}) for document {DocumentId}", 
                         chunk.Id, chunk.Index, message.DocumentId);
-                    // Continue storing other chunks even if one fails
+                    // Continue processing other chunks even if one fails
                 }
             }
 
@@ -122,8 +143,9 @@ public class DocumentChunkingService(
             await MarkDocumentAsProcessedAsync(message.DocumentId, cancellationToken);
 
             activity?.SetTag("chunking.stored_chunks", storedCount);
-            logger.LogInformation("Successfully processed and stored {StoredCount}/{ChunkCount} chunks for document {DocumentId}", 
-                storedCount, chunks.Count, message.DocumentId);
+            activity?.SetTag("chunking.queued_chunks", queuedCount);
+            logger.LogInformation("Successfully processed document {DocumentId}: {StoredCount} chunks stored in Qdrant, {QueuedCount} chunks queued for embedding generation out of {ChunkCount} total chunks", 
+                message.DocumentId, storedCount, queuedCount, chunks.Count);
             activity?.SetStatus(ActivityStatusCode.Ok);
         }
         catch (Exception ex)
