@@ -207,9 +207,9 @@ builder.Services.AddSingleton(new OllamaEmbeddingOptions
     Model = ollamaModel
 });
 
-// Register HttpClient for Ollama API calls
+// Register HttpClient for Ollama API calls (used by OllamaEmbeddingGeneratorAdapter)
 TimeSpan httpClientTimeout = TimeSpan.FromMinutes(15);
-builder.Services.AddHttpClient<IOllamaEmbeddingService, OllamaEmbeddingService>(client =>
+builder.Services.AddHttpClient<OllamaEmbeddingGeneratorAdapter>(client =>
 {
     client.BaseAddress = new Uri(ollamaEndpoint);
     client.Timeout = httpClientTimeout;
@@ -276,7 +276,6 @@ builder.Services.AddSingleton<SemanticChunker>(sp =>
 builder.Services.AddSingleton<ITextChunkingStrategy, SemanticChunkerStrategy>();
 
 // Register services
-builder.Services.AddSingleton<IOllamaEmbeddingService, OllamaEmbeddingService>();
 builder.Services.AddSingleton<IQdrantEmbeddingStore, QdrantEmbeddingStore>();
 builder.Services.AddSingleton<IDocumentChunkingService, DocumentChunkingService>();
 
