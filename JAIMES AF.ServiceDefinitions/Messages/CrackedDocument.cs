@@ -32,6 +32,12 @@ public class CrackedDocument
 
     [BsonElement("isProcessed")]
     public bool IsProcessed { get; set; } = false;
+
+    [BsonElement("totalChunks")]
+    public int TotalChunks { get; set; } = 0;
+
+    [BsonElement("processedChunkCount")]
+    public int ProcessedChunkCount { get; set; } = 0;
 }
 
 

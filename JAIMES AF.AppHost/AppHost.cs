@@ -213,6 +213,21 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChangeDetector>("document-
     .WaitFor(mongo)
     .WithEnvironment("DocumentChangeDetector__ContentDirectory", documentChangeDetectorContentDirectory);
 
+builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChunking>("document-chunking-worker")
+    .WithIconName("DocumentSplit")
+    .WithReference(rabbitmq)
+    .WithReference(mongoDb)
+    .WithReference(embedModel)
+    .WaitFor(rabbitmq)
+    .WaitFor(mongo)
+    .WaitFor(ollama)
+    .WithEnvironment(context =>
+    {
+        // Set Ollama endpoint for embedding generation (needed for SemanticChunker)
+        EndpointReference ollamaEndpoint = ollama.GetEndpoint("http");
+        context.EnvironmentVariables["DocumentChunking__OllamaEndpoint"] = $"http://{ollamaEndpoint.Host}:{ollamaEndpoint.Port}";
+    });
+
 builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbeddings>("embedding-worker")
     .WithIconName("TextGrammarSettings")
     .WithReference(rabbitmq)

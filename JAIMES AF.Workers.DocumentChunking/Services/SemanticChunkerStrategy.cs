@@ -1,9 +1,8 @@
 using Microsoft.Extensions.Logging;
 using SemanticChunkerNET;
-using MattEland.Jaimes.Workers.DocumentEmbeddings.Models;
-using MattEland.Jaimes.Workers.DocumentEmbeddings.Configuration;
+using MattEland.Jaimes.Workers.DocumentChunking.Models;
 
-namespace MattEland.Jaimes.Workers.DocumentEmbeddings.Services;
+namespace MattEland.Jaimes.Workers.DocumentChunking.Services;
 
 /// <summary>
 /// Chunking strategy using SemanticChunker.NET for embedding-driven, context-aware text chunking

@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <RootNamespace>MattEland.Jaimes.Workers.DocumentEmbeddings</RootNamespace>
+    <RootNamespace>MattEland.Jaimes.Workers.DocumentChunking</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UserSecretsId>a8f3c2e1-4b5d-4a9e-8c7f-1d2e3f4a5b6d</UserSecretsId>
@@ -26,14 +26,13 @@
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
-    <PackageReference Include="Qdrant.Client" />
+    <PackageReference Include="SemanticChunker.NET" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\JAIMES AF.ServiceDefinitions\JAIMES AF.ServiceDefinitions.csproj" />
     <ProjectReference Include="..\JAIMES AF.ServiceDefaults\JAIMES AF.ServiceDefaults.csproj" />
   </ItemGroup>
-
 
 </Project>
 

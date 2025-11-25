@@ -2,12 +2,12 @@ using System.Diagnostics;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
-using MattEland.Jaimes.Workers.DocumentEmbeddings.Services;
+using MattEland.Jaimes.Workers.DocumentChunking.Services;
 
-namespace MattEland.Jaimes.Workers.DocumentEmbeddings.Consumers;
+namespace MattEland.Jaimes.Workers.DocumentChunking.Consumers;
 
 public class DocumentCrackedConsumer(
-    IDocumentEmbeddingService embeddingService,
+    IDocumentChunkingService chunkingService,
     ILogger<DocumentCrackedConsumer> logger,
     ActivitySource activitySource) : IConsumer<DocumentCrackedMessage>
 {
@@ -15,7 +15,7 @@ public class DocumentCrackedConsumer(
     {
         DocumentCrackedMessage message = context.Message;
 
-        using Activity? activity = activitySource.StartActivity("DocumentEmbedding.ConsumeMessage");
+        using Activity? activity = activitySource.StartActivity("DocumentChunking.ConsumeMessage");
         activity?.SetTag("messaging.message_id", context.MessageId?.ToString() ?? "unknown");
         activity?.SetTag("messaging.document_id", message.DocumentId);
         activity?.SetTag("messaging.file_name", message.FileName);
@@ -38,9 +38,9 @@ public class DocumentCrackedConsumer(
                 return;
             }
 
-            await embeddingService.ProcessDocumentAsync(message, context.CancellationToken);
+            await chunkingService.ProcessDocumentAsync(message, context.CancellationToken);
 
-            logger.LogInformation("Successfully processed document embedding: {DocumentId}", message.DocumentId);
+            logger.LogInformation("Successfully processed document chunking: {DocumentId}", message.DocumentId);
             activity?.SetStatus(ActivityStatusCode.Ok);
         }
         catch (Exception ex)

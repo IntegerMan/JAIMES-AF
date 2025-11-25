@@ -1,8 +1,7 @@
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
-using System.Collections;
 
-namespace MattEland.Jaimes.Workers.DocumentEmbeddings.Services;
+namespace MattEland.Jaimes.Workers.DocumentChunking.Services;
 
 /// <summary>
 /// Adapter that wraps IOllamaEmbeddingService to implement IEmbeddingGenerator for SemanticChunker.NET

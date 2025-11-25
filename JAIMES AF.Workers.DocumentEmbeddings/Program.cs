@@ -13,7 +13,6 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
-using SemanticChunkerNET;
 using MattEland.Jaimes.Workers.DocumentEmbeddings.Consumers;
 using MattEland.Jaimes.Workers.DocumentEmbeddings.Configuration;
 using MattEland.Jaimes.Workers.DocumentEmbeddings.Services;
@@ -283,21 +282,6 @@ builder.Services.AddHttpClient<IOllamaEmbeddingService, OllamaEmbeddingService>(
     };
 });
 
-// Register embedding generator adapter for SemanticChunker.NET
-builder.Services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>, OllamaEmbeddingGeneratorAdapter>();
-
-// Register SemanticChunker and chunking strategy
-builder.Services.AddSingleton<SemanticChunker>(sp =>
-{
-    IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator = 
-        sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
-    
-    SemanticChunker chunker = new(embeddingGenerator, tokenLimit: options.TokenLimit);
-    
-    return chunker;
-});
-builder.Services.AddSingleton<ITextChunkingStrategy, SemanticChunkerStrategy>();
-
 // Register services
 builder.Services.AddSingleton<IOllamaEmbeddingService, OllamaEmbeddingService>();
 builder.Services.AddSingleton<IDocumentEmbeddingService, DocumentEmbeddingService>();
@@ -306,7 +290,7 @@ builder.Services.AddSingleton<IQdrantEmbeddingStore, QdrantEmbeddingStore>();
 // Configure MassTransit
 builder.Services.AddMassTransit(x =>
 {
-    x.AddConsumer<DocumentCrackedConsumer>();
+    x.AddConsumer<ChunkReadyForEmbeddingConsumer>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -358,9 +342,14 @@ builder.Services.AddMassTransit(x =>
             maxInterval: TimeSpan.FromSeconds(30),
             intervalDelta: TimeSpan.FromSeconds(2)));
 
-        // Configure consumer endpoint
-        // MassTransit will automatically create the queue and bind to the appropriate exchange
-        // based on the message type (DocumentCrackedMessage)
+        // Configure consumer endpoint with prefetch count to process one chunk at a time
+        // This prevents overwhelming the embedding service
+        cfg.ReceiveEndpoint("chunk-embedding-queue", e =>
+        {
+            e.PrefetchCount = 1; // Process one chunk at a time
+            e.ConfigureConsumer<ChunkReadyForEmbeddingConsumer>(context);
+        });
+        
         cfg.ConfigureEndpoints(context);
     });
 });

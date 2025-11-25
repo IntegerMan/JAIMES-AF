@@ -1,4 +1,4 @@
-namespace MattEland.Jaimes.Workers.DocumentEmbeddings.Models;
+namespace MattEland.Jaimes.Workers.DocumentChunking.Models;
 
 public class TextChunk
 {
@@ -7,7 +7,4 @@ public class TextChunk
     public int Index { get; set; }
     public string SourceDocumentId { get; set; } = string.Empty;
 }
-
-
-
 

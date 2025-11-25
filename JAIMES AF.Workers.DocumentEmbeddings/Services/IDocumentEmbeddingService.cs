@@ -4,6 +4,6 @@ namespace MattEland.Jaimes.Workers.DocumentEmbeddings.Services;
 
 public interface IDocumentEmbeddingService
 {
-    Task ProcessDocumentAsync(DocumentCrackedMessage message, CancellationToken cancellationToken = default);
+    Task ProcessChunkAsync(ChunkReadyForEmbeddingMessage message, CancellationToken cancellationToken = default);
 }
 
