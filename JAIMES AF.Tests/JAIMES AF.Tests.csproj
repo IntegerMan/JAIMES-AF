@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <OutputType>Exe</OutputType>
     <RootNamespace>MattEland.Jaimes.Tests</RootNamespace>
     <NoWarn>$(NoWarn);ICU4N_IDE_0002</NoWarn>
   </PropertyGroup>
