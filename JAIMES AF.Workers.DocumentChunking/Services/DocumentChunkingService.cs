@@ -62,10 +62,10 @@ public class DocumentChunkingService(
 
             if (chunks.Count == 0)
             {
-                logger.LogWarning("Document {DocumentId} produced no chunks, skipping", 
+                logger.LogError("Document {DocumentId} produced no chunks after chunking. This is a failure condition.", 
                     message.DocumentId);
                 activity?.SetStatus(ActivityStatusCode.Error, "No chunks produced");
-                return;
+                throw new InvalidOperationException($"Document {message.DocumentId} produced no chunks after chunking. This may indicate a problem with the chunking strategy or document content.");
             }
 
             // Step 3: Store chunks in MongoDB

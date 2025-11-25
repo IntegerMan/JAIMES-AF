@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Globalization;
 using Microsoft.Extensions.AI;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
@@ -20,6 +19,7 @@ using MattEland.Jaimes.Workers.DocumentChunking.Consumers;
 using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
 using MattEland.Jaimes.Workers.DocumentChunking.Services;
 using MattEland.Jaimes.ServiceDefaults;
+using OllamaSharp;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
@@ -59,65 +59,15 @@ builder.Services.AddSingleton(options);
 builder.AddMongoDBClient("documents");
 
 // Configure Qdrant client
-// Get Qdrant endpoint from Aspire environment variables
-string? qdrantHost = builder.Configuration["DocumentChunking:QdrantHost"]
-    ?? builder.Configuration["DocumentChunking__QdrantHost"]
-    ?? builder.Configuration["QDRANT_EMBEDDINGS_GRPCHOST"]
-    ?? builder.Configuration["QdrantEmbeddings__GrpcHost"];
-
-string? qdrantPortStr = builder.Configuration["DocumentChunking:QdrantPort"]
-    ?? builder.Configuration["DocumentChunking__QdrantPort"]
-    ?? builder.Configuration["QDRANT_EMBEDDINGS_GRPCPORT"]
-    ?? builder.Configuration["QdrantEmbeddings__GrpcPort"];
-
-string? qdrantConnectionString = builder.Configuration.GetConnectionString("qdrant-embeddings")
-    ?? builder.Configuration["ConnectionStrings:qdrant-embeddings"]
-    ?? builder.Configuration["ConnectionStrings__qdrant-embeddings"];
-
-// Initialize API key variable
+string? qdrantConnectionString = builder.Configuration.GetConnectionString("qdrant-embeddings");
+string? qdrantHost = builder.Configuration["DocumentChunking:QdrantHost"];
+string? qdrantPortStr = builder.Configuration["DocumentChunking:QdrantPort"];
 string? qdrantApiKey = null;
 
-// Try to extract API key from connection string first (this is the most reliable source)
+// Extract from connection string if provided (takes precedence)
 if (!string.IsNullOrWhiteSpace(qdrantConnectionString))
 {
-    ApplyQdrantConnectionString(qdrantConnectionString, ref qdrantHost, ref qdrantPortStr, ref qdrantApiKey);
-}
-
-// Try multiple possible API key locations
-qdrantApiKey ??= builder.Configuration["Qdrant__ApiKey"]
-    ?? builder.Configuration["Qdrant:ApiKey"]
-    ?? builder.Configuration["QDRANT_EMBEDDINGS_APIKEY"]
-    ?? builder.Configuration["QdrantEmbeddings__ApiKey"]
-    ?? builder.Configuration["QDRANT_EMBEDDINGS_API_KEY"]
-    ?? Environment.GetEnvironmentVariable("Qdrant__ApiKey")
-    ?? Environment.GetEnvironmentVariable("QDRANT_EMBEDDINGS_APIKEY")
-    ?? Environment.GetEnvironmentVariable("QdrantEmbeddings__ApiKey")
-    ?? Environment.GetEnvironmentVariable("QDRANT_EMBEDDINGS_API_KEY")
-    ?? Environment.GetEnvironmentVariable("qdrant-api-key");
-
-// If the API key looks like an unresolved Aspire expression (contains { and }), 
-// try to resolve it by reading from the actual parameter value or use default
-if (!string.IsNullOrWhiteSpace(qdrantApiKey) && qdrantApiKey.Contains('{') && qdrantApiKey.Contains('}'))
-{
-    string? resolvedApiKey = Environment.GetEnvironmentVariable("qdrant-api-key")
-        ?? Environment.GetEnvironmentVariable("QDRANT_API_KEY")
-        ?? Environment.GetEnvironmentVariable("Qdrant__ApiKey")
-        ?? Environment.GetEnvironmentVariable("QDRANT_EMBEDDINGS_APIKEY");
-    
-    if (!string.IsNullOrWhiteSpace(resolvedApiKey) && !resolvedApiKey.Contains('{'))
-    {
-        qdrantApiKey = resolvedApiKey;
-    }
-    else
-    {
-        qdrantApiKey = "qdrant";
-    }
-}
-
-// If API key is still not found, use the default value from the parameter definition
-if (string.IsNullOrWhiteSpace(qdrantApiKey))
-{
-    qdrantApiKey = "qdrant";
+    QdrantConnectionStringParser.ApplyQdrantConnectionString(qdrantConnectionString, ref qdrantHost, ref qdrantPortStr, ref qdrantApiKey);
 }
 
 if (string.IsNullOrWhiteSpace(qdrantHost) || string.IsNullOrWhiteSpace(qdrantPortStr))
@@ -133,7 +83,6 @@ if (!int.TryParse(qdrantPortStr, out int qdrantPort))
         $"Invalid Qdrant port: '{qdrantPortStr}'. Expected a valid integer.");
 }
 
-// QdrantClient uses the gRPC endpoint (container port 6334, though Aspire may map it to another host port)
 bool useHttps = builder.Configuration.GetValue<bool>("DocumentChunking:QdrantUseHttps", defaultValue: false);
 
 QdrantClient qdrantClient = string.IsNullOrWhiteSpace(qdrantApiKey)
@@ -142,116 +91,44 @@ QdrantClient qdrantClient = string.IsNullOrWhiteSpace(qdrantApiKey)
 
 builder.Services.AddSingleton(qdrantClient);
 
-// Configure Ollama client - prioritize explicit endpoint configuration from AppHost
-// This ensures we use the correct host/port in containerized environments
-string? ollamaConnectionString = null;
+// Configure Ollama client
+string? ollamaEndpoint = builder.Configuration["DocumentChunking:OllamaEndpoint"]?.TrimEnd('/');
+string? ollamaConnectionString = builder.Configuration.GetConnectionString("nomic-embed-text")
+    ?? builder.Configuration.GetConnectionString("ollama-models");
 
-// First, check for explicit endpoint configuration (set by AppHost)
-string? ollamaEndpointFromConfig = builder.Configuration["DocumentChunking:OllamaEndpoint"]
-    ?? builder.Configuration["DocumentChunking__OllamaEndpoint"];
-
-if (!string.IsNullOrWhiteSpace(ollamaEndpointFromConfig))
+// Parse connection string if endpoint not explicitly set
+if (string.IsNullOrWhiteSpace(ollamaEndpoint) && !string.IsNullOrWhiteSpace(ollamaConnectionString))
 {
-    ollamaConnectionString = ollamaEndpointFromConfig.TrimEnd('/');
-}
-else
-{
-    // Fallback to connection strings from Aspire model reference
-    ollamaConnectionString = builder.Configuration.GetConnectionString("nomic-embed-text")
-        ?? builder.Configuration.GetConnectionString("ollama-models")
-        ?? builder.Configuration.GetConnectionString("embedModel")
-        ?? builder.Configuration["ConnectionStrings:nomic-embed-text"]
-        ?? builder.Configuration["ConnectionStrings:ollama-models"]
-        ?? builder.Configuration["ConnectionStrings:embedModel"]
-        ?? builder.Configuration["ConnectionStrings__nomic-embed-text"]
-        ?? builder.Configuration["ConnectionStrings__ollama-models"]
-        ?? builder.Configuration["ConnectionStrings__embedModel"];
-}
-
-if (string.IsNullOrWhiteSpace(ollamaConnectionString))
-{
-    throw new InvalidOperationException(
-        "Ollama connection string is not configured. " +
-        "Expected connection string from Aspire model reference. " +
-        "Tried: 'nomic-embed-text', 'ollama-models', 'embedModel'. " +
-        "Check that the chunking worker has a reference to the Ollama model resource in AppHost.");
-}
-
-// Parse connection string
-string ollamaEndpoint;
-string ollamaModel = options.OllamaModel ?? "nomic-embed-text";
-
-if (ollamaConnectionString.Contains("Endpoint=", StringComparison.OrdinalIgnoreCase))
-{
-    string[] parts = ollamaConnectionString.Split(';');
-    ollamaEndpoint = parts.FirstOrDefault(p => p.StartsWith("Endpoint=", StringComparison.OrdinalIgnoreCase))
-        ?.Substring("Endpoint=".Length)
-        ?? throw new InvalidOperationException("Invalid Ollama connection string format: missing Endpoint");
-    
-    string? modelPart = parts.FirstOrDefault(p => p.StartsWith("Model=", StringComparison.OrdinalIgnoreCase));
-    if (!string.IsNullOrWhiteSpace(modelPart))
+    if (ollamaConnectionString.Contains("Endpoint=", StringComparison.OrdinalIgnoreCase))
     {
-        ollamaModel = modelPart.Substring("Model=".Length);
+        string[] parts = ollamaConnectionString.Split(';');
+        ollamaEndpoint = parts.FirstOrDefault(p => p.StartsWith("Endpoint=", StringComparison.OrdinalIgnoreCase))
+            ?.Substring("Endpoint=".Length)
+            ?.TrimEnd('/');
+    }
+    else
+    {
+        ollamaEndpoint = ollamaConnectionString.TrimEnd('/');
     }
 }
-else
+
+if (string.IsNullOrWhiteSpace(ollamaEndpoint))
 {
-    ollamaEndpoint = ollamaConnectionString;
+    throw new InvalidOperationException(
+        "Ollama endpoint is not configured. " +
+        "Expected 'DocumentChunking:OllamaEndpoint' from AppHost or connection string from model reference.");
 }
 
-ollamaEndpoint = ollamaEndpoint.TrimEnd('/');
+string ollamaModel = options.OllamaModel ?? "nomic-embed-text";
 
-builder.Services.AddSingleton(new OllamaEmbeddingOptions
+// Register OllamaApiClient from OllamaSharp as the embedding generator
+// OllamaApiClient implements IEmbeddingGenerator<string, Embedding<float>>
+builder.Services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(sp =>
 {
-    Endpoint = ollamaEndpoint,
-    Model = ollamaModel
+    Uri ollamaUri = new(ollamaEndpoint);
+    OllamaApiClient client = new(ollamaUri, ollamaModel);
+    return client;
 });
-
-// Register HttpClient for Ollama API calls (used by OllamaEmbeddingGeneratorAdapter)
-TimeSpan httpClientTimeout = TimeSpan.FromMinutes(15);
-builder.Services.AddHttpClient<OllamaEmbeddingGeneratorAdapter>(client =>
-{
-    client.BaseAddress = new Uri(ollamaEndpoint);
-    client.Timeout = httpClientTimeout;
-})
-.AddStandardResilienceHandler(resilienceOptions =>
-{
-    resilienceOptions.TotalRequestTimeout.Timeout = httpClientTimeout.Add(TimeSpan.FromMinutes(1));
-    
-    resilienceOptions.Retry.ShouldHandle = args =>
-    {
-        if (args.Outcome.Exception != null)
-        {
-            Exception? ex = args.Outcome.Exception;
-            while (ex != null)
-            {
-                if (ex is HttpRequestException ||
-                    ex is System.Net.Sockets.SocketException ||
-                    ex is TaskCanceledException ||
-                    ex is TimeoutException)
-                {
-                    return ValueTask.FromResult(true);
-                }
-                ex = ex.InnerException;
-            }
-        }
-        
-        if (args.Outcome.Result != null)
-        {
-            return ValueTask.FromResult(
-                args.Outcome.Result.StatusCode == System.Net.HttpStatusCode.RequestTimeout ||
-                args.Outcome.Result.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable ||
-                args.Outcome.Result.StatusCode == System.Net.HttpStatusCode.GatewayTimeout ||
-                (args.Outcome.Result.StatusCode >= System.Net.HttpStatusCode.InternalServerError &&
-                 args.Outcome.Result.StatusCode <= (System.Net.HttpStatusCode)599));
-        }
-        
-        return ValueTask.FromResult(false);
-    };
-});
-
-// Register embedding generator adapter for SemanticChunker.NET
-builder.Services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>, OllamaEmbeddingGeneratorAdapter>();
 
 // Register SemanticChunker and chunking strategy
 builder.Services.AddSingleton<SemanticChunker>(sp =>
@@ -337,133 +214,4 @@ catch (Exception ex)
 }
 
 await host.RunAsync();
-
-static void ApplyQdrantConnectionString(
-    string connectionString,
-    ref string? host,
-    ref string? port,
-    ref string? apiKey)
-{
-    if (string.IsNullOrWhiteSpace(connectionString))
-    {
-        return;
-    }
-
-    if (Uri.TryCreate(connectionString, UriKind.Absolute, out Uri? uri))
-    {
-        host ??= uri.Host;
-        if (uri.Port > 0)
-        {
-            port ??= uri.Port.ToString(CultureInfo.InvariantCulture);
-        }
-
-        ExtractApiKeyFromQuery(uri.Query, ref apiKey);
-        return;
-    }
-
-    if (TryParseHostAndPort(connectionString, out string? parsedHost, out string? parsedPort))
-    {
-        host ??= parsedHost;
-        if (string.IsNullOrWhiteSpace(port) && !string.IsNullOrWhiteSpace(parsedPort))
-        {
-            port = parsedPort;
-        }
-    }
-
-    string[] segments = connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries);
-    foreach (string segment in segments)
-    {
-        string[] keyValue = segment.Split('=', 2, StringSplitOptions.TrimEntries);
-        if (keyValue.Length != 2)
-        {
-            continue;
-        }
-
-        string key = keyValue[0];
-        string value = keyValue[1];
-
-        if (string.Equals(key, "Endpoint", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(key, "Uri", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(key, "GrpcUri", StringComparison.OrdinalIgnoreCase))
-        {
-            ApplyQdrantConnectionString(value, ref host, ref port, ref apiKey);
-            continue;
-        }
-
-        if (string.Equals(key, "Host", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(key, "Hostname", StringComparison.OrdinalIgnoreCase))
-        {
-            host ??= value;
-            continue;
-        }
-
-        if (string.Equals(key, "Port", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(key, "GrpcPort", StringComparison.OrdinalIgnoreCase))
-        {
-            port ??= value;
-            continue;
-        }
-
-        if (string.Equals(key, "ApiKey", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(key, "Api-Key", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(key, "Api_Key", StringComparison.OrdinalIgnoreCase))
-        {
-            apiKey ??= value;
-        }
-    }
-}
-
-static bool TryParseHostAndPort(string value, out string? host, out string? port)
-{
-    host = null;
-    port = null;
-
-    if (string.IsNullOrWhiteSpace(value) || value.Contains('='))
-    {
-        return false;
-    }
-
-    string[] hostParts = value.Split(':', StringSplitOptions.RemoveEmptyEntries);
-    if (hostParts.Length == 0)
-    {
-        return false;
-    }
-
-    host = hostParts[0];
-    if (hostParts.Length > 1)
-    {
-        port = hostParts[1];
-    }
-
-    return true;
-}
-
-static void ExtractApiKeyFromQuery(string query, ref string? apiKey)
-{
-    if (string.IsNullOrWhiteSpace(query) || !string.IsNullOrWhiteSpace(apiKey))
-    {
-        return;
-    }
-
-    string trimmedQuery = query.TrimStart('?');
-    string[] pairs = trimmedQuery.Split('&', StringSplitOptions.RemoveEmptyEntries);
-
-    foreach (string pair in pairs)
-    {
-        string[] keyValue = pair.Split('=', 2);
-        if (keyValue.Length != 2)
-        {
-            continue;
-        }
-
-        string key = keyValue[0];
-        if (string.Equals(key, "api-key", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(key, "apikey", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(key, "api_key", StringComparison.OrdinalIgnoreCase))
-        {
-            apiKey = Uri.UnescapeDataString(keyValue[1]);
-            break;
-        }
-    }
-}
 
