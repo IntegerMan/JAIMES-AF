@@ -48,7 +48,7 @@ public class BackfillEmbeddingsEndpoint : Ep.NoReq.Res<BackfillEmbeddingsRespons
                 continue;
             }
 
-            DocumentCrackedMessage message = new()
+            DocumentReadyForChunkingMessage message = new()
             {
                 DocumentId = document.Id,
                 FilePath = document.FilePath,

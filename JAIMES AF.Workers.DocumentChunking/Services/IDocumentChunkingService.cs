@@ -4,6 +4,6 @@ namespace MattEland.Jaimes.Workers.DocumentChunking.Services;
 
 public interface IDocumentChunkingService
 {
-    Task ProcessDocumentAsync(DocumentCrackedMessage message, CancellationToken cancellationToken = default);
+    Task ProcessDocumentAsync(DocumentReadyForChunkingMessage message, CancellationToken cancellationToken = default);
 }
 

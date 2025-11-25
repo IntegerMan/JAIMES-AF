@@ -46,21 +46,33 @@ public class MessageConsumerService<T> : BackgroundService where T : class
 
         try
         {
+            _logger.LogInformation("Creating RabbitMQ connection for message type {MessageType}...", messageTypeName);
             _connection = await _connectionFactory.CreateConnectionAsync(stoppingToken);
+            _logger.LogInformation("RabbitMQ connection established. Creating channel...");
             _channel = await _connection.CreateChannelAsync();
+            _logger.LogInformation("Channel created successfully.");
 
             // Declare exchange
+            _logger.LogInformation("Declaring exchange {ExchangeName} (type: Topic)...", exchangeName);
             await _channel.ExchangeDeclareAsync(exchangeName, ExchangeType.Topic, durable: true, autoDelete: false,
                 cancellationToken: stoppingToken);
+            _logger.LogInformation("Exchange {ExchangeName} declared successfully.", exchangeName);
 
             // Declare queue
-            await _channel.QueueDeclareAsync(queueName, durable: true, exclusive: false, autoDelete: false,
+            _logger.LogInformation("Declaring queue {QueueName}...", queueName);
+            QueueDeclareOk queueDeclareResult = await _channel.QueueDeclareAsync(queueName, durable: true, exclusive: false, autoDelete: false,
                 arguments: null, cancellationToken: stoppingToken);
+            _logger.LogInformation("Queue {QueueName} declared successfully. Current message count: {MessageCount}, Consumer count: {ConsumerCount}",
+                queueName, queueDeclareResult.MessageCount, queueDeclareResult.ConsumerCount);
 
             // Bind queue to exchange
             string routingKey = messageTypeName;
+            _logger.LogInformation("Binding queue {QueueName} to exchange {ExchangeName} with routing key {RoutingKey}...",
+                queueName, exchangeName, routingKey);
             await _channel.QueueBindAsync(queueName, exchangeName, routingKey, arguments: null,
                 cancellationToken: stoppingToken);
+            _logger.LogInformation("Queue {QueueName} bound to exchange {ExchangeName} with routing key {RoutingKey}.",
+                queueName, exchangeName, routingKey);
 
             // Set QoS to process one message at a time
             await _channel.BasicQosAsync(prefetchSize: 0, prefetchCount: 1, global: false,
@@ -75,6 +87,14 @@ public class MessageConsumerService<T> : BackgroundService where T : class
 
             _logger.LogInformation("Started consuming messages of type {MessageType} from queue {QueueName}",
                 messageTypeName, queueName);
+            
+            // Log queue information for diagnostics
+            QueueDeclareOk? queueInfo = await _channel.QueueDeclarePassiveAsync(queueName, stoppingToken);
+            if (queueInfo != null)
+            {
+                _logger.LogInformation("Queue {QueueName} exists with {MessageCount} messages ready, {ConsumerCount} consumers",
+                    queueName, queueInfo.MessageCount, queueInfo.ConsumerCount);
+            }
 
             // Keep the service running
             while (!stoppingToken.IsCancellationRequested)
@@ -150,6 +170,8 @@ public class MessageConsumerService<T> : BackgroundService where T : class
 
         public Task HandleBasicConsumeOkAsync(string consumerTag, CancellationToken cancellationToken = default)
         {
+            _logger.LogInformation("Consumer registration confirmed. ConsumerTag: {ConsumerTag}, MessageType: {MessageType}",
+                consumerTag, _messageTypeName);
             return Task.CompletedTask;
         }
 
@@ -164,6 +186,9 @@ public class MessageConsumerService<T> : BackgroundService where T : class
             CancellationToken cancellationToken = default)
         {
             string? messageId = properties.MessageId ?? Guid.NewGuid().ToString();
+            _logger.LogInformation("Received message delivery. ConsumerTag: {ConsumerTag}, DeliveryTag: {DeliveryTag}, Exchange: {Exchange}, RoutingKey: {RoutingKey}, MessageId: {MessageId}",
+                consumerTag, deliveryTag, exchange, routingKey, messageId);
+            
             using Activity? activity =
                 _activitySource?.StartActivity($"MessageConsumer.Consume.{_messageTypeName}");
             activity?.SetTag("messaging.message_id", messageId);
@@ -172,6 +197,8 @@ public class MessageConsumerService<T> : BackgroundService where T : class
             try
             {
                 string messageJson = Encoding.UTF8.GetString(body.Span);
+                _logger.LogDebug("Deserializing message of type {MessageType}. MessageId: {MessageId}, BodyLength: {BodyLength}",
+                    _messageTypeName, messageId, body.Length);
 
                 T? message = JsonSerializer.Deserialize<T>(messageJson, _jsonOptions);
                 if (message == null)
@@ -241,7 +268,9 @@ public class MessageConsumerService<T> : BackgroundService where T : class
 
         public Task HandleChannelShutdownAsync(object channel, RabbitMQ.Client.Events.ShutdownEventArgs reason)
         {
-            throw new NotImplementedException();
+            _logger.LogWarning("Channel shutdown detected for consumer {MessageType}. Reason: {Reason}", 
+                _messageTypeName, reason?.ToString() ?? "Unknown");
+            return Task.CompletedTask;
         }
     }
 }

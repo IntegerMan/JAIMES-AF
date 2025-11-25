@@ -42,7 +42,7 @@ public class QueueDocumentEmbeddingEndpoint : Endpoint<QueueDocumentEmbeddingReq
             return;
         }
 
-        DocumentCrackedMessage message = new()
+        DocumentReadyForChunkingMessage message = new()
         {
             DocumentId = document.Id,
             FilePath = document.FilePath,

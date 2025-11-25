@@ -10,6 +10,10 @@ public class OllamaEmbeddingService(
     OllamaEmbeddingOptions options,
     ILogger<OllamaEmbeddingService> logger) : IOllamaEmbeddingService
 {
+    // Semaphore to ensure only one embedding request is processed at a time globally
+    // This prevents overwhelming Ollama with concurrent requests
+    private static readonly SemaphoreSlim _embeddingSemaphore = new(1, 1);
+
     public async Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -17,37 +21,46 @@ public class OllamaEmbeddingService(
             throw new ArgumentException("Text cannot be null or empty", nameof(text));
         }
 
-        string requestUrl = $"{options.Endpoint}/api/embeddings";
-        
-        OllamaEmbeddingRequest request = new()
+        // Acquire semaphore to ensure only one embedding request at a time
+        await _embeddingSemaphore.WaitAsync(cancellationToken);
+        try
         {
-            Model = options.Model,
-            Prompt = text
-        };
+            string requestUrl = $"{options.Endpoint}/api/embeddings";
+            
+            OllamaEmbeddingRequest request = new()
+            {
+                Model = options.Model,
+                Prompt = text
+            };
 
-        logger.LogDebug("Generating embedding for text (length: {Length}) using model {Model}", text.Length, options.Model);
+            logger.LogDebug("Generating embedding for text (length: {Length}) using model {Model}", text.Length, options.Model);
 
-        HttpResponseMessage response = await httpClient.PostAsJsonAsync(requestUrl, request, cancellationToken);
+            HttpResponseMessage response = await httpClient.PostAsJsonAsync(requestUrl, request, cancellationToken);
 
-        if (!response.IsSuccessStatusCode)
-        {
-            string errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-            logger.LogError("Failed to generate embedding. Status: {StatusCode}, Response: {Response}", 
-                response.StatusCode, errorContent);
-            response.EnsureSuccessStatusCode();
+            if (!response.IsSuccessStatusCode)
+            {
+                string errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                logger.LogError("Failed to generate embedding. Status: {StatusCode}, Response: {Response}", 
+                    response.StatusCode, errorContent);
+                response.EnsureSuccessStatusCode();
+            }
+
+            OllamaEmbeddingResponse? embeddingResponse = await response.Content.ReadFromJsonAsync<OllamaEmbeddingResponse>(
+                cancellationToken: cancellationToken);
+
+            if (embeddingResponse?.Embedding == null || embeddingResponse.Embedding.Length == 0)
+            {
+                throw new InvalidOperationException("Received empty embedding from Ollama");
+            }
+
+            logger.LogDebug("Generated embedding with {Dimensions} dimensions", embeddingResponse.Embedding.Length);
+
+            return embeddingResponse.Embedding;
         }
-
-        OllamaEmbeddingResponse? embeddingResponse = await response.Content.ReadFromJsonAsync<OllamaEmbeddingResponse>(
-            cancellationToken: cancellationToken);
-
-        if (embeddingResponse?.Embedding == null || embeddingResponse.Embedding.Length == 0)
+        finally
         {
-            throw new InvalidOperationException("Received empty embedding from Ollama");
+            _embeddingSemaphore.Release();
         }
-
-        logger.LogDebug("Generated embedding with {Dimensions} dimensions", embeddingResponse.Embedding.Length);
-
-        return embeddingResponse.Embedding;
     }
 
     private class OllamaEmbeddingRequest

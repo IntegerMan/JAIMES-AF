@@ -1,6 +1,6 @@
 namespace MattEland.Jaimes.ServiceDefinitions.Messages;
 
-public class DocumentCrackedMessage
+public class DocumentReadyForChunkingMessage
 {
     public string DocumentId { get; set; } = string.Empty;
     public string FilePath { get; set; } = string.Empty;

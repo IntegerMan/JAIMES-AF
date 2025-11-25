@@ -65,23 +65,14 @@ IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIME
     .WithIconName("DocumentGlobe", IconVariant.Regular)
     .WithExternalHttpEndpoints()
     //.WithUrls(u => u.Urls.Clear())
-    .WithUrlForEndpoint("http", static url => url.DisplayText = "🌳 Root")
-    .WithUrlForEndpoint("http", static _ => new()
-    {
-        Url = "/openapi/v1.json",
-        DisplayText = "🌐 OpenAPI"
-    })
-    .WithUrlForEndpoint("http", static _ => new()
-    {
-        Url = "/swagger",
-        DisplayText = "📃 Swagger"
+    .WithUrls(u => {
+        u.Urls.Clear();
+        u.Urls.Add(new() { Url = "/", DisplayText = "🌳 Root" });
+        u.Urls.Add(new() { Url = "/openapi/v1.json", DisplayText = "🌐 OpenAPI" });
+        u.Urls.Add(new() { Url = "/swagger", DisplayText = "📃 Swagger" });
+        u.Urls.Add(new() { Url = "/health", DisplayText = "👨‍⚕️ Health" });
     })
     .WithHttpHealthCheck("/health")
-    .WithUrlForEndpoint("http", static _ => new()
-    {
-        Url = "/health",
-        DisplayText = "👨‍⚕️ Health"
-    })
     .WithReference(chatModel)
     .WithReference(embedModel)
     .WithReference(sqliteDb)

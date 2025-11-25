@@ -42,14 +42,16 @@ public partial class DocumentProcessing
 flowchart LR
     A[Document] -->|Scan & Extract<br/>Change Detector Worker +<br/>Document Cracker Worker| B[Text Extraction]
     B -->|Store| C[(MongoDB<br/>Cracked Documents)]
-    C -->|Publishes| D[RabbitMQ<br/>DocumentCrackedMessage]
-    D -->|Consumes| E[Embedding Worker]
-    E -->|Generates| F[Embeddings]
+    C -->|Publishes| D[RabbitMQ<br/>DocumentReadyForChunkingMessage]
+    D -->|Consumes| E[Chunking Worker]
+    E -->|Publishes| D2[RabbitMQ<br/>ChunkReadyForEmbeddingMessage]
+    D2 -->|Consumes| E2[Embedding Worker]
+    E2 -->|Generates| F[Embeddings]
     F -->|Stores| G[(Qdrant<br/>Vector Database)]
     
     A1@{ shape: braces, label: ""Documents are scanned and cracked before processing"" }
     C1@{ shape: braces, label: ""Cracked documents are stored in MongoDB"" }
-    D1@{ shape: braces, label: ""DocumentCrackedMessage publishes work to RabbitMQ"" }
+    D1@{ shape: braces, label: ""DocumentReadyForChunkingMessage publishes work to RabbitMQ"" }
     E1@{ shape: braces, label: ""Embedding worker processes the queue and generates embeddings"" }
     G1@{ shape: braces, label: ""Embeddings are stored in the Qdrant vector database"" }
     

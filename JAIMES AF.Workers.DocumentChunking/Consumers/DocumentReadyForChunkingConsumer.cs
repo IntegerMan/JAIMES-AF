@@ -6,29 +6,29 @@ using MattEland.Jaimes.Workers.DocumentChunking.Services;
 
 namespace MattEland.Jaimes.Workers.DocumentChunking.Consumers;
 
-public class DocumentCrackedConsumer(
+public class DocumentReadyForChunkingConsumer(
     IDocumentChunkingService chunkingService,
-    ILogger<DocumentCrackedConsumer> logger,
-    ActivitySource activitySource) : IMessageConsumer<DocumentCrackedMessage>
+    ILogger<DocumentReadyForChunkingConsumer> logger,
+    ActivitySource activitySource) : IMessageConsumer<DocumentReadyForChunkingMessage>
 {
-    public async Task HandleAsync(DocumentCrackedMessage message, CancellationToken cancellationToken = default)
+    public async Task HandleAsync(DocumentReadyForChunkingMessage message, CancellationToken cancellationToken = default)
     {
         using Activity? activity = activitySource.StartActivity("DocumentChunking.ConsumeMessage");
-        activity?.SetTag("messaging.message_type", nameof(DocumentCrackedMessage));
+        activity?.SetTag("messaging.message_type", nameof(DocumentReadyForChunkingMessage));
         activity?.SetTag("messaging.document_id", message.DocumentId);
         activity?.SetTag("messaging.file_name", message.FileName);
 
         try
         {
             logger.LogDebug(
-                "Received document cracked message: DocumentId={DocumentId}, FileName={FileName}, FilePath={FilePath}",
+                "Received document ready for chunking message: DocumentId={DocumentId}, FileName={FileName}, FilePath={FilePath}",
                 message.DocumentId, message.FileName, message.FilePath);
 
             // Validate message
             if (string.IsNullOrWhiteSpace(message.DocumentId))
             {
                 logger.LogError(
-                    "Received document cracked message with empty DocumentId. FileName={FileName}, FilePath={FilePath}. " +
+                    "Received document ready for chunking message with empty DocumentId. FileName={FileName}, FilePath={FilePath}. " +
                     "Skipping processing to avoid MongoDB errors.",
                     message.FileName, message.FilePath);
                 activity?.SetStatus(ActivityStatusCode.Error, "Empty DocumentId");
@@ -43,7 +43,7 @@ public class DocumentCrackedConsumer(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to process document cracked message for {DocumentId}", message.DocumentId);
+            logger.LogError(ex, "Failed to process document ready for chunking message for {DocumentId}", message.DocumentId);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             
             // Re-throw to let message consumer service handle retry logic

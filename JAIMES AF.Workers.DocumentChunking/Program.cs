@@ -182,18 +182,7 @@ builder.Services.AddSingleton<ITextChunkingStrategy, SemanticChunkerStrategy>();
 builder.Services.AddSingleton<IOllamaEmbeddingService, OllamaEmbeddingService>();
 builder.Services.AddSingleton<IDocumentChunkingService, DocumentChunkingService>();
 
-// Configure message publishing and consuming using RabbitMQ.Client (LavinMQ compatible)
-IConnectionFactory connectionFactory = RabbitMqConnectionFactory.CreateConnectionFactory(builder.Configuration);
-builder.Services.AddSingleton(connectionFactory);
-builder.Services.AddSingleton<IMessagePublisher, MessagePublisher>();
-
-// Register consumer
-builder.Services.AddSingleton<IMessageConsumer<DocumentCrackedMessage>, DocumentCrackedConsumer>();
-
-// Register consumer service (background service)
-builder.Services.AddHostedService<MessageConsumerService<DocumentCrackedMessage>>();
-
-// Configure OpenTelemetry ActivitySource
+// Configure OpenTelemetry ActivitySource (register before MessageConsumerService to ensure it's available for injection)
 const string activitySourceName = "Jaimes.Workers.DocumentChunking";
 ActivitySource activitySource = new(activitySourceName);
 
@@ -212,8 +201,19 @@ builder.Services.AddOpenTelemetry()
             .AddHttpClientInstrumentation();
     });
 
-// Register ActivitySource for dependency injection
+// Register ActivitySource for dependency injection (before MessageConsumerService)
 builder.Services.AddSingleton(activitySource);
+
+// Configure message publishing and consuming using RabbitMQ.Client (LavinMQ compatible)
+IConnectionFactory connectionFactory = RabbitMqConnectionFactory.CreateConnectionFactory(builder.Configuration);
+builder.Services.AddSingleton(connectionFactory);
+builder.Services.AddSingleton<IMessagePublisher, MessagePublisher>();
+
+// Register consumer
+builder.Services.AddSingleton<IMessageConsumer<DocumentReadyForChunkingMessage>, DocumentReadyForChunkingConsumer>();
+
+// Register consumer service (background service)
+builder.Services.AddHostedService<MessageConsumerService<DocumentReadyForChunkingMessage>>();
 
 // Build host
 using IHost host = builder.Build();
@@ -223,7 +223,7 @@ ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 logger.LogInformation("Starting Document Chunking Worker");
 logger.LogInformation("Ollama Endpoint: {Endpoint}", ollamaEndpoint);
 logger.LogInformation("Ollama Model: {Model}", ollamaModel);
-logger.LogInformation("Worker ready and listening for DocumentCrackedMessage on queue");
+logger.LogInformation("Worker ready and listening for DocumentReadyForChunkingMessage on queue");
 
 await host.RunAsync();
 

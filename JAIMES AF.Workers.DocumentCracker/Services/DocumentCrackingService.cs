@@ -113,7 +113,7 @@ public class DocumentCrackingService(
         try
         {
             // Create message
-            DocumentCrackedMessage message = new()
+            DocumentReadyForChunkingMessage message = new()
             {
                 DocumentId = documentId,
                 FilePath = filePath,
@@ -127,13 +127,13 @@ public class DocumentCrackingService(
             // Publish using message publisher
             await messagePublisher.PublishAsync(message, cancellationToken);
             
-            logger.LogInformation("Successfully published document cracked message. DocumentId: {DocumentId}, FilePath: {FilePath}", 
+            logger.LogInformation("Successfully published document ready for chunking message. DocumentId: {DocumentId}, FilePath: {FilePath}", 
                 documentId, filePath);
         }
         catch (Exception ex)
         {
             // Log error but don't fail the document cracking process
-            logger.LogError(ex, "Failed to publish document cracked message: {FilePath}", filePath);
+            logger.LogError(ex, "Failed to publish document ready for chunking message: {FilePath}", filePath);
         }
     }
 

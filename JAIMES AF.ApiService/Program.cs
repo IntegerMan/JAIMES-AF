@@ -8,7 +8,6 @@ using System.Diagnostics;
 using MattEland.Jaimes.ApiService.Helpers;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Services;
-using MattEland.Jaimes.ServiceDefinitions.Services;
 using RabbitMQ.Client;
 using MongoDB.Driver;
 using Qdrant.Client;

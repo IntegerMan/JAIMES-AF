@@ -15,7 +15,7 @@ public class DocumentChunkingService(
     ILogger<DocumentChunkingService> logger,
     ActivitySource activitySource) : IDocumentChunkingService
 {
-    public async Task ProcessDocumentAsync(DocumentCrackedMessage message, CancellationToken cancellationToken = default)
+    public async Task ProcessDocumentAsync(DocumentReadyForChunkingMessage message, CancellationToken cancellationToken = default)
     {
         using Activity? activity = activitySource.StartActivity("DocumentChunking.ProcessDocument");
         activity?.SetTag("chunking.document_id", message.DocumentId);
