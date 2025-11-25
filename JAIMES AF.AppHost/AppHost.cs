@@ -77,41 +77,6 @@ var lavinmq = builder.AddLavinMQ("lavinmq")
 var documentChangeDetectorContentDirectory = builder.AddParameter("document-change-detector-content-directory", "C:\\Dev\\Sourcebooks", secret: false)
     .WithDescription("Directory path to monitor for documents (e.g., C:\\Dev\\Sourcebooks)");
 
-// Add Kernel Memory service container
-IResourceBuilder<ContainerResource> kernelMemory = builder.AddContainer("kernel-memory", "kernelmemory/service:latest")
-    .WithIconName("BrainCircuit")
-    .WithHttpEndpoint(9001, 9001, name: "http")
-    .WithUrlForEndpoint("http", static url => url.DisplayText = "🧠 Kernel Memory")
-    .WaitFor(ollama)
-    .WaitFor(redis)
-    .WithEnvironment(context =>
-    {
-        // Set environment to Production (required by Kernel Memory service)
-        context.EnvironmentVariables["ASPNETCORE_ENVIRONMENT"] = "Production";
-        
-        // Configure Ollama endpoint and models (shared configuration)
-        EndpointReference ollamaEndpoint = ollama.GetEndpoint("http");
-        string ollamaUrl = $"http://{ollamaEndpoint.Host}:{ollamaEndpoint.Port}";
-        context.EnvironmentVariables["KernelMemory__Services__Ollama__Endpoint"] = ollamaUrl;
-        
-        // Configure text generation (required by service)
-        context.EnvironmentVariables["KernelMemory__TextGeneratorType"] = "Ollama";
-        context.EnvironmentVariables["KernelMemory__Services__Ollama__TextModel"] = "gemma3";
-        
-        // Configure embedding generation
-        context.EnvironmentVariables["KernelMemory__DataIngestion__EmbeddingGeneratorTypes__0"] = "Ollama";
-        context.EnvironmentVariables["KernelMemory__Services__Ollama__EmbeddingModel"] = "nomic-embed-text";
-        context.EnvironmentVariables["KernelMemory__Retrieval__EmbeddingGeneratorType"] = "Ollama";
-        
-        // Configure Redis as the vector store
-        EndpointReference redisEndpoint = redis.GetEndpoint("redis");
-        context.EnvironmentVariables["KernelMemory__DataIngestion__OrchestrationType"] = "Distributed";
-        context.EnvironmentVariables["KernelMemory__DataIngestion__DistributedOrchestration__Queue__Type"] = "Redis";
-        context.EnvironmentVariables["KernelMemory__DataIngestion__DistributedOrchestration__Queue__ConnectionString"] = CreateRedisConnectionString(redisEndpoint);
-        context.EnvironmentVariables["KernelMemory__Retrieval__VectorDb__Type"] = "Redis";
-        context.EnvironmentVariables["KernelMemory__Retrieval__VectorDb__ConnectionString"] = CreateRedisConnectionString(redisEndpoint);
-    });
-
 // Helper function to create standardized Redis connection string from endpoint reference
 // Note: ContainerResource doesn't support WithReference directly, so we use WithEnvironment with endpoint references
 static string CreateRedisConnectionString(EndpointReference endpoint) =>
@@ -148,7 +113,6 @@ IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIME
     .WaitFor(qdrant)
     .WaitFor(ollama)
     .WaitFor(sqliteDb)
-    .WaitFor(kernelMemory)
     .WaitFor(rabbitmq)
     .WaitFor(mongo)
     .WithEnvironment(context =>
@@ -159,10 +123,6 @@ IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIME
         // Explicitly set the SQLite connection string to ensure it's available as DefaultConnection
         context.EnvironmentVariables["ConnectionStrings__DefaultConnection"] =
             sqliteDb.Resource.ConnectionStringExpression;
-
-        // Set Kernel Memory endpoint for MemoryWebClient
-        EndpointReference kernelMemoryEndpoint = kernelMemory.GetEndpoint("http");
-        context.EnvironmentVariables["KernelMemory__Endpoint"] = $"http://{kernelMemoryEndpoint.Host}:{kernelMemoryEndpoint.Port}";
     });
 
 builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")

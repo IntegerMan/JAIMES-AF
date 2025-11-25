@@ -16,6 +16,14 @@ public class DocumentCrackingService(
     IPublishEndpoint publishEndpoint,
     ActivitySource activitySource) : IDocumentCrackingService
 {
+    // Cache database and collection references to avoid recreating them and prevent connection disposal issues
+    private readonly Lazy<IMongoDatabase> _database = new(() => mongoClient.GetDatabase("documents"));
+    private readonly Lazy<IMongoCollection<CrackedDocument>> _collection = new(() => 
+        mongoClient.GetDatabase("documents").GetCollection<CrackedDocument>("crackedDocuments"));
+
+    private IMongoDatabase Database => _database.Value;
+    private IMongoCollection<CrackedDocument> Collection => _collection.Value;
+
     public async Task ProcessDocumentAsync(string filePath, string? relativeDirectory, CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Starting to crack document: {FilePath}", filePath);
@@ -45,16 +53,16 @@ public class DocumentCrackingService(
         
         activity?.SetTag("cracker.page_count", pageCount);
 
-        // Get database from connection string - the database name is "documents" as configured in AppHost
-        IMongoDatabase mongoDatabase = mongoClient.GetDatabase("documents");
-        IMongoCollection<CrackedDocument> collection = mongoDatabase.GetCollection<CrackedDocument>("crackedDocuments");
-
         // Use UpdateOneAsync with upsert to avoid _id conflicts
         // This will update if the document exists (by FilePath) or insert if it doesn't
         FilterDefinition<CrackedDocument> filter = Builders<CrackedDocument>.Filter.Eq(d => d.FilePath, filePath);
         
         // Check existing document to see if content changed and if it's already processed
-        CrackedDocument? existingDocument = await collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
+        // Add retry logic for MongoDB connection issues
+        CrackedDocument? existingDocument = await RetryMongoOperationAsync(
+            () => Collection.Find(filter).FirstOrDefaultAsync(cancellationToken),
+            "finding existing document",
+            cancellationToken);
         bool contentChanged = existingDocument == null || existingDocument.Content != contents;
         
         // Update document - reset IsProcessed to false if content changed, otherwise preserve current state
@@ -75,13 +83,19 @@ public class DocumentCrackingService(
         
         UpdateOptions updateOptions = new() { IsUpsert = true };
         
-        UpdateResult result = await collection.UpdateOneAsync(filter, update, updateOptions, cancellationToken);
+        UpdateResult result = await RetryMongoOperationAsync(
+            () => Collection.UpdateOneAsync(filter, update, updateOptions, cancellationToken),
+            "updating document",
+            cancellationToken);
         
         // Get the document ID after upsert
         // If it was an insert, use the UpsertedId; otherwise, query the document by FilePath
         // UpsertedId is a BsonObjectId, so we use ToString() instead of AsString
         string documentId = result.UpsertedId?.ToString() ?? 
-            (await collection.Find(filter).FirstOrDefaultAsync(cancellationToken))?.Id ?? string.Empty;
+            (await RetryMongoOperationAsync(
+                () => Collection.Find(filter).FirstOrDefaultAsync(cancellationToken),
+                "finding document after update",
+                cancellationToken))?.Id ?? string.Empty;
         
         logger.LogInformation("Cracked and saved to MongoDB: {FilePath} ({PageCount} pages, {FileSize} bytes)", 
             filePath, pageCount, fileInfo.Length);
@@ -91,7 +105,10 @@ public class DocumentCrackingService(
         
         // Check if document needs processing (not processed yet)
         // Re-query to get the current IsProcessed state after update
-        CrackedDocument? updatedDocument = await collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
+        CrackedDocument? updatedDocument = await RetryMongoOperationAsync(
+            () => Collection.Find(filter).FirstOrDefaultAsync(cancellationToken),
+            "checking if document needs processing",
+            cancellationToken);
         bool needsProcessing = updatedDocument == null || !updatedDocument.IsProcessed;
         
         if (needsProcessing)
@@ -153,6 +170,51 @@ public class DocumentCrackingService(
         }
 
         return (builder.ToString(), pageCount);
+    }
+
+    /// <summary>
+    /// Retries MongoDB operations that may fail due to connection disposal issues.
+    /// This handles intermittent ObjectDisposedException errors.
+    /// </summary>
+    private async Task<T> RetryMongoOperationAsync<T>(
+        Func<Task<T>> operation,
+        string operationDescription,
+        CancellationToken cancellationToken,
+        int maxRetries = 3,
+        int delayMs = 100)
+    {
+        int attempt = 0;
+        while (true)
+        {
+            try
+            {
+                return await operation();
+            }
+            catch (ObjectDisposedException ex) when (attempt < maxRetries)
+            {
+                attempt++;
+                logger.LogWarning(ex, 
+                    "MongoDB connection disposed during {OperationDescription}. Retrying (attempt {Attempt}/{MaxRetries})...", 
+                    operationDescription, attempt, maxRetries);
+                
+                // Exponential backoff
+                int delay = delayMs * (int)Math.Pow(2, attempt - 1);
+                await Task.Delay(delay, cancellationToken);
+            }
+            catch (MongoException ex) when (attempt < maxRetries && 
+                (ex.Message.Contains("disposed", StringComparison.OrdinalIgnoreCase) ||
+                 ex.Message.Contains("connection", StringComparison.OrdinalIgnoreCase)))
+            {
+                attempt++;
+                logger.LogWarning(ex, 
+                    "MongoDB connection error during {OperationDescription}. Retrying (attempt {Attempt}/{MaxRetries})...", 
+                    operationDescription, attempt, maxRetries);
+                
+                // Exponential backoff
+                int delay = delayMs * (int)Math.Pow(2, attempt - 1);
+                await Task.Delay(delay, cancellationToken);
+            }
+        }
     }
 }
 

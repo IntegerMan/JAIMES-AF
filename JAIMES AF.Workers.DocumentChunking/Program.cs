@@ -30,6 +30,11 @@ builder.Logging.AddOpenTelemetry(logging =>
     logging.IncludeScopes = true;
 });
 
+// Reduce HTTP client logging verbosity - filter out embedding request logs
+builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
+builder.Logging.AddFilter("System.Net.Http.HttpClient.Default.LogicalHandler", LogLevel.Warning);
+builder.Logging.AddFilter("System.Net.Http.HttpClient.Default.ClientHandler", LogLevel.Warning);
+
 // Load configuration
 builder.Configuration
     .SetBasePath(Directory.GetCurrentDirectory())
@@ -272,6 +277,7 @@ ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 
 logger.LogInformation("Starting Document Chunking Worker");
 logger.LogInformation("Ollama Model: {Model}", options.OllamaModel ?? "nomic-embed-text");
+logger.LogInformation("Worker ready and listening for DocumentCrackedMessage on queue");
 
 await host.RunAsync();
 

@@ -24,7 +24,7 @@ public class DocumentChunkingService(
 
         try
         {
-            logger.LogInformation("Processing document for chunking: {DocumentId} ({FileName})", 
+            logger.LogDebug("Processing document for chunking: {DocumentId} ({FileName})", 
                 message.DocumentId, message.FileName);
 
             // Step 1: Download document content from MongoDB
@@ -42,7 +42,7 @@ public class DocumentChunkingService(
             // Step 2: Chunk the document
             List<TextChunk> chunks = chunkingStrategy.ChunkText(documentContent, message.DocumentId).ToList();
             activity?.SetTag("chunking.chunk_count", chunks.Count);
-            logger.LogInformation("Document {DocumentId} split into {ChunkCount} chunks", message.DocumentId, chunks.Count);
+            logger.LogDebug("Document {DocumentId} split into {ChunkCount} chunks", message.DocumentId, chunks.Count);
 
             if (chunks.Count == 0)
             {
@@ -94,7 +94,7 @@ public class DocumentChunkingService(
             }
 
             activity?.SetTag("chunking.published_chunks", publishedCount);
-            logger.LogInformation("Successfully processed {ChunkCount} chunks for document {DocumentId}", 
+            logger.LogDebug("Successfully processed {ChunkCount} chunks for document {DocumentId}", 
                 chunks.Count, message.DocumentId);
             activity?.SetStatus(ActivityStatusCode.Ok);
         }

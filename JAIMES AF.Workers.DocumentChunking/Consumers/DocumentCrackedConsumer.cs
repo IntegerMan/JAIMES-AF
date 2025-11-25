@@ -22,7 +22,7 @@ public class DocumentCrackedConsumer(
 
         try
         {
-            logger.LogInformation(
+            logger.LogDebug(
                 "Received document cracked message: DocumentId={DocumentId}, FileName={FileName}, FilePath={FilePath}",
                 message.DocumentId, message.FileName, message.FilePath);
 
@@ -40,7 +40,7 @@ public class DocumentCrackedConsumer(
 
             await chunkingService.ProcessDocumentAsync(message, context.CancellationToken);
 
-            logger.LogInformation("Successfully processed document chunking: {DocumentId}", message.DocumentId);
+            logger.LogDebug("Successfully processed document chunking: {DocumentId}", message.DocumentId);
             activity?.SetStatus(ActivityStatusCode.Ok);
         }
         catch (Exception ex)

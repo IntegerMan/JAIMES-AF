@@ -13,6 +13,7 @@ using MongoDB.Driver;
 using Qdrant.Client;
 using MattEland.Jaimes.Workers.DocumentEmbeddings.Services;
 using MattEland.Jaimes.Workers.DocumentEmbeddings.Configuration;
+using MattEland.Jaimes.Agents.Services;
 
 namespace MattEland.Jaimes.ApiService;
 
@@ -87,8 +88,17 @@ public class Program
         VectorDbOptions vectorDbOptions = builder.Configuration.GetSection("VectorDb").Get<VectorDbOptions>() ?? throw new InvalidOperationException("VectorDb configuration is required");
         builder.Services.AddSingleton(vectorDbOptions);
 
-        // Register Kernel Memory (must be registered before services that depend on it)
-        builder.Services.AddKernelMemory();
+        // Register Qdrant-based rules search services
+        // Get Qdrant client (already registered above for document embeddings)
+        // Register ActivitySource for QdrantRulesStore
+        ActivitySource qdrantRulesActivitySource = new("Jaimes.Agents.QdrantRules");
+        builder.Services.AddSingleton(qdrantRulesActivitySource);
+        
+        // Register QdrantRulesStore
+        builder.Services.AddSingleton<IQdrantRulesStore, QdrantRulesStore>();
+        
+        // Register Azure OpenAI embedding service for rules
+        builder.Services.AddHttpClient<IAzureOpenAIEmbeddingService, AzureOpenAIEmbeddingService>();
 
         // Add Jaimes repositories and services
         builder.Services.AddJaimesRepositories(builder.Configuration);
