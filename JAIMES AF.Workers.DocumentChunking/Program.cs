@@ -1,6 +1,8 @@
 using System.Diagnostics;
-using MassTransit;
 using Microsoft.Extensions.AI;
+using MattEland.Jaimes.ServiceDefinitions.Messages;
+using MattEland.Jaimes.ServiceDefinitions.Services;
+using RabbitMQ.Client;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -53,38 +55,30 @@ builder.Services.AddSingleton(options);
 // Add MongoDB client integration
 builder.AddMongoDBClient("documents");
 
-// Configure Ollama client using connection string from Aspire
-string? ollamaConnectionString = builder.Configuration.GetConnectionString("nomic-embed-text")
-    ?? builder.Configuration.GetConnectionString("ollama-models")
-    ?? builder.Configuration.GetConnectionString("embedModel")
-    ?? builder.Configuration["ConnectionStrings:nomic-embed-text"]
-    ?? builder.Configuration["ConnectionStrings:ollama-models"]
-    ?? builder.Configuration["ConnectionStrings:embedModel"]
-    ?? builder.Configuration["ConnectionStrings__nomic-embed-text"]
-    ?? builder.Configuration["ConnectionStrings__ollama-models"]
-    ?? builder.Configuration["ConnectionStrings__embedModel"];
+// Configure Ollama client - prioritize explicit endpoint configuration from AppHost
+// This ensures we use the correct host/port in containerized environments
+string? ollamaConnectionString = null;
 
-if (string.IsNullOrWhiteSpace(ollamaConnectionString))
+// First, check for explicit endpoint configuration (set by AppHost)
+string? ollamaEndpointFromConfig = builder.Configuration["DocumentChunking:OllamaEndpoint"]
+    ?? builder.Configuration["DocumentChunking__OllamaEndpoint"];
+
+if (!string.IsNullOrWhiteSpace(ollamaEndpointFromConfig))
 {
-    // Fallback: Try to construct from Ollama endpoint if available
-    string? ollamaEndpointFromConfig = builder.Configuration["DocumentChunking:OllamaEndpoint"]
-        ?? builder.Configuration["DocumentChunking__OllamaEndpoint"];
-    
-    if (!string.IsNullOrWhiteSpace(ollamaEndpointFromConfig))
-    {
-        ollamaConnectionString = ollamaEndpointFromConfig.TrimEnd('/');
-    }
-    else
-    {
-        string? ollamaResourceConnectionString = builder.Configuration.GetConnectionString("ollama-models")
-            ?? builder.Configuration["ConnectionStrings:ollama-models"]
-            ?? builder.Configuration["ConnectionStrings__ollama-models"];
-        
-        if (!string.IsNullOrWhiteSpace(ollamaResourceConnectionString))
-        {
-            ollamaConnectionString = ollamaResourceConnectionString;
-        }
-    }
+    ollamaConnectionString = ollamaEndpointFromConfig.TrimEnd('/');
+}
+else
+{
+    // Fallback to connection strings from Aspire model reference
+    ollamaConnectionString = builder.Configuration.GetConnectionString("nomic-embed-text")
+        ?? builder.Configuration.GetConnectionString("ollama-models")
+        ?? builder.Configuration.GetConnectionString("embedModel")
+        ?? builder.Configuration["ConnectionStrings:nomic-embed-text"]
+        ?? builder.Configuration["ConnectionStrings:ollama-models"]
+        ?? builder.Configuration["ConnectionStrings:embedModel"]
+        ?? builder.Configuration["ConnectionStrings__nomic-embed-text"]
+        ?? builder.Configuration["ConnectionStrings__ollama-models"]
+        ?? builder.Configuration["ConnectionStrings__embedModel"];
 }
 
 if (string.IsNullOrWhiteSpace(ollamaConnectionString))
@@ -188,65 +182,16 @@ builder.Services.AddSingleton<ITextChunkingStrategy, SemanticChunkerStrategy>();
 builder.Services.AddSingleton<IOllamaEmbeddingService, OllamaEmbeddingService>();
 builder.Services.AddSingleton<IDocumentChunkingService, DocumentChunkingService>();
 
-// Configure MassTransit
-builder.Services.AddMassTransit(x =>
-{
-    x.AddConsumer<DocumentCrackedConsumer>();
+// Configure message publishing and consuming using RabbitMQ.Client (LavinMQ compatible)
+IConnectionFactory connectionFactory = RabbitMqConnectionFactory.CreateConnectionFactory(builder.Configuration);
+builder.Services.AddSingleton(connectionFactory);
+builder.Services.AddSingleton<IMessagePublisher, MessagePublisher>();
 
-    x.UsingRabbitMq((context, cfg) =>
-    {
-        // Get RabbitMQ connection string from Aspire
-        string? connectionString = builder.Configuration.GetConnectionString("messaging")
-            ?? builder.Configuration["ConnectionStrings:messaging"]
-            ?? builder.Configuration["ConnectionStrings__messaging"];
+// Register consumer
+builder.Services.AddSingleton<IMessageConsumer<DocumentCrackedMessage>, DocumentCrackedConsumer>();
 
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            throw new InvalidOperationException(
-                "RabbitMQ connection string is not configured. " +
-                "Expected connection string 'messaging' from Aspire.");
-        }
-
-        // Parse connection string (format: amqp://username:password@host:port/vhost)
-        Uri rabbitUri = new(connectionString);
-        string host = rabbitUri.Host;
-        ushort port = rabbitUri.Port > 0 ? (ushort)rabbitUri.Port : (ushort)5672;
-        string? username = null;
-        string? password = null;
-        
-        if (!string.IsNullOrEmpty(rabbitUri.UserInfo))
-        {
-            string[] userInfo = rabbitUri.UserInfo.Split(':');
-            username = userInfo[0];
-            if (userInfo.Length > 1)
-            {
-                password = userInfo[1];
-            }
-        }
-
-        cfg.Host(host, port, "/", h =>
-        {
-            if (!string.IsNullOrEmpty(username))
-            {
-                h.Username(username);
-            }
-            if (!string.IsNullOrEmpty(password))
-            {
-                h.Password(password);
-            }
-        });
-
-        // Configure retry policy
-        cfg.UseMessageRetry(r => r.Exponential(
-            retryLimit: 5,
-            minInterval: TimeSpan.FromSeconds(1),
-            maxInterval: TimeSpan.FromSeconds(30),
-            intervalDelta: TimeSpan.FromSeconds(2)));
-
-        // Configure consumer endpoint
-        cfg.ConfigureEndpoints(context);
-    });
-});
+// Register consumer service (background service)
+builder.Services.AddHostedService<MessageConsumerService<DocumentCrackedMessage>>();
 
 // Configure OpenTelemetry ActivitySource
 const string activitySourceName = "Jaimes.Workers.DocumentChunking";
@@ -276,7 +221,8 @@ using IHost host = builder.Build();
 ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 
 logger.LogInformation("Starting Document Chunking Worker");
-logger.LogInformation("Ollama Model: {Model}", options.OllamaModel ?? "nomic-embed-text");
+logger.LogInformation("Ollama Endpoint: {Endpoint}", ollamaEndpoint);
+logger.LogInformation("Ollama Model: {Model}", ollamaModel);
 logger.LogInformation("Worker ready and listening for DocumentCrackedMessage on queue");
 
 await host.RunAsync();

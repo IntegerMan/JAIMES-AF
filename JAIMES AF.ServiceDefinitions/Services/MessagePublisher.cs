@@ -1,0 +1,90 @@
+using System.Text;
+using System.Text.Json;
+using Microsoft.Extensions.Logging;
+using RabbitMQ.Client;
+
+namespace MattEland.Jaimes.ServiceDefinitions.Services;
+
+/// <summary>
+/// Implementation of IMessagePublisher using RabbitMQ.Client (compatible with LavinMQ)
+/// </summary>
+public class MessagePublisher : IMessagePublisher, IDisposable
+{
+    private readonly IConnection _connection;
+    private readonly IChannel _channel;
+    private readonly ILogger<MessagePublisher> _logger;
+    private readonly JsonSerializerOptions _jsonOptions;
+    private bool _disposed;
+
+    public MessagePublisher(IConnectionFactory connectionFactory, ILogger<MessagePublisher> logger)
+    {
+        _logger = logger;
+        _connection = connectionFactory.CreateConnectionAsync().GetAwaiter().GetResult();
+        _channel = _connection.CreateChannelAsync().GetAwaiter().GetResult();
+        _jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+    }
+
+    public async Task PublishAsync<T>(T message, CancellationToken cancellationToken = default) where T : class
+    {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(MessagePublisher));
+        }
+
+        try
+        {
+            // Get the message type name for exchange/queue naming
+            string messageTypeName = typeof(T).Name;
+            
+            // Declare exchange (topic exchange for routing)
+            string exchangeName = messageTypeName;
+            await _channel.ExchangeDeclareAsync(exchangeName, ExchangeType.Topic, durable: true, autoDelete: false, cancellationToken: cancellationToken);
+
+            // Serialize message to JSON
+            string jsonMessage = JsonSerializer.Serialize(message, _jsonOptions);
+            ReadOnlyMemory<byte> body = new(Encoding.UTF8.GetBytes(jsonMessage));
+
+            // Create properties
+            BasicProperties properties = new()
+            {
+                Persistent = true,
+                ContentType = "application/json",
+                Type = messageTypeName,
+                MessageId = Guid.NewGuid().ToString()
+            };
+
+            // Publish to exchange with routing key = message type name
+            string routingKey = messageTypeName;
+            await _channel.BasicPublishAsync(
+                exchange: exchangeName,
+                routingKey: routingKey,
+                mandatory: false,
+                basicProperties: properties,
+                body: body,
+                cancellationToken: cancellationToken);
+
+            _logger.LogDebug("Published message of type {MessageType} to exchange {Exchange}", 
+                messageTypeName, exchangeName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to publish message of type {MessageType}", typeof(T).Name);
+            throw;
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _channel?.Dispose();
+        _connection?.Dispose();
+        _disposed = true;
+    }
+}

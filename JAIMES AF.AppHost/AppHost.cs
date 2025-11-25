@@ -58,20 +58,10 @@ IResourceBuilder<MongoDBServerResource> mongo = builder.AddMongoDB("mongo")
 IResourceBuilder<MongoDBDatabaseResource> mongoDb = mongo.AddDatabase("documents")
     .WithIconName("DocumentData");
 
-// Add RabbitMQ for messaging
-var username = builder.AddParameter("rabbit-username", "guest", secret: false);
-var password = builder.AddParameter("rabbit-password", "guest", secret: true);
-IResourceBuilder<RabbitMQServerResource> rabbitmq = builder.AddRabbitMQ("messaging", username, password)
-    .WithIconName("AnimalRabbit")
-    .WithManagementPlugin();
-
 // Add LavinMQ for messaging (wire-compatible with RabbitMQ)
-var lavinmq = builder.AddLavinMQ("lavinmq")
+var lavinmq = builder.AddLavinMQ("messaging")
     .WithIconName("DocumentQueue")
-    .WithLifetime(ContainerLifetime.Persistent)
-    .WithBindMount(
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aspire",
-            "jaimes-lavinmq-data"), "/var/lib/lavinmq");
+    .WithLifetime(ContainerLifetime.Persistent);
 
 // Add parameter for DocumentChangeDetector content directory
 var documentChangeDetectorContentDirectory = builder.AddParameter("document-change-detector-content-directory", "C:\\Dev\\Sourcebooks", secret: false)
@@ -107,13 +97,13 @@ IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIME
     .WithReference(embedModel)
     .WithReference(sqliteDb)
     .WithReference(qdrant)
-    .WithReference(rabbitmq)
+    .WithReference(lavinmq)
     .WithReference(mongoDb)
     .WaitFor(redis)
     .WaitFor(qdrant)
     .WaitFor(ollama)
     .WaitFor(sqliteDb)
-    .WaitFor(rabbitmq)
+    .WaitFor(lavinmq)
     .WaitFor(mongo)
     .WithEnvironment(context =>
     {
@@ -160,25 +150,25 @@ builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")
 
 builder.AddProject<Projects.JAIMES_AF_Workers_DocumentCrackerWorker>("document-cracker-worker")
     .WithIconName("DocumentTextExtract")
-    .WithReference(rabbitmq)
+    .WithReference(lavinmq)
     .WithReference(mongoDb)
-    .WaitFor(rabbitmq)
+    .WaitFor(lavinmq)
     .WaitFor(mongo);
 
 builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChangeDetector>("document-change-detector")
     .WithIconName("DocumentSearch")
-    .WithReference(rabbitmq)
+    .WithReference(lavinmq)
     .WithReference(mongoDb)
-    .WaitFor(rabbitmq)
+    .WaitFor(lavinmq)
     .WaitFor(mongo)
     .WithEnvironment("DocumentChangeDetector__ContentDirectory", documentChangeDetectorContentDirectory);
 
 builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChunking>("document-chunking-worker")
     .WithIconName("DocumentSplit")
-    .WithReference(rabbitmq)
+    .WithReference(lavinmq)
     .WithReference(mongoDb)
     .WithReference(embedModel)
-    .WaitFor(rabbitmq)
+    .WaitFor(lavinmq)
     .WaitFor(mongo)
     .WaitFor(ollama)
     .WithEnvironment(context =>
@@ -190,11 +180,11 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChunking>("document-chunki
 
 builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbeddings>("embedding-worker")
     .WithIconName("TextGrammarSettings")
-    .WithReference(rabbitmq)
+    .WithReference(lavinmq)
     .WithReference(mongoDb)
     .WithReference(qdrant)
     .WithReference(embedModel)
-    .WaitFor(rabbitmq)
+    .WaitFor(lavinmq)
     .WaitFor(mongo)
     .WaitFor(qdrant)
     .WaitFor(ollama)

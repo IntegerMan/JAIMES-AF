@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using MassTransit;
 using Microsoft.Extensions.Logging;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Workers.DocumentCrackerWorker.Services;
 
 namespace MattEland.Jaimes.Workers.DocumentCrackerWorker.Consumers;
@@ -9,14 +9,12 @@ namespace MattEland.Jaimes.Workers.DocumentCrackerWorker.Consumers;
 public class CrackDocumentConsumer(
     IDocumentCrackingService crackingService,
     ILogger<CrackDocumentConsumer> logger,
-    ActivitySource activitySource) : IConsumer<CrackDocumentMessage>
+    ActivitySource activitySource) : IMessageConsumer<CrackDocumentMessage>
 {
-    public async Task Consume(ConsumeContext<CrackDocumentMessage> context)
+    public async Task HandleAsync(CrackDocumentMessage message, CancellationToken cancellationToken = default)
     {
-        CrackDocumentMessage message = context.Message;
-
         using Activity? activity = activitySource.StartActivity("DocumentCracking.ConsumeMessage");
-        activity?.SetTag("messaging.message_id", context.MessageId?.ToString() ?? "unknown");
+        activity?.SetTag("messaging.message_type", nameof(CrackDocumentMessage));
         activity?.SetTag("messaging.file_path", message.FilePath);
 
         try
@@ -45,7 +43,7 @@ public class CrackDocumentConsumer(
                 return;
             }
 
-            await crackingService.ProcessDocumentAsync(message.FilePath, message.RelativeDirectory, context.CancellationToken);
+            await crackingService.ProcessDocumentAsync(message.FilePath, message.RelativeDirectory, cancellationToken);
 
             logger.LogInformation("Successfully processed document: {FilePath}", message.FilePath);
             activity?.SetStatus(ActivityStatusCode.Ok);
@@ -55,7 +53,7 @@ public class CrackDocumentConsumer(
             logger.LogError(ex, "Failed to process crack document message for {FilePath}", message.FilePath);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             
-            // Re-throw to let MassTransit handle retry logic
+            // Re-throw to let message consumer service handle retry logic
             throw;
         }
     }

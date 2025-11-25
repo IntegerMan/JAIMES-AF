@@ -2,16 +2,16 @@ using System.Diagnostics;
 using MongoDB.Driver;
 using Microsoft.Extensions.Logging;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
 using MattEland.Jaimes.Workers.DocumentChunking.Models;
-using MassTransit;
 
 namespace MattEland.Jaimes.Workers.DocumentChunking.Services;
 
 public class DocumentChunkingService(
     IMongoClient mongoClient,
     ITextChunkingStrategy chunkingStrategy,
-    IPublishEndpoint publishEndpoint,
+    IMessagePublisher messagePublisher,
     ILogger<DocumentChunkingService> logger,
     ActivitySource activitySource) : IDocumentChunkingService
 {
@@ -79,7 +79,7 @@ public class DocumentChunkingService(
                         TotalChunks = chunks.Count
                     };
 
-                    await publishEndpoint.Publish(chunkMessage, cancellationToken);
+                    await messagePublisher.PublishAsync(chunkMessage, cancellationToken);
                     publishedCount++;
 
                     logger.LogDebug("Published chunk {ChunkId} (index {ChunkIndex}) for document {DocumentId}", 

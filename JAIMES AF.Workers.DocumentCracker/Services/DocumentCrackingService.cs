@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Text;
-using MassTransit;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using UglyToad.PdfPig;
@@ -13,7 +13,7 @@ namespace MattEland.Jaimes.Workers.DocumentCracker.Services;
 public class DocumentCrackingService(
     ILogger<DocumentCrackingService> logger,
     IMongoClient mongoClient,
-    IPublishEndpoint publishEndpoint,
+    IMessagePublisher messagePublisher,
     ActivitySource activitySource) : IDocumentCrackingService
 {
     public async Task ProcessDocumentAsync(string filePath, string? relativeDirectory, CancellationToken cancellationToken = default)
@@ -96,7 +96,7 @@ public class DocumentCrackingService(
         
         if (needsProcessing)
         {
-            // Publish message using MassTransit to generate documentMetadata
+            // Publish message to generate documentMetadata
             await PublishDocumentCrackedMessageAsync(documentId, filePath, relativeDirectory ?? string.Empty, 
                 Path.GetFileName(filePath), fileInfo.Length, pageCount, cancellationToken);
         }
@@ -124,16 +124,16 @@ public class DocumentCrackingService(
                 CrackedAt = DateTime.UtcNow
             };
             
-            // Publish using MassTransit - it will handle serialization and routing
-            await publishEndpoint.Publish(message, cancellationToken);
+            // Publish using message publisher
+            await messagePublisher.PublishAsync(message, cancellationToken);
             
-            logger.LogInformation("Successfully published document cracked message via MassTransit. DocumentId: {DocumentId}, FilePath: {FilePath}", 
+            logger.LogInformation("Successfully published document cracked message. DocumentId: {DocumentId}, FilePath: {FilePath}", 
                 documentId, filePath);
         }
         catch (Exception ex)
         {
             // Log error but don't fail the document cracking process
-            logger.LogError(ex, "Failed to publish document cracked message via MassTransit: {FilePath}", filePath);
+            logger.LogError(ex, "Failed to publish document cracked message: {FilePath}", filePath);
         }
     }
 

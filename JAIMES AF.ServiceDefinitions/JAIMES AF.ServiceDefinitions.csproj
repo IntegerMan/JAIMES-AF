@@ -9,6 +9,8 @@
 
   <ItemGroup>
     <PackageReference Include="MongoDB.Bson" />
+    <PackageReference Include="RabbitMQ.Client" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
   </ItemGroup>
 
   <ItemGroup>

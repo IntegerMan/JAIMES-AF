@@ -1,8 +1,8 @@
 using FastEndpoints;
-using MassTransit;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using MongoDB.Driver;
 
 namespace MattEland.Jaimes.ApiService.Endpoints;
@@ -10,7 +10,7 @@ namespace MattEland.Jaimes.ApiService.Endpoints;
 public class QueueDocumentEmbeddingEndpoint : Endpoint<QueueDocumentEmbeddingRequest, DocumentOperationResponse>
 {
     public required IMongoClient MongoClient { get; set; }
-    public required IPublishEndpoint PublishEndpoint { get; set; }
+    public required IMessagePublisher MessagePublisher { get; set; }
 
     public override void Configure()
     {
@@ -58,7 +58,7 @@ public class QueueDocumentEmbeddingEndpoint : Endpoint<QueueDocumentEmbeddingReq
             Builders<CrackedDocument>.Update.Set(d => d.IsProcessed, false),
             cancellationToken: ct);
 
-        await PublishEndpoint.Publish(message, ct);
+        await MessagePublisher.PublishAsync(message, ct);
         Logger.LogInformation("Queued embeddings for document {DocumentId} ({FilePath})", document.Id, document.FilePath);
 
         DocumentOperationResponse response = new()

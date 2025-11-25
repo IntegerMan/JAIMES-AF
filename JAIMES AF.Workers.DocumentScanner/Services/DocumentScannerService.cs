@@ -1,6 +1,6 @@
 using System.Diagnostics;
-using MassTransit;
 using MattEland.Jaimes.DocumentProcessing.Services;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Models;
 using MattEland.Jaimes.Workers.DocumentChangeDetector.Configuration;
@@ -14,7 +14,7 @@ public class DocumentChangeDetectorService(
     IDirectoryScanner directoryScanner,
     IChangeTracker changeTracker,
     IMongoClient mongoClient,
-    IPublishEndpoint publishEndpoint,
+    IMessagePublisher messagePublisher,
     ActivitySource activitySource,
     DocumentChangeDetectorOptions options) : IDocumentChangeDetectorService
 {
@@ -205,7 +205,7 @@ public class DocumentChangeDetectorService(
             RelativeDirectory = relativeDirectory
         };
 
-        await publishEndpoint.Publish(message, cancellationToken);
+        await messagePublisher.PublishAsync(message, cancellationToken);
         logger.LogDebug("Published CrackDocumentMessage for: {FilePath}", filePath);
     }
 

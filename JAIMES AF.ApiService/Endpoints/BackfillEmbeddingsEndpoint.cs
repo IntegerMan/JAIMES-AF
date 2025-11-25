@@ -1,7 +1,7 @@
 using FastEndpoints;
-using MassTransit;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 
@@ -10,7 +10,7 @@ namespace MattEland.Jaimes.ApiService.Endpoints;
 public class BackfillEmbeddingsEndpoint : Ep.NoReq.Res<BackfillEmbeddingsResponse>
 {
     public required IMongoClient MongoClient { get; set; }
-    public required IPublishEndpoint PublishEndpoint { get; set; }
+    public required IMessagePublisher MessagePublisher { get; set; }
 
     public override void Configure()
     {
@@ -60,7 +60,7 @@ public class BackfillEmbeddingsEndpoint : Ep.NoReq.Res<BackfillEmbeddingsRespons
             };
 
             // Create publish task - don't await yet, we'll await all in parallel
-            Task publishTask = PublishEndpoint.Publish(message, ct)
+            Task publishTask = MessagePublisher.PublishAsync(message, ct)
                 .ContinueWith(t =>
                 {
                     if (t.IsFaulted && t.Exception != null)
@@ -79,7 +79,7 @@ public class BackfillEmbeddingsEndpoint : Ep.NoReq.Res<BackfillEmbeddingsRespons
         }
 
         // Publish all messages in parallel (fire-and-forget)
-        Logger.LogInformation("Starting to publish {Count} messages to RabbitMQ in parallel (fire-and-forget)", publishTasks.Count);
+        Logger.LogInformation("Starting to publish {Count} messages to LavinMQ in parallel (fire-and-forget)", publishTasks.Count);
         
         // Start all publish operations but don't wait for them - return immediately
         // The publishes will continue in the background

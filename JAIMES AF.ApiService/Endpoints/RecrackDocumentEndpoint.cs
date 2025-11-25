@@ -1,14 +1,14 @@
 using FastEndpoints;
-using MassTransit;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
 public class RecrackDocumentEndpoint : Endpoint<RecrackDocumentRequest, DocumentOperationResponse>
 {
-    public required IPublishEndpoint PublishEndpoint { get; set; }
+    public required IMessagePublisher MessagePublisher { get; set; }
 
     public override void Configure()
     {
@@ -34,7 +34,7 @@ public class RecrackDocumentEndpoint : Endpoint<RecrackDocumentRequest, Document
             RelativeDirectory = req.RelativeDirectory
         };
 
-        await PublishEndpoint.Publish(message, ct);
+        await MessagePublisher.PublishAsync(message, ct);
         Logger.LogInformation("Requested re-crack for document {FilePath}", req.FilePath);
 
         DocumentOperationResponse response = new()

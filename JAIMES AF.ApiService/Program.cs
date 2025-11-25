@@ -8,7 +8,8 @@ using System.Diagnostics;
 using MattEland.Jaimes.ApiService.Helpers;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Services;
-using MassTransit;
+using MattEland.Jaimes.ServiceDefinitions.Services;
+using RabbitMQ.Client;
 using MongoDB.Driver;
 using Qdrant.Client;
 using MattEland.Jaimes.Workers.DocumentEmbeddings.Services;
@@ -41,30 +42,10 @@ public class Program
                 new MongoClient("mongodb://localhost:27017"));
         }
 
-        string? messagingConnectionString = builder.Configuration.GetConnectionString("messaging")
-            ?? builder.Configuration["ConnectionStrings:messaging"]
-            ?? builder.Configuration["ConnectionStrings__messaging"];
-        bool rabbitMqConfigured = !string.IsNullOrWhiteSpace(messagingConnectionString);
-
-        // Configure MassTransit for publishing messages (RabbitMQ when available, in-memory otherwise)
-        builder.Services.AddMassTransit(x =>
-        {
-            if (rabbitMqConfigured)
-            {
-                x.UsingRabbitMq((context, cfg) =>
-                {
-                    ConfigureRabbitMq(cfg, messagingConnectionString!);
-                    cfg.ConfigureEndpoints(context);
-                });
-            }
-            else
-            {
-                x.UsingInMemory((context, cfg) =>
-                {
-                    cfg.ConfigureEndpoints(context);
-                });
-            }
-        });
+        // Configure message publishing using RabbitMQ.Client (LavinMQ compatible)
+        IConnectionFactory connectionFactory = RabbitMqConnectionFactory.CreateConnectionFactory(builder.Configuration);
+        builder.Services.AddSingleton(connectionFactory);
+        builder.Services.AddSingleton<IMessagePublisher, MessagePublisher>();
 
         // Add services to the container.
         builder.Services.AddProblemDetails();
@@ -240,48 +221,6 @@ public class Program
         await app.RunAsync();
     }
 
-    private static void ConfigureRabbitMq(IRabbitMqBusFactoryConfigurator cfg, string connectionString)
-    {
-        if (cfg == null)
-        {
-            throw new ArgumentNullException(nameof(cfg));
-        }
-
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            throw new ArgumentException("Connection string is required.", nameof(connectionString));
-        }
-
-        // Parse connection string (format: amqp://username:password@host:port/vhost)
-        Uri rabbitUri = new(connectionString);
-        string host = rabbitUri.Host;
-        ushort port = rabbitUri.Port > 0 ? (ushort)rabbitUri.Port : (ushort)5672;
-        string? username = null;
-        string? password = null;
-
-        if (!string.IsNullOrEmpty(rabbitUri.UserInfo))
-        {
-            string[] userInfo = rabbitUri.UserInfo.Split(':');
-            username = userInfo[0];
-            if (userInfo.Length > 1)
-            {
-                password = userInfo[1];
-            }
-        }
-
-        cfg.Host(host, port, "/", h =>
-        {
-            if (!string.IsNullOrEmpty(username))
-            {
-                h.Username(username);
-            }
-
-            if (!string.IsNullOrEmpty(password))
-            {
-                h.Password(password);
-            }
-        });
-    }
 
     private static void ApplyQdrantConnectionString(
         string connectionString,

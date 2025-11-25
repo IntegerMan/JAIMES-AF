@@ -1,6 +1,8 @@
 using System.Diagnostics;
-using MassTransit;
 using Microsoft.Extensions.Configuration;
+using MattEland.Jaimes.ServiceDefinitions.Messages;
+using MattEland.Jaimes.ServiceDefinitions.Services;
+using RabbitMQ.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -48,67 +50,16 @@ builder.AddMongoDBClient("documents");
 // Register services
 builder.Services.AddSingleton<IDocumentCrackingService, DocumentCrackingService>();
 
-// Configure MassTransit
-builder.Services.AddMassTransit(x =>
-{
-    x.AddConsumer<CrackDocumentConsumer>();
+// Configure message publishing and consuming using RabbitMQ.Client (LavinMQ compatible)
+IConnectionFactory connectionFactory = RabbitMqConnectionFactory.CreateConnectionFactory(builder.Configuration);
+builder.Services.AddSingleton(connectionFactory);
+builder.Services.AddSingleton<IMessagePublisher, MessagePublisher>();
 
-    x.UsingRabbitMq((context, cfg) =>
-    {
-        // Get RabbitMQ connection string from Aspire
-        string? connectionString = builder.Configuration.GetConnectionString("messaging")
-            ?? builder.Configuration["ConnectionStrings:messaging"]
-            ?? builder.Configuration["ConnectionStrings__messaging"];
+// Register consumer
+builder.Services.AddSingleton<IMessageConsumer<CrackDocumentMessage>, CrackDocumentConsumer>();
 
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            throw new InvalidOperationException(
-                "RabbitMQ connection string is not configured. " +
-                "Expected connection string 'messaging' from Aspire.");
-        }
-
-        // Parse connection string (format: amqp://username:password@host:port/vhost)
-        Uri rabbitUri = new(connectionString);
-        string host = rabbitUri.Host;
-        ushort port = rabbitUri.Port > 0 ? (ushort)rabbitUri.Port : (ushort)5672;
-        string? username = null;
-        string? password = null;
-        
-        if (!string.IsNullOrEmpty(rabbitUri.UserInfo))
-        {
-            string[] userInfo = rabbitUri.UserInfo.Split(':');
-            username = userInfo[0];
-            if (userInfo.Length > 1)
-            {
-                password = userInfo[1];
-            }
-        }
-
-        cfg.Host(host, port, "/", h =>
-        {
-            if (!string.IsNullOrEmpty(username))
-            {
-                h.Username(username);
-            }
-            if (!string.IsNullOrEmpty(password))
-            {
-                h.Password(password);
-            }
-        });
-
-        // Configure retry policy
-        cfg.UseMessageRetry(r => r.Exponential(
-            retryLimit: 5,
-            minInterval: TimeSpan.FromSeconds(1),
-            maxInterval: TimeSpan.FromSeconds(30),
-            intervalDelta: TimeSpan.FromSeconds(2)));
-
-        // Configure consumer endpoint
-        // MassTransit will automatically create the queue and bind to the appropriate exchange
-        // based on the message type (CrackDocumentMessage)
-        cfg.ConfigureEndpoints(context);
-    });
-});
+// Register consumer service (background service)
+builder.Services.AddHostedService<MessageConsumerService<CrackDocumentMessage>>();
 
 // Configure OpenTelemetry ActivitySource
 const string activitySourceName = "Jaimes.Workers.DocumentCrackerWorker";
