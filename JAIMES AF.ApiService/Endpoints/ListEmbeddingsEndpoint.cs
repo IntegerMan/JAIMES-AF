@@ -1,8 +1,7 @@
 using FastEndpoints;
 using Grpc.Core;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MattEland.Jaimes.Workers.DocumentEmbeddings.Services;
-using MattEland.Jaimes.Workers.DocumentEmbeddings.Configuration;
+using MattEland.Jaimes.Workers.DocumentChunking.Services;
 
 namespace MattEland.Jaimes.ApiService.Endpoints;
 

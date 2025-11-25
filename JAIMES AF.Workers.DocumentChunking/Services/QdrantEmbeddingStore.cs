@@ -3,13 +3,13 @@ using Grpc.Core;
 using Microsoft.Extensions.Logging;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
-using MattEland.Jaimes.Workers.DocumentEmbeddings.Configuration;
+using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
 
-namespace MattEland.Jaimes.Workers.DocumentEmbeddings.Services;
+namespace MattEland.Jaimes.Workers.DocumentChunking.Services;
 
 public class QdrantEmbeddingStore(
     QdrantClient qdrantClient,
-    EmbeddingWorkerOptions options,
+    DocumentChunkingOptions options,
     ILogger<QdrantEmbeddingStore> logger,
     ActivitySource activitySource) : IQdrantEmbeddingStore
 {

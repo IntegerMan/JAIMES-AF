@@ -24,6 +24,7 @@
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
+    <PackageReference Include="Qdrant.Client" />
     <PackageReference Include="SemanticChunker.NET" />
   </ItemGroup>
 

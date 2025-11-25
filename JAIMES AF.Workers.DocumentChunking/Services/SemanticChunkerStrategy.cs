@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using SemanticChunkerNET;
 using MattEland.Jaimes.Workers.DocumentChunking.Models;
+using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
 
 namespace MattEland.Jaimes.Workers.DocumentChunking.Services;
 
@@ -9,6 +10,7 @@ namespace MattEland.Jaimes.Workers.DocumentChunking.Services;
 /// </summary>
 public class SemanticChunkerStrategy(
     SemanticChunker semanticChunker,
+    DocumentChunkingOptions options,
     ILogger<SemanticChunkerStrategy> logger) : ITextChunkingStrategy
 {
     public IEnumerable<TextChunk> ChunkText(string text, string sourceDocumentId)
@@ -38,17 +40,45 @@ public class SemanticChunkerStrategy(
         logger.LogDebug("SemanticChunker produced {Count} chunks for document {DocumentId}", 
             semanticChunks.Count, sourceDocumentId);
 
+        int chunkIndex = 0;
+        int filteredCount = 0;
         for (int i = 0; i < semanticChunks.Count; i++)
         {
             SemanticChunkerNET.Chunk semanticChunk = semanticChunks[i];
 
+            // Filter out chunks that are too short (MinChunkChars)
+            if (semanticChunk.Text.Length < options.MinChunkChars)
+            {
+                filteredCount++;
+                logger.LogDebug("Filtered out chunk {Index} for document {DocumentId} (length {Length} < MinChunkChars {MinChars})", 
+                    i, sourceDocumentId, semanticChunk.Text.Length, options.MinChunkChars);
+                continue;
+            }
+
+            // Extract embedding from SemanticChunker.NET Chunk
+            float[]? embedding = null;
+            if (semanticChunk.Embedding != null)
+            {
+                // Embedding<float> from Microsoft.Extensions.AI has a Vector property
+                embedding = semanticChunk.Embedding.Vector.ToArray();
+            }
+
             yield return new TextChunk
             {
-                Id = GenerateChunkId(sourceDocumentId, i),
+                Id = GenerateChunkId(sourceDocumentId, chunkIndex),
                 Text = semanticChunk.Text,
-                Index = i,
-                SourceDocumentId = sourceDocumentId
+                Index = chunkIndex,
+                SourceDocumentId = sourceDocumentId,
+                Embedding = embedding
             };
+            
+            chunkIndex++;
+        }
+
+        if (filteredCount > 0)
+        {
+            logger.LogInformation("Filtered out {FilteredCount} chunks shorter than {MinChunkChars} characters for document {DocumentId}", 
+                filteredCount, options.MinChunkChars, sourceDocumentId);
         }
     }
 

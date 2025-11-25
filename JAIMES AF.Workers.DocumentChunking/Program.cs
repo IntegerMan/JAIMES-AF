@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using Microsoft.Extensions.AI;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
@@ -12,6 +13,8 @@ using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Qdrant.Client;
+using Qdrant.Client.Grpc;
 using SemanticChunkerNET;
 using MattEland.Jaimes.Workers.DocumentChunking.Consumers;
 using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
@@ -54,6 +57,90 @@ builder.Services.AddSingleton(options);
 
 // Add MongoDB client integration
 builder.AddMongoDBClient("documents");
+
+// Configure Qdrant client
+// Get Qdrant endpoint from Aspire environment variables
+string? qdrantHost = builder.Configuration["DocumentChunking:QdrantHost"]
+    ?? builder.Configuration["DocumentChunking__QdrantHost"]
+    ?? builder.Configuration["QDRANT_EMBEDDINGS_GRPCHOST"]
+    ?? builder.Configuration["QdrantEmbeddings__GrpcHost"];
+
+string? qdrantPortStr = builder.Configuration["DocumentChunking:QdrantPort"]
+    ?? builder.Configuration["DocumentChunking__QdrantPort"]
+    ?? builder.Configuration["QDRANT_EMBEDDINGS_GRPCPORT"]
+    ?? builder.Configuration["QdrantEmbeddings__GrpcPort"];
+
+string? qdrantConnectionString = builder.Configuration.GetConnectionString("qdrant-embeddings")
+    ?? builder.Configuration["ConnectionStrings:qdrant-embeddings"]
+    ?? builder.Configuration["ConnectionStrings__qdrant-embeddings"];
+
+// Initialize API key variable
+string? qdrantApiKey = null;
+
+// Try to extract API key from connection string first (this is the most reliable source)
+if (!string.IsNullOrWhiteSpace(qdrantConnectionString))
+{
+    ApplyQdrantConnectionString(qdrantConnectionString, ref qdrantHost, ref qdrantPortStr, ref qdrantApiKey);
+}
+
+// Try multiple possible API key locations
+qdrantApiKey ??= builder.Configuration["Qdrant__ApiKey"]
+    ?? builder.Configuration["Qdrant:ApiKey"]
+    ?? builder.Configuration["QDRANT_EMBEDDINGS_APIKEY"]
+    ?? builder.Configuration["QdrantEmbeddings__ApiKey"]
+    ?? builder.Configuration["QDRANT_EMBEDDINGS_API_KEY"]
+    ?? Environment.GetEnvironmentVariable("Qdrant__ApiKey")
+    ?? Environment.GetEnvironmentVariable("QDRANT_EMBEDDINGS_APIKEY")
+    ?? Environment.GetEnvironmentVariable("QdrantEmbeddings__ApiKey")
+    ?? Environment.GetEnvironmentVariable("QDRANT_EMBEDDINGS_API_KEY")
+    ?? Environment.GetEnvironmentVariable("qdrant-api-key");
+
+// If the API key looks like an unresolved Aspire expression (contains { and }), 
+// try to resolve it by reading from the actual parameter value or use default
+if (!string.IsNullOrWhiteSpace(qdrantApiKey) && qdrantApiKey.Contains('{') && qdrantApiKey.Contains('}'))
+{
+    string? resolvedApiKey = Environment.GetEnvironmentVariable("qdrant-api-key")
+        ?? Environment.GetEnvironmentVariable("QDRANT_API_KEY")
+        ?? Environment.GetEnvironmentVariable("Qdrant__ApiKey")
+        ?? Environment.GetEnvironmentVariable("QDRANT_EMBEDDINGS_APIKEY");
+    
+    if (!string.IsNullOrWhiteSpace(resolvedApiKey) && !resolvedApiKey.Contains('{'))
+    {
+        qdrantApiKey = resolvedApiKey;
+    }
+    else
+    {
+        qdrantApiKey = "qdrant";
+    }
+}
+
+// If API key is still not found, use the default value from the parameter definition
+if (string.IsNullOrWhiteSpace(qdrantApiKey))
+{
+    qdrantApiKey = "qdrant";
+}
+
+if (string.IsNullOrWhiteSpace(qdrantHost) || string.IsNullOrWhiteSpace(qdrantPortStr))
+{
+    throw new InvalidOperationException(
+        "Qdrant host and port are not configured. " +
+        "Expected 'DocumentChunking:QdrantHost' and 'DocumentChunking:QdrantPort' from Aspire.");
+}
+
+if (!int.TryParse(qdrantPortStr, out int qdrantPort))
+{
+    throw new InvalidOperationException(
+        $"Invalid Qdrant port: '{qdrantPortStr}'. Expected a valid integer.");
+}
+
+// QdrantClient uses the gRPC endpoint (container port 6334, though Aspire may map it to another host port)
+bool useHttps = builder.Configuration.GetValue<bool>("DocumentChunking:QdrantUseHttps", defaultValue: false);
+
+QdrantClient qdrantClient = string.IsNullOrWhiteSpace(qdrantApiKey)
+    ? new QdrantClient(qdrantHost, port: qdrantPort, https: useHttps)
+    : new QdrantClient(qdrantHost, port: qdrantPort, https: useHttps, apiKey: qdrantApiKey);
+
+builder.Services.AddSingleton(qdrantClient);
 
 // Configure Ollama client - prioritize explicit endpoint configuration from AppHost
 // This ensures we use the correct host/port in containerized environments
@@ -172,7 +259,17 @@ builder.Services.AddSingleton<SemanticChunker>(sp =>
     IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator = 
         sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
     
-    SemanticChunker chunker = new(embeddingGenerator, tokenLimit: options.TokenLimit);
+    BreakpointThresholdType thresholdType = Enum.Parse<BreakpointThresholdType>(options.ThresholdType, ignoreCase: true);
+    
+    // Create SemanticChunker with all available configuration options
+    // Note: SemanticChunker.NET may not support all parameters - adjust based on actual API
+    SemanticChunker chunker = new(
+        embeddingGenerator, 
+        tokenLimit: options.TokenLimit, 
+        thresholdType: thresholdType,
+        bufferSize: options.BufferSize,
+        thresholdAmount: options.ThresholdAmount,
+        targetChunkCount: options.TargetChunkCount);
     
     return chunker;
 });
@@ -180,6 +277,7 @@ builder.Services.AddSingleton<ITextChunkingStrategy, SemanticChunkerStrategy>();
 
 // Register services
 builder.Services.AddSingleton<IOllamaEmbeddingService, OllamaEmbeddingService>();
+builder.Services.AddSingleton<IQdrantEmbeddingStore, QdrantEmbeddingStore>();
 builder.Services.AddSingleton<IDocumentChunkingService, DocumentChunkingService>();
 
 // Configure OpenTelemetry ActivitySource (register before MessageConsumerService to ensure it's available for injection)
@@ -204,10 +302,9 @@ builder.Services.AddOpenTelemetry()
 // Register ActivitySource for dependency injection (before MessageConsumerService)
 builder.Services.AddSingleton(activitySource);
 
-// Configure message publishing and consuming using RabbitMQ.Client (LavinMQ compatible)
+// Configure message consuming using RabbitMQ.Client (LavinMQ compatible)
 IConnectionFactory connectionFactory = RabbitMqConnectionFactory.CreateConnectionFactory(builder.Configuration);
 builder.Services.AddSingleton(connectionFactory);
-builder.Services.AddSingleton<IMessagePublisher, MessagePublisher>();
 
 // Register consumer
 builder.Services.AddSingleton<IMessageConsumer<DocumentReadyForChunkingMessage>, DocumentReadyForChunkingConsumer>();
@@ -219,11 +316,155 @@ builder.Services.AddHostedService<MessageConsumerService<DocumentReadyForChunkin
 using IHost host = builder.Build();
 
 ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
+IQdrantEmbeddingStore qdrantStore = host.Services.GetRequiredService<IQdrantEmbeddingStore>();
 
-logger.LogInformation("Starting Document Chunking Worker");
+logger.LogInformation("Starting Document Chunking and Embedding Worker");
 logger.LogInformation("Ollama Endpoint: {Endpoint}", ollamaEndpoint);
 logger.LogInformation("Ollama Model: {Model}", ollamaModel);
+logger.LogInformation("Qdrant: {Host}:{Port} (HTTPS: {UseHttps})", qdrantHost, qdrantPort, useHttps);
 logger.LogInformation("Worker ready and listening for DocumentReadyForChunkingMessage on queue");
 
+// Ensure Qdrant collection exists on startup
+try
+{
+    await qdrantStore.EnsureCollectionExistsAsync();
+    logger.LogInformation("Qdrant collection verified/created successfully");
+}
+catch (Exception ex)
+{
+    logger.LogWarning(ex, 
+        "Failed to ensure Qdrant collection exists on startup (gRPC might not be fully ready yet). " +
+        "Collection will be created when processing the first document.");
+}
+
 await host.RunAsync();
+
+static void ApplyQdrantConnectionString(
+    string connectionString,
+    ref string? host,
+    ref string? port,
+    ref string? apiKey)
+{
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        return;
+    }
+
+    if (Uri.TryCreate(connectionString, UriKind.Absolute, out Uri? uri))
+    {
+        host ??= uri.Host;
+        if (uri.Port > 0)
+        {
+            port ??= uri.Port.ToString(CultureInfo.InvariantCulture);
+        }
+
+        ExtractApiKeyFromQuery(uri.Query, ref apiKey);
+        return;
+    }
+
+    if (TryParseHostAndPort(connectionString, out string? parsedHost, out string? parsedPort))
+    {
+        host ??= parsedHost;
+        if (string.IsNullOrWhiteSpace(port) && !string.IsNullOrWhiteSpace(parsedPort))
+        {
+            port = parsedPort;
+        }
+    }
+
+    string[] segments = connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries);
+    foreach (string segment in segments)
+    {
+        string[] keyValue = segment.Split('=', 2, StringSplitOptions.TrimEntries);
+        if (keyValue.Length != 2)
+        {
+            continue;
+        }
+
+        string key = keyValue[0];
+        string value = keyValue[1];
+
+        if (string.Equals(key, "Endpoint", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(key, "Uri", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(key, "GrpcUri", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyQdrantConnectionString(value, ref host, ref port, ref apiKey);
+            continue;
+        }
+
+        if (string.Equals(key, "Host", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(key, "Hostname", StringComparison.OrdinalIgnoreCase))
+        {
+            host ??= value;
+            continue;
+        }
+
+        if (string.Equals(key, "Port", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(key, "GrpcPort", StringComparison.OrdinalIgnoreCase))
+        {
+            port ??= value;
+            continue;
+        }
+
+        if (string.Equals(key, "ApiKey", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(key, "Api-Key", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(key, "Api_Key", StringComparison.OrdinalIgnoreCase))
+        {
+            apiKey ??= value;
+        }
+    }
+}
+
+static bool TryParseHostAndPort(string value, out string? host, out string? port)
+{
+    host = null;
+    port = null;
+
+    if (string.IsNullOrWhiteSpace(value) || value.Contains('='))
+    {
+        return false;
+    }
+
+    string[] hostParts = value.Split(':', StringSplitOptions.RemoveEmptyEntries);
+    if (hostParts.Length == 0)
+    {
+        return false;
+    }
+
+    host = hostParts[0];
+    if (hostParts.Length > 1)
+    {
+        port = hostParts[1];
+    }
+
+    return true;
+}
+
+static void ExtractApiKeyFromQuery(string query, ref string? apiKey)
+{
+    if (string.IsNullOrWhiteSpace(query) || !string.IsNullOrWhiteSpace(apiKey))
+    {
+        return;
+    }
+
+    string trimmedQuery = query.TrimStart('?');
+    string[] pairs = trimmedQuery.Split('&', StringSplitOptions.RemoveEmptyEntries);
+
+    foreach (string pair in pairs)
+    {
+        string[] keyValue = pair.Split('=', 2);
+        if (keyValue.Length != 2)
+        {
+            continue;
+        }
+
+        string key = keyValue[0];
+        if (string.Equals(key, "api-key", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(key, "apikey", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(key, "api_key", StringComparison.OrdinalIgnoreCase))
+        {
+            apiKey = Uri.UnescapeDataString(keyValue[1]);
+            break;
+        }
+    }
+}
 

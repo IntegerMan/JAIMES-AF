@@ -17,13 +17,9 @@ public class OllamaEmbeddingGeneratorAdapter(
             throw new ArgumentException("Input cannot be null or empty", nameof(input));
         }
 
-        logger.LogDebug("Generating embedding via adapter for text (length: {Length})", input.Length);
-
         float[] embeddingArray = await ollamaEmbeddingService.GenerateEmbeddingAsync(input, cancellationToken);
 
         Embedding<float> embedding = new(embeddingArray);
-
-        logger.LogDebug("Generated embedding with {Dimensions} dimensions via adapter", embeddingArray.Length);
 
         return embedding;
     }

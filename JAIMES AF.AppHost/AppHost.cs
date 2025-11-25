@@ -65,14 +65,23 @@ IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIME
     .WithIconName("DocumentGlobe", IconVariant.Regular)
     .WithExternalHttpEndpoints()
     //.WithUrls(u => u.Urls.Clear())
-    .WithUrls(u => {
-        u.Urls.Clear();
-        u.Urls.Add(new() { Url = "/", DisplayText = "🌳 Root" });
-        u.Urls.Add(new() { Url = "/openapi/v1.json", DisplayText = "🌐 OpenAPI" });
-        u.Urls.Add(new() { Url = "/swagger", DisplayText = "📃 Swagger" });
-        u.Urls.Add(new() { Url = "/health", DisplayText = "👨‍⚕️ Health" });
+    .WithUrlForEndpoint("http", static url => url.DisplayText = "🌳 Root")
+    .WithUrlForEndpoint("http", static _ => new()
+    {
+        Url = "/openapi/v1.json",
+        DisplayText = "🌐 OpenAPI"
+    })
+    .WithUrlForEndpoint("http", static _ => new()
+    {
+        Url = "/swagger",
+        DisplayText = "📃 Swagger"
     })
     .WithHttpHealthCheck("/health")
+    .WithUrlForEndpoint("http", static _ => new()
+    {
+        Url = "/health",
+        DisplayText = "👨‍⚕️ Health"
+    })
     .WithReference(chatModel)
     .WithReference(embedModel)
     .WithReference(sqliteDb)
@@ -143,21 +152,6 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChunking>("document-chunki
     .WithIconName("DocumentSplit")
     .WithReference(lavinmq)
     .WithReference(mongoDb)
-    .WithReference(embedModel)
-    .WaitFor(lavinmq)
-    .WaitFor(mongo)
-    .WaitFor(ollama)
-    .WithEnvironment(context =>
-    {
-        // Set Ollama endpoint for embedding generation (needed for SemanticChunker)
-        EndpointReference ollamaEndpoint = ollama.GetEndpoint("http");
-        context.EnvironmentVariables["DocumentChunking__OllamaEndpoint"] = $"http://{ollamaEndpoint.Host}:{ollamaEndpoint.Port}";
-    });
-
-builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbeddings>("embedding-worker")
-    .WithIconName("TextGrammarSettings")
-    .WithReference(lavinmq)
-    .WithReference(mongoDb)
     .WithReference(qdrant)
     .WithReference(embedModel)
     .WaitFor(lavinmq)
@@ -166,22 +160,15 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbeddings>("embedding-wor
     .WaitFor(ollama)
     .WithEnvironment(context =>
     {
-        // Set Ollama endpoint for embedding generation
-        // The connection string from the model reference might not be automatically provided,
-        // so we explicitly set the endpoint here
+        // Set Ollama endpoint for embedding generation (needed for SemanticChunker)
         EndpointReference ollamaEndpoint = ollama.GetEndpoint("http");
-        context.EnvironmentVariables["EmbeddingWorker__OllamaEndpoint"] = $"http://{ollamaEndpoint.Host}:{ollamaEndpoint.Port}";
+        context.EnvironmentVariables["DocumentChunking__OllamaEndpoint"] = $"http://{ollamaEndpoint.Host}:{ollamaEndpoint.Port}";
         
         // Set Qdrant endpoint
-        // Use the gRPC endpoint (Primary endpoint) so host port mappings are respected
         EndpointReference qdrantGrpcEndpoint = qdrant.GetEndpoint("grpc");
-        context.EnvironmentVariables["EmbeddingWorker__QdrantHost"] = qdrantGrpcEndpoint.Host;
-        context.EnvironmentVariables["EmbeddingWorker__QdrantPort"] = qdrantGrpcEndpoint.Port;
+        context.EnvironmentVariables["DocumentChunking__QdrantHost"] = qdrantGrpcEndpoint.Host;
+        context.EnvironmentVariables["DocumentChunking__QdrantPort"] = qdrantGrpcEndpoint.Port;
         context.EnvironmentVariables["ConnectionStrings__qdrant-embeddings"] = qdrant.Resource.ConnectionStringExpression;
-        
-        // Note: API key should be extracted from the connection string by the worker
-        // The connection string from WithReference(qdrant) should include the API key
-        // We don't set it manually here because ValueExpression doesn't resolve in WithEnvironment
     });
 
 var app = builder.Build();

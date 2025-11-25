@@ -1,4 +1,4 @@
-namespace MattEland.Jaimes.Workers.DocumentEmbeddings.Services;
+namespace MattEland.Jaimes.Workers.DocumentChunking.Services;
 
 public interface IQdrantEmbeddingStore
 {
@@ -19,7 +19,4 @@ public record EmbeddingInfo
     public required int ChunkIndex { get; init; }
     public required string ChunkText { get; init; }
 }
-
-
-
 

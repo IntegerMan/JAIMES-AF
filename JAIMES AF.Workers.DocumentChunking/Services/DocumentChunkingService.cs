@@ -11,7 +11,7 @@ namespace MattEland.Jaimes.Workers.DocumentChunking.Services;
 public class DocumentChunkingService(
     IMongoClient mongoClient,
     ITextChunkingStrategy chunkingStrategy,
-    IMessagePublisher messagePublisher,
+    IQdrantEmbeddingStore qdrantStore,
     ILogger<DocumentChunkingService> logger,
     ActivitySource activitySource) : IDocumentChunkingService
 {
@@ -40,9 +40,25 @@ public class DocumentChunkingService(
             }
 
             // Step 2: Chunk the document
-            List<TextChunk> chunks = chunkingStrategy.ChunkText(documentContent, message.DocumentId).ToList();
+            logger.LogInformation("Starting chunking for document {DocumentId}. Content length: {ContentLength}", 
+                message.DocumentId, documentContent.Length);
+            activity?.SetTag("chunking.content_length", documentContent.Length);
+            
+            List<TextChunk> chunks;
+            try
+            {
+                chunks = chunkingStrategy.ChunkText(documentContent, message.DocumentId).ToList();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to chunk document {DocumentId}. This may be due to embedding generation issues.", 
+                    message.DocumentId);
+                activity?.SetStatus(ActivityStatusCode.Error, $"Chunking failed: {ex.Message}");
+                throw;
+            }
+            
             activity?.SetTag("chunking.chunk_count", chunks.Count);
-            logger.LogDebug("Document {DocumentId} split into {ChunkCount} chunks", message.DocumentId, chunks.Count);
+            logger.LogInformation("Document {DocumentId} split into {ChunkCount} chunks", message.DocumentId, chunks.Count);
 
             if (chunks.Count == 0)
             {
@@ -58,44 +74,56 @@ public class DocumentChunkingService(
             // Step 4: Update CrackedDocument with TotalChunks
             await UpdateDocumentChunkCountAsync(message.DocumentId, chunks.Count, cancellationToken);
 
-            // Step 5: Publish one message per chunk
-            int publishedCount = 0;
+            // Step 5: Store chunks with embeddings in Qdrant
+            int storedCount = 0;
             foreach (TextChunk chunk in chunks)
             {
                 try
                 {
-                    ChunkReadyForEmbeddingMessage chunkMessage = new()
+                    if (chunk.Embedding == null || chunk.Embedding.Length == 0)
                     {
-                        ChunkId = chunk.Id,
-                        ChunkText = chunk.Text,
-                        ChunkIndex = chunk.Index,
-                        DocumentId = message.DocumentId,
-                        FileName = message.FileName,
-                        FilePath = message.FilePath,
-                        RelativeDirectory = message.RelativeDirectory,
-                        FileSize = message.FileSize,
-                        PageCount = message.PageCount,
-                        CrackedAt = message.CrackedAt,
-                        TotalChunks = chunks.Count
+                        logger.LogWarning("Chunk {ChunkId} (index {ChunkIndex}) has no embedding, skipping Qdrant storage", 
+                            chunk.Id, chunk.Index);
+                        continue;
+                    }
+
+                    // Prepare metadata for this chunk
+                    Dictionary<string, string> metadata = new()
+                    {
+                        { "chunkId", chunk.Id },
+                        { "chunkIndex", chunk.Index.ToString() },
+                        { "chunkText", chunk.Text },
+                        { "documentId", message.DocumentId },
+                        { "fileName", message.FileName },
+                        { "filePath", message.FilePath },
+                        { "relativeDirectory", message.RelativeDirectory },
+                        { "fileSize", message.FileSize.ToString() },
+                        { "pageCount", message.PageCount.ToString() },
+                        { "crackedAt", message.CrackedAt.ToString("O") },
+                        { "embeddedAt", DateTime.UtcNow.ToString("O") }
                     };
 
-                    await messagePublisher.PublishAsync(chunkMessage, cancellationToken);
-                    publishedCount++;
+                    // Store chunk embedding in Qdrant
+                    await qdrantStore.StoreEmbeddingAsync(chunk.Id, chunk.Embedding, metadata, cancellationToken);
+                    storedCount++;
 
-                    logger.LogDebug("Published chunk {ChunkId} (index {ChunkIndex}) for document {DocumentId}", 
+                    logger.LogDebug("Stored chunk {ChunkId} (index {ChunkIndex}) in Qdrant for document {DocumentId}", 
                         chunk.Id, chunk.Index, message.DocumentId);
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "Failed to publish chunk {ChunkId} (index {ChunkIndex}) for document {DocumentId}", 
+                    logger.LogError(ex, "Failed to store chunk {ChunkId} (index {ChunkIndex}) in Qdrant for document {DocumentId}", 
                         chunk.Id, chunk.Index, message.DocumentId);
-                    // Continue publishing other chunks even if one fails
+                    // Continue storing other chunks even if one fails
                 }
             }
 
-            activity?.SetTag("chunking.published_chunks", publishedCount);
-            logger.LogDebug("Successfully processed {ChunkCount} chunks for document {DocumentId}", 
-                chunks.Count, message.DocumentId);
+            // Step 6: Mark document as processed after all chunks are stored
+            await MarkDocumentAsProcessedAsync(message.DocumentId, cancellationToken);
+
+            activity?.SetTag("chunking.stored_chunks", storedCount);
+            logger.LogInformation("Successfully processed and stored {StoredCount}/{ChunkCount} chunks for document {DocumentId}", 
+                storedCount, chunks.Count, message.DocumentId);
             activity?.SetStatus(ActivityStatusCode.Ok);
         }
         catch (Exception ex)
@@ -163,29 +191,27 @@ public class DocumentChunkingService(
                     new CreateIndexOptions { Unique = true, Name = "idx_chunkId_unique" }),
                 cancellationToken: cancellationToken);
 
-            // Convert TextChunk to DocumentChunk entities
-            List<DocumentChunk> documentChunks = chunks.Select(chunk => new DocumentChunk
+            // Store chunks (using upsert to handle duplicates)
+            // Use UpdateOneAsync instead of ReplaceOneAsync to avoid _id: null issues
+            foreach (TextChunk chunk in chunks)
             {
-                ChunkId = chunk.Id,
-                DocumentId = documentId,
-                ChunkText = chunk.Text,
-                ChunkIndex = chunk.Index,
-                CreatedAt = DateTime.UtcNow
-            }).ToList();
+                FilterDefinition<DocumentChunk> filter = Builders<DocumentChunk>.Filter.Eq(c => c.ChunkId, chunk.Id);
+                UpdateDefinition<DocumentChunk> update = Builders<DocumentChunk>.Update
+                    .Set(c => c.ChunkId, chunk.Id)
+                    .Set(c => c.DocumentId, documentId)
+                    .Set(c => c.ChunkText, chunk.Text)
+                    .Set(c => c.ChunkIndex, chunk.Index)
+                    .SetOnInsert(c => c.CreatedAt, DateTime.UtcNow);
 
-            // Insert chunks (using upsert to handle duplicates)
-            foreach (DocumentChunk chunk in documentChunks)
-            {
-                FilterDefinition<DocumentChunk> filter = Builders<DocumentChunk>.Filter.Eq(c => c.ChunkId, chunk.ChunkId);
-                await collection.ReplaceOneAsync(
+                await collection.UpdateOneAsync(
                     filter,
-                    chunk,
-                    new ReplaceOptions { IsUpsert = true },
+                    update,
+                    new UpdateOptions { IsUpsert = true },
                     cancellationToken);
             }
 
             logger.LogDebug("Stored {Count} chunks in MongoDB for document {DocumentId}", 
-                documentChunks.Count, documentId);
+                chunks.Count, documentId);
 
             activity?.SetStatus(ActivityStatusCode.Ok);
         }
@@ -230,6 +256,41 @@ public class DocumentChunkingService(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to update chunk count for document {DocumentId}", documentId);
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            // Don't throw - this is a non-critical operation
+        }
+    }
+
+    private async Task MarkDocumentAsProcessedAsync(string documentId, CancellationToken cancellationToken)
+    {
+        using Activity? activity = activitySource.StartActivity("DocumentChunking.MarkProcessed");
+        activity?.SetTag("chunking.document_id", documentId);
+
+        try
+        {
+            IMongoDatabase mongoDatabase = mongoClient.GetDatabase("documents");
+            IMongoCollection<CrackedDocument> collection = mongoDatabase.GetCollection<CrackedDocument>("crackedDocuments");
+
+            FilterDefinition<CrackedDocument> filter = Builders<CrackedDocument>.Filter.Eq(d => d.Id, documentId);
+            UpdateDefinition<CrackedDocument> update = Builders<CrackedDocument>.Update
+                .Set(d => d.IsProcessed, true);
+
+            UpdateResult result = await collection.UpdateOneAsync(filter, update, cancellationToken: cancellationToken);
+
+            if (result.MatchedCount == 0)
+            {
+                logger.LogWarning("Document {DocumentId} not found when marking as processed", documentId);
+            }
+            else
+            {
+                logger.LogDebug("Marked document {DocumentId} as processed", documentId);
+            }
+
+            activity?.SetStatus(ActivityStatusCode.Ok);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to mark document {DocumentId} as processed", documentId);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             // Don't throw - this is a non-critical operation
         }

@@ -11,8 +11,8 @@ using MattEland.Jaimes.Services;
 using RabbitMQ.Client;
 using MongoDB.Driver;
 using Qdrant.Client;
-using MattEland.Jaimes.Workers.DocumentEmbeddings.Services;
-using MattEland.Jaimes.Workers.DocumentEmbeddings.Configuration;
+using MattEland.Jaimes.Workers.DocumentChunking.Services;
+using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
 using MattEland.Jaimes.Agents.Services;
 
 namespace MattEland.Jaimes.ApiService;
@@ -88,14 +88,14 @@ public class Program
         builder.Services.AddSingleton<DatabaseInitializer>();
 
         // Configure Qdrant client for embedding management
-        // Use the same comprehensive configuration lookup as the DocumentEmbeddings worker
-        string? qdrantHost = builder.Configuration["EmbeddingWorker:QdrantHost"]
-            ?? builder.Configuration["EmbeddingWorker__QdrantHost"]
+        // Use the same comprehensive configuration lookup as the DocumentChunking worker
+        string? qdrantHost = builder.Configuration["DocumentChunking:QdrantHost"]
+            ?? builder.Configuration["DocumentChunking__QdrantHost"]
             ?? builder.Configuration["QDRANT_EMBEDDINGS_GRPCHOST"]
             ?? builder.Configuration["QdrantEmbeddings__GrpcHost"];
 
-        string? qdrantPortStr = builder.Configuration["EmbeddingWorker:QdrantPort"]
-            ?? builder.Configuration["EmbeddingWorker__QdrantPort"]
+        string? qdrantPortStr = builder.Configuration["DocumentChunking:QdrantPort"]
+            ?? builder.Configuration["DocumentChunking__QdrantPort"]
             ?? builder.Configuration["QDRANT_EMBEDDINGS_GRPCPORT"]
             ?? builder.Configuration["QdrantEmbeddings__GrpcPort"];
 
@@ -114,15 +114,15 @@ public class Program
         }
 
         // Fall back to other configuration sources
-        qdrantHost ??= builder.Configuration["EmbeddingWorker:QdrantHost"]
-            ?? builder.Configuration["EmbeddingWorker__QdrantHost"]
+        qdrantHost ??= builder.Configuration["DocumentChunking:QdrantHost"]
+            ?? builder.Configuration["DocumentChunking__QdrantHost"]
             ?? builder.Configuration["QDRANT_EMBEDDINGS_GRPCHOST"]
             ?? builder.Configuration["QdrantEmbeddings__GrpcHost"]
             ?? builder.Configuration["Aspire:Resources:qdrant-embeddings:Endpoints:grpc:Host"]
             ?? Environment.GetEnvironmentVariable("QDRANT_EMBEDDINGS_GRPCHOST");
 
-        qdrantPortStr ??= builder.Configuration["EmbeddingWorker:QdrantPort"]
-            ?? builder.Configuration["EmbeddingWorker__QdrantPort"]
+        qdrantPortStr ??= builder.Configuration["DocumentChunking:QdrantPort"]
+            ?? builder.Configuration["DocumentChunking__QdrantPort"]
             ?? builder.Configuration["QDRANT_EMBEDDINGS_GRPCPORT"]
             ?? builder.Configuration["QdrantEmbeddings__GrpcPort"]
             ?? builder.Configuration["Aspire:Resources:qdrant-embeddings:Endpoints:grpc:Port"]
@@ -179,7 +179,7 @@ public class Program
             qdrantHost = "localhost";
         }
 
-        bool useHttps = builder.Configuration.GetValue<bool>("EmbeddingWorker:QdrantUseHttps", defaultValue: false);
+        bool useHttps = builder.Configuration.GetValue<bool>("DocumentChunking:QdrantUseHttps", defaultValue: false);
         
         // Always register QdrantClient - always pass API key if we have one (even if it's "qdrant")
         // Qdrant requires authentication, so we must pass the API key
@@ -190,10 +190,10 @@ public class Program
             : new QdrantClient(qdrantHostFinal, port: qdrantPort, https: useHttps, apiKey: qdrantApiKey);
         builder.Services.AddSingleton(qdrantClient);
 
-        // Configure EmbeddingWorkerOptions
-        EmbeddingWorkerOptions embeddingOptions = builder.Configuration.GetSection("EmbeddingWorker").Get<EmbeddingWorkerOptions>()
-            ?? new EmbeddingWorkerOptions();
-        builder.Services.AddSingleton(embeddingOptions);
+        // Configure DocumentChunkingOptions (which includes Qdrant configuration)
+        DocumentChunkingOptions chunkingOptions = builder.Configuration.GetSection("DocumentChunking").Get<DocumentChunkingOptions>()
+            ?? new DocumentChunkingOptions();
+        builder.Services.AddSingleton(chunkingOptions);
 
         // Register ActivitySource for QdrantEmbeddingStore
         ActivitySource qdrantActivitySource = new("Jaimes.ApiService.Qdrant");
