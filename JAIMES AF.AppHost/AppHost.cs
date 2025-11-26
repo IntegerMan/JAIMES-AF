@@ -171,6 +171,29 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChunking>("document-chunki
         context.EnvironmentVariables["ConnectionStrings__qdrant-embeddings"] = qdrant.Resource.ConnectionStringExpression;
     });
 
+builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbedding>("document-embedding-worker")
+    .WithIconName("DocumentEmbed")
+    .WithReference(lavinmq)
+    .WithReference(mongoDb)
+    .WithReference(qdrant)
+    .WithReference(embedModel)
+    .WaitFor(lavinmq)
+    .WaitFor(mongo)
+    .WaitFor(qdrant)
+    .WaitFor(ollama)
+    .WithEnvironment(context =>
+    {
+        // Set Ollama endpoint for embedding generation
+        EndpointReference ollamaEndpoint = ollama.GetEndpoint("http");
+        context.EnvironmentVariables["DocumentEmbedding__OllamaEndpoint"] = $"http://{ollamaEndpoint.Host}:{ollamaEndpoint.Port}";
+        
+        // Set Qdrant endpoint
+        EndpointReference qdrantGrpcEndpoint = qdrant.GetEndpoint("grpc");
+        context.EnvironmentVariables["DocumentEmbedding__QdrantHost"] = qdrantGrpcEndpoint.Host;
+        context.EnvironmentVariables["DocumentEmbedding__QdrantPort"] = qdrantGrpcEndpoint.Port;
+        context.EnvironmentVariables["ConnectionStrings__qdrant-embeddings"] = qdrant.Resource.ConnectionStringExpression;
+    });
+
 var app = builder.Build();
 
 app.Run();

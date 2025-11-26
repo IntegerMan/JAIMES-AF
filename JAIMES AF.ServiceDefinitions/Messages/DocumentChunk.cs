@@ -23,6 +23,9 @@ public class DocumentChunk
 
     [BsonElement("createdAt")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [BsonElement("qdrantPointId")]
+    public ulong? QdrantPointId { get; set; }
 }
 
 

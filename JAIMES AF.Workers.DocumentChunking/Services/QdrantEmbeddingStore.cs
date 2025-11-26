@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
 using Qdrant.Client;
@@ -13,6 +15,21 @@ public class QdrantEmbeddingStore(
     ILogger<QdrantEmbeddingStore> logger,
     ActivitySource activitySource) : IQdrantEmbeddingStore
 {
+    /// <summary>
+    /// Generates a Qdrant point ID from a string point ID using SHA256 hash to prevent collisions.
+    /// This replaces the previous GetHashCode() approach which could cause data loss due to hash collisions.
+    /// </summary>
+    private static ulong GenerateQdrantPointId(string pointId)
+    {
+        byte[] hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(pointId));
+        ulong qdrantPointId = BitConverter.ToUInt64(hashBytes, 0);
+        if (qdrantPointId == 0)
+        {
+            // Qdrant doesn't allow zero IDs
+            qdrantPointId = 1;
+        }
+        return qdrantPointId;
+    }
     public async Task EnsureCollectionExistsAsync(CancellationToken cancellationToken = default)
     {
         using Activity? activity = activitySource.StartActivity("Qdrant.EnsureCollection");
@@ -111,14 +128,9 @@ public class QdrantEmbeddingStore(
                 payload[key] = new Value { StringValue = value };
             }
 
-            // Generate a point ID from the provided pointId string (use hash code or convert to ulong)
+            // Generate a point ID from the provided pointId string using SHA256 hash to prevent collisions
             // For chunks, this will be the chunk ID; for backward compatibility, it can be document ID
-            ulong qdrantPointId = (ulong)Math.Abs(pointId.GetHashCode());
-            if (qdrantPointId == 0)
-            {
-                // Avoid zero ID (Qdrant doesn't allow it)
-                qdrantPointId = 1;
-            }
+            ulong qdrantPointId = GenerateQdrantPointId(pointId);
 
             PointStruct point = new()
             {
@@ -194,9 +206,9 @@ public class QdrantEmbeddingStore(
                         string pointId = chunkId;
 
                         // Extract ulong from PointId - PointId in RetrievedPoint is a PointId type
-                        // We need to convert it - for now, use hash code since we can't directly access NumId
-                        ulong qdrantPointId = (ulong)Math.Abs(point.Id.GetHashCode());
-                        if (qdrantPointId == 0) qdrantPointId = 1;
+                        // Since we can't directly access NumId, we reconstruct it from the chunkId using SHA256 hash
+                        // This matches the point ID generation logic used when storing
+                        ulong qdrantPointId = GenerateQdrantPointId(chunkId);
 
                         embeddings.Add(new EmbeddingInfo
                         {
@@ -240,12 +252,8 @@ public class QdrantEmbeddingStore(
 
         try
         {
-            // Convert pointId to Qdrant point ID (same logic as in StoreEmbeddingAsync)
-            ulong qdrantPointId = (ulong)Math.Abs(pointId.GetHashCode());
-            if (qdrantPointId == 0)
-            {
-                qdrantPointId = 1;
-            }
+            // Convert pointId to Qdrant point ID using SHA256 hash (same logic as in StoreEmbeddingAsync)
+            ulong qdrantPointId = GenerateQdrantPointId(pointId);
 
             // Delete the point by recreating the collection without this point
             // For now, use a workaround: delete and recreate collection, or use HTTP API
@@ -318,10 +326,13 @@ public class QdrantEmbeddingStore(
 
                 foreach (RetrievedPoint point in scrollResult.Result)
                 {
-                    // Convert PointId to ulong using hash code
-                    ulong id = (ulong)Math.Abs(point.Id.GetHashCode());
-                    if (id == 0) id = 1;
-                    pointIds.Add(id);
+                    // Extract chunkId from payload to reconstruct point ID
+                    string chunkId = point.Payload.GetValueOrDefault("chunkId")?.StringValue ?? string.Empty;
+                    if (!string.IsNullOrEmpty(chunkId))
+                    {
+                        ulong id = GenerateQdrantPointId(chunkId);
+                        pointIds.Add(id);
+                    }
                 }
 
                 nextPageOffset = scrollResult.NextPageOffset;

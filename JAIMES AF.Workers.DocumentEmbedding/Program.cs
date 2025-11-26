@@ -1,0 +1,189 @@
+using System.Diagnostics;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using MongoDB.Driver;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using Qdrant.Client;
+using RabbitMQ.Client;
+using MattEland.Jaimes.ServiceDefinitions.Messages;
+using MattEland.Jaimes.ServiceDefinitions.Services;
+using MattEland.Jaimes.ServiceDefaults;
+using MattEland.Jaimes.Workers.DocumentEmbedding.Configuration;
+using MattEland.Jaimes.Workers.DocumentEmbedding.Consumers;
+using MattEland.Jaimes.Workers.DocumentEmbedding.Services;
+using OllamaSharp;
+
+HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
+
+// Configure OpenTelemetry for Aspire telemetry
+builder.ConfigureOpenTelemetry();
+
+// Configure logging with OpenTelemetry
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddOpenTelemetry(logging =>
+{
+    logging.IncludeFormattedMessage = true;
+    logging.IncludeScopes = true;
+});
+
+// Reduce HTTP client logging verbosity
+builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
+builder.Logging.AddFilter("System.Net.Http.HttpClient.Default.LogicalHandler", LogLevel.Warning);
+builder.Logging.AddFilter("System.Net.Http.HttpClient.Default.ClientHandler", LogLevel.Warning);
+
+// Load configuration
+builder.Configuration
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
+    .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: false)
+    .AddUserSecrets(typeof(Program).Assembly)
+    .AddEnvironmentVariables()
+    .AddCommandLine(args);
+
+// Bind configuration
+DocumentEmbeddingOptions options = builder.Configuration.GetSection("DocumentEmbedding").Get<DocumentEmbeddingOptions>()
+    ?? throw new InvalidOperationException("DocumentEmbedding configuration section is required");
+
+builder.Services.AddSingleton(options);
+
+// Add MongoDB client integration
+builder.AddMongoDBClient("documents");
+
+// Configure Qdrant client
+string? qdrantConnectionString = builder.Configuration.GetConnectionString("qdrant-embeddings");
+string? qdrantHost = builder.Configuration["DocumentEmbedding:QdrantHost"];
+string? qdrantPortStr = builder.Configuration["DocumentEmbedding:QdrantPort"];
+string? qdrantApiKey = null;
+
+// Extract from connection string if provided (takes precedence)
+if (!string.IsNullOrWhiteSpace(qdrantConnectionString))
+{
+    QdrantConnectionStringParser.ApplyQdrantConnectionString(qdrantConnectionString, ref qdrantHost, ref qdrantPortStr, ref qdrantApiKey);
+}
+
+if (string.IsNullOrWhiteSpace(qdrantHost) || string.IsNullOrWhiteSpace(qdrantPortStr))
+{
+    throw new InvalidOperationException(
+        "Qdrant host and port are not configured. " +
+        "Expected 'DocumentEmbedding:QdrantHost' and 'DocumentEmbedding:QdrantPort' from Aspire.");
+}
+
+if (!int.TryParse(qdrantPortStr, out int qdrantPort))
+{
+    throw new InvalidOperationException(
+        $"Invalid Qdrant port: '{qdrantPortStr}'. Expected a valid integer.");
+}
+
+bool useHttps = builder.Configuration.GetValue<bool>("DocumentEmbedding:QdrantUseHttps", defaultValue: false);
+
+QdrantClient qdrantClient = string.IsNullOrWhiteSpace(qdrantApiKey)
+    ? new QdrantClient(qdrantHost, port: qdrantPort, https: useHttps)
+    : new QdrantClient(qdrantHost, port: qdrantPort, https: useHttps, apiKey: qdrantApiKey);
+
+builder.Services.AddSingleton(qdrantClient);
+
+// Configure Ollama client
+string? ollamaEndpoint = builder.Configuration["DocumentEmbedding:OllamaEndpoint"]?.TrimEnd('/');
+string? ollamaConnectionString = builder.Configuration.GetConnectionString("nomic-embed-text")
+    ?? builder.Configuration.GetConnectionString("ollama-models");
+
+// Parse connection string if endpoint not explicitly set
+if (string.IsNullOrWhiteSpace(ollamaEndpoint) && !string.IsNullOrWhiteSpace(ollamaConnectionString))
+{
+    if (ollamaConnectionString.Contains("Endpoint=", StringComparison.OrdinalIgnoreCase))
+    {
+        string[] parts = ollamaConnectionString.Split(';');
+        ollamaEndpoint = parts.FirstOrDefault(p => p.StartsWith("Endpoint=", StringComparison.OrdinalIgnoreCase))
+            ?.Substring("Endpoint=".Length)
+            ?.TrimEnd('/');
+    }
+    else
+    {
+        ollamaEndpoint = ollamaConnectionString.TrimEnd('/');
+    }
+}
+
+if (string.IsNullOrWhiteSpace(ollamaEndpoint))
+{
+    throw new InvalidOperationException(
+        "Ollama endpoint is not configured. " +
+        "Expected 'DocumentEmbedding:OllamaEndpoint' from AppHost or connection string from model reference.");
+}
+
+string ollamaModel = options.OllamaModel ?? "nomic-embed-text";
+
+// Register HttpClient for Ollama API calls
+builder.Services.AddHttpClient();
+
+// Register services with Ollama configuration
+builder.Services.AddSingleton<IDocumentEmbeddingService>(sp =>
+{
+    IMongoClient mongoClient = sp.GetRequiredService<IMongoClient>();
+    IHttpClientFactory httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+    HttpClient httpClient = httpClientFactory.CreateClient();
+    ILogger<DocumentEmbeddingService> logger = sp.GetRequiredService<ILogger<DocumentEmbeddingService>>();
+    ActivitySource activitySource = sp.GetRequiredService<ActivitySource>();
+    
+    return new DocumentEmbeddingService(
+        mongoClient,
+        httpClient,
+        options,
+        qdrantClient,
+        logger,
+        activitySource,
+        ollamaEndpoint,
+        ollamaModel);
+});
+
+// Configure OpenTelemetry ActivitySource
+const string activitySourceName = "Jaimes.Workers.DocumentEmbedding";
+ActivitySource activitySource = new(activitySourceName);
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource
+        .AddService(activitySourceName))
+    .WithMetrics(metrics =>
+    {
+        metrics.AddRuntimeInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddMeter(activitySourceName);
+    })
+    .WithTracing(tracing =>
+    {
+        tracing.AddSource(activitySourceName)
+            .AddHttpClientInstrumentation();
+    });
+
+// Register ActivitySource for dependency injection
+builder.Services.AddSingleton(activitySource);
+
+// Configure message consuming using RabbitMQ.Client (LavinMQ compatible)
+IConnectionFactory connectionFactory = RabbitMqConnectionFactory.CreateConnectionFactory(builder.Configuration);
+builder.Services.AddSingleton(connectionFactory);
+
+// Register consumer
+builder.Services.AddSingleton<IMessageConsumer<ChunkReadyForEmbeddingMessage>, ChunkReadyForEmbeddingConsumer>();
+
+// Register consumer service (background service)
+builder.Services.AddHostedService<MessageConsumerService<ChunkReadyForEmbeddingMessage>>();
+
+// Build host
+using IHost host = builder.Build();
+
+ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
+
+logger.LogInformation("Starting Document Embedding Worker");
+logger.LogInformation("Ollama Endpoint: {Endpoint}", ollamaEndpoint);
+logger.LogInformation("Ollama Model: {Model}", ollamaModel);
+logger.LogInformation("Qdrant: {Host}:{Port} (HTTPS: {UseHttps})", qdrantHost, qdrantPort, useHttps);
+logger.LogInformation("Worker ready and listening for ChunkReadyForEmbeddingMessage on queue");
+
+await host.RunAsync();
+
