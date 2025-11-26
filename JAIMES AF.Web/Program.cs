@@ -26,7 +26,19 @@ builder.Services.AddHttpClient("Api", client =>
 })
 // Ensure service discovery is added on IHttpClientBuilder, then add resilience pipeline
 .AddServiceDiscovery()
-.AddStandardResilienceHandler(Extensions.ConfigureResilienceHandlerExcludingPost);
+.AddStandardResilienceHandler(options =>
+{
+    // Use the same retry logic as the default configuration
+    Extensions.ConfigureResilienceHandlerExcludingPost(options);
+    
+    // Override attempt and total timeouts so the resilience pipeline allows long-running requests
+    TimeSpan attemptTimeout = httpClientTimeout;
+    options.AttemptTimeout.Timeout = attemptTimeout;
+    options.TotalRequestTimeout.Timeout = attemptTimeout.Add(TimeSpan.FromMinutes(1));
+    
+    // Match circuit breaker sampling duration requirements (must be at least double attempt timeout)
+    options.CircuitBreaker.SamplingDuration = attemptTimeout + attemptTimeout;
+});
 
 // Make the named client the default HttpClient that's injected with `@inject HttpClient Http`
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api"));
@@ -35,9 +47,33 @@ builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().Cre
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+// Configure SignalR timeouts for InteractiveServer components
+// This allows longer-running operations without timing out
+builder.Services.Configure<Microsoft.AspNetCore.SignalR.HubOptions>(options =>
+{
+    // Increase the timeout for server-side operations
+    // Default is often 10 seconds, increase to match our HTTP client timeout
+    options.ClientTimeoutInterval = httpClientTimeout.Add(TimeSpan.FromMinutes(1));
+    options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+    options.HandshakeTimeout = TimeSpan.FromSeconds(30);
+});
+
 builder.Services.AddMudServices();
 
 builder.Services.AddOutputCache();
+
+// Configure Kestrel request timeout to allow longer operations
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    // Increase the request timeout to match our HTTP client timeout
+    // This prevents Kestrel from timing out long-running requests
+    serverOptions.Limits.RequestHeadersTimeout = httpClientTimeout.Add(TimeSpan.FromMinutes(1));
+    serverOptions.Limits.KeepAliveTimeout = httpClientTimeout.Add(TimeSpan.FromMinutes(2));
+});
+
+// Configure ASP.NET Core request timeout middleware
+// Note: RequestTimeout middleware is optional - SignalR and Kestrel timeouts are more critical
+builder.Services.AddRequestTimeouts();
 
 WebApplication app = builder.Build();
 

@@ -8,6 +8,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="MongoDB.Bson" />
+    <PackageReference Include="RabbitMQ.Client" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\JAIMES AF.Domain\JAIMES AF.Domain.csproj" />
     <ProjectReference Include="..\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj" />
   </ItemGroup>

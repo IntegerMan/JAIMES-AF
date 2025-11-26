@@ -13,6 +13,7 @@ This project contains AI agent services that interact with Azure OpenAI and Micr
 - `ChatService` implements `IChatService` from `JAIMES AF.ServiceDefinitions`
 - Uses `ChatOptions` for configuration (endpoint, API key, deployment)
 - Creates `AIAgent` instances with system prompts from game scenarios
+- `RulesSearchService` implements `IRulesSearchService` and provides RAG search over rulesets using Kernel Memory
 
 ## Thread Management
 - Threads are serialized to JSON and stored in `ChatHistory` entities
@@ -63,4 +64,63 @@ await chatHistoryService.SaveThreadJsonAsync(gameId, json, cancellationToken);
 - Log thread JSON before and after operations for debugging
 - Use structured logging with appropriate log levels
 - Include game IDs and relevant context in log messages
+
+## Kernel Memory and Rules Search
+
+### Overview
+Kernel Memory is used for RAG (Retrieval-Augmented Generation) search over rulesets. Rules are stored in a SQLite vector database, not in EF entities.
+
+### Key Components
+- **RulesSearchService**: Service that provides rules indexing and search functionality
+- **RulesSearchTool**: Tool registered with AI agents to allow natural language queries over rules
+- **Storage**: Rules are stored in Kernel Memory's SQLite vector database (`km_vector_store.db`)
+- **Indexing**: Rules are indexed by `rulesetId` which is used as an index/filter
+
+### Configuration
+```csharp
+// Kernel Memory is configured with Azure OpenAI and SQLite vector store
+OpenAIConfig openAiConfig = new()
+{
+    APIKey = chatOptions.ApiKey,
+    Endpoint = chatOptions.Endpoint,
+    TextModel = chatOptions.Deployment,
+    EmbeddingModel = chatOptions.Deployment
+};
+
+string vectorDbConnectionString = "Data Source=km_vector_store.db";
+
+_memory = new KernelMemoryBuilder()
+    .WithOpenAI(openAiConfig)
+    .WithSimpleVectorDb(vectorDbConnectionString)
+    .Build();
+```
+
+### Indexing Rules
+```csharp
+// Rules are indexed using ImportTextAsync with rulesetId as a tag/index
+await _memory.ImportTextAsync(
+    text: fullContent,
+    documentId: documentId,
+    index: GetIndexName(rulesetId),
+    tags: new TagCollection { { "rulesetId", rulesetId } },
+    cancellationToken: cancellationToken);
+```
+
+### Searching Rules
+```csharp
+// Rules are searched using AskAsync, filtered by rulesetId
+MemoryAnswer answer = await _memory.AskAsync(
+    question: query,
+    index: GetIndexName(rulesetId),
+    filters: new List<MemoryFilter> { new MemoryFilter().ByTag("rulesetId", rulesetId) },
+    cancellationToken: cancellationToken);
+```
+
+### Important Notes
+- **No EF Entities**: Rules are NOT stored in EF entities - they exist only in the vector database
+- **RulesetId as Index**: The `rulesetId` parameter is used purely as an index/filter for organizing rules
+- **Tool Registration**: `RulesSearchTool` is automatically registered in `ChatService.CreateAgent()` when a game context is available
+- **References**: 
+  - Blog post: https://blog.leadingedje.com/post/ai/documents/kernelmemory.html
+  - Package: `Microsoft.KernelMemory.Core` (uses `WithSimpleVectorDb()` for SQLite)
 

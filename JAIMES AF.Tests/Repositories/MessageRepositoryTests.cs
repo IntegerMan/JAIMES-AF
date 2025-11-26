@@ -32,7 +32,7 @@ public class MessageRepositoryTests : RepositoryTestBase
         Context.Messages.Add(message);
         await Context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        Message? retrievedMessage = await Context.Messages.FindAsync(new object[] { message.Id }, TestContext.Current.CancellationToken);
+        Message? retrievedMessage = await Context.Messages.FindAsync([message.Id], TestContext.Current.CancellationToken);
 
         // Assert
         retrievedMessage.ShouldNotBeNull();

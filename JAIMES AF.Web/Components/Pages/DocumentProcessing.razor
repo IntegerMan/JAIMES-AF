@@ -1,0 +1,259 @@
+@page "/admin/document-processing"
+@rendermode InteractiveServer
+
+<PageTitle>Document Processing</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+	<MudPaper Class="pa-8" Elevation="2">
+		<MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">Document Processing</MudText>
+		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">Manage document processing queues and embeddings</MudText>
+
+		<MudText Typo="Typo.body1" Class="mb-6" Style="line-height: 1.75;">
+			Monitor and manage document processing queues. Queue unprocessed documents for embedding generation.
+		</MudText>
+
+		<MudDivider Class="my-8" />
+
+		<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Embedding Queue Management</MudText>
+		
+		<MudPaper Class="pa-4 mb-4" Elevation="1">
+			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Backfill Unprocessed Documents</MudText>
+			<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6;">
+				Find all unprocessed documents in the crackedDocuments collection and queue them for embedding processing. 
+				This is useful when documents exist but haven't been queued for embedding generation yet.
+			</MudText>
+
+			@if (!string.IsNullOrEmpty(errorMessage))
+			{
+				<MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
+			}
+
+			@if (!string.IsNullOrEmpty(successMessage))
+			{
+				<MudAlert Severity="Severity.Success" Class="mb-4">@successMessage</MudAlert>
+			}
+
+			<MudButton Variant="Variant.Filled" 
+			           Color="Color.Primary" 
+			           OnClick="BackfillEmbeddingsAsync" 
+			           Disabled="@isProcessing"
+			           Class="mb-4">
+				@if (isProcessing)
+				{
+					<MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+				}
+				Backfill Embeddings
+			</MudButton>
+
+			@if (backfillResult != null)
+			{
+				<MudPaper Class="pa-4 mt-4" Elevation="1">
+					<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Backfill Results</MudText>
+					<MudText Typo="Typo.body2" Class="mb-2">
+						<strong>Documents Queued:</strong> @backfillResult.DocumentsQueued
+					</MudText>
+					<MudText Typo="Typo.body2" Class="mb-2">
+						<strong>Total Unprocessed:</strong> @backfillResult.TotalUnprocessed
+					</MudText>
+					
+					@if (backfillResult.DocumentIds.Length > 0)
+					{
+						<MudText Typo="Typo.body2" Class="mb-2 mt-4">
+							<strong>Queued Document IDs (@backfillResult.DocumentIds.Length):</strong>
+						</MudText>
+						<MudExpansionPanels>
+							<MudExpansionPanel Text="View Document IDs">
+								<MudText Typo="Typo.body2" Style="font-family: monospace; white-space: pre-wrap; max-height: 300px; overflow-y: auto;">
+									@string.Join("\n", backfillResult.DocumentIds)
+								</MudText>
+							</MudExpansionPanel>
+						</MudExpansionPanels>
+					}
+				</MudPaper>
+			}
+		</MudPaper>
+
+		<MudDivider Class="my-8" />
+
+		<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Detected Documents</MudText>
+		
+		<MudPaper Class="pa-4 mb-4" Elevation="1">
+			<MudButton Variant="Variant.Outlined" 
+			           Color="Color.Primary" 
+			           OnClick="RefreshDocumentsAsync" 
+			           Disabled="@isLoadingDocuments"
+			           Class="mb-4">
+				@if (isLoadingDocuments)
+				{
+					<MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+				}
+				Refresh Documents
+			</MudButton>
+
+			@if (!string.IsNullOrEmpty(documentsSuccessMessage))
+			{
+				<MudAlert Severity="Severity.Success" Class="mb-4">@documentsSuccessMessage</MudAlert>
+			}
+
+			@if (!string.IsNullOrEmpty(documentsErrorMessage))
+			{
+				<MudAlert Severity="Severity.Error" Class="mb-4">@documentsErrorMessage</MudAlert>
+			}
+
+			@if (isLoadingDocuments && documentStatus == null)
+			{
+				<MudProgressLinear Indeterminate="true" Class="mb-4" />
+			}
+			else if (documentStatus != null)
+			{
+				@if (documentStatus.Documents.Length == 0)
+				{
+					<MudText Typo="Typo.body2" Class="mb-4" Style="color: #666;">
+						No documents found. Documents will appear here after they are scanned by the document scanner.
+					</MudText>
+				}
+				else
+				{
+					<MudTable Items="@documentStatus.Documents" Hover="true" Dense="false" Striped="true" Elevation="0">
+						<HeaderContent>
+							<MudTh>File Name</MudTh>
+							<MudTh>Directory</MudTh>
+							<MudTh>File Size</MudTh>
+							<MudTh>Pages</MudTh>
+							<MudTh>Cracked</MudTh>
+							<MudTh>Embeddings</MudTh>
+							<MudTh>Cracked At</MudTh>
+							<MudTh>Actions</MudTh>
+						</HeaderContent>
+						<RowTemplate>
+							<MudTd DataLabel="File Name">
+								<MudText Typo="Typo.body2">@context.FileName</MudText>
+							</MudTd>
+							<MudTd DataLabel="Directory">
+								<MudText Typo="Typo.body2" Style="font-size: 0.875rem; color: #666;">
+									@(string.IsNullOrWhiteSpace(context.RelativeDirectory) ? "(root)" : context.RelativeDirectory)
+								</MudText>
+							</MudTd>
+							<MudTd DataLabel="File Size">
+								@if (context.FileSize.HasValue)
+								{
+									<MudText Typo="Typo.body2">@FormatFileSize(context.FileSize.Value)</MudText>
+								}
+								else
+								{
+									<MudText Typo="Typo.body2" Style="color: #999;">—</MudText>
+								}
+							</MudTd>
+							<MudTd DataLabel="Pages">
+								@if (context.PageCount.HasValue)
+								{
+									<MudText Typo="Typo.body2">@context.PageCount.Value</MudText>
+								}
+								else
+								{
+									<MudText Typo="Typo.body2" Style="color: #999;">—</MudText>
+								}
+							</MudTd>
+							<MudTd DataLabel="Cracked">
+								@if (context.IsCracked)
+								{
+									<div style="display: flex; align-items: center; gap: 0.5rem; color: #2e7d32;">
+										<MudIcon Icon="@FluentIcons.Filled.DocumentTextExtract" Size="Size.Small" />
+										<MudText Typo="Typo.body2" Style="color: #2e7d32;">Yes</MudText>
+									</div>
+								}
+								else
+								{
+									<div style="display: flex; align-items: center; gap: 0.5rem; color: #666;">
+										<MudIcon Icon="@FluentIcons.Filled.DocumentTextExtract" Size="Size.Small" />
+										<MudText Typo="Typo.body2" Style="color: #666;">No</MudText>
+									</div>
+								}
+							</MudTd>
+							<MudTd DataLabel="Embeddings">
+								@if (context.HasEmbeddings)
+								{
+									<div style="display: flex; align-items: center; gap: 0.5rem; color: #2e7d32;">
+										<MudIcon Icon="@FluentIcons.Filled.TextGrammarSettings" Size="Size.Small" />
+										<MudText Typo="Typo.body2" Style="color: #2e7d32;">Yes</MudText>
+									</div>
+								}
+								else
+								{
+									<div style="display: flex; align-items: center; gap: 0.5rem; color: #ed6c02;">
+										<MudIcon Icon="@FluentIcons.Filled.TextGrammarSettings" Size="Size.Small" />
+										<MudText Typo="Typo.body2" Style="color: #ed6c02;">No</MudText>
+									</div>
+								}
+							</MudTd>
+							<MudTd DataLabel="Cracked At">
+								@if (context.CrackedAt.HasValue)
+								{
+									<MudText Typo="Typo.body2" Style="font-size: 0.875rem;">
+										@context.CrackedAt.Value.ToString("g")
+									</MudText>
+								}
+								else
+								{
+									<MudText Typo="Typo.body2" Style="color: #999;">—</MudText>
+								}
+							</MudTd>
+							<MudTd DataLabel="Actions">
+								<div style="display: flex; gap: 0.5rem; align-items: center;">
+									<MudTooltip Text="Re-crack document">
+										<MudIconButton Icon="@FluentIcons.Filled.DocumentTextExtract"
+										               Color="Color.Primary"
+										               Disabled="@(IsActionInProgress("recrack", context) || isLoadingDocuments)"
+										               OnClick="@(() => RecrackDocumentAsync(context))" />
+									</MudTooltip>
+
+									<MudTooltip Text="Queue embeddings">
+										<MudIconButton Icon="@FluentIcons.Filled.TextGrammarSettings"
+										               Color="Color.Secondary"
+										               Disabled="@(IsActionInProgress("queue-embedding", context) || !CanQueueEmbeddings(context) || isLoadingDocuments)"
+										               OnClick="@(() => QueueEmbeddingsForDocumentAsync(context))" />
+									</MudTooltip>
+
+									<MudTooltip Text="Delete document">
+										<MudIconButton Icon="@FluentIcons.Filled.Delete"
+										               Color="Color.Error"
+										               Disabled="@(IsActionInProgress("delete", context) || isLoadingDocuments)"
+										               OnClick="@(() => DeleteDocumentAsync(context))" />
+									</MudTooltip>
+								</div>
+							</MudTd>
+						</RowTemplate>
+						<PagerContent>
+							<MudTablePager />
+						</PagerContent>
+					</MudTable>
+				}
+			}
+			else if (!isLoadingDocuments)
+			{
+				<MudText Typo="Typo.body2" Class="mb-4" Style="color: #666;">
+					Click "Refresh Documents" to load the document list.
+				</MudText>
+			}
+		</MudPaper>
+
+		<MudDivider Class="my-8" />
+
+		<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Queue Information</MudText>
+		
+		<MudPaper Class="pa-4" Elevation="1">
+			<MudText Typo="Typo.body2" Class="mb-4">
+				Document processing uses RabbitMQ message queues. When documents are cracked, they are automatically queued for embedding processing.
+			</MudText>
+			<MudText Typo="Typo.body2" Class="mb-4">
+				<strong>Processing Flow:</strong>
+			</MudText>
+			
+			<div id="document-flow-diagram" class="mermaid-diagram-container" style="min-height: 400px; display: flex; justify-content: center; align-items: center; margin: 2rem 0;">
+				<div id="mermaid-diagram" style="width: 100%; max-width: 100%;"></div>
+			</div>
+			
+		</MudPaper>
+	</MudPaper>
+</MudContainer>
+

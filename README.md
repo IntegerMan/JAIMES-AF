@@ -49,6 +49,76 @@ dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=tcp:{your-
 
 Note: You'll need to regenerate migrations for SQL Server (see instructions above) before deploying to Azure SQL.
 
+## Redis Dependency
+
+The application uses Redis as the vector store backend for Kernel Memory. **Redis is automatically managed by Aspire** when you run the AppHost project - no manual setup is required.
+
+### Prerequisites
+
+**Important**: Aspire requires a container runtime to manage Redis. The application uses Docker Desktop.
+
+- **Docker Desktop**: Ensure Docker Desktop is installed and running on Windows
+  - Download from: https://www.docker.com/products/docker-desktop/
+  - After installation, ensure Docker Desktop is running before starting the AppHost
+  - You can verify Docker is running by executing `docker ps` in a terminal
+
+Aspire will automatically detect and use Docker when it's available and healthy.
+
+### Troubleshooting Docker Issues
+
+If you see an error message like "Container runtime 'docker' was found but appears to be unhealthy":
+
+1. **Verify Docker Desktop is running**:
+   - Look for the Docker Desktop icon in your system tray (whale icon)
+   - If it's not running, start Docker Desktop from the Start menu
+   - Wait for Docker Desktop to fully start (the icon should be steady, not animating)
+
+2. **Test Docker connectivity**:
+   ```bash
+   docker ps
+   ```
+   - If this command succeeds (shows a list of containers or an empty list), Docker is working
+   - If it fails with a connection error, Docker Desktop is not running or not accessible
+
+3. **Check Docker Desktop settings**:
+   - Open Docker Desktop
+   - Go to Settings → General
+   - Ensure "Use the WSL 2 based engine" is enabled (if using WSL)
+   - Ensure "Start Docker Desktop when you log in" is enabled (optional, for convenience)
+
+4. **Restart Docker Desktop**:
+   - Right-click the Docker Desktop icon in the system tray
+   - Select "Quit Docker Desktop"
+   - Wait a few seconds, then start Docker Desktop again
+   - Wait for it to fully start before running the AppHost
+
+5. **Check for port conflicts**:
+   - Ensure no other containers are using the ports required by Aspire (e.g., 6379 for Redis)
+   - Stop any manually started Redis containers: `docker stop redis-stack` (if applicable)
+
+### Redis Management
+
+- **Automatic Startup**: Redis Stack is automatically started when you run the Aspire AppHost
+- **Data Persistence**: Redis data is persisted between sessions in a local directory (`%LocalAppData%\Aspire\jaimes-redis-data` on Windows)
+- **RedisInsight**: RedisInsight web UI is available at `http://localhost:8001` for monitoring and managing Redis data
+- **Dashboard Integration**: Redis appears in the Aspire dashboard for monitoring and management
+
+### Redis Configuration
+
+The application automatically connects to the Redis instance managed by Aspire. The connection string is configured automatically and does not need to be set manually.
+
+For advanced scenarios, you can override the connection string in `appsettings.json`:
+
+```json
+{
+  "VectorDb": {
+    "ConnectionString": "localhost:6379"
+  }
+}
+```
+
+**Note**: If you have an existing Redis instance running (e.g., from Docker), you should stop it before running the AppHost to avoid port conflicts.
+
 ## Chat Service Configuration
 
 The application requires Azure OpenAI with the following deployment:
@@ -79,6 +149,10 @@ Replace `YourResource` with your Azure OpenAI resource name and provide your act
   - `Repositories/` - Data access tests
 
 ## Running the Application
+
+**Prerequisites:**
+1. Ensure Redis is running locally (see [Redis Dependency](#redis-dependency) section above)
+2. Configure Azure OpenAI credentials (see [Chat Service Configuration](#chat-service-configuration) section above)
 
 ```bash
 dotnet run --project "JAIMES AF.AppHost"

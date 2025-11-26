@@ -6,14 +6,9 @@ namespace MattEland.Jaimes.Tools;
 /// <summary>
 /// Tool that provides information about the player character from the Game context.
 /// </summary>
-public class PlayerInfoTool
+public class PlayerInfoTool(GameDto game)
 {
-    private readonly GameDto _game;
-
-    public PlayerInfoTool(GameDto game)
-    {
-        _game = game ?? throw new ArgumentNullException(nameof(game));
-    }
+    private readonly GameDto _game = game ?? throw new ArgumentNullException(nameof(game));
 
     /// <summary>
     /// Gets information about the player character for the current game.

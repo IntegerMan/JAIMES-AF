@@ -9,11 +9,11 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Agents.AI" />
-    <PackageReference Include="Microsoft.Agents.AI.OpenAI" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\JAIMES AF.Domain\JAIMES AF.Domain.csproj" />
+    <ProjectReference Include="..\JAIMES AF.ServiceDefinitions\JAIMES AF.ServiceDefinitions.csproj" />
   </ItemGroup>
 
 </Project>

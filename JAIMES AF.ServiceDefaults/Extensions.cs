@@ -87,9 +87,11 @@ public static class Extensions
                         "*Microsoft.Extensions.AI",
                         "*Microsoft.Extensions.Agents*",
                         "agent-framework-source",
-                        "Jaimes.Agents.Tools",
-                        "Jaimes.Agents.ChatClient",
-                        "Jaimes.Agents.Run")
+                        "MattEland.*",
+                        "Jaimes.*",
+                        // Explicitly add known ActivitySources to ensure they're registered
+                        // (wildcards should match, but explicit registration is more reliable)
+                        "Jaimes.DocumentCracker")
                     .AddAspNetCoreInstrumentation(options =>
                         // Exclude health check requests from tracing
                         options.Filter = context =>
@@ -105,6 +107,9 @@ public static class Extensions
                             activity.SetTag("db.name", stateDisplayName);
                         };
                     })
+                    // Add Redis instrumentation for Kernel Memory operations
+                    // This will capture Redis activities for debugging in Aspire
+                    .AddRedisInstrumentation()
                     // Uncomment the following line to enable gRPC instrumentation (requires the OpenTelemetry.Instrumentation.GrpcNetClient package)
                     //.AddGrpcClientInstrumentation()
                     .AddHttpClientInstrumentation();
@@ -117,9 +122,12 @@ public static class Extensions
 
     private static TBuilder AddOpenTelemetryExporters<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
-        bool useOtlpExporter = !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]);
+        // Check both configuration and environment variables for OTLP endpoint
+        // Aspire sets this as an environment variable when services are added via AddProject
+        string? otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] 
+            ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
 
-        if (useOtlpExporter)
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
         {
             builder.Services.AddOpenTelemetry()
                 .UseOtlpExporter();
@@ -166,9 +174,18 @@ public static class Extensions
     /// <summary>
     /// Configures a StandardResilienceHandler to exclude POST requests from retries.
     /// This prevents duplicate submissions and other side effects from retrying non-idempotent operations.
+    /// Also configures a longer timeout for operations that may take significant time (e.g., document listing).
     /// </summary>
     public static void ConfigureResilienceHandlerExcludingPost(HttpStandardResilienceOptions options)
     {
+        // Configure longer per-attempt and total request timeouts for operations that may take significant time
+        TimeSpan extendedTimeout = TimeSpan.FromMinutes(5);
+        options.AttemptTimeout.Timeout = extendedTimeout;
+        options.TotalRequestTimeout.Timeout = extendedTimeout;
+
+        // Ensure the circuit breaker sampling window is at least double the attempt timeout per Polly requirements
+        options.CircuitBreaker.SamplingDuration = extendedTimeout + extendedTimeout;
+        
         options.Retry.ShouldHandle = args =>
         {
             // Exclude POST requests from retries (only when we have a response)

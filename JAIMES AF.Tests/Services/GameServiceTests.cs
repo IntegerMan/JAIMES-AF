@@ -63,7 +63,7 @@ public class GameServiceTests : IAsyncLifetime
         gameDto.Messages[0].Id.ShouldBeGreaterThan(0);
 
         // Verify game is in database
-        Game? gameInDb = await _context.Games.FindAsync(new object[] { gameDto.GameId }, TestContext.Current.CancellationToken);
+        Game? gameInDb = await _context.Games.FindAsync([gameDto.GameId], TestContext.Current.CancellationToken);
         gameInDb.ShouldNotBeNull();
         gameInDb.RulesetId.ShouldBe("test-ruleset");
 

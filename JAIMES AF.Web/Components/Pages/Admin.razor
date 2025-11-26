@@ -1,0 +1,87 @@
+@page "/admin"
+@rendermode InteractiveServer
+
+<PageTitle>Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+	<MudPaper Class="pa-8" Elevation="2">
+		<MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">Admin</MudText>
+		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">Administrative tools and utilities</MudText>
+
+		<MudText Typo="Typo.body1" Class="mb-6" Style="line-height: 1.75;">
+			Access administrative functions and testing tools for the JAIMES AF system.
+		</MudText>
+
+		<MudDivider Class="my-8" />
+
+		<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Content Management</MudText>
+		<MudGrid Spacing="3">
+			<MudItem xs="12" sm="6" md="3">
+				<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
+					<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Games</MudText>
+					<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">View and manage active games.</MudText>
+					<MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/games" Class="mt-auto" FullWidth="true">Manage Games</MudButton>
+				</MudPaper>
+			</MudItem>
+
+			<MudItem xs="12" sm="6" md="3">
+				<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
+					<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Scenarios</MudText>
+					<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">Create and edit game scenarios with system prompts and initial instructions.</MudText>
+					<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/scenarios" Class="mt-auto" FullWidth="true">Manage Scenarios</MudButton>
+				</MudPaper>
+			</MudItem>
+
+			<MudItem xs="12" sm="6" md="3">
+				<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
+					<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Players</MudText>
+					<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">Create and edit player characters with names, descriptions, and ruleset assignments.</MudText>
+					<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/players" Class="mt-auto" FullWidth="true">Manage Players</MudButton>
+				</MudPaper>
+			</MudItem>
+
+			<MudItem xs="12" sm="6" md="3">
+				<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
+					<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Rulesets</MudText>
+					<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">Create and edit game rulesets that define different game systems and mechanics.</MudText>
+					<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/rulesets" Class="mt-auto" FullWidth="true">Manage Rulesets</MudButton>
+				</MudPaper>
+			</MudItem>
+		</MudGrid>
+
+		<MudDivider Class="my-8" />
+
+		<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Document Processing</MudText>
+		<MudGrid Spacing="3">
+			<MudItem xs="12" sm="6" md="3">
+				<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
+					<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Document Processing</MudText>
+					<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">Monitor document processing queues and manage embedding generation. Queue unprocessed documents for processing.</MudText>
+					<MudButton Variant="Variant.Filled" Color="Color.Info" Href="/admin/document-processing" Class="mt-auto" FullWidth="true">Manage Processing</MudButton>
+				</MudPaper>
+			</MudItem>
+
+			<MudItem xs="12" sm="6" md="3">
+				<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
+					<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Embeddings</MudText>
+					<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">View and manage document embeddings. List all embeddings with source documents and preview text. Delete individual or all embeddings.</MudText>
+					<MudButton Variant="Variant.Filled" Color="Color.Info" Href="/admin/embeddings" Class="mt-auto" FullWidth="true">Manage Embeddings</MudButton>
+				</MudPaper>
+			</MudItem>
+		</MudGrid>
+
+		<MudDivider Class="my-8" />
+
+		<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Testing & Diagnostics</MudText>
+		<MudGrid Spacing="3">
+			<MudItem xs="12" sm="6" md="3">
+				<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
+					<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Rules Search Test</MudText>
+					<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">Test and debug RAG search capabilities for rulesets. View search results, citations, and documents.</MudText>
+					<MudButton Variant="Variant.Filled" Color="Color.Info" Href="/admin/rules-search-test" Class="mt-auto" FullWidth="true">Test Rules Search</MudButton>
+				</MudPaper>
+			</MudItem>
+		</MudGrid>
+	</MudPaper>
+</MudContainer>
+

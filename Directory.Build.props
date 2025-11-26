@@ -1,0 +1,18 @@
+<Project>
+  <PropertyGroup>
+    <!-- Suppress NU1608 warnings for version conflicts between:
+         - Microsoft.Agents.AI.OpenAI (requires OpenAI >= 2.6.0 and Azure.AI.OpenAI >= 2.5.0-beta.1)
+         - Microsoft.SemanticKernel.Connectors.* 1.23.0 (requires OpenAI = 2.1.0-beta.1 and Azure.AI.OpenAI = 2.1.0-beta.1)
+         
+         This is a transitive dependency conflict that cannot be resolved without breaking Microsoft.Agents.AI requirements.
+         The packages are compatible at runtime despite the version constraint warnings. -->
+    <NoWarn>$(NoWarn);NU1608</NoWarn>
+  </PropertyGroup>
+</Project>
+
+
+
+
+
+
+

@@ -9,7 +9,9 @@ Key service interfaces and locations
 - `IGameService` -> `JAIMES AF.Services/Services/IGameService.cs`
 - `IScenariosService` -> `JAIMES AF.Services/Services/IScenariosService.cs`
 - `IPlayersService` -> `JAIMES AF.Services/Services/IPlayersService.cs`
-- `ChatService` -> `JAIMES AF.Services/Services/ChatService.cs`
+- `ChatService` -> `JAIMES AF.Agents/Services/ChatService.cs`
+- `IRulesSearchService` -> `JAIMES AF.ServiceDefinitions/Services/IRulesSearchService.cs`
+- `RulesSearchService` -> `JAIMES AF.Agents/Services/RulesSearchService.cs`
 
 Common DTOs and Mappers
 
@@ -30,19 +32,34 @@ Testing
 
 - Tests are in `JAIMES AF.Tests/` with folders for endpoints, repositories, and services.
 - **CRITICAL**: When making code changes, you MUST:
-  1. Update existing tests to reflect any changes to data structures, behavior, or APIs
-  2. Add new tests when introducing new functionality or fixing bugs
-  3. Ensure all tests pass before considering a task complete
-  4. Use Shouldly for all assertions (never use `Assert.*` methods)
-  5. Verify that tests cover edge cases, especially when fixing bugs (e.g., if fixing ordering, test with identical timestamps)
+  1. **Build the solution** after modifying code: `dotnet build` - ensure it compiles successfully before proceeding
+  2. Update existing tests to reflect any changes to data structures, behavior, or APIs
+  3. Add new tests when introducing new functionality or fixing bugs
+  4. Ensure all tests pass before considering a task complete
+  5. Use Shouldly for all assertions (never use `Assert.*` methods)
+  6. Verify that tests cover edge cases, especially when fixing bugs (e.g., if fixing ordering, test with identical timestamps)
 - When adding properties to DTOs or responses, update tests to verify those properties are populated correctly
 - When changing ordering logic, add tests that verify the ordering works correctly, including edge cases
+- **Build verification**: Always run `dotnet build` after code modifications to catch compilation errors early
+- **Central Package Management**: When adding PackageReference items, ensure corresponding PackageVersion items exist in Directory.Packages.props
 
 Development notes
 
-- Target: `.NET9`
+- Target: `.NET10`
 - DI registration: `ServiceCollectionExtensions.cs` in each layer registers services and repositories.
 - Keep endpoints thin and delegate to services.
+
+Kernel Memory and Rules Search
+
+- **Kernel Memory**: Used for RAG (Retrieval-Augmented Generation) search over rulesets
+- **RulesSearchService**: Provides rules search functionality using Kernel Memory
+- **Storage**: Rules are stored in Kernel Memory's directory-based vector store, NOT in EF entities
+- **Indexing**: Rules are indexed by `rulesetId` - this is used as an index/filter for organizing and searching rules
+- **Tool**: `RulesSearchTool` is registered with AI agents to allow them to search rules using natural language queries
+- **Configuration**: Uses `WithSimpleVectorDb()` with a directory path for vector storage (path can be extracted from connection string format for backward compatibility)
+- **References**: 
+  - Blog post: https://blog.leadingedje.com/post/ai/documents/kernelmemory.html
+  - Kernel Memory uses `ImportTextAsync()` to index rules and `AskAsync()` to search them
 
 Database migrations and seed data
 

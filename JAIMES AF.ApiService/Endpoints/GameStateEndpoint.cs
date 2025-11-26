@@ -38,7 +38,7 @@ public class GameStateEndpoint : EndpointWithoutRequest<GameStateResponse>
         GameStateResponse gameState = new()
         {
             GameId = gameDto.GameId,
-            Messages = (gameDto.Messages ?? Array.Empty<MessageDto>()).Select(m => m.ToResponse()).ToArray(),
+            Messages = (gameDto.Messages ?? []).Select(m => m.ToResponse()).ToArray(),
             RulesetId = gameDto.Ruleset.Id,
             RulesetName = gameDto.Ruleset.Name,
             ScenarioId = gameDto.Scenario.Id,

@@ -4,21 +4,29 @@ alwaysApply: true
 
 # Testing Guidelines
 
-## Always Run Tests After Code Changes
+## Always Build and Test After Code Changes
 
 When making code changes that affect services, repositories, or endpoints:
 
-1. **Build the test project** to check for compilation errors:
+1. **Build the entire solution** to check for compilation errors:
+   ```bash
+   dotnet build
+   ```
+   - **CRITICAL**: Always build after modifying code to ensure it compiles successfully
+   - Fix any build errors before proceeding
+   - If using Central Package Management, ensure all PackageReference items have corresponding PackageVersion items in Directory.Packages.props
+
+2. **Build the test project** to check for compilation errors:
    ```bash
    dotnet build "JAIMES AF.Tests/JAIMES AF.Tests.csproj"
    ```
 
-2. **Run the relevant tests** to ensure they pass:
+3. **Run the relevant tests** to ensure they pass:
    ```bash
    dotnet test "JAIMES AF.Tests/JAIMES AF.Tests.csproj" --filter "FullyQualifiedName~TestClassName"
    ```
 
-3. **Run all tests** before completing a task:
+4. **Run all tests** before completing a task:
    ```bash
    dotnet test "JAIMES AF.Tests/JAIMES AF.Tests.csproj"
    ```
@@ -48,3 +56,5 @@ When making code changes that affect services, repositories, or endpoints:
 - **Missing dependencies**: When adding constructor parameters to services, update test setup to provide mocks
 - **Changed behavior**: When refactoring service methods, update test expectations to match new behavior
 - **Compilation errors**: Always fix compilation errors before considering a task complete
+- **Central Package Management**: When adding new PackageReference items, ensure corresponding PackageVersion items exist in Directory.Packages.props
+- **Build failures**: Always run `dotnet build` after code modifications to verify the solution compiles successfully

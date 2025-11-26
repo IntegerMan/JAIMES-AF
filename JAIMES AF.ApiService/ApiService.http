@@ -41,3 +41,7 @@ Content-Type: application/json
  "gameId": "95d26a53-5b62-43f2-bc19-3c64ff013c4f",
  "message": "I want to go on an adventure"
 }
+
+### Backfill unprocessed documents for embedding
+POST {{ApiService_HostAddress}}/documents/backfill-embeddings
+Accept: application/json

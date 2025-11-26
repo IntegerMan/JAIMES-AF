@@ -13,10 +13,18 @@
   <ItemGroup>
     <ProjectReference Include="..\JAIMES AF.ApiService\JAIMES AF.ApiService.csproj" />
     <ProjectReference Include="..\JAIMES AF.Web\JAIMES AF.Web.csproj" />
+    <ProjectReference Include="..\JAIMES AF.Workers.DocumentCrackerWorker\JAIMES AF.Workers.DocumentCrackerWorker.csproj" />
+    <ProjectReference Include="..\JAIMES AF.Workers.DocumentChunking\JAIMES AF.Workers.DocumentChunking.csproj" />
+    <ProjectReference Include="..\JAIMES AF.Workers.DocumentChangeDetector\JAIMES AF.Workers.DocumentChangeDetector.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" />
+    <PackageReference Include="Aspire.Hosting.MongoDB" />
+    <PackageReference Include="Aspire.Hosting.Qdrant" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Ollama" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.SQLite" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.LavinMQ" />
   </ItemGroup>
 
 </Project>

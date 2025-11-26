@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": ".NET Core Launch (AppHost)",
+            "name": "Aspire AppHost",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
@@ -22,9 +22,24 @@
             },
             "serverReadyAction": {
                 "action": "openExternally",
-                "pattern": "Login to the dashboard at (https?://\\S+)",
+                "pattern": "Login to the dashboard at (https?://[^\\s]*login[^\\s]*t=[^\\s]+)",
                 "uriFormat": "%s",
                 "killOnServerStop": true
+            }
+        },
+        {
+            "name": "Indexer Console App",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/JAIMES AF.Indexer/bin/Debug/net10.0/JAIMES AF.Indexer.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/JAIMES AF.Indexer",
+            "stopAtEntry": false,
+            "console": "integratedTerminal",
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development",
+                "DOTNET_ENVIRONMENT": "Development"
             }
         }
     ]

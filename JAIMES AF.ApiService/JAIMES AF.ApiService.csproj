@@ -6,20 +6,24 @@
     <Nullable>enable</Nullable>
     <RootNamespace>MattEland.Jaimes.ApiService</RootNamespace>
     <UserSecretsId>dd352b9d-9795-4804-bc85-3e9b6a92e1dc</UserSecretsId>
+    <NoWarn>$(NoWarn);ICU4N_IDE_0002</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\JAIMES AF.ServiceDefaults\JAIMES AF.ServiceDefaults.csproj" />
     <ProjectReference Include="..\JAIMES AF.Services\JAIMES AF.ServiceLayer.csproj" />
+    <ProjectReference Include="..\JAIMES AF.Workers.DocumentChunking\JAIMES AF.Workers.DocumentChunking.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.MongoDB.Driver" />
     <PackageReference Include="FastEndpoints" />
     <PackageReference Include="FastEndpoints.Swagger" />
     <PackageReference Include="FluentValidation.AspNetCore" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" />
     <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Qdrant.Client" />
     <!-- Required by EF Core tools when this project is the startup project for migrations -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>
