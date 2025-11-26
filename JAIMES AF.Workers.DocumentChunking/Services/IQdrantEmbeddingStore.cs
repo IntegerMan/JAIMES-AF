@@ -20,3 +20,5 @@ public record EmbeddingInfo
     public required string ChunkText { get; init; }
 }
 
+
+

@@ -7,6 +7,9 @@
         "humao.rest-client",
         "pkief.material-icon-theme",
         "wayou.vscode-todo-highlight",
-        "eamodio.gitlens"
+        "eamodio.gitlens",
+        "ms-azuretools.vscode-docker",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-sqlite"
     ]
 }

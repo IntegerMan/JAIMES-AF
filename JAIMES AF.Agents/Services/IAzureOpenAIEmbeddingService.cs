@@ -5,3 +5,5 @@ public interface IAzureOpenAIEmbeddingService
     Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default);
 }
 
+
+
