@@ -196,9 +196,9 @@ public class DocumentChangeDetectorService(
             .Set(x => x.RulesetId, rulesetId)
             .Set(x => x.DocumentKind, documentKind);
 
-        UpdateOptions options = new() { IsUpsert = true };
+        UpdateOptions updateOptions = new() { IsUpsert = true };
 
-        await metadataCollection.UpdateOneAsync(filter, update, options, cancellationToken);
+        await metadataCollection.UpdateOneAsync(filter, update, updateOptions, cancellationToken);
     }
 
     private async Task EnqueueDocumentAsync(

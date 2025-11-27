@@ -1,10 +1,28 @@
-using Markdig;
 using System.Text.RegularExpressions;
+using Markdig;
 
 namespace MattEland.Jaimes.Web.Components.Helpers;
 
 public static class ChatHelpers
 {
+    private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(250);
+    private static readonly Regex HeaderRemovalRegex = new(
+        @"^\s*#+\s.*$",
+        RegexOptions.Multiline | RegexOptions.CultureInvariant,
+        RegexTimeout);
+    private static readonly Regex EmptyLineCleanupRegex = new(
+        @"\n\s*\n\s*\n+",
+        RegexOptions.Multiline | RegexOptions.CultureInvariant,
+        RegexTimeout);
+    private static readonly Regex HeaderDetectionRegex = new(
+        @"^\s*#+\s",
+        RegexOptions.CultureInvariant,
+        RegexTimeout);
+    private static readonly Regex BoldHeaderRegex = new(
+        @"^\*\*[^*]+\*\*:?\s*$",
+        RegexOptions.CultureInvariant,
+        RegexTimeout);
+
     // Converts markdown text to HTML for rendering in Game Master messages
     // Filters out markdown headers (lines starting with #) before rendering
     public static string RenderMarkdown(string? markdown)
@@ -16,14 +34,10 @@ public static class ChatHelpers
 
         // Remove markdown headers (lines starting with one or more # characters)
         // This regex matches lines that start with optional whitespace followed by one or more # characters
-        string filteredMarkdown = Regex.Replace(
-            markdown,
-            @"^\s*#+\s.*$",
-            string.Empty,
-            RegexOptions.Multiline);
+        string filteredMarkdown = HeaderRemovalRegex.Replace(markdown, string.Empty);
 
         // Clean up multiple consecutive empty lines that may result from header removal
-        filteredMarkdown = Regex.Replace(filteredMarkdown, @"\n\s*\n\s*\n+", "\n\n", RegexOptions.Multiline);
+        filteredMarkdown = EmptyLineCleanupRegex.Replace(filteredMarkdown, "\n\n");
 
         return Markdown.ToHtml(filteredMarkdown);
     }
@@ -39,14 +53,14 @@ public static class ChatHelpers
         string trimmed = paragraph.Trim();
 
         // Check for markdown headers (lines starting with #)
-        if (Regex.IsMatch(trimmed, @"^\s*#+\s"))
+        if (HeaderDetectionRegex.IsMatch(trimmed))
         {
             return true;
         }
 
         // Check for bold text that looks like a header/label (e.g., "**Opening Message:**" or "**Title**")
         // Pattern: starts with **, ends with ** or **:, and is relatively short (likely a label, not content)
-        if (Regex.IsMatch(trimmed, @"^\*\*[^*]+\*\*:?\s*$"))
+        if (BoldHeaderRegex.IsMatch(trimmed))
         {
             return true;
         }

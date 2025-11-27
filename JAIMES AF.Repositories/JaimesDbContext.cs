@@ -5,12 +5,12 @@ namespace MattEland.Jaimes.Repositories;
 
 public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbContext(options)
 {
-    public DbSet<Game> Games { get; set; }
-    public DbSet<Message> Messages { get; set; }
-    public DbSet<Player> Players { get; set; }
-    public DbSet<Scenario> Scenarios { get; set; }
-    public DbSet<Ruleset> Rulesets { get; set; }
-    public DbSet<ChatHistory> ChatHistories { get; set; }
+    public DbSet<Game> Games { get; set; } = null!;
+    public DbSet<Message> Messages { get; set; } = null!;
+    public DbSet<Player> Players { get; set; } = null!;
+    public DbSet<Scenario> Scenarios { get; set; } = null!;
+    public DbSet<Ruleset> Rulesets { get; set; } = null!;
+    public DbSet<ChatHistory> ChatHistories { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
