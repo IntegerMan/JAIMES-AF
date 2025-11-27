@@ -327,8 +327,9 @@ public class QdrantEmbeddingStore(
                 return;
             }
 
-            // Scroll through all points and collect their IDs as ulong
-            List<ulong> pointIds = new();
+            // Scroll through all points and count them
+            // We count all points, not just those with chunkId, since we delete all points
+            int totalPointCount = 0;
             PointId? nextPageOffset = null;
             const int batchSize = 100;
 
@@ -341,16 +342,8 @@ public class QdrantEmbeddingStore(
                     offset: nextPageOffset,
                     cancellationToken: cancellationToken);
 
-                foreach (RetrievedPoint point in scrollResult.Result)
-                {
-                    // Extract chunkId from payload to reconstruct point ID
-                    string chunkId = point.Payload.GetValueOrDefault("chunkId")?.StringValue ?? string.Empty;
-                    if (!string.IsNullOrEmpty(chunkId))
-                    {
-                        ulong id = GenerateQdrantPointId(chunkId);
-                        pointIds.Add(id);
-                    }
-                }
+                // Count all points in this batch, regardless of whether they have a chunkId
+                totalPointCount += scrollResult.Result.Count;
 
                 nextPageOffset = scrollResult.NextPageOffset;
             } while (nextPageOffset != null);
@@ -367,7 +360,7 @@ public class QdrantEmbeddingStore(
                 filter: deleteAllFilter,
                 cancellationToken: cancellationToken);
             
-            int deletedCount = pointIds.Count;
+            int deletedCount = totalPointCount;
 
             logger.LogInformation("Deleted {Count} embeddings from collection {CollectionName}", deletedCount, options.CollectionName);
             activity?.SetStatus(ActivityStatusCode.Ok);
