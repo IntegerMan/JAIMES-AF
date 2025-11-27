@@ -78,8 +78,9 @@ jobs:
       - name: Build and analyze
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_SCANNER: ${{ runner.temp }}\scanner\dotnet-sonarscanner
         shell: powershell
         run: |
-          ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"IntegerMan_JAIMES-AF" /o:"integerman-github" /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+          & $env:SONAR_SCANNER begin /k:"IntegerMan_JAIMES-AF" /o:"integerman-github" /d:sonar.token="$env:SONAR_TOKEN"
           dotnet build
-          ${{ runner.temp }}\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+          & $env:SONAR_SCANNER end /d:sonar.token="$env:SONAR_TOKEN"
