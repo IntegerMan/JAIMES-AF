@@ -20,6 +20,12 @@ public class DocumentMetadata
     [BsonElement("lastScanned")]
     [BsonRequired]
     public DateTime LastScanned { get; set; }
+
+    [BsonElement("documentKind")]
+    public string DocumentKind { get; set; } = "Sourcebook";
+
+    [BsonElement("rulesetId")]
+    public string RulesetId { get; set; } = string.Empty;
 }
 
 

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using MattEland.Jaimes.DocumentProcessing.Services;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.Extensions.Logging;
@@ -47,6 +48,13 @@ public class DocumentCrackingService(
         
         activity?.SetTag("cracker.page_count", pageCount);
 
+        // Extract metadata from relative directory
+        string rulesetId = DocumentMetadataExtractor.ExtractRulesetId(relativeDirectory);
+        string documentKind = DocumentMetadataExtractor.DetermineDocumentKind(relativeDirectory);
+        
+        activity?.SetTag("cracker.ruleset_id", rulesetId);
+        activity?.SetTag("cracker.document_kind", documentKind);
+
         // Get database from connection string - the database name is "documents" as configured in AppHost
         IMongoDatabase mongoDatabase = mongoClient.GetDatabase("documents");
         IMongoCollection<CrackedDocument> collection = mongoDatabase.GetCollection<CrackedDocument>("crackedDocuments");
@@ -68,8 +76,8 @@ public class DocumentCrackingService(
             .Set(d => d.CrackedAt, DateTime.UtcNow)
             .Set(d => d.FileSize, fileInfo.Length)
             .Set(d => d.PageCount, pageCount)
-            .Set(d => d.DocumentType, documentType)
-            .Set(d => d.RulesetId, rulesetId);
+            .Set(d => d.RulesetId, rulesetId)
+            .Set(d => d.DocumentKind, documentKind);
         
         // Reset processed flag only if content changed
         if (contentChanged)
@@ -101,8 +109,9 @@ public class DocumentCrackingService(
         if (needsProcessing)
         {
             // Publish message to generate documentMetadata
+            // Use documentKind as documentType for the message (message still uses DocumentType field)
             await PublishDocumentCrackedMessageAsync(documentId, filePath, relativeDirectory ?? string.Empty, 
-                Path.GetFileName(filePath), fileInfo.Length, pageCount, documentType, rulesetId, cancellationToken);
+                Path.GetFileName(filePath), fileInfo.Length, pageCount, documentKind, rulesetId, cancellationToken);
         }
         else
         {
@@ -160,6 +169,7 @@ public class DocumentCrackingService(
 
         return (builder.ToString(), pageCount);
     }
+
 }
 
 

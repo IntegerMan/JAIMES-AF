@@ -123,6 +123,13 @@ public class DocumentCrackingOrchestrator(
         
         activity?.SetTag("cracker.page_count", pageCount);
 
+        // Extract metadata from relative directory
+        string rulesetId = DocumentMetadataExtractor.ExtractRulesetId(relativeDirectory);
+        string documentKind = DocumentMetadataExtractor.DetermineDocumentKind(relativeDirectory);
+        
+        activity?.SetTag("cracker.ruleset_id", rulesetId);
+        activity?.SetTag("cracker.document_kind", documentKind);
+
         // Use UpdateOneAsync with upsert to avoid _id conflicts
         // This will update if the document exists (by FilePath) or insert if it doesn't
         FilterDefinition<CrackedDocument> filter = Builders<CrackedDocument>.Filter.Eq(d => d.FilePath, filePath);
@@ -139,7 +146,9 @@ public class DocumentCrackingOrchestrator(
             .Set(d => d.Content, contents)
             .Set(d => d.CrackedAt, DateTime.UtcNow)
             .Set(d => d.FileSize, fileInfo.Length)
-            .Set(d => d.PageCount, pageCount);
+            .Set(d => d.PageCount, pageCount)
+            .Set(d => d.RulesetId, rulesetId)
+            .Set(d => d.DocumentKind, documentKind);
         
         // Reset processed flag only if content changed
         if (contentChanged)
@@ -228,6 +237,7 @@ public class DocumentCrackingOrchestrator(
 
         return (builder.ToString(), pageCount);
     }
+
 
     public class DocumentCrackingSummary
     {
