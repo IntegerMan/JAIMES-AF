@@ -12,7 +12,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      SONAR_DOTNET_COVERAGE_REPORTS: ${{ github.workspace }}/TestResults/coverage/coverage.cobertura.xml
       COVERAGE_DIR: ${{ github.workspace }}/TestResults/coverage/
     
     steps:
@@ -34,14 +33,30 @@ jobs:
       - name: Build
         run: dotnet build --no-restore --configuration Release
       
-<<<<<<< HEAD
-      - name: Run tests
-        run: dotnet run --project "JAIMES AF.Tests/JAIMES AF.Tests.csproj" --no-build --configuration Release
+      - name: Run tests with coverage
+        run: |
+          mkdir -p "$COVERAGE_DIR"
+          dotnet test "JAIMES AF.Tests/JAIMES AF.Tests.csproj" \
+            --no-build \
+            --configuration Release \
+            /p:CollectCoverage=true \
+            /p:CoverletOutputFormat="cobertura,opencover" \
+            /p:CoverletOutput=$COVERAGE_DIR \
+            /p:UseSourceLink=true
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-reports
+          path: ${{ github.workspace }}/TestResults/coverage/
 
   sonar:
     name: Build and analyze
     runs-on: windows-latest
     needs: test
+    env:
+      SONAR_DOTNET_COVERAGE_REPORTS: ${{ runner.temp }}\coverage\coverage.opencover.xml
 
     steps:
       - name: Set up JDK 17
@@ -82,6 +97,12 @@ jobs:
           New-Item -Path ${{ runner.temp }}\scanner -ItemType Directory
           dotnet tool update dotnet-sonarscanner --tool-path ${{ runner.temp }}\scanner
 
+      - name: Download coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-reports
+          path: ${{ runner.temp }}\coverage
+
       - name: Build and analyze
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -91,13 +112,3 @@ jobs:
           & $env:SONAR_SCANNER begin /k:"IntegerMan_JAIMES-AF" /o:"integerman-github" /d:sonar.token="$env:SONAR_TOKEN"
           dotnet build
           & $env:SONAR_SCANNER end /d:sonar.token="$env:SONAR_TOKEN"
-=======
-      - name: Run tests with coverage
-        run: >
-          dotnet test "JAIMES AF.Tests/JAIMES AF.Tests.csproj"
-          --no-build
-          --configuration Release
-          /p:CollectCoverage=true
-          /p:CoverletOutputFormat=cobertura
-          /p:CoverletOutput=$COVERAGE_DIR
->>>>>>> d0f2749 (feat: Enable code coverage reporting in CI tests)
