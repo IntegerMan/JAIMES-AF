@@ -12,7 +12,7 @@ jobs:
   build-test-analyze:
     runs-on: ubuntu-latest
     env:
-      COVERAGE_DIR: TestResults/coverage/
+      COVERAGE_FILE: TestResults/coverage/coverage.opencover.xml
       SONAR_DOTNET_COVERAGE_REPORTS: TestResults/coverage/coverage.opencover.xml
 
     steps:
@@ -58,14 +58,18 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          mkdir -p "$COVERAGE_DIR"
+          mkdir -p "$(dirname "$COVERAGE_FILE")"
           dotnet test "JAIMES AF.Tests/JAIMES AF.Tests.csproj" \
             --no-build \
             --configuration Release \
             /p:CollectCoverage=true \
-            /p:CoverletOutput=$COVERAGE_DIR \
+            /p:CoverletOutput=$COVERAGE_FILE \
             /p:CoverletOutputFormat="opencover" \
             /p:UseSourceLink=true
+
+      - name: Show coverage artifacts
+        if: always()
+        run: ls -R TestResults || true
 
       - name: End Sonar analysis
         if: always()
