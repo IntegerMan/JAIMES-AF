@@ -7,7 +7,16 @@
          This is a transitive dependency conflict that cannot be resolved without breaking Microsoft.Agents.AI requirements.
          The packages are compatible at runtime despite the version constraint warnings. -->
     <NoWarn>$(NoWarn);NU1608</NoWarn>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest</AnalysisLevel>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" PrivateAssets="all" />
+    <PackageReference Include="StyleCop.Analyzers" PrivateAssets="all" />
+    <PackageReference Include="Meziantou.Analyzer" PrivateAssets="all" />
+  </ItemGroup>
 </Project>
 
 
