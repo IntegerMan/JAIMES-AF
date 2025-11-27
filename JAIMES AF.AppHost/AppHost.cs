@@ -164,6 +164,9 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChunking>("document-chunki
         context.EnvironmentVariables["DocumentChunking__QdrantHost"] = qdrantGrpcEndpoint.Host;
         context.EnvironmentVariables["DocumentChunking__QdrantPort"] = qdrantGrpcEndpoint.Port;
         context.EnvironmentVariables["ConnectionStrings__qdrant-embeddings"] = qdrant.Resource.ConnectionStringExpression;
+        
+        // Set Qdrant API key (use the parameter value)
+        context.EnvironmentVariables["qdrant-api-key"] = qdrantApiKey.Resource.ValueExpression;
     });
 
 builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbedding>("document-embedding-worker")
