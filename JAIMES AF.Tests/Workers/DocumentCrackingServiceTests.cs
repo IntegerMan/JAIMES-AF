@@ -5,7 +5,6 @@ using MattEland.Jaimes.Tests.TestUtilities;
 using MattEland.Jaimes.Workers.DocumentCracker.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
-using MongoDB.Bson;
 using MongoDB.Driver;
 using Shouldly;
 
@@ -30,9 +29,6 @@ public class DocumentCrackingServiceTests
                 "Sourcebook",
                 TestContext.Current.CancellationToken);
 
-            context.MongoClientMock.Verify(
-                client => client.GetDatabase(It.IsAny<string>(), It.IsAny<MongoDatabaseSettings?>()),
-                Times.Never);
             context.MessagePublisherMock.Verify(
                 publisher => publisher.PublishAsync(
                     It.IsAny<DocumentReadyForChunkingMessage>(),
@@ -60,22 +56,6 @@ public class DocumentCrackingServiceTests
             .Setup(extractor => extractor.ExtractText(filePath))
             .Returns(("page content", 2));
 
-        ObjectId insertedId = ObjectId.GenerateNewId();
-        context.CrackedCollectionMock.SetupFindSequence<CrackedDocument>((CrackedDocument?)null, new CrackedDocument
-        {
-            Id = insertedId.ToString(),
-            FilePath = filePath,
-            IsProcessed = false
-        });
-
-        context.CrackedCollectionMock
-            .Setup(collection => collection.UpdateOneAsync(
-                It.IsAny<FilterDefinition<CrackedDocument>>(),
-                It.IsAny<UpdateDefinition<CrackedDocument>>(),
-                It.IsAny<UpdateOptions>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CreateAcknowledgedResult(new BsonObjectId(insertedId)));
-
         DocumentReadyForChunkingMessage? publishedMessage = null;
         context.MessagePublisherMock
             .Setup(publisher => publisher.PublishAsync(
@@ -99,13 +79,15 @@ public class DocumentCrackingServiceTests
                 It.IsAny<DocumentReadyForChunkingMessage>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
-        context.CrackedCollectionMock.Verify(
-            collection => collection.UpdateOneAsync(
-                It.IsAny<FilterDefinition<CrackedDocument>>(),
-                It.IsAny<UpdateDefinition<CrackedDocument>>(),
-                It.IsAny<UpdateOptions>(),
-                It.IsAny<CancellationToken>()),
-            Times.Once);
+
+        CrackedDocument? storedDocument = await context.CrackedCollection
+            .Find(d => d.FilePath == filePath)
+            .FirstOrDefaultAsync(TestContext.Current.CancellationToken);
+        storedDocument.ShouldNotBeNull();
+        storedDocument!.Content.ShouldBe("page content");
+        storedDocument.IsProcessed.ShouldBeFalse();
+        storedDocument.RulesetId.ShouldBe("ruleset-y");
+        storedDocument.DocumentKind.ShouldBe("Sourcebook");
 
         publishedMessage.ShouldNotBeNull();
         publishedMessage!.FilePath.ShouldBe(filePath);
@@ -118,35 +100,26 @@ public class DocumentCrackingServiceTests
     private sealed class DocumentCrackingServiceTestContext : IDisposable
     {
         public Mock<ILogger<DocumentCrackingService>> LoggerMock { get; }
-        public Mock<IMongoClient> MongoClientMock { get; }
-        public Mock<IMongoDatabase> DatabaseMock { get; }
-        public Mock<IMongoCollection<CrackedDocument>> CrackedCollectionMock { get; }
         public Mock<IMessagePublisher> MessagePublisherMock { get; }
         public Mock<IPdfTextExtractor> PdfTextExtractorMock { get; }
         public DocumentCrackingService Service { get; }
+        public IMongoCollection<CrackedDocument> CrackedCollection => MongoRunner.Client.GetDatabase("documents").GetCollection<CrackedDocument>("crackedDocuments");
+        private MongoTestRunner MongoRunner { get; }
 
         private readonly ActivitySource _activitySource;
 
         public DocumentCrackingServiceTestContext()
         {
             LoggerMock = new Mock<ILogger<DocumentCrackingService>>();
-            MongoClientMock = new Mock<IMongoClient>();
-            DatabaseMock = new Mock<IMongoDatabase>();
-            CrackedCollectionMock = new Mock<IMongoCollection<CrackedDocument>>();
             MessagePublisherMock = new Mock<IMessagePublisher>();
             PdfTextExtractorMock = new Mock<IPdfTextExtractor>();
+            MongoRunner = new MongoTestRunner();
+            MongoRunner.ResetDatabase();
             _activitySource = new ActivitySource($"DocumentCrackerTests-{Guid.NewGuid()}");
-
-            MongoClientMock
-                .Setup(client => client.GetDatabase("documents", null))
-                .Returns(DatabaseMock.Object);
-            DatabaseMock
-                .Setup(db => db.GetCollection<CrackedDocument>("crackedDocuments", null))
-                .Returns(CrackedCollectionMock.Object);
 
             Service = new DocumentCrackingService(
                 LoggerMock.Object,
-                MongoClientMock.Object,
+                MongoRunner.Client,
                 MessagePublisherMock.Object,
                 _activitySource,
                 PdfTextExtractorMock.Object);
@@ -155,17 +128,8 @@ public class DocumentCrackingServiceTests
         public void Dispose()
         {
             _activitySource.Dispose();
+            MongoRunner.Dispose();
         }
 
-    }
-
-    private static UpdateResult CreateAcknowledgedResult(BsonValue? upsertedId = null)
-    {
-        Mock<UpdateResult> resultMock = new();
-        resultMock.SetupGet(r => r.IsAcknowledged).Returns(true);
-        resultMock.SetupGet(r => r.MatchedCount).Returns(1);
-        resultMock.SetupGet(r => r.ModifiedCount).Returns(1);
-        resultMock.SetupGet(r => r.UpsertedId).Returns(upsertedId ?? BsonNull.Value);
-        return resultMock.Object;
     }
 }

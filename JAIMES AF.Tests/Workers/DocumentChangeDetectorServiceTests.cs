@@ -8,7 +8,6 @@ using MattEland.Jaimes.Workers.DocumentChangeDetector.Configuration;
 using MattEland.Jaimes.Workers.DocumentChangeDetector.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
-using MongoDB.Bson;
 using MongoDB.Driver;
 using Shouldly;
 
@@ -37,8 +36,6 @@ public class DocumentChangeDetectorServiceTests
         context.ChangeTrackerMock
             .Setup(tracker => tracker.ComputeFileHashAsync(filePath, It.IsAny<CancellationToken>()))
             .ReturnsAsync("hash-new");
-        context.MetadataCollectionMock.SetupFindSequence<DocumentMetadata>((DocumentMetadata?)null);
-
         DocumentChangeDetectorService service = context.CreateService();
 
         DocumentScanSummary summary = await service.ScanAndEnqueueAsync(
@@ -89,14 +86,14 @@ public class DocumentChangeDetectorServiceTests
             Hash = "hash-static",
             LastScanned = DateTime.UtcNow
         };
-        context.MetadataCollectionMock.SetupFindSequence(metadata);
+        await context.MetadataCollection.InsertOneAsync(metadata, cancellationToken: TestContext.Current.CancellationToken);
 
         CrackedDocument crackedDocument = new()
         {
             FilePath = filePath,
             Content = "already processed"
         };
-        context.CrackedCollectionMock.SetupFindSequence(crackedDocument);
+        await context.CrackedCollection.InsertOneAsync(crackedDocument, cancellationToken: TestContext.Current.CancellationToken);
 
         DocumentChangeDetectorService service = context.CreateService();
 
@@ -145,9 +142,7 @@ public class DocumentChangeDetectorServiceTests
             Hash = "hash-stale",
             LastScanned = DateTime.UtcNow
         };
-        context.MetadataCollectionMock.SetupFindSequence(metadata);
-
-        context.CrackedCollectionMock.SetupFindSequence<CrackedDocument>((CrackedDocument?)null);
+        await context.MetadataCollection.InsertOneAsync(metadata, cancellationToken: TestContext.Current.CancellationToken);
 
         DocumentChangeDetectorService service = context.CreateService();
 
@@ -173,11 +168,9 @@ public class DocumentChangeDetectorServiceTests
         public Mock<ILogger<DocumentChangeDetectorService>> LoggerMock { get; }
         public Mock<IDirectoryScanner> DirectoryScannerMock { get; }
         public Mock<IChangeTracker> ChangeTrackerMock { get; }
-        public Mock<IMongoClient> MongoClientMock { get; }
-        public Mock<IMongoDatabase> DatabaseMock { get; }
-        public Mock<IMongoCollection<DocumentMetadata>> MetadataCollectionMock { get; }
-        public Mock<IMongoCollection<CrackedDocument>> CrackedCollectionMock { get; }
-        public Mock<IMongoIndexManager<DocumentMetadata>> MetadataIndexManagerMock { get; }
+        public MongoTestRunner MongoRunner { get; }
+        public IMongoCollection<DocumentMetadata> MetadataCollection => MongoRunner.Client.GetDatabase("documents").GetCollection<DocumentMetadata>("documentMetadata");
+        public IMongoCollection<CrackedDocument> CrackedCollection => MongoRunner.Client.GetDatabase("documents").GetCollection<CrackedDocument>("crackedDocuments");
         public Mock<IMessagePublisher> MessagePublisherMock { get; }
 
         private readonly ActivitySource _activitySource;
@@ -192,42 +185,10 @@ public class DocumentChangeDetectorServiceTests
             LoggerMock = new Mock<ILogger<DocumentChangeDetectorService>>();
             DirectoryScannerMock = new Mock<IDirectoryScanner>();
             ChangeTrackerMock = new Mock<IChangeTracker>();
-            MongoClientMock = new Mock<IMongoClient>();
-            DatabaseMock = new Mock<IMongoDatabase>();
-            MetadataCollectionMock = new Mock<IMongoCollection<DocumentMetadata>>();
-            CrackedCollectionMock = new Mock<IMongoCollection<CrackedDocument>>();
-            MetadataIndexManagerMock = new Mock<IMongoIndexManager<DocumentMetadata>>();
             MessagePublisherMock = new Mock<IMessagePublisher>();
+            MongoRunner = new MongoTestRunner();
+            MongoRunner.ResetDatabase();
             _activitySource = new ActivitySource($"DocumentChangeDetectorTests-{Guid.NewGuid()}");
-
-            MongoClientMock
-                .Setup(client => client.GetDatabase("documents", null))
-                .Returns(DatabaseMock.Object);
-
-            DatabaseMock
-                .Setup(db => db.GetCollection<DocumentMetadata>("documentMetadata", null))
-                .Returns(MetadataCollectionMock.Object);
-            DatabaseMock
-                .Setup(db => db.GetCollection<CrackedDocument>("crackedDocuments", null))
-                .Returns(CrackedCollectionMock.Object);
-
-            MetadataCollectionMock
-                .SetupGet(collection => collection.Indexes)
-                .Returns(MetadataIndexManagerMock.Object);
-            MetadataIndexManagerMock
-                .Setup(manager => manager.CreateOneAsync(
-                    It.IsAny<CreateIndexModel<DocumentMetadata>>(),
-                    It.IsAny<CreateOneIndexOptions?>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync("documentMetadataFilePathIndex");
-
-            MetadataCollectionMock
-                .Setup(collection => collection.UpdateOneAsync(
-                    It.IsAny<FilterDefinition<DocumentMetadata>>(),
-                    It.IsAny<UpdateDefinition<DocumentMetadata>>(),
-                    It.IsAny<UpdateOptions>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(CreateAcknowledgedResult());
         }
 
         public DocumentChangeDetectorService CreateService()
@@ -236,7 +197,7 @@ public class DocumentChangeDetectorServiceTests
                 LoggerMock.Object,
                 DirectoryScannerMock.Object,
                 ChangeTrackerMock.Object,
-                MongoClientMock.Object,
+                MongoRunner.Client,
                 MessagePublisherMock.Object,
                 _activitySource,
                 Options);
@@ -245,16 +206,7 @@ public class DocumentChangeDetectorServiceTests
         public void Dispose()
         {
             _activitySource.Dispose();
-        }
-
-        private static UpdateResult CreateAcknowledgedResult()
-        {
-            Mock<UpdateResult> resultMock = new();
-            resultMock.SetupGet(r => r.IsAcknowledged).Returns(true);
-            resultMock.SetupGet(r => r.MatchedCount).Returns(1);
-            resultMock.SetupGet(r => r.ModifiedCount).Returns(1);
-            resultMock.SetupGet(r => r.UpsertedId).Returns(BsonNull.Value);
-            return resultMock.Object;
+            MongoRunner.Dispose();
         }
     }
 

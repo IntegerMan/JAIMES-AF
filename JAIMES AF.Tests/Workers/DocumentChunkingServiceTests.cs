@@ -6,7 +6,6 @@ using MattEland.Jaimes.Workers.DocumentChunking.Models;
 using MattEland.Jaimes.Workers.DocumentChunking.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
-using MongoDB.Bson;
 using MongoDB.Driver;
 using Shouldly;
 
@@ -32,7 +31,7 @@ public class DocumentChunkingServiceTests
             RulesetId = "ruleset-z"
         };
 
-        context.SetupDocumentContent(message.DocumentId, "Document content");
+        await context.SetupDocumentContentAsync(message.DocumentId, "Document content", TestContext.Current.CancellationToken);
 
         List<TextChunk> chunks = new()
         {
@@ -102,86 +101,43 @@ public class DocumentChunkingServiceTests
         queuedChunk.ShouldNotBeNull();
         queuedChunk!.RelativeDirectory.ShouldBe(message.RelativeDirectory);
 
-        context.DocumentChunkCollectionMock.Verify(
-            collection => collection.UpdateOneAsync(
-                It.IsAny<FilterDefinition<DocumentChunk>>(),
-                It.IsAny<UpdateDefinition<DocumentChunk>>(),
-                It.IsAny<UpdateOptions>(),
-                It.IsAny<CancellationToken>()),
-            Times.Exactly(chunks.Count));
+        List<DocumentChunk> storedChunks = await context.DocumentChunkCollection
+            .Find(Builders<DocumentChunk>.Filter.Eq(chunk => chunk.DocumentId, message.DocumentId))
+            .ToListAsync(TestContext.Current.CancellationToken);
+        storedChunks.Count.ShouldBe(chunks.Count);
+        storedChunks.Any(chunk => chunk.ChunkId == "chunk-embedded").ShouldBeTrue();
+        storedChunks.Any(chunk => chunk.ChunkId == "chunk-unembedded").ShouldBeTrue();
 
-        context.CrackedCollectionMock.Verify(
-            collection => collection.UpdateOneAsync(
-                It.IsAny<FilterDefinition<CrackedDocument>>(),
-                It.IsAny<UpdateDefinition<CrackedDocument>>(),
-                It.IsAny<UpdateOptions>(),
-                It.IsAny<CancellationToken>()),
-            Times.Exactly(2));
+        CrackedDocument? updatedDocument = await context.CrackedCollection
+            .Find(doc => doc.Id == message.DocumentId)
+            .FirstOrDefaultAsync(TestContext.Current.CancellationToken);
+        updatedDocument.ShouldNotBeNull();
+        updatedDocument!.IsProcessed.ShouldBeTrue();
+        updatedDocument.TotalChunks.ShouldBe(chunks.Count);
     }
 
     private sealed class DocumentChunkingServiceTestContext : IDisposable
     {
-        public Mock<IMongoClient> MongoClientMock { get; }
-        public Mock<IMongoDatabase> DatabaseMock { get; }
-        public Mock<IMongoCollection<CrackedDocument>> CrackedCollectionMock { get; }
-        public Mock<IMongoCollection<DocumentChunk>> DocumentChunkCollectionMock { get; }
-        public Mock<IMongoIndexManager<DocumentChunk>> ChunkIndexManagerMock { get; }
         public Mock<ITextChunkingStrategy> ChunkingStrategyMock { get; }
         public Mock<IQdrantEmbeddingStore> QdrantStoreMock { get; }
         public Mock<IMessagePublisher> MessagePublisherMock { get; }
         public Mock<ILogger<DocumentChunkingService>> LoggerMock { get; }
         public DocumentChunkingService Service { get; }
+        public IMongoCollection<CrackedDocument> CrackedCollection => MongoRunner.Client.GetDatabase("documents").GetCollection<CrackedDocument>("crackedDocuments");
+        public IMongoCollection<DocumentChunk> DocumentChunkCollection => MongoRunner.Client.GetDatabase("documents").GetCollection<DocumentChunk>("documentChunks");
 
         private readonly ActivitySource _activitySource;
+        private MongoTestRunner MongoRunner { get; }
 
         public DocumentChunkingServiceTestContext()
         {
-            MongoClientMock = new Mock<IMongoClient>();
-            DatabaseMock = new Mock<IMongoDatabase>();
-            CrackedCollectionMock = new Mock<IMongoCollection<CrackedDocument>>();
-            DocumentChunkCollectionMock = new Mock<IMongoCollection<DocumentChunk>>();
-            ChunkIndexManagerMock = new Mock<IMongoIndexManager<DocumentChunk>>();
             ChunkingStrategyMock = new Mock<ITextChunkingStrategy>();
             QdrantStoreMock = new Mock<IQdrantEmbeddingStore>();
             MessagePublisherMock = new Mock<IMessagePublisher>();
             LoggerMock = new Mock<ILogger<DocumentChunkingService>>();
+            MongoRunner = new MongoTestRunner();
+            MongoRunner.ResetDatabase();
             _activitySource = new ActivitySource($"DocumentChunkingTests-{Guid.NewGuid()}");
-
-            MongoClientMock
-                .Setup(client => client.GetDatabase("documents", null))
-                .Returns(DatabaseMock.Object);
-            DatabaseMock
-                .Setup(db => db.GetCollection<CrackedDocument>("crackedDocuments", null))
-                .Returns(CrackedCollectionMock.Object);
-            DatabaseMock
-                .Setup(db => db.GetCollection<DocumentChunk>("documentChunks", null))
-                .Returns(DocumentChunkCollectionMock.Object);
-
-            DocumentChunkCollectionMock
-                .SetupGet(collection => collection.Indexes)
-                .Returns(ChunkIndexManagerMock.Object);
-            ChunkIndexManagerMock
-                .Setup(manager => manager.CreateOneAsync(
-                    It.IsAny<CreateIndexModel<DocumentChunk>>(),
-                    It.IsAny<CreateOneIndexOptions?>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync("chunk-index");
-
-            DocumentChunkCollectionMock
-                .Setup(collection => collection.UpdateOneAsync(
-                    It.IsAny<FilterDefinition<DocumentChunk>>(),
-                    It.IsAny<UpdateDefinition<DocumentChunk>>(),
-                    It.IsAny<UpdateOptions>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(CreateAcknowledgedResult());
-
-            CrackedCollectionMock
-                .Setup(collection => collection.UpdateOneAsync(
-                    It.IsAny<FilterDefinition<CrackedDocument>>(),
-                    It.IsAny<UpdateDefinition<CrackedDocument>>(),
-                    It.IsAny<UpdateOptions>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(CreateAcknowledgedResult());
 
             QdrantStoreMock
                 .Setup(store => store.StoreEmbeddingAsync(
@@ -198,7 +154,7 @@ public class DocumentChunkingServiceTests
                 .Returns(Task.CompletedTask);
 
             Service = new DocumentChunkingService(
-                MongoClientMock.Object,
+                MongoRunner.Client,
                 ChunkingStrategyMock.Object,
                 QdrantStoreMock.Object,
                 MessagePublisherMock.Object,
@@ -206,30 +162,22 @@ public class DocumentChunkingServiceTests
                 _activitySource);
         }
 
-        public void SetupDocumentContent(string documentId, string content)
+        public async Task SetupDocumentContentAsync(string documentId, string content, CancellationToken cancellationToken)
         {
             CrackedDocument document = new()
             {
                 Id = documentId,
-                Content = content
+                Content = content,
+                IsProcessed = false
             };
 
-            CrackedCollectionMock.SetupFindSequence(document);
+            await CrackedCollection.InsertOneAsync(document, cancellationToken: cancellationToken);
         }
 
         public void Dispose()
         {
             _activitySource.Dispose();
-        }
-
-        private static UpdateResult CreateAcknowledgedResult()
-        {
-            Mock<UpdateResult> resultMock = new();
-            resultMock.SetupGet(r => r.IsAcknowledged).Returns(true);
-            resultMock.SetupGet(r => r.MatchedCount).Returns(1);
-            resultMock.SetupGet(r => r.ModifiedCount).Returns(1);
-            resultMock.SetupGet(r => r.UpsertedId).Returns(BsonNull.Value);
-            return resultMock.Object;
+            MongoRunner.Dispose();
         }
     }
 }
