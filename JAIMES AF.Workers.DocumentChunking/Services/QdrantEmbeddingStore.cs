@@ -18,6 +18,7 @@ public class QdrantEmbeddingStore(
     /// <summary>
     /// Generates a Qdrant point ID from a string point ID using SHA256 hash to prevent collisions.
     /// This replaces the previous GetHashCode() approach which could cause data loss due to hash collisions.
+    /// If the first 8 bytes hash to 0, uses bytes 8-15 to avoid collision with natural hash values.
     /// </summary>
     private static ulong GenerateQdrantPointId(string pointId)
     {
@@ -25,8 +26,24 @@ public class QdrantEmbeddingStore(
         ulong qdrantPointId = BitConverter.ToUInt64(hashBytes, 0);
         if (qdrantPointId == 0)
         {
-            // Qdrant doesn't allow zero IDs
-            qdrantPointId = 1;
+            // Qdrant doesn't allow zero IDs. Use bytes 8-15 from the hash to avoid collision
+            // with natural hash values. If that's also 0, try bytes 16-23, then 24-31.
+            // This ensures we don't collide with natural hash values like 1.
+            qdrantPointId = BitConverter.ToUInt64(hashBytes, 8);
+            if (qdrantPointId == 0)
+            {
+                qdrantPointId = BitConverter.ToUInt64(hashBytes, 16);
+                if (qdrantPointId == 0)
+                {
+                    qdrantPointId = BitConverter.ToUInt64(hashBytes, 24);
+                    // If all 32 bytes of SHA256 hash to 0 (statistically impossible), use ulong.MaxValue
+                    // This value is extremely unlikely to occur naturally from SHA256
+                    if (qdrantPointId == 0)
+                    {
+                        qdrantPointId = ulong.MaxValue;
+                    }
+                }
+            }
         }
         return qdrantPointId;
     }
