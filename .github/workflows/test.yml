@@ -26,7 +26,7 @@ jobs:
         run: dotnet restore
 
       - name: Check formatting
-        run: dotnet format --no-restore --verify-no-changes
+        run: dotnet format style --no-restore --verify-no-changes && dotnet format analyzers --no-restore --verify-no-changes
       
       - name: Build
         run: dotnet build --no-restore --configuration Release
