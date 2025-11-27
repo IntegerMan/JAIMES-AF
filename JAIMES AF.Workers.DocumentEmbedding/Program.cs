@@ -83,11 +83,9 @@ if (string.IsNullOrWhiteSpace(qdrantApiKey))
         ?? Environment.GetEnvironmentVariable("QDRANT_EMBEDDINGS_API_KEY")
         ?? Environment.GetEnvironmentVariable("qdrant-api-key");
     
-    // If still not found, use default "qdrant" (matches AppHost default)
-    if (string.IsNullOrWhiteSpace(qdrantApiKey))
-    {
-        qdrantApiKey = "qdrant";
-    }
+    // Note: We do NOT default to "qdrant" here. If no API key is explicitly configured,
+    // we'll construct the QdrantClient without an API key. This allows the code to work
+    // with Qdrant instances that don't require authentication.
 }
 
 if (string.IsNullOrWhiteSpace(qdrantHost) || string.IsNullOrWhiteSpace(qdrantPortStr))
