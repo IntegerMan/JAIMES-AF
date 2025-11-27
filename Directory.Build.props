@@ -17,6 +17,10 @@
     <PackageReference Include="StyleCop.Analyzers" PrivateAssets="all" />
     <PackageReference Include="Meziantou.Analyzer" PrivateAssets="all" />
   </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="stylecop.json" />
+  </ItemGroup>
 </Project>
 
 

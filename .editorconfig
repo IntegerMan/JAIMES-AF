@@ -1,0 +1,26 @@
+root = true
+
+[*.cs]
+# Keep StyleCop analyzers helpful in the IDE but avoid blocking builds
+# on documentation, layout, and naming minutiae until the existing
+# codebase can be brought into compliance.
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.DocumentationRules.severity = none
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.LayoutRules.severity = suggestion
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.NamingRules.severity = suggestion
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.OrderingRules.severity = suggestion
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.ReadabilityRules.severity = suggestion
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.MaintainabilityRules.severity = suggestion
+dotnet_analyzer_diagnostic.category-StyleCop.CSharp.SpacingRules.severity = suggestion
+
+# Downgrade the most noisy Meziantou diagnostics until we intentionally
+# address them across the solution.
+dotnet_diagnostic.MA0002.severity = suggestion
+dotnet_diagnostic.MA0004.severity = suggestion
+dotnet_diagnostic.MA0006.severity = suggestion
+dotnet_diagnostic.MA0011.severity = suggestion
+dotnet_diagnostic.MA0015.severity = suggestion
+dotnet_diagnostic.MA0016.severity = suggestion
+dotnet_diagnostic.MA0021.severity = suggestion
+dotnet_diagnostic.MA0046.severity = suggestion
+dotnet_diagnostic.MA0048.severity = suggestion
+dotnet_diagnostic.MA0051.severity = suggestion
