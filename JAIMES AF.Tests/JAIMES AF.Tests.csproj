@@ -53,4 +53,8 @@
     <Using Include="MattEland.Jaimes.Services" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="TestUtilities/mongo-libs/*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

@@ -1,11 +1,20 @@
 using Mongo2Go;
 using MongoDB.Driver;
+using System;
+using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace MattEland.Jaimes.Tests.TestUtilities;
 
 public sealed class MongoTestRunner : IDisposable
 {
     private readonly MongoDbRunner runner;
+
+    static MongoTestRunner()
+    {
+        EnsureLegacyOpenSslLibraries();
+    }
 
     public MongoTestRunner()
     {
@@ -32,5 +41,35 @@ public sealed class MongoTestRunner : IDisposable
     public void Dispose()
     {
         runner.Dispose();
+    }
+
+    private static void EnsureLegacyOpenSslLibraries()
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            return;
+        }
+
+        string libDirectory = Path.Combine(AppContext.BaseDirectory, "mongo-libs");
+        if (!Directory.Exists(libDirectory))
+        {
+            return;
+        }
+
+        string? ldLibraryPath = Environment.GetEnvironmentVariable("LD_LIBRARY_PATH");
+        if (!string.IsNullOrEmpty(ldLibraryPath))
+        {
+            string[] segments = ldLibraryPath.Split(':', StringSplitOptions.RemoveEmptyEntries);
+            if (segments.Contains(libDirectory, StringComparer.Ordinal))
+            {
+                return;
+            }
+        }
+
+        string newValue = string.IsNullOrEmpty(ldLibraryPath)
+            ? libDirectory
+            : string.Concat(libDirectory, ":", ldLibraryPath);
+
+        Environment.SetEnvironmentVariable("LD_LIBRARY_PATH", newValue);
     }
 }
