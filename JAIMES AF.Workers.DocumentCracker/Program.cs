@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Configuration;
+using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using RabbitMQ.Client;
 using Microsoft.Extensions.DependencyInjection;
@@ -47,6 +48,7 @@ builder.Services.AddSingleton(options);
 builder.AddMongoDBClient("documents");
 
 // Register services
+builder.Services.AddSingleton<IPdfTextExtractor, PdfPigTextExtractor>();
 builder.Services.AddSingleton<IDocumentCrackingService, DocumentCrackingService>();
 
 // Configure message publishing and consuming using RabbitMQ.Client (LavinMQ compatible)

@@ -20,6 +20,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Mongo2Go" />
     <PackageReference Include="Shouldly" />
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.v3.runner.msbuild" />
@@ -37,6 +38,9 @@
     <ProjectReference Include="..\JAIMES AF.Web\JAIMES AF.Web.csproj" />
     <ProjectReference Include="..\JAIMES AF.Tools\JAIMES AF.Tools.csproj" />
     <ProjectReference Include="..\JAIMES AF.DocumentProcessing\JAIMES AF.DocumentProcessing.csproj" />
+    <ProjectReference Include="..\JAIMES AF.Workers.DocumentChangeDetector\JAIMES AF.Workers.DocumentChangeDetector.csproj" />
+    <ProjectReference Include="..\JAIMES AF.Workers.DocumentCracker\JAIMES AF.Workers.DocumentCracker.csproj" />
+    <ProjectReference Include="..\JAIMES AF.Workers.DocumentChunking\JAIMES AF.Workers.DocumentChunking.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -47,6 +51,13 @@
     <Using Include="Xunit" />
     <Using Include="MattEland.Jaimes.Repositories" />
     <Using Include="MattEland.Jaimes.Services" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="TestUtilities/mongo-libs/*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>mongo-libs/%(Filename)%(Extension)</TargetPath>
+    </None>
   </ItemGroup>
 
 </Project>
