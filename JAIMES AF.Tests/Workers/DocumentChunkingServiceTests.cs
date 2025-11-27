@@ -6,6 +6,7 @@ using MattEland.Jaimes.Workers.DocumentChunking.Models;
 using MattEland.Jaimes.Workers.DocumentChunking.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using Shouldly;
 
@@ -18,9 +19,11 @@ public class DocumentChunkingServiceTests
     {
         using DocumentChunkingServiceTestContext context = new();
 
+        string documentId = ObjectId.GenerateNewId().ToString();
+
         DocumentReadyForChunkingMessage message = new()
         {
-            DocumentId = "doc-001",
+            DocumentId = documentId,
             FileName = "rules.pdf",
             FilePath = "/content/rules.pdf",
             RelativeDirectory = "ruleset-z/source",
