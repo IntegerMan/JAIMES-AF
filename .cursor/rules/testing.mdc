@@ -23,12 +23,12 @@ When making code changes that affect services, repositories, or endpoints:
 
 3. **Run the relevant tests** to ensure they pass:
    ```bash
-   dotnet test "JAIMES AF.Tests/JAIMES AF.Tests.csproj" --filter "FullyQualifiedName~TestClassName"
+   dotnet run --project "JAIMES AF.Tests/JAIMES AF.Tests.csproj" -- --filter "FullyQualifiedName~TestClassName"
    ```
 
 4. **Run all tests** before completing a task:
    ```bash
-   dotnet test "JAIMES AF.Tests/JAIMES AF.Tests.csproj"
+   dotnet run --project "JAIMES AF.Tests/JAIMES AF.Tests.csproj"
    ```
 
 ## Test Structure

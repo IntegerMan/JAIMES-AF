@@ -134,8 +134,8 @@ public class ExampleServiceTests
 
 ## Running Tests
 - Build: `dotnet build "JAIMES AF.Tests/JAIMES AF.Tests.csproj"`
-- Run specific test: `dotnet test --filter "FullyQualifiedName~TestClassName"`
-- Run all tests: `dotnet test "JAIMES AF.Tests/JAIMES AF.Tests.csproj"`
+- Run specific test: `dotnet run --project "JAIMES AF.Tests/JAIMES AF.Tests.csproj" -- --filter "FullyQualifiedName~TestClassName"`
+- Run all tests: `dotnet run --project "JAIMES AF.Tests/JAIMES AF.Tests.csproj"`
 
 ## Best Practices
 - Always run tests after making code changes
