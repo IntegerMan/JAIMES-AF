@@ -37,11 +37,13 @@ public class DocumentChangeDetectorServiceTests
         context.ChangeTrackerMock
             .Setup(tracker => tracker.ComputeFileHashAsync(filePath, It.IsAny<CancellationToken>()))
             .ReturnsAsync("hash-new");
-        context.MetadataCollectionMock.SetupFindSequence<DocumentMetadata>(null);
+        context.MetadataCollectionMock.SetupFindSequence<DocumentMetadata>((DocumentMetadata?)null);
 
         DocumentChangeDetectorService service = context.CreateService();
 
-        DocumentScanSummary summary = await service.ScanAndEnqueueAsync(root.Path);
+        DocumentScanSummary summary = await service.ScanAndEnqueueAsync(
+            root.Path,
+            TestContext.Current.CancellationToken);
 
         summary.FilesScanned.ShouldBe(1);
         summary.FilesEnqueued.ShouldBe(1);
@@ -98,7 +100,9 @@ public class DocumentChangeDetectorServiceTests
 
         DocumentChangeDetectorService service = context.CreateService();
 
-        DocumentScanSummary summary = await service.ScanAndEnqueueAsync(root.Path);
+        DocumentScanSummary summary = await service.ScanAndEnqueueAsync(
+            root.Path,
+            TestContext.Current.CancellationToken);
 
         summary.FilesScanned.ShouldBe(1);
         summary.FilesEnqueued.ShouldBe(0);
@@ -143,11 +147,13 @@ public class DocumentChangeDetectorServiceTests
         };
         context.MetadataCollectionMock.SetupFindSequence(metadata);
 
-        context.CrackedCollectionMock.SetupFindSequence<CrackedDocument>(null);
+        context.CrackedCollectionMock.SetupFindSequence<CrackedDocument>((CrackedDocument?)null);
 
         DocumentChangeDetectorService service = context.CreateService();
 
-        DocumentScanSummary summary = await service.ScanAndEnqueueAsync(root.Path);
+        DocumentScanSummary summary = await service.ScanAndEnqueueAsync(
+            root.Path,
+            TestContext.Current.CancellationToken);
 
         summary.FilesScanned.ShouldBe(1);
         summary.FilesEnqueued.ShouldBe(1);
@@ -221,7 +227,7 @@ public class DocumentChangeDetectorServiceTests
                     It.IsAny<UpdateDefinition<DocumentMetadata>>(),
                     It.IsAny<UpdateOptions>(),
                     It.IsAny<CancellationToken>()))
-                .ReturnsAsync(UpdateResult.Acknowledged(1, 1, BsonNull.Value));
+                .ReturnsAsync(CreateAcknowledgedResult());
         }
 
         public DocumentChangeDetectorService CreateService()
@@ -239,6 +245,16 @@ public class DocumentChangeDetectorServiceTests
         public void Dispose()
         {
             _activitySource.Dispose();
+        }
+
+        private static UpdateResult CreateAcknowledgedResult()
+        {
+            Mock<UpdateResult> resultMock = new();
+            resultMock.SetupGet(r => r.IsAcknowledged).Returns(true);
+            resultMock.SetupGet(r => r.MatchedCount).Returns(1);
+            resultMock.SetupGet(r => r.ModifiedCount).Returns(1);
+            resultMock.SetupGet(r => r.UpsertedId).Returns(BsonNull.Value);
+            return resultMock.Object;
         }
     }
 

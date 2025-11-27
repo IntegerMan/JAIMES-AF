@@ -23,7 +23,12 @@ public class DocumentCrackingServiceTests
 
         try
         {
-            await context.Service.ProcessDocumentAsync(tempFile, null, "ruleset-x", "Sourcebook");
+            await context.Service.ProcessDocumentAsync(
+                tempFile,
+                null,
+                "ruleset-x",
+                "Sourcebook",
+                TestContext.Current.CancellationToken);
 
             context.MongoClientMock.Verify(
                 client => client.GetDatabase(It.IsAny<string>(), It.IsAny<MongoDatabaseSettings?>()),
@@ -56,7 +61,7 @@ public class DocumentCrackingServiceTests
             .Returns(("page content", 2));
 
         ObjectId insertedId = ObjectId.GenerateNewId();
-        context.CrackedCollectionMock.SetupFindSequence<CrackedDocument>(null, new CrackedDocument
+        context.CrackedCollectionMock.SetupFindSequence<CrackedDocument>((CrackedDocument?)null, new CrackedDocument
         {
             Id = insertedId.ToString(),
             FilePath = filePath,
@@ -69,7 +74,7 @@ public class DocumentCrackingServiceTests
                 It.IsAny<UpdateDefinition<CrackedDocument>>(),
                 It.IsAny<UpdateOptions>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(UpdateResult.Acknowledged(1, 1, new BsonObjectId(insertedId)));
+            .ReturnsAsync(CreateAcknowledgedResult(new BsonObjectId(insertedId)));
 
         DocumentReadyForChunkingMessage? publishedMessage = null;
         context.MessagePublisherMock
@@ -79,7 +84,12 @@ public class DocumentCrackingServiceTests
             .Callback<DocumentReadyForChunkingMessage, CancellationToken>((message, _) => publishedMessage = message)
             .Returns(Task.CompletedTask);
 
-        await context.Service.ProcessDocumentAsync(filePath, "ruleset-y/core", "ruleset-y", "Sourcebook");
+        await context.Service.ProcessDocumentAsync(
+            filePath,
+            "ruleset-y/core",
+            "ruleset-y",
+            "Sourcebook",
+            TestContext.Current.CancellationToken);
 
         context.PdfTextExtractorMock.Verify(
             extractor => extractor.ExtractText(filePath),
@@ -145,6 +155,16 @@ public class DocumentCrackingServiceTests
         public void Dispose()
         {
             _activitySource.Dispose();
+        }
+
+        private static UpdateResult CreateAcknowledgedResult(BsonValue? upsertedId = null)
+        {
+            Mock<UpdateResult> resultMock = new();
+            resultMock.SetupGet(r => r.IsAcknowledged).Returns(true);
+            resultMock.SetupGet(r => r.MatchedCount).Returns(1);
+            resultMock.SetupGet(r => r.ModifiedCount).Returns(1);
+            resultMock.SetupGet(r => r.UpsertedId).Returns(upsertedId);
+            return resultMock.Object;
         }
     }
 }

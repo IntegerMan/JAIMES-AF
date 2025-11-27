@@ -76,7 +76,9 @@ public class DocumentChunkingServiceTests
             .Callback<string, float[], Dictionary<string, string>, CancellationToken>((_, _, metadata, _) => storedMetadata = metadata)
             .Returns(Task.CompletedTask);
 
-        await context.Service.ProcessDocumentAsync(message);
+        await context.Service.ProcessDocumentAsync(
+            message,
+            TestContext.Current.CancellationToken);
 
         context.QdrantStoreMock.Verify(
             store => store.StoreEmbeddingAsync(
@@ -171,7 +173,7 @@ public class DocumentChunkingServiceTests
                     It.IsAny<UpdateDefinition<DocumentChunk>>(),
                     It.IsAny<UpdateOptions>(),
                     It.IsAny<CancellationToken>()))
-                .ReturnsAsync(UpdateResult.Acknowledged(1, 1, BsonNull.Value));
+                .ReturnsAsync(CreateAcknowledgedResult());
 
             CrackedCollectionMock
                 .Setup(collection => collection.UpdateOneAsync(
@@ -179,7 +181,7 @@ public class DocumentChunkingServiceTests
                     It.IsAny<UpdateDefinition<CrackedDocument>>(),
                     It.IsAny<UpdateOptions>(),
                     It.IsAny<CancellationToken>()))
-                .ReturnsAsync(UpdateResult.Acknowledged(1, 1, BsonNull.Value));
+                .ReturnsAsync(CreateAcknowledgedResult());
 
             QdrantStoreMock
                 .Setup(store => store.StoreEmbeddingAsync(
@@ -218,6 +220,16 @@ public class DocumentChunkingServiceTests
         public void Dispose()
         {
             _activitySource.Dispose();
+        }
+
+        private static UpdateResult CreateAcknowledgedResult()
+        {
+            Mock<UpdateResult> resultMock = new();
+            resultMock.SetupGet(r => r.IsAcknowledged).Returns(true);
+            resultMock.SetupGet(r => r.MatchedCount).Returns(1);
+            resultMock.SetupGet(r => r.ModifiedCount).Returns(1);
+            resultMock.SetupGet(r => r.UpsertedId).Returns(BsonNull.Value);
+            return resultMock.Object;
         }
     }
 }
