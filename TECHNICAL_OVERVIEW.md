@@ -29,7 +29,7 @@ Entry Points
 Build and test
 
 - Build solution: `dotnet build` (root directory)
-- Run tests: `dotnet test` (root directory)
+- Run tests: `dotnet run --project "JAIMES AF.Tests/JAIMES AF.Tests.csproj"` (uses Microsoft Testing Platform)
 
 Where to make common changes
 

@@ -161,17 +161,20 @@ dotnet run --project "JAIMES AF.AppHost"
 ## Running Tests
 
 ```bash
-# Run all tests (excluding Aspire integration tests which require DCP)
-dotnet test --filter "FullyQualifiedName!~WebTests"
+# Run all tests (using Microsoft Testing Platform)
+dotnet run --project "JAIMES AF.Tests/JAIMES AF.Tests.csproj"
+
+# Run with specific filter (excluding Aspire integration tests which require DCP)
+dotnet run --project "JAIMES AF.Tests/JAIMES AF.Tests.csproj" -- --filter "FullyQualifiedName!~WebTests"
 
 # Run only endpoint tests
-dotnet test --filter "FullyQualifiedName~Endpoints"
+dotnet run --project "JAIMES AF.Tests/JAIMES AF.Tests.csproj" -- --filter "FullyQualifiedName~Endpoints"
 
 # Run only service tests
-dotnet test --filter "FullyQualifiedName~Services"
+dotnet run --project "JAIMES AF.Tests/JAIMES AF.Tests.csproj" -- --filter "FullyQualifiedName~Services"
 
 # Run only repository tests
-dotnet test --filter "FullyQualifiedName~Repositories"
+dotnet run --project "JAIMES AF.Tests/JAIMES AF.Tests.csproj" -- --filter "FullyQualifiedName~Repositories"
 ```
 
 ## Development
