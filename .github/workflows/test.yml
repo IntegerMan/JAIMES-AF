@@ -33,8 +33,10 @@ jobs:
           dotnet-version: '10.0.x'
           dotnet-quality: 'preview'
 
-      - name: Install SonarCloud scanner
-        run: dotnet tool update --global dotnet-sonarscanner
+      - name: Install tools
+        run: |
+          dotnet tool update --global dotnet-sonarscanner
+          dotnet tool update --global coverlet.console
 
       - name: Restore dependencies
         run: dotnet restore
@@ -59,13 +61,11 @@ jobs:
       - name: Run tests with coverage
         run: |
           mkdir -p "$(dirname "$COVERAGE_FILE")"
-          dotnet test "JAIMES AF.Tests/JAIMES AF.Tests.csproj" \
-            --no-build \
-            --configuration Release \
-            /p:CollectCoverage=true \
-            /p:CoverletOutput=$COVERAGE_FILE \
-            /p:CoverletOutputFormat="opencover" \
-            /p:UseSourceLink=true
+          coverlet "JAIMES AF.Tests/bin/Release/net10.0/JAIMES AF.Tests.dll" \
+            --target "dotnet" \
+            --targetargs "run --project \"JAIMES AF.Tests/JAIMES AF.Tests.csproj\" --configuration Release --no-build" \
+            --output "$COVERAGE_FILE" \
+            --format "opencover"
 
       - name: Show coverage artifacts
         if: always()
