@@ -24,7 +24,7 @@
     <PackageReference Include="Mongo2Go" />
     <PackageReference Include="Shouldly" />
     <PackageReference Include="xunit.v3" />
-    <PackageReference Include="xunit.v3.runner.visualstudio">
+    <PackageReference Include="xunit.runner.visualstudio">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
