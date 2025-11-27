@@ -57,10 +57,6 @@ var lavinmq = builder.AddLavinMQ("messaging")
         u.Urls.Add(new() { Url = "http://localhost:15672/consumers", DisplayText = "👥 Consumers" });
     });
 
-// Add parameter for DocumentChangeDetector content directory
-var documentChangeDetectorContentDirectory = builder.AddParameter("document-change-detector-content-directory", "C:\\Dev\\Sourcebooks", secret: false)
-    .WithDescription("Directory path to monitor for documents (e.g., C:\\Dev\\Sourcebooks)");
-
 IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIMES_AF_ApiService>("jaimes-api")
     .WithIconName("DocumentGlobe", IconVariant.Regular)
     .WithExternalHttpEndpoints()
@@ -145,8 +141,7 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChangeDetector>("document-
     .WithReference(lavinmq)
     .WithReference(mongoDb)
     .WaitFor(lavinmq)
-    .WaitFor(mongo)
-    .WithEnvironment("DocumentChangeDetector__ContentDirectory", documentChangeDetectorContentDirectory);
+    .WaitFor(mongo);
 
 builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChunking>("document-chunking-worker")
     .WithIconName("DocumentSplit")
@@ -169,6 +164,35 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChunking>("document-chunki
         context.EnvironmentVariables["DocumentChunking__QdrantHost"] = qdrantGrpcEndpoint.Host;
         context.EnvironmentVariables["DocumentChunking__QdrantPort"] = qdrantGrpcEndpoint.Port;
         context.EnvironmentVariables["ConnectionStrings__qdrant-embeddings"] = qdrant.Resource.ConnectionStringExpression;
+        
+        // Set Qdrant API key (use the parameter value)
+        context.EnvironmentVariables["qdrant-api-key"] = qdrantApiKey.Resource.ValueExpression;
+    });
+
+builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbedding>("document-embedding-worker")
+    .WithIconName("DocumentEmbed")
+    .WithReference(lavinmq)
+    .WithReference(mongoDb)
+    .WithReference(qdrant)
+    .WithReference(embedModel)
+    .WaitFor(lavinmq)
+    .WaitFor(mongo)
+    .WaitFor(qdrant)
+    .WaitFor(ollama)
+    .WithEnvironment(context =>
+    {
+        // Set Ollama endpoint for embedding generation
+        EndpointReference ollamaEndpoint = ollama.GetEndpoint("http");
+        context.EnvironmentVariables["DocumentEmbedding__OllamaEndpoint"] = $"http://{ollamaEndpoint.Host}:{ollamaEndpoint.Port}";
+        
+        // Set Qdrant endpoint
+        EndpointReference qdrantGrpcEndpoint = qdrant.GetEndpoint("grpc");
+        context.EnvironmentVariables["DocumentEmbedding__QdrantHost"] = qdrantGrpcEndpoint.Host;
+        context.EnvironmentVariables["DocumentEmbedding__QdrantPort"] = qdrantGrpcEndpoint.Port;
+        context.EnvironmentVariables["ConnectionStrings__qdrant-embeddings"] = qdrant.Resource.ConnectionStringExpression;
+        
+        // Set Qdrant API key (use the parameter value)
+        context.EnvironmentVariables["qdrant-api-key"] = qdrantApiKey.Resource.ValueExpression;
     });
 
 var app = builder.Build();

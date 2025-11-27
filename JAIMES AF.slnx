@@ -25,4 +25,5 @@
     <Project Path="JAIMES AF.Tests/JAIMES AF.Tests.csproj" />
   </Folder>
   <Project Path="JAIMES AF.DocumentCracker/JAIMES AF.DocumentCracker.csproj" />
+  <Project Path="JAIMES AF.Workers.DocumentEmbedding/JAIMES AF.Workers.DocumentEmbedding.csproj" />
 </Solution>

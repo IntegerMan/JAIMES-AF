@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
 using Qdrant.Client;
@@ -13,6 +15,38 @@ public class QdrantEmbeddingStore(
     ILogger<QdrantEmbeddingStore> logger,
     ActivitySource activitySource) : IQdrantEmbeddingStore
 {
+    /// <summary>
+    /// Generates a Qdrant point ID from a string point ID using SHA256 hash to prevent collisions.
+    /// This replaces the previous GetHashCode() approach which could cause data loss due to hash collisions.
+    /// If the first 8 bytes hash to 0, uses bytes 8-15 to avoid collision with natural hash values.
+    /// </summary>
+    private static ulong GenerateQdrantPointId(string pointId)
+    {
+        byte[] hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(pointId));
+        ulong qdrantPointId = BitConverter.ToUInt64(hashBytes, 0);
+        if (qdrantPointId == 0)
+        {
+            // Qdrant doesn't allow zero IDs. Use bytes 8-15 from the hash to avoid collision
+            // with natural hash values. If that's also 0, try bytes 16-23, then 24-31.
+            // This ensures we don't collide with natural hash values like 1.
+            qdrantPointId = BitConverter.ToUInt64(hashBytes, 8);
+            if (qdrantPointId == 0)
+            {
+                qdrantPointId = BitConverter.ToUInt64(hashBytes, 16);
+                if (qdrantPointId == 0)
+                {
+                    qdrantPointId = BitConverter.ToUInt64(hashBytes, 24);
+                    // If all 32 bytes of SHA256 hash to 0 (statistically impossible), use ulong.MaxValue
+                    // This value is extremely unlikely to occur naturally from SHA256
+                    if (qdrantPointId == 0)
+                    {
+                        qdrantPointId = ulong.MaxValue;
+                    }
+                }
+            }
+        }
+        return qdrantPointId;
+    }
     public async Task EnsureCollectionExistsAsync(CancellationToken cancellationToken = default)
     {
         using Activity? activity = activitySource.StartActivity("Qdrant.EnsureCollection");
@@ -111,14 +145,9 @@ public class QdrantEmbeddingStore(
                 payload[key] = new Value { StringValue = value };
             }
 
-            // Generate a point ID from the provided pointId string (use hash code or convert to ulong)
+            // Generate a point ID from the provided pointId string using SHA256 hash to prevent collisions
             // For chunks, this will be the chunk ID; for backward compatibility, it can be document ID
-            ulong qdrantPointId = (ulong)Math.Abs(pointId.GetHashCode());
-            if (qdrantPointId == 0)
-            {
-                // Avoid zero ID (Qdrant doesn't allow it)
-                qdrantPointId = 1;
-            }
+            ulong qdrantPointId = GenerateQdrantPointId(pointId);
 
             PointStruct point = new()
             {
@@ -194,9 +223,9 @@ public class QdrantEmbeddingStore(
                         string pointId = chunkId;
 
                         // Extract ulong from PointId - PointId in RetrievedPoint is a PointId type
-                        // We need to convert it - for now, use hash code since we can't directly access NumId
-                        ulong qdrantPointId = (ulong)Math.Abs(point.Id.GetHashCode());
-                        if (qdrantPointId == 0) qdrantPointId = 1;
+                        // Since we can't directly access NumId, we reconstruct it from the chunkId using SHA256 hash
+                        // This matches the point ID generation logic used when storing
+                        ulong qdrantPointId = GenerateQdrantPointId(chunkId);
 
                         embeddings.Add(new EmbeddingInfo
                         {
@@ -240,12 +269,8 @@ public class QdrantEmbeddingStore(
 
         try
         {
-            // Convert pointId to Qdrant point ID (same logic as in StoreEmbeddingAsync)
-            ulong qdrantPointId = (ulong)Math.Abs(pointId.GetHashCode());
-            if (qdrantPointId == 0)
-            {
-                qdrantPointId = 1;
-            }
+            // Convert pointId to Qdrant point ID using SHA256 hash (same logic as in StoreEmbeddingAsync)
+            ulong qdrantPointId = GenerateQdrantPointId(pointId);
 
             // Delete the point by recreating the collection without this point
             // For now, use a workaround: delete and recreate collection, or use HTTP API
@@ -302,8 +327,9 @@ public class QdrantEmbeddingStore(
                 return;
             }
 
-            // Scroll through all points and collect their IDs as ulong
-            List<ulong> pointIds = new();
+            // Scroll through all points and count them
+            // We count all points, not just those with chunkId, since we delete all points
+            int totalPointCount = 0;
             PointId? nextPageOffset = null;
             const int batchSize = 100;
 
@@ -316,13 +342,8 @@ public class QdrantEmbeddingStore(
                     offset: nextPageOffset,
                     cancellationToken: cancellationToken);
 
-                foreach (RetrievedPoint point in scrollResult.Result)
-                {
-                    // Convert PointId to ulong using hash code
-                    ulong id = (ulong)Math.Abs(point.Id.GetHashCode());
-                    if (id == 0) id = 1;
-                    pointIds.Add(id);
-                }
+                // Count all points in this batch, regardless of whether they have a chunkId
+                totalPointCount += scrollResult.Result.Count;
 
                 nextPageOffset = scrollResult.NextPageOffset;
             } while (nextPageOffset != null);
@@ -339,7 +360,7 @@ public class QdrantEmbeddingStore(
                 filter: deleteAllFilter,
                 cancellationToken: cancellationToken);
             
-            int deletedCount = pointIds.Count;
+            int deletedCount = totalPointCount;
 
             logger.LogInformation("Deleted {Count} embeddings from collection {CollectionName}", deletedCount, options.CollectionName);
             activity?.SetStatus(ActivityStatusCode.Ok);
