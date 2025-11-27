@@ -1,12 +1,8 @@
 using System.Diagnostics;
-using System.Text;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
-using UglyToad.PdfPig;
-using UglyToad.PdfPig.Content;
-using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 
 namespace MattEland.Jaimes.Workers.DocumentCracker.Services;
 
@@ -14,7 +10,8 @@ public class DocumentCrackingService(
     ILogger<DocumentCrackingService> logger,
     IMongoClient mongoClient,
     IMessagePublisher messagePublisher,
-    ActivitySource activitySource) : IDocumentCrackingService
+    ActivitySource activitySource,
+    IPdfTextExtractor pdfTextExtractor) : IDocumentCrackingService
 {
     public async Task ProcessDocumentAsync(string filePath, string? relativeDirectory, string rulesetId, string documentKind, CancellationToken cancellationToken = default)
     {
@@ -43,7 +40,7 @@ public class DocumentCrackingService(
             return;
         }
         
-        (string contents, int pageCount) = ExtractPdfText(filePath);
+        (string contents, int pageCount) = pdfTextExtractor.ExtractText(filePath);
         
         activity?.SetTag("cracker.page_count", pageCount);
 
@@ -131,7 +128,7 @@ public class DocumentCrackingService(
             };
             
             // Publish using message publisher
-            await messagePublisher.PublishAsync(message, cancellationToken);
+        await messagePublisher.PublishAsync(message, cancellationToken);
             
             logger.LogInformation("Successfully published document ready for chunking message. DocumentId: {DocumentId}, FilePath: {FilePath}", 
                 documentId, filePath);
@@ -142,25 +139,6 @@ public class DocumentCrackingService(
             logger.LogError(ex, "Failed to publish document ready for chunking message: {FilePath}", filePath);
         }
     }
-
-    private static (string content, int pageCount) ExtractPdfText(string filePath)
-    {
-        StringBuilder builder = new();
-        using PdfDocument document = PdfDocument.Open(filePath);
-        int pageCount = 0;
-        
-        foreach (Page page in document.GetPages())
-        {
-            pageCount++;
-            builder.AppendLine($"--- Page {page.Number} ---");
-            string pageText = ContentOrderTextExtractor.GetText(page);
-            builder.AppendLine(pageText);
-            builder.AppendLine();
-        }
-
-        return (builder.ToString(), pageCount);
-    }
-
 }
 
 
