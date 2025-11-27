@@ -1,3 +1,10 @@
 {
-  "agentCanUpdateSnapshot": true
+  "name": "jaimes-af-dotnet10",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "snapshot": "POPULATED_FROM_SETTINGS",
+  "agentCanUpdateSnapshot": true,
+  "install": "dotnet restore 'JAIMES AF.AppHost/JAIMES AF.AppHost.csproj' && dotnet restore 'JAIMES AF.Tests/JAIMES AF.Tests.csproj'"
 }
