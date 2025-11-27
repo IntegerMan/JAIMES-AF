@@ -157,14 +157,15 @@ public class DocumentCrackingServiceTests
             _activitySource.Dispose();
         }
 
-        private static UpdateResult CreateAcknowledgedResult(BsonValue? upsertedId = null)
-        {
-            Mock<UpdateResult> resultMock = new();
-            resultMock.SetupGet(r => r.IsAcknowledged).Returns(true);
-            resultMock.SetupGet(r => r.MatchedCount).Returns(1);
-            resultMock.SetupGet(r => r.ModifiedCount).Returns(1);
-            resultMock.SetupGet(r => r.UpsertedId).Returns(upsertedId);
-            return resultMock.Object;
-        }
+    }
+
+    private static UpdateResult CreateAcknowledgedResult(BsonValue? upsertedId = null)
+    {
+        Mock<UpdateResult> resultMock = new();
+        resultMock.SetupGet(r => r.IsAcknowledged).Returns(true);
+        resultMock.SetupGet(r => r.MatchedCount).Returns(1);
+        resultMock.SetupGet(r => r.ModifiedCount).Returns(1);
+        resultMock.SetupGet(r => r.UpsertedId).Returns(upsertedId ?? BsonNull.Value);
+        return resultMock.Object;
     }
 }

@@ -17,7 +17,7 @@ public static class MongoCollectionMockExtensions
             Mock<IFindFluent<T, T>> findFluentMock = new();
             T? next = sequence.Count > 0 ? sequence.Dequeue() : null;
             findFluentMock.Setup(f => f.FirstOrDefaultAsync(It.IsAny<CancellationToken>()))
-                .Returns((CancellationToken _) => Task.FromResult(next));
+                .Returns((CancellationToken _) => Task.FromResult(next!));
             return findFluentMock.Object;
         }
 
