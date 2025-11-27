@@ -96,15 +96,10 @@ public class Program
             DefaultApiKey = "qdrant", // ApiService defaults to "qdrant" API key
             AdditionalApiKeyKeys = new[]
             {
-                "EmbeddingWorker:QdrantApiKey",
-                "DocumentChunking__QdrantHost",
-                "QDRANT_EMBEDDINGS_GRPCHOST",
-                "QdrantEmbeddings__GrpcHost",
-                "DocumentChunking__QdrantPort",
-                "QDRANT_EMBEDDINGS_GRPCPORT",
-                "QdrantEmbeddings__GrpcPort",
-                "ConnectionStrings:qdrant-embeddings",
-                "ConnectionStrings__qdrant-embeddings"
+                "DocumentChunking:QdrantApiKey",
+                "DocumentChunking__QdrantApiKey",
+                "DocumentEmbedding:QdrantApiKey",
+                "DocumentEmbedding__QdrantApiKey"
             }
         });
 
