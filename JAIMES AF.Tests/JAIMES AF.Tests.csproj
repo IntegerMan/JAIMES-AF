@@ -54,7 +54,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="TestUtilities/mongo-libs/*" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="TestUtilities/mongo-libs/*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>mongo-libs/%(Filename)%(Extension)</TargetPath>
+    </None>
   </ItemGroup>
 
 </Project>
