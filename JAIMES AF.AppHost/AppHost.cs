@@ -57,10 +57,6 @@ var lavinmq = builder.AddLavinMQ("messaging")
         u.Urls.Add(new() { Url = "http://localhost:15672/consumers", DisplayText = "👥 Consumers" });
     });
 
-// Add parameter for DocumentChangeDetector content directory
-var documentChangeDetectorContentDirectory = builder.AddParameter("document-change-detector-content-directory", "C:\\Dev\\Sourcebooks", secret: false)
-    .WithDescription("Directory path to monitor for documents (e.g., C:\\Dev\\Sourcebooks)");
-
 IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIMES_AF_ApiService>("jaimes-api")
     .WithIconName("DocumentGlobe", IconVariant.Regular)
     .WithExternalHttpEndpoints()
@@ -145,8 +141,7 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChangeDetector>("document-
     .WithReference(lavinmq)
     .WithReference(mongoDb)
     .WaitFor(lavinmq)
-    .WaitFor(mongo)
-    .WithEnvironment("DocumentChangeDetector__ContentDirectory", documentChangeDetectorContentDirectory);
+    .WaitFor(mongo);
 
 builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChunking>("document-chunking-worker")
     .WithIconName("DocumentSplit")
