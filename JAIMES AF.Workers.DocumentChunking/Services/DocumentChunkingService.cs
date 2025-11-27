@@ -97,7 +97,9 @@ public class DocumentChunkingService(
                             FileSize = message.FileSize,
                             PageCount = message.PageCount,
                             CrackedAt = message.CrackedAt,
-                            TotalChunks = chunks.Count
+                            TotalChunks = chunks.Count,
+                            DocumentKind = message.DocumentKind,
+                            RulesetId = message.RulesetId
                         };
 
                         await messagePublisher.PublishAsync(embeddingMessage, cancellationToken);

@@ -120,7 +120,8 @@ public class DocumentChangeDetectorService(
                     if (isCracked)
                     {
                         // File unchanged and successfully cracked, update last scanned time
-                        await UpdateMetadataAsync(metadataCollection, filePath, currentHash, cancellationToken);
+                        string? relativeDirectory = GetRelativeDirectory(filePath, rootDirectory);
+                        await UpdateMetadataAsync(metadataCollection, filePath, currentHash, relativeDirectory, cancellationToken);
                         summary.FilesUnchanged++;
                         logger.LogDebug("File unchanged and cracked, skipping: {FilePath}", filePath);
                         fileActivity?.SetTag("scanner.status", "unchanged");
@@ -131,7 +132,7 @@ public class DocumentChangeDetectorService(
                         // Enqueue for retry
                         string? relativeDirectory = GetRelativeDirectory(filePath, rootDirectory);
                         await EnqueueDocumentAsync(filePath, relativeDirectory, cancellationToken);
-                        await UpdateMetadataAsync(metadataCollection, filePath, currentHash, cancellationToken);
+                        await UpdateMetadataAsync(metadataCollection, filePath, currentHash, relativeDirectory, cancellationToken);
                         summary.FilesEnqueued++;
                         logger.LogInformation("File hash unchanged but not cracked, enqueuing for retry: {FilePath} (Hash: {Hash})", filePath, currentHash);
                         fileActivity?.SetTag("scanner.status", "retry_uncracked");
@@ -142,7 +143,7 @@ public class DocumentChangeDetectorService(
                     // File is new or changed, enqueue for processing
                     string? relativeDirectory = GetRelativeDirectory(filePath, rootDirectory);
                     await EnqueueDocumentAsync(filePath, relativeDirectory, cancellationToken);
-                    await UpdateMetadataAsync(metadataCollection, filePath, currentHash, cancellationToken);
+                    await UpdateMetadataAsync(metadataCollection, filePath, currentHash, relativeDirectory, cancellationToken);
                     summary.FilesEnqueued++;
                     logger.LogInformation("File enqueued for processing: {FilePath} (Hash: {Hash})", filePath, currentHash);
                     fileActivity?.SetTag("scanner.status", storedMetadata == null ? "new" : "changed");
@@ -182,12 +183,18 @@ public class DocumentChangeDetectorService(
         IMongoCollection<DocumentMetadata> metadataCollection,
         string filePath,
         string hash,
+        string? relativeDirectory,
         CancellationToken cancellationToken)
     {
+        string rulesetId = DocumentMetadataExtractor.ExtractRulesetId(relativeDirectory);
+        string documentKind = DocumentMetadataExtractor.DetermineDocumentKind(relativeDirectory);
+
         FilterDefinition<DocumentMetadata> filter = Builders<DocumentMetadata>.Filter.Eq(x => x.FilePath, filePath);
         UpdateDefinition<DocumentMetadata> update = Builders<DocumentMetadata>.Update
             .Set(x => x.Hash, hash)
-            .Set(x => x.LastScanned, DateTime.UtcNow);
+            .Set(x => x.LastScanned, DateTime.UtcNow)
+            .Set(x => x.RulesetId, rulesetId)
+            .Set(x => x.DocumentKind, documentKind);
 
         UpdateOptions options = new() { IsUpsert = true };
 
@@ -199,10 +206,15 @@ public class DocumentChangeDetectorService(
         string? relativeDirectory,
         CancellationToken cancellationToken)
     {
+        string rulesetId = DocumentMetadataExtractor.ExtractRulesetId(relativeDirectory);
+        string documentKind = DocumentMetadataExtractor.DetermineDocumentKind(relativeDirectory);
+
         CrackDocumentMessage message = new()
         {
             FilePath = filePath,
-            RelativeDirectory = relativeDirectory
+            RelativeDirectory = relativeDirectory,
+            RulesetId = rulesetId,
+            DocumentKind = documentKind
         };
 
         await messagePublisher.PublishAsync(message, cancellationToken);

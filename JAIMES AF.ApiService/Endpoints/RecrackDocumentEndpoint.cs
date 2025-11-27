@@ -1,14 +1,17 @@
 using FastEndpoints;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
+using MattEland.Jaimes.ServiceDefinitions.Models;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Services;
+using MongoDB.Driver;
 
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
 public class RecrackDocumentEndpoint : Endpoint<RecrackDocumentRequest, DocumentOperationResponse>
 {
     public required IMessagePublisher MessagePublisher { get; set; }
+    public required IMongoClient MongoClient { get; set; }
 
     public override void Configure()
     {
@@ -28,10 +31,27 @@ public class RecrackDocumentEndpoint : Endpoint<RecrackDocumentRequest, Document
             return;
         }
 
+        // Get rulesetId and documentKind from DocumentMetadata if available, otherwise use defaults
+        string rulesetId = "default";
+        string documentKind = "Sourcebook";
+        
+        IMongoDatabase database = MongoClient.GetDatabase("documents");
+        IMongoCollection<DocumentMetadata> metadataCollection = database.GetCollection<DocumentMetadata>("documentMetadata");
+        FilterDefinition<DocumentMetadata> filter = Builders<DocumentMetadata>.Filter.Eq(x => x.FilePath, req.FilePath);
+        DocumentMetadata? metadata = await metadataCollection.Find(filter).FirstOrDefaultAsync(ct);
+        
+        if (metadata != null && !string.IsNullOrWhiteSpace(metadata.RulesetId))
+        {
+            rulesetId = metadata.RulesetId;
+            documentKind = metadata.DocumentKind;
+        }
+
         CrackDocumentMessage message = new()
         {
             FilePath = req.FilePath,
-            RelativeDirectory = req.RelativeDirectory
+            RelativeDirectory = req.RelativeDirectory,
+            RulesetId = rulesetId,
+            DocumentKind = documentKind
         };
 
         await MessagePublisher.PublishAsync(message, ct);

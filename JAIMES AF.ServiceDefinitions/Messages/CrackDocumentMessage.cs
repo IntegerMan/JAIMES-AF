@@ -4,6 +4,8 @@ public class CrackDocumentMessage
 {
     public string FilePath { get; set; } = string.Empty;
     public string? RelativeDirectory { get; set; }
+    public string RulesetId { get; set; } = string.Empty;
+    public string DocumentKind { get; set; } = "Sourcebook";
 }
 
 

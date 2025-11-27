@@ -79,7 +79,9 @@ public class DocumentCrackingOrchestrator(
 
                 try
                 {
-                    await CrackDocumentAsync(filePath, relativeDirectory, collection, cancellationToken);
+                    string rulesetId = DocumentMetadataExtractor.ExtractRulesetId(relativeDirectory);
+                    string documentKind = DocumentMetadataExtractor.DetermineDocumentKind(relativeDirectory);
+                    await CrackDocumentAsync(filePath, relativeDirectory, rulesetId, documentKind, collection, cancellationToken);
                     summary.TotalCracked++;
                     directoryCracked++;
                 }
@@ -102,7 +104,7 @@ public class DocumentCrackingOrchestrator(
         return summary;
     }
 
-    private async Task CrackDocumentAsync(string filePath, string relativeDirectory, IMongoCollection<CrackedDocument> collection, CancellationToken cancellationToken)
+    private async Task CrackDocumentAsync(string filePath, string relativeDirectory, string rulesetId, string documentKind, IMongoCollection<CrackedDocument> collection, CancellationToken cancellationToken)
     {
         logger.LogInformation("Starting to crack document: {FilePath}", filePath);
         
@@ -122,6 +124,8 @@ public class DocumentCrackingOrchestrator(
         (string contents, int pageCount) = ExtractPdfText(filePath);
         
         activity?.SetTag("cracker.page_count", pageCount);
+        activity?.SetTag("cracker.ruleset_id", rulesetId);
+        activity?.SetTag("cracker.document_kind", documentKind);
 
         // Use UpdateOneAsync with upsert to avoid _id conflicts
         // This will update if the document exists (by FilePath) or insert if it doesn't
@@ -139,7 +143,9 @@ public class DocumentCrackingOrchestrator(
             .Set(d => d.Content, contents)
             .Set(d => d.CrackedAt, DateTime.UtcNow)
             .Set(d => d.FileSize, fileInfo.Length)
-            .Set(d => d.PageCount, pageCount);
+            .Set(d => d.PageCount, pageCount)
+            .Set(d => d.RulesetId, rulesetId)
+            .Set(d => d.DocumentKind, documentKind);
         
         // Reset processed flag only if content changed
         if (contentChanged)
@@ -228,6 +234,7 @@ public class DocumentCrackingOrchestrator(
 
         return (builder.ToString(), pageCount);
     }
+
 
     public class DocumentCrackingSummary
     {

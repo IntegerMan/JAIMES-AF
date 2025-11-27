@@ -50,7 +50,9 @@ public class QueueDocumentEmbeddingEndpoint : Endpoint<QueueDocumentEmbeddingReq
             RelativeDirectory = document.RelativeDirectory,
             FileSize = document.FileSize,
             PageCount = document.PageCount,
-            CrackedAt = document.CrackedAt
+            CrackedAt = document.CrackedAt,
+            DocumentKind = document.DocumentKind,
+            RulesetId = document.RulesetId
         };
 
         await crackedCollection.UpdateOneAsync(
