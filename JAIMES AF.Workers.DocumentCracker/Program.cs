@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Configuration;
+using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using RabbitMQ.Client;
 using Microsoft.Extensions.DependencyInjection;
