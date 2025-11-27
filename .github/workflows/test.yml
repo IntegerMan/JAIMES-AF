@@ -12,8 +12,8 @@ jobs:
   build-test-analyze:
     runs-on: ubuntu-latest
     env:
-      COVERAGE_DIR: ${{ github.workspace }}/TestResults/coverage/
-      SONAR_DOTNET_COVERAGE_REPORTS: ${{ github.workspace }}/TestResults/coverage/coverage.opencover.xml
+      COVERAGE_DIR: TestResults/coverage/
+      SONAR_DOTNET_COVERAGE_REPORTS: TestResults/coverage/coverage.opencover.xml
 
     steps:
       - name: Checkout code
