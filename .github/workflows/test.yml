@@ -9,81 +9,66 @@ on:
       - main
 
 jobs:
-  test:
+  build-test-analyze:
     runs-on: ubuntu-latest
-    
+    env:
+      COVERAGE_DIR: ${{ github.workspace }}/TestResults/coverage/
+      SONAR_DOTNET_COVERAGE_REPORTS: ${{ github.workspace }}/TestResults/coverage/coverage.opencover.xml
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
-          dotnet-quality: 'preview'
-      
-      - name: Restore dependencies
-        run: dotnet restore
+          fetch-depth: 0
 
-      - name: Check formatting
-        run: dotnet format style --no-restore --verify-no-changes && dotnet format analyzers --no-restore --verify-no-changes
-      
-      - name: Build
-        run: dotnet build --no-restore --configuration Release
-      
-      - name: Run tests
-        run: dotnet run --project "JAIMES AF.Tests/JAIMES AF.Tests.csproj" --no-build --configuration Release
-
-  sonar:
-    name: Build and analyze
-    runs-on: windows-latest
-    needs: test
-
-    steps:
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: 17
           distribution: 'zulu'
 
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
           dotnet-quality: 'preview'
 
-      - name: Cache SonarQube Cloud packages
-        uses: actions/cache@v4
-        with:
-          path: ~\sonar\cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
+      - name: Install SonarCloud scanner
+        run: dotnet tool update --global dotnet-sonarscanner
 
-      - name: Cache SonarQube Cloud scanner
-        id: cache-sonar-scanner
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}\scanner
-          key: ${{ runner.os }}-sonar-scanner
-          restore-keys: ${{ runner.os }}-sonar-scanner
+      - name: Restore dependencies
+        run: dotnet restore
 
-      - name: Install SonarQube Cloud scanner
-        if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
-        shell: powershell
-        run: |
-          New-Item -Path ${{ runner.temp }}\scanner -ItemType Directory
-          dotnet tool update dotnet-sonarscanner --tool-path ${{ runner.temp }}\scanner
+      - name: Check formatting
+        run: dotnet format style --no-restore --verify-no-changes && dotnet format analyzers --no-restore --verify-no-changes
 
-      - name: Build and analyze
+      - name: Begin Sonar analysis
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_SCANNER: ${{ runner.temp }}\scanner\dotnet-sonarscanner
-        shell: powershell
         run: |
-          & $env:SONAR_SCANNER begin /k:"IntegerMan_JAIMES-AF" /o:"integerman-github" /d:sonar.token="$env:SONAR_TOKEN"
-          dotnet build
-          & $env:SONAR_SCANNER end /d:sonar.token="$env:SONAR_TOKEN"
+          ~/.dotnet/tools/dotnet-sonarscanner begin \
+            /k:"IntegerMan_JAIMES-AF" \
+            /o:"integerman-github" \
+            /d:sonar.login="${SONAR_TOKEN}" \
+            /d:sonar.host.url="https://sonarcloud.io" \
+            /d:sonar.cs.opencover.reportsPaths="${SONAR_DOTNET_COVERAGE_REPORTS}"
+
+      - name: Build
+        run: dotnet build --configuration Release
+
+      - name: Run tests with coverage
+        run: |
+          mkdir -p "$COVERAGE_DIR"
+          dotnet test "JAIMES AF.Tests/JAIMES AF.Tests.csproj" \
+            --no-build \
+            --configuration Release \
+            /p:CollectCoverage=true \
+            /p:CoverletOutput=$COVERAGE_DIR \
+            /p:CoverletOutputFormat="opencover" \
+            /p:UseSourceLink=true
+
+      - name: End Sonar analysis
+        if: always()
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: ~/.dotnet/tools/dotnet-sonarscanner end /d:sonar.login="${SONAR_TOKEN}"
