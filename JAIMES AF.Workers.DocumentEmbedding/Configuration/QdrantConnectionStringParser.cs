@@ -84,7 +84,7 @@ public static class QdrantConnectionStringParser
         host = null;
         port = null;
 
-        if (string.IsNullOrWhiteSpace(value) || value.Contains('='))
+        if (string.IsNullOrWhiteSpace(value) || value.Contains('=') || value.Contains(';'))
         {
             return false;
         }
