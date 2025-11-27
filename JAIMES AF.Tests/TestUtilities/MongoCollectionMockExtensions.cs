@@ -25,14 +25,14 @@ public static class MongoCollectionMockExtensions
             .Setup(c => c.Find(
                 It.IsAny<IClientSessionHandle?>(),
                 It.IsAny<FilterDefinition<T>>(),
-                It.IsAny<FindOptions<T, T>>()))
+                It.IsAny<FindOptions>()))
             .Returns(() => CreateFindFluent());
 
         collectionMock
             .Setup(c => c.Find(
                 It.IsAny<IClientSessionHandle?>(),
                 It.IsAny<FilterDefinition<T>>(),
-                (FindOptions<T, T>?)null))
+                (FindOptions?)null))
             .Returns(() => CreateFindFluent());
     }
 }
