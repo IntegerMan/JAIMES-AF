@@ -1,43 +1,133 @@
 Project Technical Overview
+==========================
 
-This repository is a .NET9 multi-project solution implementing a lightweight tabletop role-playing game backend and Blazor web client. The codebase follows a layered architecture with clear separation of concerns and conventions. Use this document to quickly understand the high-level structure and where to look when making changes.
+This solution targets **.NET 10** and is organized as an Aspire-composed, multi-project architecture. The intent is to keep the boundaries between API, services, repositories, UI, workers, and tooling crisp so features and experiments can evolve independently.
 
-Projects
+Use this guide to understand the big rocks, discover where specific responsibilities live, and see how data moves through the system.
 
-- `JAIMES AF.ApiService` - Minimal API project exposing HTTP endpoints. Endpoints are in `Endpoints/` and use request/response DTOs in `Requests/` and `Responses/`. `Program.cs` wires up DI and endpoint registration.
-- `JAIMES AF.Services` (a.k.a ServiceLayer) - Business logic and application services. Services live in `Services/` and expose interfaces under the same namespace (e.g. `IGameService`). Mapper classes convert between repository entities and DTOs.
-- `JAIMES AF.Repositories` - Persistence layer using EF Core. Contains `JaimesDbContext`, entity classes (`Entities/`), and migrations (`Migrations/`). Data access is provided through repository classes and registered via `RepositoryServiceCollectionExtensions`.
-- `JAIMES AF.Web` - Blazor client project (component-based UI). Components live under `Components/Pages/` and client helper classes (e.g., `WeatherApiClient`) live at the project root.
-- `JAIMES AF.AppHost` - Host utilities for running apps or tests.
-- `JAIMES AF.ServiceDefaults` - Shared configuration defaults and extension helpers.
-- `JAIMES AF.Tests` - Unit and integration tests (contains endpoint tests, repository tests, and service tests). Tests exercise both service layer and API endpoints.
+## Stack Snapshot
 
-Key Patterns and Conventions
+- **Presentation:** `JAIMES AF.Web` (Blazor Server) + FastEndpoints APIs in `JAIMES AF.ApiService`
+- **Business Logic:** `JAIMES AF.Services` for orchestration, validation, mapping, and AI contracts
+- **Persistence:** `JAIMES AF.Repositories` (EF Core, SQLite by default) with migrations under `Migrations/`
+- **Intelligence & Tools:** `JAIMES AF.Agents`, `JAIMES AF.Tools`, plus document-oriented workers
+- **Background Pipelines:** `JAIMES AF.Workers.*` for scanning, cracking, chunking, embedding, and change detection
+- **Hosting & Defaults:** `JAIMES AF.AppHost` for Aspire orchestration and `JAIMES AF.ServiceDefaults` for shared wiring
+- **Quality:** `JAIMES AF.Tests` organized by layer (Endpoints, Services, Repositories) with Shouldly assertions
 
-- Endpoints are lightweight; heavy business logic belongs in service layer.
-- Services expose interfaces (`I*Service`) and concrete implementations in `Services/`.
-- DTOs (e.g., `GameDto`, `ScenarioDto`) are defined in the `Services.Models` namespace.
-- API input/output types are `Requests/` and `Responses/` in the `ApiService` project.
-- Mappers (e.g. `GameMapper`, `ScenarioMapper`) convert between entities and DTOs/Response models.
-- Tests use an in-memory or test database via migration/DbContext helpers in `Repositories`.
+## Layered Architecture
 
-Entry Points
+```mermaid
+graph TD
+    A[Clients / Blazor UI] --> B[FastEndpoints API\n(JAIMES AF.ApiService)]
+    B --> C[Services Layer\n(JAIMES AF.Services)]
+    C --> D[Repositories + DbContext\n(JAIMES AF.Repositories)]
+    C --> E[Rules Search & Agents\n(JAIMES AF.Agents / Tools)]
+    D --> F[(SQLite / SQL Server)]
+    C --> G[(Redis Stack / Kernel Memory)]
+    G --> H[Document Workers\n(scanner, cracker, chunker, embedder)]
+    H --> F
+    H --> I[(Azure OpenAI)]
+    E --> I
+```
 
-- API: `JAIMES AF.ApiService/Program.cs` registers services and endpoints.
-- Web: `JAIMES AF.Web/Program.cs` is the Blazor client startup.
+**Key takeaways**
+- Endpoints are intentionally thin; they delegate to services that encapsulate business rules, AI prompts, and mapping to DTOs.
+- Services communicate with repositories via strongly typed DTOs/entities. Scrutor automatically registers anything matching the project's conventions.
+- Document-processing workers enrich the knowledge base asynchronously and feed Kernel Memory (Redis) plus Azure OpenAI embeddings.
 
-Build and test
+## Background Pipelines
 
-- Build solution: `dotnet build` (root directory)
-- Run tests: `dotnet run --project "JAIMES AF.Tests/JAIMES AF.Tests.csproj"` (uses Microsoft Testing Platform)
+```mermaid
+flowchart LR
+    Watcher[DocumentChangeDetector] -->|Change event| Cracker[DocumentCrackerWorker]
+    Cracker --> Chunker[DocumentChunking Worker]
+    Chunker --> Embedder[DocumentEmbedding Worker]
+    Embedder --> Redis[(Redis Kernel Memory)]
+    Embedder --> Db[(EF Core Entities)]
+    Redis --> Agents[RulesSearchService & Tools]
+```
 
-Where to make common changes
+1. **DocumentChangeDetector** watches configured data sources and emits events.
+2. **DocumentCrackerWorker** expands archives/PDFs into discrete assets.
+3. **DocumentChunking** normalizes text blocks aligned to the ruleset/game domain.
+4. **DocumentEmbedding** calls Azure OpenAI to vectorize chunks and pushes them into Redis Stack + metadata tables, unlocking semantic search via `RulesSearchService`.
 
-- Add new HTTP endpoints: add a new file under `JAIMES AF.ApiService/Endpoints`, add `Request` and `Response` types under `Requests/` and `Responses/`, and implement service methods in `JAIMES AF.Services/Services`.
-- Add new database entities: add entity in `JAIMES AF.Repositories/Entities`, add DbSet to `JaimesDbContext`, add and run EF Core migration.
-- Add business logic: extend or add a service in `JAIMES AF.Services` and update DI registration in `JAIMES AF.Services/ServiceCollectionExtensions.cs`.
+## Domain Schema (simplified)
 
-Notes
+```mermaid
+erDiagram
+    Game ||--o{ Player : hosts
+    Game ||--o{ Scenario : explores
+    Scenario ||--o{ Ruleset : references
+    Game ||--o{ Message : logs
+    Player ||--o{ Message : authors
 
-- Target framework is .NET9. Keep packages and target TFMs aligned across projects.
-- Prefer small, well-tested methods. The tests in `JAIMES AF.Tests` are a good pattern to follow for coverage and structure.
+    Game {
+        guid Id
+        string Title
+        string Status
+    }
+    Player {
+        guid Id
+        string DisplayName
+        string Role
+    }
+    Scenario {
+        guid Id
+        string Name
+        string Summary
+    }
+    Ruleset {
+        guid Id
+        string Name
+        string SystemPrompt
+    }
+    Message {
+        guid Id
+        guid GameId
+        guid PlayerId
+        string Content
+        datetime CreatedOn
+    }
+```
+
+### Mapping & DTO Conventions
+
+- DTOs live in `JAIMES AF.Services/Models` and should mirror the shape the client expects.
+- Mappers in `JAIMES AF.Services/Mapping` convert between EF entities and DTOs/response models. Keep them deterministic and unit-testable.
+- API Requests/Responses live inside `JAIMES AF.ApiService/Requests` and `/Responses`. They often mirror DTOs but can include input validation requirements (via FluentValidation) or mask internal fields.
+
+## Project Responsibilities
+
+| Project | Highlights | When to change |
+| --- | --- | --- |
+| `JAIMES AF.ApiService` | FastEndpoints, DI setup, Serilog, FastEndpoints validators | Add/update HTTP surface area, cross-cutting filters |
+| `JAIMES AF.Services` | Orchestration, mappers, Azure OpenAI chat and rules search integration | Extend business capabilities, adjust prompts, add DTO fields |
+| `JAIMES AF.Repositories` | Entities, DbContext, migrations, repository registration | Schema changes, seed updates, data access tweaks |
+| `JAIMES AF.Web` | Blazor components, interactive dashboards, real-time updates | UI/UX work, dashboards, interactive tooling |
+| `JAIMES AF.Workers.*` | Background services coordinated by Aspire | Document ingestion, embeddings, automation |
+| `JAIMES AF.Agents` & `JAIMES AF.Tools` | Microsoft Agent Framework agents + custom tools that leverage RulesSearch | Extend AI behaviors, tool plugins |
+| `JAIMES AF.Tests` | Layered tests using Shouldly + in-memory providers | Expand coverage, enforce new behaviors |
+
+## Development Workflow
+
+1. **Plan the change** — identify DTO/entity impacts and decide which layers need updates.
+2. **Implement** in the appropriate project. Remember that constructor injections ripple into tests.
+3. **Update documentation** (README/TECHNICAL_OVERVIEW) when behavior or flows shift.
+4. **Run checks**
+   ```bash
+   dotnet build
+   dotnet run --project "JAIMES AF.Tests/JAIMES AF.Tests.csproj"
+   ```
+5. **Add/update tests** under the matching layer directory (`Endpoints/`, `Services/`, `Repositories/`).
+
+## Tips & Conventions
+
+- Prefer explicit types over `var` unless the intent is unambiguous (per repository guidelines).
+- Keep endpoints lean: validation + mapper + service call; let services enforce business invariants.
+- When adjusting seed data or system prompts inside `JaimesDbContext`, create a new EF Core migration per the repository rules.
+- Rules search relies on Qdrant-compatible embeddings stored in Redis Stack through Kernel Memory. When adjusting filters or chunk sizes, touch `RulesSearchService`, related workers, and the configuration templates under `JAIMES AF.ServiceDefaults`.
+- Background workers share configuration POCOs under their respective `Configuration/` folders; update these if you need new throttling or retry behavior.
+
+For an introductory, user-friendly view, see the root `README.md`. This document focuses on helping developers trace responsibilities and understand the interplay between layers and pipelines.
