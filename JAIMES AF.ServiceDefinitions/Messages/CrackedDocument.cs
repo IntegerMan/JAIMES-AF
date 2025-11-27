@@ -38,6 +38,12 @@ public class CrackedDocument
 
     [BsonElement("processedChunkCount")]
     public int ProcessedChunkCount { get; set; } = 0;
+
+    [BsonElement("documentType")]
+    public string? DocumentType { get; set; }
+
+    [BsonElement("rulesetId")]
+    public string? RulesetId { get; set; }
 }
 
 

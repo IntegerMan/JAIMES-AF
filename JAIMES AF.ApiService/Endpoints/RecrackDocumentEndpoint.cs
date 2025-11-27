@@ -31,7 +31,9 @@ public class RecrackDocumentEndpoint : Endpoint<RecrackDocumentRequest, Document
         CrackDocumentMessage message = new()
         {
             FilePath = req.FilePath,
-            RelativeDirectory = req.RelativeDirectory
+            RelativeDirectory = req.RelativeDirectory,
+            DocumentType = req.DocumentType,
+            RulesetId = req.RulesetId
         };
 
         await MessagePublisher.PublishAsync(message, ct);

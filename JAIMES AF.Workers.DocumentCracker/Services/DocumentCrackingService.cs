@@ -16,7 +16,7 @@ public class DocumentCrackingService(
     IMessagePublisher messagePublisher,
     ActivitySource activitySource) : IDocumentCrackingService
 {
-    public async Task ProcessDocumentAsync(string filePath, string? relativeDirectory, CancellationToken cancellationToken = default)
+    public async Task ProcessDocumentAsync(string filePath, string? relativeDirectory, string? documentType = null, string? rulesetId = null, CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Starting to crack document: {FilePath}", filePath);
         
@@ -32,6 +32,8 @@ public class DocumentCrackingService(
         activity?.SetTag("cracker.file_name", fileInfo.Name);
         activity?.SetTag("cracker.file_size", fileInfo.Exists ? fileInfo.Length : 0);
         activity?.SetTag("cracker.relative_directory", relativeDirectory ?? string.Empty);
+        activity?.SetTag("cracker.document_type", documentType ?? string.Empty);
+        activity?.SetTag("cracker.ruleset_id", rulesetId ?? string.Empty);
         
         // Only process PDF files
         if (!Path.GetExtension(filePath).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
@@ -65,7 +67,9 @@ public class DocumentCrackingService(
             .Set(d => d.Content, contents)
             .Set(d => d.CrackedAt, DateTime.UtcNow)
             .Set(d => d.FileSize, fileInfo.Length)
-            .Set(d => d.PageCount, pageCount);
+            .Set(d => d.PageCount, pageCount)
+            .Set(d => d.DocumentType, documentType)
+            .Set(d => d.RulesetId, rulesetId);
         
         // Reset processed flag only if content changed
         if (contentChanged)
@@ -98,7 +102,7 @@ public class DocumentCrackingService(
         {
             // Publish message to generate documentMetadata
             await PublishDocumentCrackedMessageAsync(documentId, filePath, relativeDirectory ?? string.Empty, 
-                Path.GetFileName(filePath), fileInfo.Length, pageCount, cancellationToken);
+                Path.GetFileName(filePath), fileInfo.Length, pageCount, documentType, rulesetId, cancellationToken);
         }
         else
         {
@@ -108,7 +112,7 @@ public class DocumentCrackingService(
     
     private async Task PublishDocumentCrackedMessageAsync(string documentId, string filePath, 
         string relativeDirectory, string fileName, long fileSize, int pageCount, 
-        CancellationToken cancellationToken)
+        string? documentType, string? rulesetId, CancellationToken cancellationToken)
     {
         try
         {
@@ -121,7 +125,9 @@ public class DocumentCrackingService(
                 RelativeDirectory = relativeDirectory,
                 FileSize = fileSize,
                 PageCount = pageCount,
-                CrackedAt = DateTime.UtcNow
+                CrackedAt = DateTime.UtcNow,
+                DocumentType = documentType,
+                RulesetId = rulesetId
             };
             
             // Publish using message publisher

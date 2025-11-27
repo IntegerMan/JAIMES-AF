@@ -62,7 +62,9 @@ public class ListDocumentsEndpoint : Ep.NoReq.Res<DocumentStatusResponse>
                 HasEmbeddings = hasEmbeddings,
                 CrackedAt = hasCracked ? cracked!.CrackedAt : null,
                 FileSize = hasCracked ? cracked!.FileSize : null,
-                PageCount = hasCracked ? cracked!.PageCount : null
+                PageCount = hasCracked ? cracked!.PageCount : null,
+                DocumentType = hasCracked ? cracked!.DocumentType : null,
+                RulesetId = hasCracked ? cracked!.RulesetId : null
             });
         }
 

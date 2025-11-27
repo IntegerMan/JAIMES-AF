@@ -56,7 +56,9 @@ public class BackfillEmbeddingsEndpoint : Ep.NoReq.Res<BackfillEmbeddingsRespons
                 RelativeDirectory = document.RelativeDirectory,
                 FileSize = document.FileSize,
                 PageCount = document.PageCount,
-                CrackedAt = document.CrackedAt
+                CrackedAt = document.CrackedAt,
+                DocumentType = document.DocumentType,
+                RulesetId = document.RulesetId
             };
 
             // Create publish task - don't await yet, we'll await all in parallel

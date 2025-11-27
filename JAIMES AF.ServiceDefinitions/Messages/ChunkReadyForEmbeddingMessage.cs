@@ -13,6 +13,8 @@ public class ChunkReadyForEmbeddingMessage
     public int PageCount { get; set; }
     public DateTime CrackedAt { get; set; }
     public int TotalChunks { get; set; }
+    public string? DocumentType { get; set; }
+    public string? RulesetId { get; set; }
 }
 
 

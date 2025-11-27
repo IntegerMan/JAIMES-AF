@@ -130,7 +130,8 @@ public class DocumentChangeDetectorService(
                         // File hash matches but document wasn't cracked (likely failed previously)
                         // Enqueue for retry
                         string? relativeDirectory = GetRelativeDirectory(filePath, rootDirectory);
-                        await EnqueueDocumentAsync(filePath, relativeDirectory, cancellationToken);
+                        (string? documentType, string? rulesetId) = DetermineDocumentMetadata(filePath, rootDirectory);
+                        await EnqueueDocumentAsync(filePath, relativeDirectory, documentType, rulesetId, cancellationToken);
                         await UpdateMetadataAsync(metadataCollection, filePath, currentHash, cancellationToken);
                         summary.FilesEnqueued++;
                         logger.LogInformation("File hash unchanged but not cracked, enqueuing for retry: {FilePath} (Hash: {Hash})", filePath, currentHash);
@@ -141,7 +142,8 @@ public class DocumentChangeDetectorService(
                 {
                     // File is new or changed, enqueue for processing
                     string? relativeDirectory = GetRelativeDirectory(filePath, rootDirectory);
-                    await EnqueueDocumentAsync(filePath, relativeDirectory, cancellationToken);
+                    (string? documentType, string? rulesetId) = DetermineDocumentMetadata(filePath, rootDirectory);
+                    await EnqueueDocumentAsync(filePath, relativeDirectory, documentType, rulesetId, cancellationToken);
                     await UpdateMetadataAsync(metadataCollection, filePath, currentHash, cancellationToken);
                     summary.FilesEnqueued++;
                     logger.LogInformation("File enqueued for processing: {FilePath} (Hash: {Hash})", filePath, currentHash);
@@ -197,12 +199,16 @@ public class DocumentChangeDetectorService(
     private async Task EnqueueDocumentAsync(
         string filePath,
         string? relativeDirectory,
+        string? documentType,
+        string? rulesetId,
         CancellationToken cancellationToken)
     {
         CrackDocumentMessage message = new()
         {
             FilePath = filePath,
-            RelativeDirectory = relativeDirectory
+            RelativeDirectory = relativeDirectory,
+            DocumentType = documentType,
+            RulesetId = rulesetId
         };
 
         await messagePublisher.PublishAsync(message, cancellationToken);
@@ -229,6 +235,44 @@ public class DocumentChangeDetectorService(
         }
 
         return null;
+    }
+
+    private static (string? documentType, string? rulesetId) DetermineDocumentMetadata(string filePath, string rootDirectory)
+    {
+        // Determine document type based on file extension
+        string extension = Path.GetExtension(filePath).ToLowerInvariant();
+        string? documentType = extension switch
+        {
+            ".pdf" => "PDF",
+            ".txt" => "Text",
+            ".md" => "Markdown",
+            _ => null
+        };
+
+        // Determine ruleset ID from the directory structure
+        // Expected structure: rootDirectory/RulesetName/...
+        string? rulesetId = null;
+        string? directory = Path.GetDirectoryName(filePath);
+        
+        if (!string.IsNullOrEmpty(directory) && Path.IsPathRooted(filePath) && Path.IsPathRooted(rootDirectory))
+        {
+            if (directory.StartsWith(rootDirectory, StringComparison.OrdinalIgnoreCase))
+            {
+                string relativePath = Path.GetRelativePath(rootDirectory, directory);
+                
+                // Get the first directory component as the ruleset ID
+                if (relativePath != "." && !string.IsNullOrEmpty(relativePath))
+                {
+                    string[] parts = relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                    if (parts.Length > 0 && !string.IsNullOrWhiteSpace(parts[0]))
+                    {
+                        rulesetId = parts[0];
+                    }
+                }
+            }
+        }
+
+        return (documentType, rulesetId);
     }
 }
 

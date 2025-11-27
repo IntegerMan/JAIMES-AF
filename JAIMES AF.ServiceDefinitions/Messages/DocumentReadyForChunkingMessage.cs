@@ -9,6 +9,8 @@ public class DocumentReadyForChunkingMessage
     public long FileSize { get; set; }
     public int PageCount { get; set; }
     public DateTime CrackedAt { get; set; }
+    public string? DocumentType { get; set; }
+    public string? RulesetId { get; set; }
 }
 
 
