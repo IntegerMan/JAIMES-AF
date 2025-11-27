@@ -192,6 +192,9 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbedding>("document-embed
         context.EnvironmentVariables["DocumentEmbedding__QdrantHost"] = qdrantGrpcEndpoint.Host;
         context.EnvironmentVariables["DocumentEmbedding__QdrantPort"] = qdrantGrpcEndpoint.Port;
         context.EnvironmentVariables["ConnectionStrings__qdrant-embeddings"] = qdrant.Resource.ConnectionStringExpression;
+        
+        // Set Qdrant API key (use the parameter value)
+        context.EnvironmentVariables["qdrant-api-key"] = qdrantApiKey.Resource.ValueExpression;
     });
 
 var app = builder.Build();

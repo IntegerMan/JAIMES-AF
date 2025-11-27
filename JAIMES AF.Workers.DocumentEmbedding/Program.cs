@@ -68,6 +68,28 @@ if (!string.IsNullOrWhiteSpace(qdrantConnectionString))
     QdrantConnectionStringParser.ApplyQdrantConnectionString(qdrantConnectionString, ref qdrantHost, ref qdrantPortStr, ref qdrantApiKey);
 }
 
+// Try to get API key from additional configuration sources if not found in connection string
+if (string.IsNullOrWhiteSpace(qdrantApiKey))
+{
+    qdrantApiKey = builder.Configuration["Qdrant__ApiKey"]
+        ?? builder.Configuration["Qdrant:ApiKey"]
+        ?? builder.Configuration["QDRANT_EMBEDDINGS_APIKEY"]
+        ?? builder.Configuration["QdrantEmbeddings__ApiKey"]
+        ?? builder.Configuration["QDRANT_EMBEDDINGS_API_KEY"]
+        ?? builder.Configuration["Aspire:Resources:qdrant-embeddings:ApiKey"]
+        ?? Environment.GetEnvironmentVariable("Qdrant__ApiKey")
+        ?? Environment.GetEnvironmentVariable("QDRANT_EMBEDDINGS_APIKEY")
+        ?? Environment.GetEnvironmentVariable("QdrantEmbeddings__ApiKey")
+        ?? Environment.GetEnvironmentVariable("QDRANT_EMBEDDINGS_API_KEY")
+        ?? Environment.GetEnvironmentVariable("qdrant-api-key");
+    
+    // If still not found, use default "qdrant" (matches AppHost default)
+    if (string.IsNullOrWhiteSpace(qdrantApiKey))
+    {
+        qdrantApiKey = "qdrant";
+    }
+}
+
 if (string.IsNullOrWhiteSpace(qdrantHost) || string.IsNullOrWhiteSpace(qdrantPortStr))
 {
     throw new InvalidOperationException(
