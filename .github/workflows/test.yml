@@ -11,6 +11,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      SONAR_DOTNET_COVERAGE_REPORTS: ${{ github.workspace }}/TestResults/coverage/coverage.cobertura.xml
+      COVERAGE_DIR: ${{ github.workspace }}/TestResults/coverage/
     
     steps:
       - name: Checkout code
@@ -31,6 +34,7 @@ jobs:
       - name: Build
         run: dotnet build --no-restore --configuration Release
       
+<<<<<<< HEAD
       - name: Run tests
         run: dotnet run --project "JAIMES AF.Tests/JAIMES AF.Tests.csproj" --no-build --configuration Release
 
@@ -87,3 +91,13 @@ jobs:
           & $env:SONAR_SCANNER begin /k:"IntegerMan_JAIMES-AF" /o:"integerman-github" /d:sonar.token="$env:SONAR_TOKEN"
           dotnet build
           & $env:SONAR_SCANNER end /d:sonar.token="$env:SONAR_TOKEN"
+=======
+      - name: Run tests with coverage
+        run: >
+          dotnet test "JAIMES AF.Tests/JAIMES AF.Tests.csproj"
+          --no-build
+          --configuration Release
+          /p:CollectCoverage=true
+          /p:CoverletOutputFormat=cobertura
+          /p:CoverletOutput=$COVERAGE_DIR
+>>>>>>> d0f2749 (feat: Enable code coverage reporting in CI tests)
