@@ -58,38 +58,31 @@ builder.Services.AddSingleton(options);
 // Add MongoDB client integration
 builder.AddMongoDBClient("documents");
 
-// Configure Qdrant client
-string? qdrantConnectionString = builder.Configuration.GetConnectionString("qdrant-embeddings");
+// Configure Qdrant client using centralized extension method
+builder.Services.AddQdrantClient(builder.Configuration, new QdrantExtensions.QdrantConfigurationOptions
+{
+    SectionPrefix = "DocumentChunking",
+    ConnectionStringName = "qdrant-embeddings",
+    RequireConfiguration = true,
+    DefaultApiKey = null // Don't default to "qdrant"
+});
+
+// Get Qdrant configuration for logging
 string? qdrantHost = builder.Configuration["DocumentChunking:QdrantHost"];
 string? qdrantPortStr = builder.Configuration["DocumentChunking:QdrantPort"];
-string? qdrantApiKey = null;
+string? qdrantConnectionString = builder.Configuration.GetConnectionString("qdrant-embeddings");
 
 // Extract from connection string if provided (takes precedence)
+string? dummyApiKey = null;
 if (!string.IsNullOrWhiteSpace(qdrantConnectionString))
 {
-    QdrantConnectionStringParser.ApplyQdrantConnectionString(qdrantConnectionString, ref qdrantHost, ref qdrantPortStr, ref qdrantApiKey);
+    QdrantConnectionStringParser.ApplyQdrantConnectionString(qdrantConnectionString, ref qdrantHost, ref qdrantPortStr, ref dummyApiKey);
 }
 
-if (string.IsNullOrWhiteSpace(qdrantHost) || string.IsNullOrWhiteSpace(qdrantPortStr))
-{
-    throw new InvalidOperationException(
-        "Qdrant host and port are not configured. " +
-        "Expected 'DocumentChunking:QdrantHost' and 'DocumentChunking:QdrantPort' from Aspire.");
-}
-
-if (!int.TryParse(qdrantPortStr, out int qdrantPort))
-{
-    throw new InvalidOperationException(
-        $"Invalid Qdrant port: '{qdrantPortStr}'. Expected a valid integer.");
-}
-
+qdrantHost ??= "localhost";
+qdrantPortStr ??= "6334";
+int.TryParse(qdrantPortStr, out int qdrantPort);
 bool useHttps = builder.Configuration.GetValue<bool>("DocumentChunking:QdrantUseHttps", defaultValue: false);
-
-QdrantClient qdrantClient = string.IsNullOrWhiteSpace(qdrantApiKey)
-    ? new QdrantClient(qdrantHost, port: qdrantPort, https: useHttps)
-    : new QdrantClient(qdrantHost, port: qdrantPort, https: useHttps, apiKey: qdrantApiKey);
-
-builder.Services.AddSingleton(qdrantClient);
 
 // Configure Ollama client
 string? ollamaEndpoint = builder.Configuration["DocumentChunking:OllamaEndpoint"]?.TrimEnd('/');

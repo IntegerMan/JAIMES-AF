@@ -56,58 +56,34 @@ builder.Services.AddSingleton(options);
 // Add MongoDB client integration
 builder.AddMongoDBClient("documents");
 
-// Configure Qdrant client
-string? qdrantConnectionString = builder.Configuration.GetConnectionString("qdrant-embeddings");
+// Configure Qdrant client using centralized extension method
+// Note: We do NOT default to "qdrant" API key here. If no API key is explicitly configured,
+// we'll construct the QdrantClient without an API key. This allows the code to work
+// with Qdrant instances that don't require authentication.
+builder.Services.AddQdrantClient(builder.Configuration, new QdrantExtensions.QdrantConfigurationOptions
+{
+    SectionPrefix = "DocumentEmbedding",
+    ConnectionStringName = "qdrant-embeddings",
+    RequireConfiguration = true,
+    DefaultApiKey = null // Don't default to "qdrant"
+});
+
+// Get Qdrant configuration for logging
 string? qdrantHost = builder.Configuration["DocumentEmbedding:QdrantHost"];
 string? qdrantPortStr = builder.Configuration["DocumentEmbedding:QdrantPort"];
-string? qdrantApiKey = null;
+string? qdrantConnectionString = builder.Configuration.GetConnectionString("qdrant-embeddings");
 
 // Extract from connection string if provided (takes precedence)
+string? dummyApiKey = null;
 if (!string.IsNullOrWhiteSpace(qdrantConnectionString))
 {
-    QdrantConnectionStringParser.ApplyQdrantConnectionString(qdrantConnectionString, ref qdrantHost, ref qdrantPortStr, ref qdrantApiKey);
+    QdrantConnectionStringParser.ApplyQdrantConnectionString(qdrantConnectionString, ref qdrantHost, ref qdrantPortStr, ref dummyApiKey);
 }
 
-// Try to get API key from additional configuration sources if not found in connection string
-if (string.IsNullOrWhiteSpace(qdrantApiKey))
-{
-    qdrantApiKey = builder.Configuration["Qdrant__ApiKey"]
-        ?? builder.Configuration["Qdrant:ApiKey"]
-        ?? builder.Configuration["QDRANT_EMBEDDINGS_APIKEY"]
-        ?? builder.Configuration["QdrantEmbeddings__ApiKey"]
-        ?? builder.Configuration["QDRANT_EMBEDDINGS_API_KEY"]
-        ?? builder.Configuration["Aspire:Resources:qdrant-embeddings:ApiKey"]
-        ?? Environment.GetEnvironmentVariable("Qdrant__ApiKey")
-        ?? Environment.GetEnvironmentVariable("QDRANT_EMBEDDINGS_APIKEY")
-        ?? Environment.GetEnvironmentVariable("QdrantEmbeddings__ApiKey")
-        ?? Environment.GetEnvironmentVariable("QDRANT_EMBEDDINGS_API_KEY")
-        ?? Environment.GetEnvironmentVariable("qdrant-api-key");
-    
-    // Note: We do NOT default to "qdrant" here. If no API key is explicitly configured,
-    // we'll construct the QdrantClient without an API key. This allows the code to work
-    // with Qdrant instances that don't require authentication.
-}
-
-if (string.IsNullOrWhiteSpace(qdrantHost) || string.IsNullOrWhiteSpace(qdrantPortStr))
-{
-    throw new InvalidOperationException(
-        "Qdrant host and port are not configured. " +
-        "Expected 'DocumentEmbedding:QdrantHost' and 'DocumentEmbedding:QdrantPort' from Aspire.");
-}
-
-if (!int.TryParse(qdrantPortStr, out int qdrantPort))
-{
-    throw new InvalidOperationException(
-        $"Invalid Qdrant port: '{qdrantPortStr}'. Expected a valid integer.");
-}
-
+qdrantHost ??= "localhost";
+qdrantPortStr ??= "6334";
+int.TryParse(qdrantPortStr, out int qdrantPort);
 bool useHttps = builder.Configuration.GetValue<bool>("DocumentEmbedding:QdrantUseHttps", defaultValue: false);
-
-QdrantClient qdrantClient = string.IsNullOrWhiteSpace(qdrantApiKey)
-    ? new QdrantClient(qdrantHost, port: qdrantPort, https: useHttps)
-    : new QdrantClient(qdrantHost, port: qdrantPort, https: useHttps, apiKey: qdrantApiKey);
-
-builder.Services.AddSingleton(qdrantClient);
 
 // Configure Ollama client
 string? ollamaEndpoint = builder.Configuration["DocumentEmbedding:OllamaEndpoint"]?.TrimEnd('/');
@@ -148,6 +124,7 @@ builder.Services.AddSingleton<IDocumentEmbeddingService>(sp =>
     IMongoClient mongoClient = sp.GetRequiredService<IMongoClient>();
     IHttpClientFactory httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
     HttpClient httpClient = httpClientFactory.CreateClient();
+    QdrantClient qdrantClient = sp.GetRequiredService<QdrantClient>();
     ILogger<DocumentEmbeddingService> logger = sp.GetRequiredService<ILogger<DocumentEmbeddingService>>();
     ActivitySource activitySource = sp.GetRequiredService<ActivitySource>();
     

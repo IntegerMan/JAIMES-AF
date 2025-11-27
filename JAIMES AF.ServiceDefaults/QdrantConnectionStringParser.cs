@@ -1,9 +1,21 @@
 using System.Globalization;
 
-namespace MattEland.Jaimes.Workers.DocumentEmbedding.Configuration;
+namespace MattEland.Jaimes.ServiceDefaults;
 
+/// <summary>
+/// Parses Qdrant connection strings to extract host, port, and API key information.
+/// Supports various connection string formats including URIs, key-value pairs, and host:port formats.
+/// Handles IPv4 and IPv6 addresses correctly.
+/// </summary>
 public static class QdrantConnectionStringParser
 {
+    /// <summary>
+    /// Applies connection string values to the provided host, port, and API key references.
+    /// Connection string can be in various formats:
+    /// - URI format: "grpc://host:port?api-key=key"
+    /// - Key-value pairs: "Host=host;Port=port;ApiKey=key"
+    /// - Simple format: "host:port"
+    /// </summary>
     public static void ApplyQdrantConnectionString(
         string connectionString,
         ref string? host,
