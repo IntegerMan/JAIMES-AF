@@ -98,7 +98,7 @@ public class DocumentChunkingService(
                             PageCount = message.PageCount,
                             CrackedAt = message.CrackedAt,
                             TotalChunks = chunks.Count,
-                            DocumentType = message.DocumentType,
+                            DocumentKind = message.DocumentKind,
                             RulesetId = message.RulesetId
                         };
 

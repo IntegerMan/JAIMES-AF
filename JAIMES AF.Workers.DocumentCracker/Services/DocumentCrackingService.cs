@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Text;
-using MattEland.Jaimes.DocumentProcessing.Services;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.Extensions.Logging;
@@ -17,7 +16,7 @@ public class DocumentCrackingService(
     IMessagePublisher messagePublisher,
     ActivitySource activitySource) : IDocumentCrackingService
 {
-    public async Task ProcessDocumentAsync(string filePath, string? relativeDirectory, string? documentType = null, string? rulesetId = null, CancellationToken cancellationToken = default)
+    public async Task ProcessDocumentAsync(string filePath, string? relativeDirectory, string rulesetId, string documentKind, CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Starting to crack document: {FilePath}", filePath);
         
@@ -33,8 +32,8 @@ public class DocumentCrackingService(
         activity?.SetTag("cracker.file_name", fileInfo.Name);
         activity?.SetTag("cracker.file_size", fileInfo.Exists ? fileInfo.Length : 0);
         activity?.SetTag("cracker.relative_directory", relativeDirectory ?? string.Empty);
-        activity?.SetTag("cracker.document_type", documentType ?? string.Empty);
-        activity?.SetTag("cracker.ruleset_id", rulesetId ?? string.Empty);
+        activity?.SetTag("cracker.ruleset_id", rulesetId);
+        activity?.SetTag("cracker.document_kind", documentKind);
         
         // Only process PDF files
         if (!Path.GetExtension(filePath).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
@@ -47,13 +46,6 @@ public class DocumentCrackingService(
         (string contents, int pageCount) = ExtractPdfText(filePath);
         
         activity?.SetTag("cracker.page_count", pageCount);
-
-        // Extract metadata from relative directory
-        string rulesetId = DocumentMetadataExtractor.ExtractRulesetId(relativeDirectory);
-        string documentKind = DocumentMetadataExtractor.DetermineDocumentKind(relativeDirectory);
-        
-        activity?.SetTag("cracker.ruleset_id", rulesetId);
-        activity?.SetTag("cracker.document_kind", documentKind);
 
         // Get database from connection string - the database name is "documents" as configured in AppHost
         IMongoDatabase mongoDatabase = mongoClient.GetDatabase("documents");
@@ -109,7 +101,6 @@ public class DocumentCrackingService(
         if (needsProcessing)
         {
             // Publish message to generate documentMetadata
-            // Use documentKind as documentType for the message (message still uses DocumentType field)
             await PublishDocumentCrackedMessageAsync(documentId, filePath, relativeDirectory ?? string.Empty, 
                 Path.GetFileName(filePath), fileInfo.Length, pageCount, documentKind, rulesetId, cancellationToken);
         }
@@ -121,7 +112,7 @@ public class DocumentCrackingService(
     
     private async Task PublishDocumentCrackedMessageAsync(string documentId, string filePath, 
         string relativeDirectory, string fileName, long fileSize, int pageCount, 
-        string? documentType, string? rulesetId, CancellationToken cancellationToken)
+        string documentKind, string rulesetId, CancellationToken cancellationToken)
     {
         try
         {
@@ -135,7 +126,7 @@ public class DocumentCrackingService(
                 FileSize = fileSize,
                 PageCount = pageCount,
                 CrackedAt = DateTime.UtcNow,
-                DocumentType = documentType,
+                DocumentKind = documentKind,
                 RulesetId = rulesetId
             };
             

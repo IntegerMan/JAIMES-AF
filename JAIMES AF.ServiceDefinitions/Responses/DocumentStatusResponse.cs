@@ -16,7 +16,7 @@ public record DocumentStatusInfo
     public DateTime? CrackedAt { get; init; }
     public long? FileSize { get; init; }
     public int? PageCount { get; init; }
-    public string? DocumentType { get; init; }
+    public string? DocumentKind { get; init; }
     public string? RulesetId { get; init; }
 }
 

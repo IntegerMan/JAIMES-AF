@@ -51,7 +51,7 @@ public class QueueDocumentEmbeddingEndpoint : Endpoint<QueueDocumentEmbeddingReq
             FileSize = document.FileSize,
             PageCount = document.PageCount,
             CrackedAt = document.CrackedAt,
-            DocumentType = document.DocumentType,
+            DocumentKind = document.DocumentKind,
             RulesetId = document.RulesetId
         };
 

@@ -79,7 +79,9 @@ public class DocumentCrackingOrchestrator(
 
                 try
                 {
-                    await CrackDocumentAsync(filePath, relativeDirectory, collection, cancellationToken);
+                    string rulesetId = DocumentMetadataExtractor.ExtractRulesetId(relativeDirectory);
+                    string documentKind = DocumentMetadataExtractor.DetermineDocumentKind(relativeDirectory);
+                    await CrackDocumentAsync(filePath, relativeDirectory, rulesetId, documentKind, collection, cancellationToken);
                     summary.TotalCracked++;
                     directoryCracked++;
                 }
@@ -102,7 +104,7 @@ public class DocumentCrackingOrchestrator(
         return summary;
     }
 
-    private async Task CrackDocumentAsync(string filePath, string relativeDirectory, IMongoCollection<CrackedDocument> collection, CancellationToken cancellationToken)
+    private async Task CrackDocumentAsync(string filePath, string relativeDirectory, string rulesetId, string documentKind, IMongoCollection<CrackedDocument> collection, CancellationToken cancellationToken)
     {
         logger.LogInformation("Starting to crack document: {FilePath}", filePath);
         
@@ -122,11 +124,6 @@ public class DocumentCrackingOrchestrator(
         (string contents, int pageCount) = ExtractPdfText(filePath);
         
         activity?.SetTag("cracker.page_count", pageCount);
-
-        // Extract metadata from relative directory
-        string rulesetId = DocumentMetadataExtractor.ExtractRulesetId(relativeDirectory);
-        string documentKind = DocumentMetadataExtractor.DetermineDocumentKind(relativeDirectory);
-        
         activity?.SetTag("cracker.ruleset_id", rulesetId);
         activity?.SetTag("cracker.document_kind", documentKind);
 

@@ -57,7 +57,7 @@ public class BackfillEmbeddingsEndpoint : Ep.NoReq.Res<BackfillEmbeddingsRespons
                 FileSize = document.FileSize,
                 PageCount = document.PageCount,
                 CrackedAt = document.CrackedAt,
-                DocumentType = document.DocumentType,
+                DocumentKind = document.DocumentKind,
                 RulesetId = document.RulesetId
             };
 

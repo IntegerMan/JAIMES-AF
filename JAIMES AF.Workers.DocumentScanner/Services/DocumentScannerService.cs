@@ -120,7 +120,8 @@ public class DocumentChangeDetectorService(
                     if (isCracked)
                     {
                         // File unchanged and successfully cracked, update last scanned time
-                        await UpdateMetadataAsync(metadataCollection, filePath, currentHash, cancellationToken);
+                        string? relativeDirectory = GetRelativeDirectory(filePath, rootDirectory);
+                        await UpdateMetadataAsync(metadataCollection, filePath, currentHash, relativeDirectory, cancellationToken);
                         summary.FilesUnchanged++;
                         logger.LogDebug("File unchanged and cracked, skipping: {FilePath}", filePath);
                         fileActivity?.SetTag("scanner.status", "unchanged");
@@ -130,9 +131,8 @@ public class DocumentChangeDetectorService(
                         // File hash matches but document wasn't cracked (likely failed previously)
                         // Enqueue for retry
                         string? relativeDirectory = GetRelativeDirectory(filePath, rootDirectory);
-                        string? rulesetId = GetRulesetFromDirectory(filePath);
-                        await EnqueueDocumentAsync(filePath, relativeDirectory, "Sourcebook", rulesetId, cancellationToken);
-                        await UpdateMetadataAsync(metadataCollection, filePath, currentHash, cancellationToken);
+                        await EnqueueDocumentAsync(filePath, relativeDirectory, cancellationToken);
+                        await UpdateMetadataAsync(metadataCollection, filePath, currentHash, relativeDirectory, cancellationToken);
                         summary.FilesEnqueued++;
                         logger.LogInformation("File hash unchanged but not cracked, enqueuing for retry: {FilePath} (Hash: {Hash})", filePath, currentHash);
                         fileActivity?.SetTag("scanner.status", "retry_uncracked");
@@ -142,9 +142,8 @@ public class DocumentChangeDetectorService(
                 {
                     // File is new or changed, enqueue for processing
                     string? relativeDirectory = GetRelativeDirectory(filePath, rootDirectory);
-                    string? rulesetId = GetRulesetFromDirectory(filePath);
-                    await EnqueueDocumentAsync(filePath, relativeDirectory, "Sourcebook", rulesetId, cancellationToken);
-                    await UpdateMetadataAsync(metadataCollection, filePath, currentHash, cancellationToken);
+                    await EnqueueDocumentAsync(filePath, relativeDirectory, cancellationToken);
+                    await UpdateMetadataAsync(metadataCollection, filePath, currentHash, relativeDirectory, cancellationToken);
                     summary.FilesEnqueued++;
                     logger.LogInformation("File enqueued for processing: {FilePath} (Hash: {Hash})", filePath, currentHash);
                     fileActivity?.SetTag("scanner.status", storedMetadata == null ? "new" : "changed");
@@ -184,12 +183,18 @@ public class DocumentChangeDetectorService(
         IMongoCollection<DocumentMetadata> metadataCollection,
         string filePath,
         string hash,
+        string? relativeDirectory,
         CancellationToken cancellationToken)
     {
+        string rulesetId = DocumentMetadataExtractor.ExtractRulesetId(relativeDirectory);
+        string documentKind = DocumentMetadataExtractor.DetermineDocumentKind(relativeDirectory);
+
         FilterDefinition<DocumentMetadata> filter = Builders<DocumentMetadata>.Filter.Eq(x => x.FilePath, filePath);
         UpdateDefinition<DocumentMetadata> update = Builders<DocumentMetadata>.Update
             .Set(x => x.Hash, hash)
-            .Set(x => x.LastScanned, DateTime.UtcNow);
+            .Set(x => x.LastScanned, DateTime.UtcNow)
+            .Set(x => x.RulesetId, rulesetId)
+            .Set(x => x.DocumentKind, documentKind);
 
         UpdateOptions options = new() { IsUpsert = true };
 
@@ -199,16 +204,17 @@ public class DocumentChangeDetectorService(
     private async Task EnqueueDocumentAsync(
         string filePath,
         string? relativeDirectory,
-        string? documentType,
-        string? rulesetId,
         CancellationToken cancellationToken)
     {
+        string extractedRulesetId = DocumentMetadataExtractor.ExtractRulesetId(relativeDirectory);
+        string extractedDocumentKind = DocumentMetadataExtractor.DetermineDocumentKind(relativeDirectory);
+
         CrackDocumentMessage message = new()
         {
             FilePath = filePath,
             RelativeDirectory = relativeDirectory,
-            DocumentType = documentType,
-            RulesetId = rulesetId
+            RulesetId = extractedRulesetId,
+            DocumentKind = extractedDocumentKind
         };
 
         await messagePublisher.PublishAsync(message, cancellationToken);
@@ -237,18 +243,5 @@ public class DocumentChangeDetectorService(
         return null;
     }
 
-    private static string? GetRulesetFromDirectory(string filePath)
-    {
-        // Get the directory name (just the immediate parent directory name, not the full path)
-        string? directory = Path.GetDirectoryName(filePath);
-        
-        if (string.IsNullOrEmpty(directory))
-        {
-            return null;
-        }
-
-        // Return just the directory name (e.g., "Battletech" from "C:\Dev\Sourcebooks\Battletech")
-        return Path.GetFileName(directory);
-    }
 }
 

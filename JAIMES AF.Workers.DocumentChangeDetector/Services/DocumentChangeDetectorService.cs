@@ -206,10 +206,15 @@ public class DocumentChangeDetectorService(
         string? relativeDirectory,
         CancellationToken cancellationToken)
     {
+        string rulesetId = DocumentMetadataExtractor.ExtractRulesetId(relativeDirectory);
+        string documentKind = DocumentMetadataExtractor.DetermineDocumentKind(relativeDirectory);
+
         CrackDocumentMessage message = new()
         {
             FilePath = filePath,
-            RelativeDirectory = relativeDirectory
+            RelativeDirectory = relativeDirectory,
+            RulesetId = rulesetId,
+            DocumentKind = documentKind
         };
 
         await messagePublisher.PublishAsync(message, cancellationToken);

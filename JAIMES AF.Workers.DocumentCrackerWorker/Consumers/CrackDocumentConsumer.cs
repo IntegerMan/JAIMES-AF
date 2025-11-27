@@ -43,7 +43,7 @@ public class CrackDocumentConsumer(
                 return;
             }
 
-            await crackingService.ProcessDocumentAsync(message.FilePath, message.RelativeDirectory, message.DocumentType, message.RulesetId, cancellationToken);
+            await crackingService.ProcessDocumentAsync(message.FilePath, message.RelativeDirectory, message.RulesetId, message.DocumentKind, cancellationToken);
 
             logger.LogInformation("Successfully processed document: {FilePath}", message.FilePath);
             activity?.SetStatus(ActivityStatusCode.Ok);

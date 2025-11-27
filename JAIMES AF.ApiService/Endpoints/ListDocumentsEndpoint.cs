@@ -63,7 +63,7 @@ public class ListDocumentsEndpoint : Ep.NoReq.Res<DocumentStatusResponse>
                 CrackedAt = hasCracked ? cracked!.CrackedAt : null,
                 FileSize = hasCracked ? cracked!.FileSize : null,
                 PageCount = hasCracked ? cracked!.PageCount : null,
-                DocumentType = hasCracked ? cracked!.DocumentType : null,
+                DocumentKind = hasCracked ? cracked!.DocumentKind : null,
                 RulesetId = hasCracked ? cracked!.RulesetId : null
             });
         }
