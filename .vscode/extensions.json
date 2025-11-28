@@ -11,6 +11,7 @@
         "ms-azuretools.vscode-docker",
         "mtxr.sqltools",
         "mtxr.sqltools-driver-sqlite",
-        "github.vscode-pull-request-github"
+        "github.vscode-pull-request-github",
+        "sonarsource.sonarlint-vscode"
     ]
 }
