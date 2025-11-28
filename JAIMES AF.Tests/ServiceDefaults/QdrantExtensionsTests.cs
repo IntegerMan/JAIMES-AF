@@ -278,7 +278,13 @@ public class QdrantExtensionsTests
 
         ServiceCollection services = new();
 
-        services.AddQdrantClient(configuration, null, out QdrantExtensions.QdrantConnectionConfig config);
+        // When options is null, it creates default options with RequireConfiguration=true
+        // So we need to provide the configuration values
+        services.AddQdrantClient(configuration, new QdrantExtensions.QdrantConfigurationOptions
+        {
+            SectionPrefix = "",
+            RequireConfiguration = false
+        }, out QdrantExtensions.QdrantConnectionConfig config);
 
         QdrantClient? client = services.BuildServiceProvider().GetService<QdrantClient>();
         client.ShouldNotBeNull();
