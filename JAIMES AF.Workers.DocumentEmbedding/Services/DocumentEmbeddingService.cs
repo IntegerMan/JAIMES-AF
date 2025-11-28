@@ -5,9 +5,9 @@ using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
-using Qdrant.Client;
 using Qdrant.Client.Grpc;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Workers.DocumentEmbedding.Configuration;
 
 namespace MattEland.Jaimes.Workers.DocumentEmbedding.Services;
@@ -16,7 +16,7 @@ public class DocumentEmbeddingService(
     IMongoClient mongoClient,
     HttpClient httpClient,
     DocumentEmbeddingOptions options,
-    QdrantClient qdrantClient,
+    IQdrantClient qdrantClient,
     ILogger<DocumentEmbeddingService> logger,
     ActivitySource activitySource,
     string ollamaEndpoint,
@@ -118,11 +118,13 @@ public class DocumentEmbeddingService(
             logger.LogDebug("Processing chunk for embedding: {ChunkId} (DocumentId: {DocumentId})",
                 message.ChunkId, message.DocumentId);
 
-            // Extract ruleset ID from relative directory
-            string rulesetId = ExtractRulesetId(message.RelativeDirectory);
+            // Use ruleset ID from message (or extract from relative directory as fallback)
+            string rulesetId = !string.IsNullOrWhiteSpace(message.RulesetId) 
+                ? message.RulesetId 
+                : ExtractRulesetId(message.RelativeDirectory);
             activity?.SetTag("embedding.ruleset_id", rulesetId);
-            logger.LogDebug("Extracted ruleset ID: {RulesetId} from directory: {RelativeDirectory}",
-                rulesetId, message.RelativeDirectory);
+            logger.LogDebug("Using ruleset ID: {RulesetId} for chunk {ChunkId}",
+                rulesetId, message.ChunkId);
 
             // Generate embedding using Ollama HTTP API
             logger.LogDebug("Generating embedding for chunk {ChunkId} (text length: {Length})",
@@ -141,14 +143,17 @@ public class DocumentEmbeddingService(
                 { "chunkText", message.ChunkText },
                 { "documentId", message.DocumentId },
                 { "fileName", message.FileName },
-                { "filePath", message.FilePath },
-                { "relativeDirectory", message.RelativeDirectory ?? string.Empty },
                 { "rulesetId", rulesetId },
                 { "fileSize", message.FileSize.ToString() },
-                { "pageCount", message.PageCount.ToString() },
-                { "crackedAt", message.CrackedAt.ToString("O") },
+                { "documentKind", message.DocumentKind },
                 { "embeddedAt", DateTime.UtcNow.ToString("O") }
             };
+
+            // Add page number if available
+            if (message.PageNumber.HasValue)
+            {
+                metadata["pageNumber"] = message.PageNumber.Value.ToString();
+            }
 
             // Calculate Qdrant point ID using SHA256 hash
             ulong qdrantPointId = GenerateQdrantPointId(message.ChunkId);
@@ -170,6 +175,9 @@ public class DocumentEmbeddingService(
 
             // Update MongoDB to mark chunk as processed
             await UpdateChunkInMongoDBAsync(message.ChunkId, qdrantPointId, cancellationToken);
+
+            // Increment ProcessedChunkCount in CrackedDocument
+            await IncrementProcessedChunkCountAsync(message.DocumentId, cancellationToken);
 
             logger.LogInformation("Marked chunk {ChunkId} as processed in MongoDB", message.ChunkId);
             activity?.SetStatus(ActivityStatusCode.Ok);
@@ -253,7 +261,7 @@ public class DocumentEmbeddingService(
 
         FilterDefinition<DocumentChunk> filter = Builders<DocumentChunk>.Filter.Eq(c => c.ChunkId, chunkId);
         UpdateDefinition<DocumentChunk> update = Builders<DocumentChunk>.Update
-            .Set(c => c.QdrantPointId, qdrantPointId);
+            .Set(c => c.QdrantPointId, qdrantPointId.ToString());
 
         MongoDB.Driver.UpdateResult result = await collection.UpdateOneAsync(filter, update, cancellationToken: cancellationToken);
 
@@ -265,6 +273,43 @@ public class DocumentEmbeddingService(
         {
             logger.LogDebug("Updated chunk {ChunkId} with Qdrant point ID {PointId}",
                 chunkId, qdrantPointId);
+        }
+    }
+
+    private async Task IncrementProcessedChunkCountAsync(
+        string documentId,
+        CancellationToken cancellationToken)
+    {
+        using Activity? activity = activitySource.StartActivity("DocumentEmbedding.IncrementProcessedChunkCount");
+        activity?.SetTag("embedding.document_id", documentId);
+
+        try
+        {
+            IMongoDatabase mongoDatabase = mongoClient.GetDatabase("documents");
+            IMongoCollection<CrackedDocument> collection = mongoDatabase.GetCollection<CrackedDocument>("crackedDocuments");
+
+            FilterDefinition<CrackedDocument> filter = Builders<CrackedDocument>.Filter.Eq(d => d.Id, documentId);
+            UpdateDefinition<CrackedDocument> update = Builders<CrackedDocument>.Update
+                .Inc(d => d.ProcessedChunkCount, 1);
+
+            MongoDB.Driver.UpdateResult result = await collection.UpdateOneAsync(filter, update, cancellationToken: cancellationToken);
+
+            if (result.MatchedCount == 0)
+            {
+                logger.LogWarning("Document {DocumentId} not found when incrementing processed chunk count", documentId);
+            }
+            else
+            {
+                logger.LogDebug("Incremented processed chunk count for document {DocumentId}", documentId);
+            }
+
+            activity?.SetStatus(ActivityStatusCode.Ok);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to increment processed chunk count for document {DocumentId}", documentId);
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            // Don't throw - this is a non-critical operation
         }
     }
 

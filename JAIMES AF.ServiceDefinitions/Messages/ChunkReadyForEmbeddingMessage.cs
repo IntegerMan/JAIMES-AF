@@ -11,6 +11,7 @@ public class ChunkReadyForEmbeddingMessage
     public string RelativeDirectory { get; set; } = string.Empty;
     public long FileSize { get; set; }
     public int PageCount { get; set; }
+    public int? PageNumber { get; set; }
     public DateTime CrackedAt { get; set; }
     public int TotalChunks { get; set; }
     public string DocumentKind { get; set; } = "Sourcebook";

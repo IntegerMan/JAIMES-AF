@@ -65,24 +65,7 @@ builder.Services.AddQdrantClient(builder.Configuration, new QdrantExtensions.Qdr
     ConnectionStringName = "qdrant-embeddings",
     RequireConfiguration = true,
     DefaultApiKey = null // Don't default to "qdrant"
-});
-
-// Get Qdrant configuration for logging
-string? qdrantHost = builder.Configuration["DocumentChunking:QdrantHost"];
-string? qdrantPortStr = builder.Configuration["DocumentChunking:QdrantPort"];
-string? qdrantConnectionString = builder.Configuration.GetConnectionString("qdrant-embeddings");
-
-// Extract from connection string if provided (takes precedence)
-string? dummyApiKey = null;
-if (!string.IsNullOrWhiteSpace(qdrantConnectionString))
-{
-    QdrantConnectionStringParser.ApplyQdrantConnectionString(qdrantConnectionString, ref qdrantHost, ref qdrantPortStr, ref dummyApiKey);
-}
-
-qdrantHost ??= "localhost";
-qdrantPortStr ??= "6334";
-int.TryParse(qdrantPortStr, out int qdrantPort);
-bool useHttps = builder.Configuration.GetValue<bool>("DocumentChunking:QdrantUseHttps", defaultValue: false);
+}, out QdrantExtensions.QdrantConnectionConfig qdrantConfig);
 
 // Configure Ollama client
 string? ollamaEndpoint = builder.Configuration["DocumentChunking:OllamaEndpoint"]?.TrimEnd('/');
@@ -216,7 +199,7 @@ if (useSemanticChunker)
     logger.LogInformation("Ollama Endpoint: {Endpoint}", ollamaEndpoint);
     logger.LogInformation("Ollama Model: {Model}", ollamaModel);
 }
-logger.LogInformation("Qdrant: {Host}:{Port} (HTTPS: {UseHttps})", qdrantHost, qdrantPort, useHttps);
+logger.LogInformation("Qdrant: {Host}:{Port} (HTTPS: {UseHttps})", qdrantConfig.Host, qdrantConfig.Port, qdrantConfig.UseHttps);
 logger.LogInformation("Worker ready and listening for DocumentReadyForChunkingMessage on queue");
 
 // Ensure Qdrant collection exists on startup

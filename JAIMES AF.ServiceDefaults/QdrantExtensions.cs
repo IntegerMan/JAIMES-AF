@@ -10,6 +10,27 @@ namespace MattEland.Jaimes.ServiceDefaults;
 public static class QdrantExtensions
 {
     /// <summary>
+    /// Resolved Qdrant connection configuration values.
+    /// </summary>
+    public record QdrantConnectionConfig
+    {
+        /// <summary>
+        /// The Qdrant host address.
+        /// </summary>
+        public required string Host { get; init; }
+
+        /// <summary>
+        /// The Qdrant port number.
+        /// </summary>
+        public required int Port { get; init; }
+
+        /// <summary>
+        /// Whether to use HTTPS for the connection.
+        /// </summary>
+        public required bool UseHttps { get; init; }
+    }
+
+    /// <summary>
     /// Configuration options for Qdrant client setup.
     /// </summary>
     public class QdrantConfigurationOptions
@@ -54,6 +75,24 @@ public static class QdrantExtensions
         this IServiceCollection services,
         IConfiguration configuration,
         QdrantConfigurationOptions? options = null)
+    {
+        AddQdrantClient(services, configuration, options, out _);
+        return services;
+    }
+
+    /// <summary>
+    /// Configures and registers a Qdrant client in the service collection and returns configuration values.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configuration">The configuration instance.</param>
+    /// <param name="options">Configuration options for Qdrant setup.</param>
+    /// <param name="config">Output parameter containing the resolved Qdrant configuration.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddQdrantClient(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        QdrantConfigurationOptions? options,
+        out QdrantConnectionConfig config)
     {
         options ??= new QdrantConfigurationOptions();
 
@@ -111,6 +150,14 @@ public static class QdrantExtensions
 
         services.AddSingleton(qdrantClient);
 
+        // Set output parameter with configuration values
+        config = new QdrantConnectionConfig
+        {
+            Host = qdrantHost,
+            Port = qdrantPort,
+            UseHttps = useHttps
+        };
+
         return services;
     }
 
@@ -167,6 +214,54 @@ public static class QdrantExtensions
         }
 
         return apiKey;
+    }
+
+    /// <summary>
+    /// Extracts Qdrant configuration values for logging purposes.
+    /// Uses the same parsing logic as AddQdrantClient to ensure consistency.
+    /// </summary>
+    /// <param name="configuration">The configuration instance.</param>
+    /// <param name="options">Configuration options for Qdrant setup.</param>
+    /// <returns>The resolved Qdrant connection configuration.</returns>
+    public static QdrantConnectionConfig GetQdrantConfiguration(
+        IConfiguration configuration,
+        QdrantConfigurationOptions options)
+    {
+        // Get connection string
+        string? qdrantConnectionString = configuration.GetConnectionString(options.ConnectionStringName);
+        
+        // Get host and port from configuration section
+        string? qdrantHost = configuration[$"{options.SectionPrefix}:QdrantHost"];
+        string? qdrantPortStr = configuration[$"{options.SectionPrefix}:QdrantPort"];
+        string? dummyApiKey = null;
+
+        // Extract from connection string if provided (takes precedence)
+        if (!string.IsNullOrWhiteSpace(qdrantConnectionString))
+        {
+            QdrantConnectionStringParser.ApplyQdrantConnectionString(
+                qdrantConnectionString, 
+                ref qdrantHost, 
+                ref qdrantPortStr, 
+                ref dummyApiKey);
+        }
+
+        // Set defaults
+        qdrantHost ??= "localhost";
+        qdrantPortStr ??= "6334";
+        
+        if (!int.TryParse(qdrantPortStr, out int qdrantPort))
+        {
+            qdrantPort = 6334; // Fallback to default port
+        }
+
+        bool useHttps = configuration.GetValue<bool>($"{options.SectionPrefix}:QdrantUseHttps", defaultValue: false);
+
+        return new QdrantConnectionConfig
+        {
+            Host = qdrantHost,
+            Port = qdrantPort,
+            UseHttps = useHttps
+        };
     }
 }
 

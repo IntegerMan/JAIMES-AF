@@ -45,6 +45,7 @@
     <ProjectReference Include="..\JAIMES AF.Workers.DocumentChangeDetector\JAIMES AF.Workers.DocumentChangeDetector.csproj" />
     <ProjectReference Include="..\JAIMES AF.Workers.DocumentCracker\JAIMES AF.Workers.DocumentCracker.csproj" />
     <ProjectReference Include="..\JAIMES AF.Workers.DocumentChunking\JAIMES AF.Workers.DocumentChunking.csproj" />
+    <ProjectReference Include="..\JAIMES AF.Workers.DocumentEmbedding\JAIMES AF.Workers.DocumentEmbedding.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -57,33 +57,22 @@ builder.Services.AddSingleton(options);
 builder.AddMongoDBClient("documents");
 
 // Configure Qdrant client using centralized extension method
-// Note: We do NOT default to "qdrant" API key here. If no API key is explicitly configured,
-// we'll construct the QdrantClient without an API key. This allows the code to work
-// with Qdrant instances that don't require authentication.
+// DocumentEmbedding worker uses "qdrant" as default API key (matching ApiService configuration)
+// to ensure authentication works with Qdrant instances that require it.
 builder.Services.AddQdrantClient(builder.Configuration, new QdrantExtensions.QdrantConfigurationOptions
 {
     SectionPrefix = "DocumentEmbedding",
     ConnectionStringName = "qdrant-embeddings",
     RequireConfiguration = true,
-    DefaultApiKey = null // Don't default to "qdrant"
-});
-
-// Get Qdrant configuration for logging
-string? qdrantHost = builder.Configuration["DocumentEmbedding:QdrantHost"];
-string? qdrantPortStr = builder.Configuration["DocumentEmbedding:QdrantPort"];
-string? qdrantConnectionString = builder.Configuration.GetConnectionString("qdrant-embeddings");
-
-// Extract from connection string if provided (takes precedence)
-string? dummyApiKey = null;
-if (!string.IsNullOrWhiteSpace(qdrantConnectionString))
-{
-    QdrantConnectionStringParser.ApplyQdrantConnectionString(qdrantConnectionString, ref qdrantHost, ref qdrantPortStr, ref dummyApiKey);
-}
-
-qdrantHost ??= "localhost";
-qdrantPortStr ??= "6334";
-int.TryParse(qdrantPortStr, out int qdrantPort);
-bool useHttps = builder.Configuration.GetValue<bool>("DocumentEmbedding:QdrantUseHttps", defaultValue: false);
+    DefaultApiKey = "qdrant", // Default to "qdrant" API key for authentication
+    AdditionalApiKeyKeys = new[]
+    {
+        "DocumentEmbedding:QdrantApiKey",
+        "DocumentEmbedding__QdrantApiKey",
+        "DocumentChunking:QdrantApiKey",
+        "DocumentChunking__QdrantApiKey"
+    }
+}, out QdrantExtensions.QdrantConnectionConfig qdrantConfig);
 
 // Configure Ollama client
 string? ollamaEndpoint = builder.Configuration["DocumentEmbedding:OllamaEndpoint"]?.TrimEnd('/');
@@ -118,13 +107,20 @@ string ollamaModel = options.OllamaModel ?? "nomic-embed-text";
 // Register HttpClient for Ollama API calls
 builder.Services.AddHttpClient();
 
+// Register QdrantClient wrapper
+builder.Services.AddSingleton<IQdrantClient>(sp =>
+{
+    QdrantClient qdrantClient = sp.GetRequiredService<QdrantClient>();
+    return new QdrantClientWrapper(qdrantClient);
+});
+
 // Register services with Ollama configuration
 builder.Services.AddSingleton<IDocumentEmbeddingService>(sp =>
 {
     IMongoClient mongoClient = sp.GetRequiredService<IMongoClient>();
     IHttpClientFactory httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
     HttpClient httpClient = httpClientFactory.CreateClient();
-    QdrantClient qdrantClient = sp.GetRequiredService<QdrantClient>();
+    IQdrantClient qdrantClient = sp.GetRequiredService<IQdrantClient>();
     ILogger<DocumentEmbeddingService> logger = sp.GetRequiredService<ILogger<DocumentEmbeddingService>>();
     ActivitySource activitySource = sp.GetRequiredService<ActivitySource>();
     
@@ -179,7 +175,7 @@ ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 logger.LogInformation("Starting Document Embedding Worker");
 logger.LogInformation("Ollama Endpoint: {Endpoint}", ollamaEndpoint);
 logger.LogInformation("Ollama Model: {Model}", ollamaModel);
-logger.LogInformation("Qdrant: {Host}:{Port} (HTTPS: {UseHttps})", qdrantHost, qdrantPort, useHttps);
+logger.LogInformation("Qdrant: {Host}:{Port} (HTTPS: {UseHttps})", qdrantConfig.Host, qdrantConfig.Port, qdrantConfig.UseHttps);
 logger.LogInformation("Worker ready and listening for ChunkReadyForEmbeddingMessage on queue");
 
 await host.RunAsync();

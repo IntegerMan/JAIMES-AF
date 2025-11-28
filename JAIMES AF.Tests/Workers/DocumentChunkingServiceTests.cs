@@ -103,6 +103,8 @@ public class DocumentChunkingServiceTests
             Times.Once);
         queuedChunk.ShouldNotBeNull();
         queuedChunk!.RelativeDirectory.ShouldBe(message.RelativeDirectory);
+        queuedChunk.DocumentKind.ShouldBe(message.DocumentKind);
+        queuedChunk.RulesetId.ShouldBe(message.RulesetId);
 
         List<DocumentChunk> storedChunks = await context.DocumentChunkCollection
             .Find(Builders<DocumentChunk>.Filter.Eq(chunk => chunk.DocumentId, message.DocumentId))
@@ -117,6 +119,82 @@ public class DocumentChunkingServiceTests
         updatedDocument.ShouldNotBeNull();
         updatedDocument!.IsProcessed.ShouldBeTrue();
         updatedDocument.TotalChunks.ShouldBe(chunks.Count);
+    }
+
+    [Fact]
+    public async Task ProcessDocumentAsync_ExtractsPageNumberFromChunkText()
+    {
+        using DocumentChunkingServiceTestContext context = new();
+
+        string documentId = ObjectId.GenerateNewId().ToString();
+
+        DocumentReadyForChunkingMessage message = new()
+        {
+            DocumentId = documentId,
+            FileName = "rules.pdf",
+            FilePath = "/content/rules.pdf",
+            RelativeDirectory = "ruleset-z/source",
+            FileSize = 1024,
+            PageCount = 12,
+            CrackedAt = DateTime.UtcNow,
+            DocumentKind = "Sourcebook",
+            RulesetId = "ruleset-z"
+        };
+
+        await context.SetupDocumentContentAsync(message.DocumentId, "Document content", TestContext.Current.CancellationToken);
+
+        List<TextChunk> chunks = new()
+        {
+            new TextChunk
+            {
+                Id = "chunk-with-page",
+                Text = "--- Page 5 ---\nSome content from page 5",
+                Index = 0,
+                SourceDocumentId = message.DocumentId,
+                Embedding = null
+            },
+            new TextChunk
+            {
+                Id = "chunk-no-page",
+                Text = "Content without page marker",
+                Index = 1,
+                SourceDocumentId = message.DocumentId,
+                Embedding = null
+            }
+        };
+
+        context.ChunkingStrategyMock
+            .Setup(strategy => strategy.ChunkText("Document content", message.DocumentId))
+            .Returns(chunks);
+
+        ChunkReadyForEmbeddingMessage? queuedChunkWithPage = null;
+        ChunkReadyForEmbeddingMessage? queuedChunkNoPage = null;
+        context.MessagePublisherMock
+            .Setup(publisher => publisher.PublishAsync(
+                It.IsAny<ChunkReadyForEmbeddingMessage>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<ChunkReadyForEmbeddingMessage, CancellationToken>((chunk, _) =>
+            {
+                if (chunk.ChunkId == "chunk-with-page")
+                {
+                    queuedChunkWithPage = chunk;
+                }
+                else if (chunk.ChunkId == "chunk-no-page")
+                {
+                    queuedChunkNoPage = chunk;
+                }
+            })
+            .Returns(Task.CompletedTask);
+
+        await context.Service.ProcessDocumentAsync(
+            message,
+            TestContext.Current.CancellationToken);
+
+        queuedChunkWithPage.ShouldNotBeNull();
+        queuedChunkWithPage!.PageNumber.ShouldBe(5);
+
+        queuedChunkNoPage.ShouldNotBeNull();
+        queuedChunkNoPage!.PageNumber.ShouldBeNull();
     }
 
     private sealed class DocumentChunkingServiceTestContext : IDisposable

@@ -66,7 +66,7 @@ public class DocumentChunkingService(
                 logger.LogError("Document {DocumentId} produced no chunks after chunking. This is a failure condition.", 
                     message.DocumentId);
                 activity?.SetStatus(ActivityStatusCode.Error, "No chunks produced");
-                throw new InvalidOperationException($"Document {message.DocumentId} produced no chunks after chunking. This may indicate a problem with the chunking strategy or document content.");
+            throw new InvalidOperationException($"Document {message.DocumentId} produced no chunks after chunking. This may indicate a problem with the chunking strategy or document content.");
             }
 
             // Step 3: Store chunks in MongoDB
@@ -84,6 +84,9 @@ public class DocumentChunkingService(
                 {
                     if (chunk.Embedding == null || chunk.Embedding.Length == 0)
                     {
+                        // Extract page number from chunk text (looks for "--- Page X ---" markers)
+                        int? pageNumber = ExtractPageNumberFromChunkText(chunk.Text);
+                        
                         // Chunk has no embedding - queue it for embedding generation
                         ChunkReadyForEmbeddingMessage embeddingMessage = new()
                         {
@@ -96,6 +99,7 @@ public class DocumentChunkingService(
                             RelativeDirectory = message.RelativeDirectory,
                             FileSize = message.FileSize,
                             PageCount = message.PageCount,
+                            PageNumber = pageNumber,
                             CrackedAt = message.CrackedAt,
                             TotalChunks = chunks.Count,
                             DocumentKind = message.DocumentKind,
@@ -318,6 +322,46 @@ public class DocumentChunkingService(
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             // Don't throw - this is a non-critical operation
         }
+    }
+
+    /// <summary>
+    /// Extracts the page number from chunk text by looking for "--- Page X ---" markers.
+    /// Returns the first page number found, or null if no page marker is found.
+    /// </summary>
+    private static int? ExtractPageNumberFromChunkText(string chunkText)
+    {
+        if (string.IsNullOrWhiteSpace(chunkText))
+        {
+            return null;
+        }
+
+        // Look for "--- Page X ---" pattern in the text
+        // The pattern is added by PDF extraction: builder.AppendLine($"--- Page {page.Number} ---");
+        int pageMarkerIndex = chunkText.IndexOf("--- Page ", StringComparison.Ordinal);
+        if (pageMarkerIndex < 0)
+        {
+            return null;
+        }
+
+        // Find the start of the page number (after "--- Page ")
+        int numberStart = pageMarkerIndex + 9; // Length of "--- Page "
+        
+        // Find the end of the page number (before " ---")
+        int numberEnd = chunkText.IndexOf(" ---", numberStart, StringComparison.Ordinal);
+        if (numberEnd < 0)
+        {
+            return null;
+        }
+
+        // Extract the page number substring
+        string pageNumberStr = chunkText.Substring(numberStart, numberEnd - numberStart).Trim();
+        
+        if (int.TryParse(pageNumberStr, out int pageNumber))
+        {
+            return pageNumber;
+        }
+
+        return null;
     }
 }
 
