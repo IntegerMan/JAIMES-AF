@@ -1,0 +1,26 @@
+{
+  "settings": {
+    "documentationRules": {
+      "companyName": "",
+      "documentFileHeaders": false,
+      "documentInterfaces": false,
+      "documentExposedElements": false,
+      "documentInternalElements": false,
+      "documentPrivateElements": false,
+      "documentPrivateFields": false
+    },
+    "orderingRules": {
+      "usingDirectivesPlacement": "outsideNamespace",
+      "systemUsingDirectivesFirst": true
+    },
+    "layoutRules": {
+      "newlineAtEndOfFile": "allow",
+      "allowConsecutiveUsings": true
+    },
+    "namingRules": {
+      "allowCommonHungarianPrefixes": true,
+      "allowCommonMemberPrefixes": true,
+      "allowCommonFieldPrefixes": true
+    }
+  }
+}

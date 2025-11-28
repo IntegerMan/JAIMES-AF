@@ -45,7 +45,7 @@ public sealed class MongoTestRunner : IDisposable
 
     private static void EnsureLegacyOpenSslLibraries()
     {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        if (!OperatingSystem.IsLinux())
         {
             return;
         }

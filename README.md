@@ -173,3 +173,8 @@ Guidelines:
 - Prefer small, composable endpoints that delegate logic to services.
 - Update documentation and tests when modifying DTOs, migrations, or background flows.
 - See `TECHNICAL_OVERVIEW.md` for detailed layer responsibilities and data schemas (including Mermaid diagrams).
+
+### Code Analysis
+
+- Solution-wide analyzers (Roslyn, StyleCop, Meziantou) execute via `dotnet format style` and `dotnet format analyzers`. Run them locally to match CI.
+- Code coverage is collected via Coverlet during `dotnet test`, and the resulting OpenCover report (`TestResults/coverage/coverage.opencover.xml`) is published to SonarCloud for quality gates.
