@@ -4,7 +4,9 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Grpc.Core;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Tests.TestUtilities;
 using MattEland.Jaimes.Workers.DocumentEmbedding.Configuration;
 using MattEland.Jaimes.Workers.DocumentEmbedding.Services;
@@ -13,9 +15,11 @@ using Moq;
 using Moq.Protected;
 using MongoDB.Bson;
 using MongoDB.Driver;
-using Qdrant.Client;
 using Qdrant.Client.Grpc;
 using Shouldly;
+using UpdateResult = Qdrant.Client.Grpc.UpdateResult;
+using CollectionInfo = Qdrant.Client.Grpc.CollectionInfo;
+using VectorParams = Qdrant.Client.Grpc.VectorParams;
 
 namespace MattEland.Jaimes.Tests.Workers;
 
@@ -283,7 +287,7 @@ public class DocumentEmbeddingServiceTests
     {
         public Mock<IMongoClient> MongoClientMock { get; }
         public Mock<HttpMessageHandler> HttpMessageHandlerMock { get; }
-        public Mock<QdrantClient> QdrantClientMock { get; }
+        public Mock<IQdrantClient> QdrantClientMock { get; }
         public Mock<ILogger<DocumentEmbeddingService>> LoggerMock { get; }
         public DocumentEmbeddingService Service { get; }
         public IMongoCollection<DocumentChunk> ChunkCollection { get; }
@@ -300,7 +304,7 @@ public class DocumentEmbeddingServiceTests
         {
             MongoClientMock = new Mock<IMongoClient>();
             HttpMessageHandlerMock = new Mock<HttpMessageHandler>();
-            QdrantClientMock = new Mock<QdrantClient>();
+            QdrantClientMock = new Mock<IQdrantClient>();
             LoggerMock = new Mock<ILogger<DocumentEmbeddingService>>();
             _activitySource = new ActivitySource($"DocumentEmbeddingTests-{Guid.NewGuid()}");
             _mongoRunner = new MongoTestRunner();
@@ -324,44 +328,30 @@ public class DocumentEmbeddingServiceTests
                 .Setup(client => client.GetDatabase("documents", It.IsAny<MongoDatabaseSettings>()))
                 .Returns(database);
 
-            // Note: GetCollectionInfoAsync is not virtual, so we can't mock it directly.
-            // The service will handle the exception when the collection doesn't exist.
-            // For tests that need the collection to exist, we'll set it up individually.
-
             // Setup UpsertAsync - returns Task<UpdateResult>
             QdrantClientMock
                 .Setup(client => client.UpsertAsync(
                     It.IsAny<string>(),
                     It.IsAny<PointStruct[]>(),
-                    It.IsAny<bool>(),
-                    It.IsAny<WriteOrderingType?>(),
-                    It.IsAny<ShardKeySelector?>(),
                     It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new Qdrant.Client.Grpc.UpdateResult())
-                .Callback<string, PointStruct[], bool, WriteOrderingType?, ShardKeySelector?, CancellationToken>((_, points, _, _, _, _) => _capturedPoints = points);
+                .ReturnsAsync(new UpdateResult())
+                .Callback<string, PointStruct[], CancellationToken>((_, points, _) => _capturedPoints = points);
 
             // Setup CreateCollectionAsync - capture vector params from any call
-            // Signature: CreateCollectionAsync(string, VectorParams, uint timeout, CancellationToken)
             QdrantClientMock
                 .Setup(client => client.CreateCollectionAsync(
                     It.IsAny<string>(),
                     It.IsAny<VectorParams>(),
-                    It.IsAny<uint>(),
-                    It.IsAny<uint>(),
-                    It.IsAny<uint>(),
-                    It.IsAny<bool>(),
-                    It.IsAny<HnswConfigDiff?>(),
-                    It.IsAny<OptimizersConfigDiff?>(),
-                    It.IsAny<WalConfigDiff?>(),
-                    It.IsAny<QuantizationConfig?>(),
-                    It.IsAny<string?>(),
-                    It.IsAny<ShardingMethod?>(),
-                    It.IsAny<SparseVectorConfig?>(),
-                    It.IsAny<StrictModeConfig?>(),
-                    It.IsAny<TimeSpan?>(),
                     It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask)
-                .Callback<string, VectorParams, uint, uint, uint, bool, HnswConfigDiff?, OptimizersConfigDiff?, WalConfigDiff?, QuantizationConfig?, string?, ShardingMethod?, SparseVectorConfig?, StrictModeConfig?, TimeSpan?, CancellationToken>((_, vp, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => _capturedVectorParams = vp);
+                .Callback<string, VectorParams, CancellationToken>((_, vp, _) => _capturedVectorParams = vp);
+
+            // Setup GetCollectionInfoAsync to return null by default (collection doesn't exist)
+            QdrantClientMock
+                .Setup(client => client.GetCollectionInfoAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync((CollectionInfo?)null);
 
             Service = new DocumentEmbeddingService(
                 _mongoRunner.Client,
@@ -465,10 +455,13 @@ public class DocumentEmbeddingServiceTests
 
         public void SetupCollectionNotFound()
         {
-            // Note: GetCollectionInfoAsync is not virtual, so we can't mock it directly.
-            // The service will call the real method which will fail on the mock.
-            // Since the service catches NotFound exceptions and creates the collection,
-            // we don't need to set up this method - the service will handle the failure.
+            // Setup GetCollectionInfoAsync to throw NotFound exception
+            QdrantClientMock
+                .Setup(client => client.GetCollectionInfoAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new RpcException(
+                    new Status(StatusCode.NotFound, "Collection not found")));
         }
 
         public void VerifyQdrantUpsertCalled(string chunkId, float[] embedding, string expectedRulesetId)
@@ -477,9 +470,6 @@ public class DocumentEmbeddingServiceTests
                 client => client.UpsertAsync(
                     It.Is<string>(name => name == _options.CollectionName),
                     It.IsAny<PointStruct[]>(),
-                    It.IsAny<bool>(),
-                    It.IsAny<WriteOrderingType?>(),
-                    It.IsAny<ShardKeySelector?>(),
                     It.IsAny<CancellationToken>()),
                 Times.Once);
 
@@ -498,9 +488,6 @@ public class DocumentEmbeddingServiceTests
                 client => client.UpsertAsync(
                     It.Is<string>(name => name == _options.CollectionName),
                     It.IsAny<PointStruct[]>(),
-                    It.IsAny<bool>(),
-                    It.IsAny<WriteOrderingType?>(),
-                    It.IsAny<ShardKeySelector?>(),
                     It.IsAny<CancellationToken>()),
                 Times.Once);
 
@@ -516,19 +503,6 @@ public class DocumentEmbeddingServiceTests
                 client => client.CreateCollectionAsync(
                     It.Is<string>(name => name == _options.CollectionName),
                     It.IsAny<VectorParams>(),
-                    It.IsAny<uint>(),
-                    It.IsAny<uint>(),
-                    It.IsAny<uint>(),
-                    It.IsAny<bool>(),
-                    It.IsAny<HnswConfigDiff?>(),
-                    It.IsAny<OptimizersConfigDiff?>(),
-                    It.IsAny<WalConfigDiff?>(),
-                    It.IsAny<QuantizationConfig?>(),
-                    It.IsAny<string?>(),
-                    It.IsAny<ShardingMethod?>(),
-                    It.IsAny<SparseVectorConfig?>(),
-                    It.IsAny<StrictModeConfig?>(),
-                    It.IsAny<TimeSpan?>(),
                     It.IsAny<CancellationToken>()),
                 Times.Once);
 
@@ -563,9 +537,6 @@ public class DocumentEmbeddingServiceTests
                 client => client.UpsertAsync(
                     It.Is<string>(name => name == _options.CollectionName),
                     It.IsAny<PointStruct[]>(),
-                    It.IsAny<bool>(),
-                    It.IsAny<WriteOrderingType?>(),
-                    It.IsAny<ShardKeySelector?>(),
                     It.IsAny<CancellationToken>()),
                 Times.Once);
 

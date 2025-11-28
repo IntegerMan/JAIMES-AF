@@ -5,9 +5,9 @@ using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
-using Qdrant.Client;
 using Qdrant.Client.Grpc;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Workers.DocumentEmbedding.Configuration;
 
 namespace MattEland.Jaimes.Workers.DocumentEmbedding.Services;
@@ -16,7 +16,7 @@ public class DocumentEmbeddingService(
     IMongoClient mongoClient,
     HttpClient httpClient,
     DocumentEmbeddingOptions options,
-    QdrantClient qdrantClient,
+    IQdrantClient qdrantClient,
     ILogger<DocumentEmbeddingService> logger,
     ActivitySource activitySource,
     string ollamaEndpoint,

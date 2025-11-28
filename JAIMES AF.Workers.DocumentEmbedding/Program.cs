@@ -107,13 +107,20 @@ string ollamaModel = options.OllamaModel ?? "nomic-embed-text";
 // Register HttpClient for Ollama API calls
 builder.Services.AddHttpClient();
 
+// Register QdrantClient wrapper
+builder.Services.AddSingleton<IQdrantClient>(sp =>
+{
+    QdrantClient qdrantClient = sp.GetRequiredService<QdrantClient>();
+    return new QdrantClientWrapper(qdrantClient);
+});
+
 // Register services with Ollama configuration
 builder.Services.AddSingleton<IDocumentEmbeddingService>(sp =>
 {
     IMongoClient mongoClient = sp.GetRequiredService<IMongoClient>();
     IHttpClientFactory httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
     HttpClient httpClient = httpClientFactory.CreateClient();
-    QdrantClient qdrantClient = sp.GetRequiredService<QdrantClient>();
+    IQdrantClient qdrantClient = sp.GetRequiredService<IQdrantClient>();
     ILogger<DocumentEmbeddingService> logger = sp.GetRequiredService<ILogger<DocumentEmbeddingService>>();
     ActivitySource activitySource = sp.GetRequiredService<ActivitySource>();
     
