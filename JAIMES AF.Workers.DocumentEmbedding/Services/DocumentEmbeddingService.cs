@@ -143,14 +143,17 @@ public class DocumentEmbeddingService(
                 { "chunkText", message.ChunkText },
                 { "documentId", message.DocumentId },
                 { "fileName", message.FileName },
-                { "filePath", message.FilePath },
-                { "relativeDirectory", message.RelativeDirectory ?? string.Empty },
                 { "rulesetId", rulesetId },
                 { "fileSize", message.FileSize.ToString() },
-                { "pageCount", message.PageCount.ToString() },
-                { "crackedAt", message.CrackedAt.ToString("O") },
+                { "documentKind", message.DocumentKind },
                 { "embeddedAt", DateTime.UtcNow.ToString("O") }
             };
+
+            // Add page number if available
+            if (message.PageNumber.HasValue)
+            {
+                metadata["pageNumber"] = message.PageNumber.Value.ToString();
+            }
 
             // Calculate Qdrant point ID using SHA256 hash
             ulong qdrantPointId = GenerateQdrantPointId(message.ChunkId);
@@ -258,7 +261,7 @@ public class DocumentEmbeddingService(
 
         FilterDefinition<DocumentChunk> filter = Builders<DocumentChunk>.Filter.Eq(c => c.ChunkId, chunkId);
         UpdateDefinition<DocumentChunk> update = Builders<DocumentChunk>.Update
-            .Set(c => c.QdrantPointId, qdrantPointId);
+            .Set(c => c.QdrantPointId, qdrantPointId.ToString());
 
         MongoDB.Driver.UpdateResult result = await collection.UpdateOneAsync(filter, update, cancellationToken: cancellationToken);
 
