@@ -45,8 +45,9 @@ public class DocumentEmbeddingServiceTests
             RulesetId = "ruleset-a"
         };
 
+        string actualDocumentId = await context.SetupDocumentAsync(message.DocumentId, message.FileName);
+        message.DocumentId = actualDocumentId;
         await context.SetupChunkAsync(message.ChunkId, message.DocumentId, message.ChunkText, message.ChunkIndex);
-        await context.SetupDocumentAsync(message.DocumentId, message.FileName);
 
         float[] expectedEmbedding = new float[] { 0.1f, 0.2f, 0.3f };
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
@@ -75,8 +76,9 @@ public class DocumentEmbeddingServiceTests
             DocumentKind = "Sourcebook"
         };
 
+        string actualDocumentId = await context.SetupDocumentAsync(message.DocumentId, message.FileName);
+        message.DocumentId = actualDocumentId;
         await context.SetupChunkAsync(message.ChunkId, message.DocumentId, message.ChunkText, message.ChunkIndex);
-        await context.SetupDocumentAsync(message.DocumentId, message.FileName);
 
         float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
@@ -103,8 +105,9 @@ public class DocumentEmbeddingServiceTests
             DocumentKind = "Sourcebook"
         };
 
+        string actualDocumentId = await context.SetupDocumentAsync(message.DocumentId, message.FileName);
+        message.DocumentId = actualDocumentId;
         await context.SetupChunkAsync(message.ChunkId, message.DocumentId, message.ChunkText, message.ChunkIndex);
-        await context.SetupDocumentAsync(message.DocumentId, message.FileName);
 
         float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
@@ -133,8 +136,9 @@ public class DocumentEmbeddingServiceTests
             RulesetId = "ruleset-a"
         };
 
+        string actualDocumentId = await context.SetupDocumentAsync(message.DocumentId, message.FileName);
+        message.DocumentId = actualDocumentId;
         await context.SetupChunkAsync(message.ChunkId, message.DocumentId, message.ChunkText, message.ChunkIndex);
-        await context.SetupDocumentAsync(message.DocumentId, message.FileName);
 
         float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
@@ -162,8 +166,9 @@ public class DocumentEmbeddingServiceTests
             RulesetId = "ruleset-a"
         };
 
+        string actualDocumentId = await context.SetupDocumentAsync(message.DocumentId, message.FileName);
+        message.DocumentId = actualDocumentId;
         await context.SetupChunkAsync(message.ChunkId, message.DocumentId, message.ChunkText, message.ChunkIndex);
-        await context.SetupDocumentAsync(message.DocumentId, message.FileName);
 
         context.SetupOllamaError(HttpStatusCode.InternalServerError);
 
@@ -189,8 +194,9 @@ public class DocumentEmbeddingServiceTests
             RulesetId = "ruleset-a"
         };
 
+        string actualDocumentId = await context.SetupDocumentAsync(message.DocumentId, message.FileName);
+        message.DocumentId = actualDocumentId;
         await context.SetupChunkAsync(message.ChunkId, message.DocumentId, message.ChunkText, message.ChunkIndex);
-        await context.SetupDocumentAsync(message.DocumentId, message.FileName);
 
         context.SetupOllamaEmptyEmbedding();
 
@@ -216,7 +222,8 @@ public class DocumentEmbeddingServiceTests
             RulesetId = "ruleset-a"
         };
 
-        await context.SetupDocumentAsync(message.DocumentId, message.FileName);
+        string actualDocumentId = await context.SetupDocumentAsync(message.DocumentId, message.FileName);
+        message.DocumentId = actualDocumentId;
 
         float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
@@ -231,12 +238,15 @@ public class DocumentEmbeddingServiceTests
     {
         using DocumentEmbeddingServiceTestContext context = new();
 
+        // Use a valid ObjectId format for the documentId (but don't insert it into MongoDB)
+        string nonExistentDocumentId = ObjectId.GenerateNewId().ToString();
+        
         ChunkReadyForEmbeddingMessage message = new()
         {
             ChunkId = "chunk-1",
             ChunkText = "Test chunk text",
             ChunkIndex = 0,
-            DocumentId = "non-existent-doc",
+            DocumentId = nonExistentDocumentId,
             FileName = "test.pdf",
             RelativeDirectory = "ruleset-a/source",
             FileSize = 1024,
@@ -245,6 +255,7 @@ public class DocumentEmbeddingServiceTests
         };
 
         await context.SetupChunkAsync(message.ChunkId, message.DocumentId, message.ChunkText, message.ChunkIndex);
+        // Note: Not setting up document here to test missing document scenario
 
         float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
@@ -272,8 +283,9 @@ public class DocumentEmbeddingServiceTests
             RulesetId = "ruleset-a"
         };
 
+        string actualDocumentId = await context.SetupDocumentAsync(message.DocumentId, message.FileName);
+        message.DocumentId = actualDocumentId;
         await context.SetupChunkAsync(message.ChunkId, message.DocumentId, message.ChunkText, message.ChunkIndex);
-        await context.SetupDocumentAsync(message.DocumentId, message.FileName);
 
         float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
@@ -378,11 +390,29 @@ public class DocumentEmbeddingServiceTests
             await ChunkCollection.InsertOneAsync(chunk);
         }
 
-        public async Task SetupDocumentAsync(string documentId, string fileName)
+        public async Task<string> SetupDocumentAsync(string documentId, string fileName)
         {
+            // Generate a valid ObjectId from the documentId string for MongoDB compatibility
+            // Use a deterministic approach: if documentId is already a valid ObjectId, use it; otherwise generate one
+            string objectId;
+            if (ObjectId.TryParse(documentId, out ObjectId _))
+            {
+                objectId = documentId;
+            }
+            else
+            {
+                // Generate a deterministic ObjectId from the documentId string using a hash
+                // This ensures the same documentId always produces the same ObjectId for test consistency
+                byte[] hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(documentId));
+                // Take first 12 bytes (ObjectId is 12 bytes = 24 hex chars)
+                byte[] objectIdBytes = new byte[12];
+                Array.Copy(hash, 0, objectIdBytes, 0, 12);
+                objectId = new ObjectId(objectIdBytes).ToString();
+            }
+
             CrackedDocument document = new()
             {
-                Id = documentId,
+                Id = objectId,
                 FileName = fileName,
                 FilePath = $"/{fileName}",
                 Content = "Test content",
@@ -392,6 +422,7 @@ public class DocumentEmbeddingServiceTests
             };
 
             await DocumentCollection.InsertOneAsync(document);
+            return objectId;
         }
 
         public Task SetupOllamaEmbeddingResponse(float[] embedding)
