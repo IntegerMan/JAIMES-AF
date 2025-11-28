@@ -10,6 +10,7 @@
         "eamodio.gitlens",
         "ms-azuretools.vscode-docker",
         "mtxr.sqltools",
-        "mtxr.sqltools-driver-sqlite"
+        "mtxr.sqltools-driver-sqlite",
+        "github.vscode-pull-request-github"
     ]
 }
