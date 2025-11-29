@@ -76,8 +76,8 @@ builder.Services.AddQdrantClient(builder.Configuration, new QdrantExtensions.Qdr
 // Configure embedding service
 // Get Ollama endpoint and model from Aspire connection strings (for default Ollama provider)
 string? explicitEndpoint = builder.Configuration["DocumentEmbedding:OllamaEndpoint"]?.TrimEnd('/');
-string? ollamaConnectionString = builder.Configuration.GetConnectionString("nomic-embed-text")
-    ?? builder.Configuration.GetConnectionString("ollama-models");
+// Get the embedding model connection string provided by Aspire via .WithReference(embedModel)
+string? ollamaConnectionString = builder.Configuration.GetConnectionString("embedModel");
 
 // Parse connection string and use explicit endpoint if configured
 (string? ollamaEndpoint, string? ollamaModel) = EmbeddingServiceExtensions.ParseOllamaConnectionString(ollamaConnectionString);

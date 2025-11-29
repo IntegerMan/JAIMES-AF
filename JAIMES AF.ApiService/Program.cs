@@ -61,10 +61,8 @@ public class Program
 
         // Configure text generation service (supports Ollama, Azure OpenAI, and OpenAI)
         // Get Ollama endpoint and model from Aspire connection strings (for default Ollama provider)
-        string? ollamaConnectionString = builder.Configuration.GetConnectionString("gemma3")
-            ?? builder.Configuration.GetConnectionString("ollama-models");
+        string? ollamaConnectionString = builder.Configuration.GetConnectionString("gemma3");
         (string? ollamaEndpoint, string? ollamaModel) = EmbeddingServiceExtensions.ParseOllamaConnectionString(ollamaConnectionString);
-        ollamaModel ??= "gemma3"; // Fallback to default if not in connection string
 
         // Register text generation service
         builder.Services.AddChatClient(
@@ -95,8 +93,8 @@ public class Program
         
         // Register embedding generator for rules (supports Ollama, Azure OpenAI, and OpenAI)
         // Get Ollama endpoint and model from Aspire connection strings (for default Ollama provider)
-        string? embedConnectionString = builder.Configuration.GetConnectionString("nomic-embed-text")
-            ?? builder.Configuration.GetConnectionString("ollama-models");
+        // Get the embedding model connection string provided by Aspire via .WithReference(embedModel)
+        string? embedConnectionString = builder.Configuration.GetConnectionString("embedModel");
         (string? embedOllamaEndpoint, string? embedOllamaModel) = EmbeddingServiceExtensions.ParseOllamaConnectionString(embedConnectionString);
 
         builder.Services.AddEmbeddingGenerator(

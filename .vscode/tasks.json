@@ -4,6 +4,10 @@
         {
             "label": "stop-running-apps",
             "type": "shell",
+            "command": "echo",
+            "args": [
+                "No running apps to stop on Linux/macOS"
+            ],
             "windows": {
                 "command": "powershell",
                 "args": [
