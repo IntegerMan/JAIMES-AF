@@ -108,8 +108,36 @@ public class Program
         // Register QdrantRulesStore
         builder.Services.AddSingleton<IQdrantRulesStore, QdrantRulesStore>();
         
-        // Register Azure OpenAI embedding service for rules
-        builder.Services.AddHttpClient<IAzureOpenAIEmbeddingService, AzureOpenAIEmbeddingService>();
+        // Register embedding generator for rules (supports Ollama, Azure OpenAI, and OpenAI)
+        // Get Ollama endpoint and model from Aspire connection strings (for default Ollama provider)
+        string? embedOllamaEndpoint = builder.Configuration.GetConnectionString("nomic-embed-text")
+            ?? builder.Configuration.GetConnectionString("ollama-models");
+        string? embedOllamaModel = null;
+
+        // Parse connection string if available
+        if (!string.IsNullOrWhiteSpace(embedOllamaEndpoint))
+        {
+            if (embedOllamaEndpoint.Contains("Endpoint=", StringComparison.OrdinalIgnoreCase))
+            {
+                string[] parts = embedOllamaEndpoint.Split(';');
+                string? endpoint = parts.FirstOrDefault(p => p.StartsWith("Endpoint=", StringComparison.OrdinalIgnoreCase))
+                    ?.Substring("Endpoint=".Length)
+                    ?.TrimEnd('/');
+                embedOllamaModel = parts.FirstOrDefault(p => p.StartsWith("Model=", StringComparison.OrdinalIgnoreCase))
+                    ?.Substring("Model=".Length);
+                embedOllamaEndpoint = endpoint;
+            }
+            else
+            {
+                embedOllamaEndpoint = embedOllamaEndpoint.TrimEnd('/');
+            }
+        }
+
+        builder.Services.AddEmbeddingGenerator(
+            builder.Configuration,
+            sectionName: "EmbeddingModel",
+            defaultOllamaEndpoint: embedOllamaEndpoint,
+            defaultOllamaModel: embedOllamaModel);
 
         // Add Jaimes repositories and services
         builder.Services.AddJaimesRepositories(builder.Configuration);

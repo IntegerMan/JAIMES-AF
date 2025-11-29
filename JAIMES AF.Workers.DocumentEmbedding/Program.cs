@@ -95,10 +95,18 @@ if (string.IsNullOrWhiteSpace(ollamaEndpoint) && !string.IsNullOrWhiteSpace(olla
     }
 }
 
-string? ollamaModel = options.OllamaModel ?? "nomic-embed-text";
-
 // Register embedding generator (supports Ollama, Azure OpenAI, and OpenAI)
 // Uses Microsoft.Extensions.AI's IEmbeddingGenerator<string, Embedding<float>> interface
+// Note: Aspire provides model name via connection string or environment variables
+// Extract model name from connection string if available
+string? ollamaModel = null;
+if (!string.IsNullOrWhiteSpace(ollamaConnectionString) && ollamaConnectionString.Contains("Model=", StringComparison.OrdinalIgnoreCase))
+{
+    string[] parts = ollamaConnectionString.Split(';');
+    ollamaModel = parts.FirstOrDefault(p => p.StartsWith("Model=", StringComparison.OrdinalIgnoreCase))
+        ?.Substring("Model=".Length);
+}
+
 builder.Services.AddEmbeddingGenerator(
     builder.Configuration,
     sectionName: "EmbeddingModel",

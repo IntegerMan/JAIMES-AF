@@ -95,7 +95,15 @@ if (string.IsNullOrWhiteSpace(ollamaEndpoint))
         "Expected 'DocumentChunking:OllamaEndpoint' from AppHost or connection string from model reference.");
 }
 
-string ollamaModel = options.OllamaModel ?? "nomic-embed-text";
+// Extract model name from connection string if available, otherwise use config or let Aspire provide it
+string? ollamaModel = options.OllamaModel;
+if (string.IsNullOrWhiteSpace(ollamaModel) && !string.IsNullOrWhiteSpace(ollamaConnectionString) 
+    && ollamaConnectionString.Contains("Model=", StringComparison.OrdinalIgnoreCase))
+{
+    string[] parts = ollamaConnectionString.Split(';');
+    ollamaModel = parts.FirstOrDefault(p => p.StartsWith("Model=", StringComparison.OrdinalIgnoreCase))
+        ?.Substring("Model=".Length);
+}
 
 // Register IMessagePublisher for queuing chunks without embeddings
 builder.Services.AddSingleton<IMessagePublisher, MessagePublisher>();
@@ -112,6 +120,16 @@ if (useSemanticChunker)
     builder.Services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(sp =>
     {
         Uri ollamaUri = new(ollamaEndpoint);
+        
+        // Use model name from config or Aspire if available
+        if (string.IsNullOrWhiteSpace(ollamaModel))
+        {
+            throw new InvalidOperationException(
+                "Ollama model name is not configured. " +
+                "Ensure the model is specified in EmbeddingModel:Name, DocumentChunking:OllamaModel, " +
+                "or provided via Aspire connection string.");
+        }
+        
         OllamaApiClient client = new(ollamaUri, ollamaModel);
         return client;
     });
@@ -197,7 +215,10 @@ logger.LogInformation("Chunking Strategy: {Strategy}", chunkingStrategy);
 if (useSemanticChunker)
 {
     logger.LogInformation("Ollama Endpoint: {Endpoint}", ollamaEndpoint);
-    logger.LogInformation("Ollama Model: {Model}", ollamaModel);
+    if (!string.IsNullOrWhiteSpace(ollamaModel))
+    {
+        logger.LogInformation("Ollama Model: {Model}", ollamaModel);
+    }
 }
 logger.LogInformation("Qdrant: {Host}:{Port} (HTTPS: {UseHttps})", qdrantConfig.Host, qdrantConfig.Port, qdrantConfig.UseHttps);
 logger.LogInformation("Worker ready and listening for DocumentReadyForChunkingMessage on queue");
