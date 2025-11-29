@@ -74,15 +74,31 @@ public static class TextGenerationServiceExtensions
             }
 
             // Use default Ollama endpoint if not configured
-            if (string.IsNullOrWhiteSpace(options.Endpoint) && !string.IsNullOrWhiteSpace(defaultOllamaEndpoint))
+            if (string.IsNullOrWhiteSpace(options.Endpoint))
             {
-                options.Endpoint = defaultOllamaEndpoint;
+                if (!string.IsNullOrWhiteSpace(defaultOllamaEndpoint))
+                {
+                    options.Endpoint = defaultOllamaEndpoint;
+                }
+                else
+                {
+                    // Default to localhost if no endpoint is configured
+                    options.Endpoint = "http://localhost:11434";
+                }
             }
 
             // Use default Ollama model if not configured
-            if (string.IsNullOrWhiteSpace(options.Name) && !string.IsNullOrWhiteSpace(defaultOllamaModel))
+            if (string.IsNullOrWhiteSpace(options.Name))
             {
-                options.Name = defaultOllamaModel;
+                if (!string.IsNullOrWhiteSpace(defaultOllamaModel))
+                {
+                    options.Name = defaultOllamaModel;
+                }
+                else
+                {
+                    // Default model name if none specified
+                    options.Name = "gemma3";
+                }
             }
         }
 

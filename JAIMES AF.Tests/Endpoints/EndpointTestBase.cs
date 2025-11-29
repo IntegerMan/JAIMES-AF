@@ -29,6 +29,13 @@ public abstract class EndpointTestBase : IAsyncLifetime
                 builder.UseSetting("SkipDatabaseInitialization", "true");
                 // Provide a mock messaging connection string for RabbitMQ
                 builder.UseSetting("ConnectionStrings:messaging", "amqp://guest:guest@localhost:5672/");
+                // Provide default Ollama configuration for text generation and embeddings
+                builder.UseSetting("TextGenerationModel:Provider", "Ollama");
+                builder.UseSetting("TextGenerationModel:Endpoint", "http://localhost:11434");
+                builder.UseSetting("TextGenerationModel:Name", "gemma3");
+                builder.UseSetting("EmbeddingModel:Provider", "Ollama");
+                builder.UseSetting("EmbeddingModel:Endpoint", "http://localhost:11434");
+                builder.UseSetting("EmbeddingModel:Name", "nomic-embed-text");
                 
                 // Configure test services
                 builder.ConfigureServices(services =>
