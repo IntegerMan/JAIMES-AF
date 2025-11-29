@@ -75,37 +75,17 @@ builder.Services.AddQdrantClient(builder.Configuration, new QdrantExtensions.Qdr
 
 // Configure embedding service
 // Get Ollama endpoint and model from Aspire connection strings (for default Ollama provider)
-string? ollamaEndpoint = builder.Configuration["DocumentEmbedding:OllamaEndpoint"]?.TrimEnd('/');
+string? explicitEndpoint = builder.Configuration["DocumentEmbedding:OllamaEndpoint"]?.TrimEnd('/');
 string? ollamaConnectionString = builder.Configuration.GetConnectionString("nomic-embed-text")
     ?? builder.Configuration.GetConnectionString("ollama-models");
 
-// Parse connection string if endpoint not explicitly set
-if (string.IsNullOrWhiteSpace(ollamaEndpoint) && !string.IsNullOrWhiteSpace(ollamaConnectionString))
-{
-    if (ollamaConnectionString.Contains("Endpoint=", StringComparison.OrdinalIgnoreCase))
-    {
-        string[] parts = ollamaConnectionString.Split(';');
-        ollamaEndpoint = parts.FirstOrDefault(p => p.StartsWith("Endpoint=", StringComparison.OrdinalIgnoreCase))
-            ?.Substring("Endpoint=".Length)
-            ?.TrimEnd('/');
-    }
-    else
-    {
-        ollamaEndpoint = ollamaConnectionString.TrimEnd('/');
-    }
-}
+// Parse connection string and use explicit endpoint if configured
+(string? ollamaEndpoint, string? ollamaModel) = EmbeddingServiceExtensions.ParseOllamaConnectionString(ollamaConnectionString);
+ollamaEndpoint = explicitEndpoint ?? ollamaEndpoint;
 
 // Register embedding generator (supports Ollama, Azure OpenAI, and OpenAI)
 // Uses Microsoft.Extensions.AI's IEmbeddingGenerator<string, Embedding<float>> interface
 // Note: Aspire provides model name via connection string or environment variables
-// Extract model name from connection string if available
-string? ollamaModel = null;
-if (!string.IsNullOrWhiteSpace(ollamaConnectionString) && ollamaConnectionString.Contains("Model=", StringComparison.OrdinalIgnoreCase))
-{
-    string[] parts = ollamaConnectionString.Split(';');
-    ollamaModel = parts.FirstOrDefault(p => p.StartsWith("Model=", StringComparison.OrdinalIgnoreCase))
-        ?.Substring("Model=".Length);
-}
 
 builder.Services.AddEmbeddingGenerator(
     builder.Configuration,

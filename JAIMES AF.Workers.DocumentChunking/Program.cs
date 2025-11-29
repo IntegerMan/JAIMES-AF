@@ -68,25 +68,13 @@ builder.Services.AddQdrantClient(builder.Configuration, new QdrantExtensions.Qdr
 }, out QdrantExtensions.QdrantConnectionConfig qdrantConfig);
 
 // Configure Ollama client
-string? ollamaEndpoint = builder.Configuration["DocumentChunking:OllamaEndpoint"]?.TrimEnd('/');
+string? explicitEndpoint = builder.Configuration["DocumentChunking:OllamaEndpoint"]?.TrimEnd('/');
 string? ollamaConnectionString = builder.Configuration.GetConnectionString("nomic-embed-text")
     ?? builder.Configuration.GetConnectionString("ollama-models");
 
-// Parse connection string if endpoint not explicitly set
-if (string.IsNullOrWhiteSpace(ollamaEndpoint) && !string.IsNullOrWhiteSpace(ollamaConnectionString))
-{
-    if (ollamaConnectionString.Contains("Endpoint=", StringComparison.OrdinalIgnoreCase))
-    {
-        string[] parts = ollamaConnectionString.Split(';');
-        ollamaEndpoint = parts.FirstOrDefault(p => p.StartsWith("Endpoint=", StringComparison.OrdinalIgnoreCase))
-            ?.Substring("Endpoint=".Length)
-            ?.TrimEnd('/');
-    }
-    else
-    {
-        ollamaEndpoint = ollamaConnectionString.TrimEnd('/');
-    }
-}
+// Parse connection string and use explicit endpoint if configured
+(string? ollamaEndpoint, string? ollamaModel) = EmbeddingServiceExtensions.ParseOllamaConnectionString(ollamaConnectionString);
+ollamaEndpoint = explicitEndpoint ?? ollamaEndpoint;
 
 if (string.IsNullOrWhiteSpace(ollamaEndpoint))
 {
@@ -95,15 +83,8 @@ if (string.IsNullOrWhiteSpace(ollamaEndpoint))
         "Expected 'DocumentChunking:OllamaEndpoint' from AppHost or connection string from model reference.");
 }
 
-// Extract model name from connection string if available, otherwise use config or let Aspire provide it
-string? ollamaModel = options.OllamaModel;
-if (string.IsNullOrWhiteSpace(ollamaModel) && !string.IsNullOrWhiteSpace(ollamaConnectionString) 
-    && ollamaConnectionString.Contains("Model=", StringComparison.OrdinalIgnoreCase))
-{
-    string[] parts = ollamaConnectionString.Split(';');
-    ollamaModel = parts.FirstOrDefault(p => p.StartsWith("Model=", StringComparison.OrdinalIgnoreCase))
-        ?.Substring("Model=".Length);
-}
+// Use model from connection string, otherwise fall back to config
+ollamaModel ??= options.OllamaModel;
 
 // Register IMessagePublisher for queuing chunks without embeddings
 builder.Services.AddSingleton<IMessagePublisher, MessagePublisher>();

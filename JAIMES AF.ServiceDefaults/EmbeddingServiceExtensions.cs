@@ -18,6 +18,34 @@ namespace MattEland.Jaimes.ServiceDefaults;
 public static class EmbeddingServiceExtensions
 {
     /// <summary>
+    /// Parses an Ollama connection string from Aspire to extract endpoint and model name.
+    /// </summary>
+    /// <param name="connectionString">The connection string from Aspire (e.g., "Endpoint=http://localhost:11434;Model=nomic-embed-text").</param>
+    /// <returns>A tuple containing the endpoint and model name, or (null, null) if parsing fails.</returns>
+    public static (string? Endpoint, string? Model) ParseOllamaConnectionString(string? connectionString)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return (null, null);
+        }
+
+        // Check if it's a semicolon-delimited connection string with key=value pairs
+        if (connectionString.Contains("Endpoint=", StringComparison.OrdinalIgnoreCase))
+        {
+            string[] parts = connectionString.Split(';');
+            string? endpoint = parts.FirstOrDefault(p => p.StartsWith("Endpoint=", StringComparison.OrdinalIgnoreCase))
+                ?.Substring("Endpoint=".Length);
+            string? model = parts.FirstOrDefault(p => p.StartsWith("Model=", StringComparison.OrdinalIgnoreCase))
+                ?.Substring("Model=".Length);
+            
+            return (endpoint?.TrimEnd('/'), model);
+        }
+        
+        // Otherwise assume it's just a plain endpoint URL
+        return (connectionString.TrimEnd('/'), null);
+    }
+
+    /// <summary>
     /// Configures and registers an embedding generator based on configuration.
     /// Supports Ollama (default), Azure OpenAI, and OpenAI providers.
     /// Uses Microsoft.Extensions.AI's IEmbeddingGenerator&lt;string, Embedding&lt;float&gt;&gt; interface.

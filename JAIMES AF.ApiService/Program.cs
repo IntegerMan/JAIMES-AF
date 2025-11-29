@@ -61,25 +61,10 @@ public class Program
 
         // Configure text generation service (supports Ollama, Azure OpenAI, and OpenAI)
         // Get Ollama endpoint and model from Aspire connection strings (for default Ollama provider)
-        string? ollamaEndpoint = builder.Configuration.GetConnectionString("gemma3")
+        string? ollamaConnectionString = builder.Configuration.GetConnectionString("gemma3")
             ?? builder.Configuration.GetConnectionString("ollama-models");
-        string? ollamaModel = "gemma3"; // Default model name from Aspire
-
-        // Parse connection string if endpoint not explicitly set
-        if (!string.IsNullOrWhiteSpace(ollamaEndpoint))
-        {
-            if (ollamaEndpoint.Contains("Endpoint=", StringComparison.OrdinalIgnoreCase))
-            {
-                string[] parts = ollamaEndpoint.Split(';');
-                ollamaEndpoint = parts.FirstOrDefault(p => p.StartsWith("Endpoint=", StringComparison.OrdinalIgnoreCase))
-                    ?.Substring("Endpoint=".Length)
-                    ?.TrimEnd('/');
-            }
-            else
-            {
-                ollamaEndpoint = ollamaEndpoint.TrimEnd('/');
-            }
-        }
+        (string? ollamaEndpoint, string? ollamaModel) = EmbeddingServiceExtensions.ParseOllamaConnectionString(ollamaConnectionString);
+        ollamaModel ??= "gemma3"; // Fallback to default if not in connection string
 
         // Register text generation service
         builder.Services.AddChatClient(
@@ -110,28 +95,9 @@ public class Program
         
         // Register embedding generator for rules (supports Ollama, Azure OpenAI, and OpenAI)
         // Get Ollama endpoint and model from Aspire connection strings (for default Ollama provider)
-        string? embedOllamaEndpoint = builder.Configuration.GetConnectionString("nomic-embed-text")
+        string? embedConnectionString = builder.Configuration.GetConnectionString("nomic-embed-text")
             ?? builder.Configuration.GetConnectionString("ollama-models");
-        string? embedOllamaModel = null;
-
-        // Parse connection string if available
-        if (!string.IsNullOrWhiteSpace(embedOllamaEndpoint))
-        {
-            if (embedOllamaEndpoint.Contains("Endpoint=", StringComparison.OrdinalIgnoreCase))
-            {
-                string[] parts = embedOllamaEndpoint.Split(';');
-                string? endpoint = parts.FirstOrDefault(p => p.StartsWith("Endpoint=", StringComparison.OrdinalIgnoreCase))
-                    ?.Substring("Endpoint=".Length)
-                    ?.TrimEnd('/');
-                embedOllamaModel = parts.FirstOrDefault(p => p.StartsWith("Model=", StringComparison.OrdinalIgnoreCase))
-                    ?.Substring("Model=".Length);
-                embedOllamaEndpoint = endpoint;
-            }
-            else
-            {
-                embedOllamaEndpoint = embedOllamaEndpoint.TrimEnd('/');
-            }
-        }
+        (string? embedOllamaEndpoint, string? embedOllamaModel) = EmbeddingServiceExtensions.ParseOllamaConnectionString(embedConnectionString);
 
         builder.Services.AddEmbeddingGenerator(
             builder.Configuration,
