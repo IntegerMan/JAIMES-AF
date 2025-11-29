@@ -61,7 +61,7 @@ public class Program
 
         // Configure text generation service (supports Ollama, Azure OpenAI, and OpenAI)
         // Get Ollama endpoint and model from Aspire connection strings (for default Ollama provider)
-        string? ollamaConnectionString = builder.Configuration.GetConnectionString("gemma3");
+        string? ollamaConnectionString = builder.Configuration.GetConnectionString("chatModel");
         (string? ollamaEndpoint, string? ollamaModel) = EmbeddingServiceExtensions.ParseOllamaConnectionString(ollamaConnectionString);
 
         // Register text generation service

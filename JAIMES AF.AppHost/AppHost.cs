@@ -20,7 +20,7 @@ IResourceBuilder<OllamaResource> ollama = builder.AddOllama("ollama-models")
 
 // Note: versioning is important for embedding models to ensure consistency and reproducibility.
 var embedModel = ollama.AddModel("embedModel", "nomic-embed-text:v1.5").WithIconName("CodeTextEdit");
-var chatModel = ollama.AddModel("gemma3").WithIconName("CommentText");
+var chatModel = ollama.AddModel("chatModel", "gemma3").WithIconName("CommentText");
 // Add Qdrant for vector embeddings
 // Note: Qdrant API key is an Aspire parameter (not user secret) because it's required by the Aspire-managed Qdrant resource.
 // Application-level secrets (e.g., Azure OpenAI API keys) are managed via user secrets.
