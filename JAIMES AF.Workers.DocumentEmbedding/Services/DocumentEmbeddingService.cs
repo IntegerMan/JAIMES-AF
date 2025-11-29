@@ -1,8 +1,7 @@
 using System.Diagnostics;
-using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json.Serialization;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Qdrant.Client.Grpc;
@@ -14,47 +13,12 @@ namespace MattEland.Jaimes.Workers.DocumentEmbedding.Services;
 
 public class DocumentEmbeddingService(
     IMongoClient mongoClient,
-    HttpClient httpClient,
+    IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator,
     DocumentEmbeddingOptions options,
     IQdrantClient qdrantClient,
     ILogger<DocumentEmbeddingService> logger,
-    ActivitySource activitySource,
-    string ollamaEndpoint,
-    string ollamaModel) : IDocumentEmbeddingService
+    ActivitySource activitySource) : IDocumentEmbeddingService
 {
-    /// <summary>
-    /// Generates an embedding using Ollama's HTTP API
-    /// </summary>
-    private async Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken)
-    {
-        string requestUrl = $"{ollamaEndpoint.TrimEnd('/')}/api/embeddings";
-        
-        OllamaEmbeddingRequest request = new()
-        {
-            Model = ollamaModel,
-            Prompt = text
-        };
-
-        HttpResponseMessage response = await httpClient.PostAsJsonAsync(requestUrl, request, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            string errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-            logger.LogError("Failed to generate embedding. Status: {StatusCode}, Response: {Response}",
-                response.StatusCode, errorContent);
-            response.EnsureSuccessStatusCode();
-        }
-
-        OllamaEmbeddingResponse? embeddingResponse = await response.Content.ReadFromJsonAsync<OllamaEmbeddingResponse>(
-            cancellationToken: cancellationToken);
-
-        if (embeddingResponse?.Embedding == null || embeddingResponse.Embedding.Length == 0)
-        {
-            throw new InvalidOperationException("Received empty embedding from Ollama");
-        }
-
-        return embeddingResponse.Embedding;
-    }
 
     /// <summary>
     /// Generates a Qdrant point ID from a string point ID using SHA256 hash to prevent collisions.
@@ -126,11 +90,21 @@ public class DocumentEmbeddingService(
             logger.LogDebug("Using ruleset ID: {RulesetId} for chunk {ChunkId}",
                 rulesetId, message.ChunkId);
 
-            // Generate embedding using Ollama HTTP API
+            // Generate embedding using configured embedding generator
             logger.LogDebug("Generating embedding for chunk {ChunkId} (text length: {Length})",
                 message.ChunkId, message.ChunkText.Length);
             
-            float[] embedding = await GenerateEmbeddingAsync(message.ChunkText, cancellationToken);
+            // IEmbeddingGenerator.GenerateAsync returns GeneratedEmbeddings, so we get the first result
+            GeneratedEmbeddings<Embedding<float>> embeddingsResult = await embeddingGenerator.GenerateAsync([message.ChunkText], cancellationToken: cancellationToken);
+            
+            if (embeddingsResult.Count == 0)
+            {
+                throw new InvalidOperationException("Failed to generate embedding for chunk");
+            }
+
+            Embedding<float> embeddingResult = embeddingsResult[0];
+            float[] embedding = embeddingResult.Vector.ToArray();
+
             activity?.SetTag("embedding.dimensions", embedding.Length);
             logger.LogDebug("Generated embedding for chunk {ChunkId} with {Dimensions} dimensions",
                 message.ChunkId, embedding.Length);
@@ -311,21 +285,6 @@ public class DocumentEmbeddingService(
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             // Don't throw - this is a non-critical operation
         }
-    }
-
-    private record OllamaEmbeddingRequest
-    {
-        [JsonPropertyName("model")]
-        public required string Model { get; init; }
-
-        [JsonPropertyName("prompt")]
-        public required string Prompt { get; init; }
-    }
-
-    private record OllamaEmbeddingResponse
-    {
-        [JsonPropertyName("embedding")]
-        public required float[] Embedding { get; init; }
     }
 }
 

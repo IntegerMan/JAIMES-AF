@@ -59,9 +59,41 @@ public class Program
         // Register a shared ActivitySource instance with the same name used by OpenTelemetry
         builder.Services.AddSingleton(new ActivitySource(builder.Environment.ApplicationName ?? "Jaimes.ApiService"));
 
-        // Configure JaimesChatOptions from configuration and register instance for DI
-        JaimesChatOptions chatOptions = builder.Configuration.GetSection("ChatService").Get<JaimesChatOptions>() ?? throw new InvalidOperationException("ChatService configuration is required");
-        builder.Services.AddSingleton(chatOptions);
+        // Configure text generation service (supports Ollama, Azure OpenAI, and OpenAI)
+        // Get Ollama endpoint and model from Aspire connection strings (for default Ollama provider)
+        string? ollamaEndpoint = builder.Configuration.GetConnectionString("gemma3")
+            ?? builder.Configuration.GetConnectionString("ollama-models");
+        string? ollamaModel = "gemma3"; // Default model name from Aspire
+
+        // Parse connection string if endpoint not explicitly set
+        if (!string.IsNullOrWhiteSpace(ollamaEndpoint))
+        {
+            if (ollamaEndpoint.Contains("Endpoint=", StringComparison.OrdinalIgnoreCase))
+            {
+                string[] parts = ollamaEndpoint.Split(';');
+                ollamaEndpoint = parts.FirstOrDefault(p => p.StartsWith("Endpoint=", StringComparison.OrdinalIgnoreCase))
+                    ?.Substring("Endpoint=".Length)
+                    ?.TrimEnd('/');
+            }
+            else
+            {
+                ollamaEndpoint = ollamaEndpoint.TrimEnd('/');
+            }
+        }
+
+        // Register text generation service
+        builder.Services.AddChatClient(
+            builder.Configuration,
+            sectionName: "TextGenerationModel",
+            defaultOllamaEndpoint: ollamaEndpoint,
+            defaultOllamaModel: ollamaModel);
+
+        // Keep JaimesChatOptions for backward compatibility (may be used by other services)
+        JaimesChatOptions? chatOptions = builder.Configuration.GetSection("ChatService").Get<JaimesChatOptions>();
+        if (chatOptions != null)
+        {
+            builder.Services.AddSingleton(chatOptions);
+        }
 
         // Configure VectorDbOptions from configuration and register instance for DI
         VectorDbOptions vectorDbOptions = builder.Configuration.GetSection("VectorDb").Get<VectorDbOptions>() ?? throw new InvalidOperationException("VectorDb configuration is required");

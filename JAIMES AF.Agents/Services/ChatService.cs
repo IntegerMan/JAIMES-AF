@@ -1,7 +1,5 @@
-﻿using System.ClientModel;
-using System.Text;
+﻿using System.Text;
 using System.Text.Json;
-using Azure.AI.OpenAI;
 using MattEland.Jaimes.Agents.Middleware;
 using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
@@ -15,13 +13,13 @@ using Microsoft.Extensions.Logging;
 namespace MattEland.Jaimes.Agents.Services;
 
 public class ChatService(
-    JaimesChatOptions options,
+    IChatClient chatClient,
     ILogger<ChatService> logger,
     IChatHistoryService chatHistoryService,
     IRulesSearchService? rulesSearchService = null)
     : IChatService
 {
-    private readonly JaimesChatOptions _options = options ?? throw new ArgumentNullException(nameof(options));
+    private readonly IChatClient _chatClient = chatClient ?? throw new ArgumentNullException(nameof(chatClient));
     private readonly ILogger<ChatService> logger = logger ?? throw new ArgumentNullException(nameof(logger));
     private readonly IChatHistoryService chatHistoryService = chatHistoryService ?? throw new ArgumentNullException(nameof(chatHistoryService));
 
@@ -90,11 +88,8 @@ public class ChatService(
         // Per Microsoft docs: https://learn.microsoft.com/en-us/agent-framework/user-guide/agents/agent-middleware?pivots=programming-language-csharp
         // Register IChatClient middleware on the chat client before creating the agent
         
-        IChatClient instrumentedChatClient = new AzureOpenAIClient(
-                new Uri(_options.Endpoint),
-                new ApiKeyCredential(_options.ApiKey))
-            .GetChatClient(_options.TextGenerationDeployment)
-            .AsIChatClient()
+        // Use the injected chat client and instrument it
+        IChatClient instrumentedChatClient = _chatClient
             .AsBuilder()
             .UseOpenTelemetry(
                 sourceName: DefaultActivitySourceName,

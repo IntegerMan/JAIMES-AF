@@ -17,7 +17,6 @@ using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.Workers.DocumentEmbedding.Configuration;
 using MattEland.Jaimes.Workers.DocumentEmbedding.Consumers;
 using MattEland.Jaimes.Workers.DocumentEmbedding.Services;
-using OllamaSharp;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
@@ -74,7 +73,8 @@ builder.Services.AddQdrantClient(builder.Configuration, new QdrantExtensions.Qdr
     }
 }, out QdrantExtensions.QdrantConnectionConfig qdrantConfig);
 
-// Configure Ollama client
+// Configure embedding service
+// Get Ollama endpoint and model from Aspire connection strings (for default Ollama provider)
 string? ollamaEndpoint = builder.Configuration["DocumentEmbedding:OllamaEndpoint"]?.TrimEnd('/');
 string? ollamaConnectionString = builder.Configuration.GetConnectionString("nomic-embed-text")
     ?? builder.Configuration.GetConnectionString("ollama-models");
@@ -95,17 +95,15 @@ if (string.IsNullOrWhiteSpace(ollamaEndpoint) && !string.IsNullOrWhiteSpace(olla
     }
 }
 
-if (string.IsNullOrWhiteSpace(ollamaEndpoint))
-{
-    throw new InvalidOperationException(
-        "Ollama endpoint is not configured. " +
-        "Expected 'DocumentEmbedding:OllamaEndpoint' from AppHost or connection string from model reference.");
-}
+string? ollamaModel = options.OllamaModel ?? "nomic-embed-text";
 
-string ollamaModel = options.OllamaModel ?? "nomic-embed-text";
-
-// Register HttpClient for Ollama API calls
-builder.Services.AddHttpClient();
+// Register embedding generator (supports Ollama, Azure OpenAI, and OpenAI)
+// Uses Microsoft.Extensions.AI's IEmbeddingGenerator<string, Embedding<float>> interface
+builder.Services.AddEmbeddingGenerator(
+    builder.Configuration,
+    sectionName: "EmbeddingModel",
+    defaultOllamaEndpoint: ollamaEndpoint,
+    defaultOllamaModel: ollamaModel);
 
 // Register QdrantClient wrapper
 builder.Services.AddSingleton<IQdrantClient>(sp =>
@@ -114,25 +112,22 @@ builder.Services.AddSingleton<IQdrantClient>(sp =>
     return new QdrantClientWrapper(qdrantClient);
 });
 
-// Register services with Ollama configuration
+// Register DocumentEmbeddingService
 builder.Services.AddSingleton<IDocumentEmbeddingService>(sp =>
 {
     IMongoClient mongoClient = sp.GetRequiredService<IMongoClient>();
-    IHttpClientFactory httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
-    HttpClient httpClient = httpClientFactory.CreateClient();
+    IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator = sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
     IQdrantClient qdrantClient = sp.GetRequiredService<IQdrantClient>();
     ILogger<DocumentEmbeddingService> logger = sp.GetRequiredService<ILogger<DocumentEmbeddingService>>();
     ActivitySource activitySource = sp.GetRequiredService<ActivitySource>();
     
     return new DocumentEmbeddingService(
         mongoClient,
-        httpClient,
+        embeddingGenerator,
         options,
         qdrantClient,
         logger,
-        activitySource,
-        ollamaEndpoint,
-        ollamaModel);
+        activitySource);
 });
 
 // Configure OpenTelemetry ActivitySource
@@ -173,8 +168,13 @@ using IHost host = builder.Build();
 ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 
 logger.LogInformation("Starting Document Embedding Worker");
-logger.LogInformation("Ollama Endpoint: {Endpoint}", ollamaEndpoint);
-logger.LogInformation("Ollama Model: {Model}", ollamaModel);
+EmbeddingModelOptions embeddingOptions = host.Services.GetRequiredService<EmbeddingModelOptions>();
+logger.LogInformation("Embedding Provider: {Provider}", embeddingOptions.Provider);
+logger.LogInformation("Embedding Model/Deployment: {Name}", embeddingOptions.Name);
+if (!string.IsNullOrWhiteSpace(embeddingOptions.Endpoint))
+{
+    logger.LogInformation("Embedding Endpoint: {Endpoint}", embeddingOptions.Endpoint);
+}
 logger.LogInformation("Qdrant: {Host}:{Port} (HTTPS: {UseHttps})", qdrantConfig.Host, qdrantConfig.Port, qdrantConfig.UseHttps);
 logger.LogInformation("Worker ready and listening for ChunkReadyForEmbeddingMessage on queue");
 
