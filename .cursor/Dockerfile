@@ -1,33 +1,63 @@
-# syntax=docker/dockerfile:1
+ARG REPO=mcr.microsoft.com/dotnet/aspnet
+# Installer image
+FROM amd64/buildpack-deps:noble-curl AS installer
 
-FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
+# Install .NET SDK
+RUN dotnet_sdk_version=10.0.100 \
+    && curl --fail --show-error --location \
+        --remote-name https://builds.dotnet.microsoft.com/dotnet/Sdk/$dotnet_sdk_version/dotnet-sdk-$dotnet_sdk_version-linux-x64.tar.gz \
+        --remote-name https://builds.dotnet.microsoft.com/dotnet/Sdk/$dotnet_sdk_version/dotnet-sdk-$dotnet_sdk_version-linux-x64.tar.gz.sha512 \
+    && sha512sum -c dotnet-sdk-$dotnet_sdk_version-linux-x64.tar.gz.sha512 \
+    && mkdir --parents /dotnet \
+    && tar --gzip --extract --no-same-owner --file dotnet-sdk-$dotnet_sdk_version-linux-x64.tar.gz --directory /dotnet ./dnx ./packs ./sdk ./sdk-manifests ./templates ./LICENSE.txt ./ThirdPartyNotices.txt \
+    && rm \
+        dotnet-sdk-$dotnet_sdk_version-linux-x64.tar.gz \
+        dotnet-sdk-$dotnet_sdk_version-linux-x64.tar.gz.sha512
 
-ARG DEBIAN_FRONTEND=noninteractive
 
-# Install core build dependencies.
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        ca-certificates \
+# .NET SDK image
+FROM $REPO:10.0.0-noble-amd64
+
+ENV \
+    # Do not generate certificate
+    DOTNET_GENERATE_ASPNET_CERTIFICATE=false \
+    # Do not show first run text
+    DOTNET_NOLOGO=true \
+    # SDK version
+    DOTNET_SDK_VERSION=10.0.100 \
+    # Enable correct mode for dotnet watch (only mode supported in a container)
+    DOTNET_USE_POLLING_FILE_WATCHER=true \
+    # Skip extraction of XML docs - generally not useful within an image/container - helps performance
+    NUGET_XMLDOC_MODE=skip \
+    # PowerShell telemetry for docker image usage
+    POWERSHELL_DISTRIBUTION_CHANNEL=PSDocker-DotnetSDK-Ubuntu-24.04 \
+    # Workaround for https://github.com/PowerShell/PowerShell/issues/20685
+    DOTNET_ROLL_FORWARD=Major
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
         curl \
         git \
-        jq \
-        unzip \
-        build-essential \
-        libicu-dev \
-        zlib1g && \
-    rm -rf /var/lib/apt/lists/*
+        libatomic1 \
+        wget \
+    && rm -rf /var/lib/apt/lists/*
 
-ENV DOTNET_ROOT=/usr/share/dotnet
+COPY --from=installer ["/dotnet", "/usr/share/dotnet"]
 
-# Install the latest .NET 10 SDK via the official installer script.
-RUN curl -sSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh && \
-    chmod +x /tmp/dotnet-install.sh && \
-    /tmp/dotnet-install.sh --channel 10.0 --install-dir "${DOTNET_ROOT}" --no-path && \
-    rm /tmp/dotnet-install.sh && \
-    ln -sf "${DOTNET_ROOT}/dotnet" /usr/local/bin/dotnet && \
-    dotnet --info
+RUN ln -s /usr/share/dotnet/dnx /usr/bin/dnx \
+    # Trigger first run experience by running arbitrary cmd
+    && dotnet help
 
-# Ensure the SDK directory is on PATH for any additional shells.
-ENV PATH="${DOTNET_ROOT}:${PATH}"
-
-WORKDIR /workspace
+# Install PowerShell global tool
+RUN powershell_version=7.6.0-preview.4 \
+    && curl --fail --show-error --location --output PowerShell.Linux.x64.$powershell_version.nupkg https://powershellinfraartifacts-gkhedzdeaghdezhr.z01.azurefd.net/tool/$powershell_version/PowerShell.Linux.x64.$powershell_version.nupkg \
+    && powershell_sha512='92ba2a8344f13d1c640f73d61488a582bae3ea82e4d00aad02efece3475f852855fb6f8ac37f72b4a14cdc1975af9f253d59ce72e36f3653e6b1ee87dc273f8f' \
+    && echo "$powershell_sha512  PowerShell.Linux.x64.$powershell_version.nupkg" | sha512sum -c - \
+    && mkdir --parents /usr/share/powershell \
+    && dotnet tool install --add-source / --tool-path /usr/share/powershell --version $powershell_version PowerShell.Linux.x64 \
+    && dotnet nuget locals all --clear \
+    && rm PowerShell.Linux.x64.$powershell_version.nupkg \
+    && ln -s /usr/share/powershell/pwsh /usr/bin/pwsh \
+    && chmod 755 /usr/share/powershell/pwsh \
+    # To reduce image size, remove the copy nupkg that nuget keeps.
+    && find /usr/share/powershell -print | grep -i '.*[.]nupkg$' | xargs rm
