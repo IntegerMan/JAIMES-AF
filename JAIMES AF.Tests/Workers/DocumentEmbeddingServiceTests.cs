@@ -318,8 +318,7 @@ public class DocumentEmbeddingServiceTests
             _mongoRunner.ResetDatabase();
             _options = new DocumentEmbeddingOptions
             {
-                CollectionName = "test-collection",
-                EmbeddingDimensions = 768
+                CollectionName = "test-collection"
             };
 
             IMongoDatabase database = _mongoRunner.Client.GetDatabase("documents");
@@ -504,7 +503,6 @@ public class DocumentEmbeddingServiceTests
                 Times.Once);
 
             _capturedVectorParams.ShouldNotBeNull();
-            _capturedVectorParams!.Size.ShouldBe((ulong)_options.EmbeddingDimensions);
             _capturedVectorParams.Distance.ShouldBe(Distance.Cosine);
         }
 

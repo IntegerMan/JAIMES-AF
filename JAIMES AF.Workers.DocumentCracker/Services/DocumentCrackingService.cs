@@ -128,7 +128,7 @@ public class DocumentCrackingService(
             };
             
             // Publish using message publisher
-        await messagePublisher.PublishAsync(message, cancellationToken);
+            await messagePublisher.PublishAsync(message, cancellationToken);
             
             logger.LogInformation("Successfully published document ready for chunking message. DocumentId: {DocumentId}, FilePath: {FilePath}", 
                 documentId, filePath);

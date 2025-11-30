@@ -19,11 +19,43 @@ public class DocumentEmbeddingService(
     ILogger<DocumentEmbeddingService> logger,
     ActivitySource activitySource) : IDocumentEmbeddingService
 {
+    // Lazily determined embedding dimensions from the embedding model
+    private int? _resolvedEmbeddingDimensions;
+
+    /// <summary>
+    /// Ensures the embedding dimensions are resolved based on the configured embedding model.
+    /// </summary>
+    private async Task<int> ResolveEmbeddingDimensionsAsync(CancellationToken cancellationToken)
+    {
+        if (_resolvedEmbeddingDimensions.HasValue)
+        {
+            return _resolvedEmbeddingDimensions.Value;
+        }
+
+        // Infer by generating a single embedding and reading its vector length
+        logger.LogDebug("Inferring embedding dimensions from model by generating a sample embedding");
+        GeneratedEmbeddings<Embedding<float>> sample = await embeddingGenerator.GenerateAsync([""], cancellationToken: cancellationToken);
+        if (sample.Count == 0)
+        {
+            throw new InvalidOperationException("Failed to infer embedding dimensions: no embedding returned by generator");
+        }
+
+        Embedding<float> first = sample[0];
+        int dims = first.Vector.Length;
+        if (dims <= 0)
+        {
+            throw new InvalidOperationException("Embedding generator returned an invalid vector length");
+        }
+
+        _resolvedEmbeddingDimensions = dims;
+        logger.LogInformation("Resolved embedding dimensions from model: {Dimensions}", dims);
+        return dims;
+    }
 
     /// <summary>
     /// Generates a Qdrant point ID from a string point ID using SHA256 hash to prevent collisions.
     /// This matches the implementation in QdrantEmbeddingStore.
-    /// If the first 8 bytes hash to 0, uses bytes 8-15 to avoid collision with natural hash values.
+    /// If the first8 bytes hash to0, uses bytes8-15 to avoid collision with natural hash values.
     /// </summary>
     private static ulong GenerateQdrantPointId(string pointId)
     {
@@ -31,9 +63,9 @@ public class DocumentEmbeddingService(
         ulong qdrantPointId = BitConverter.ToUInt64(hashBytes, 0);
         if (qdrantPointId == 0)
         {
-            // Qdrant doesn't allow zero IDs. Use bytes 8-15 from the hash to avoid collision
-            // with natural hash values. If that's also 0, try bytes 16-23, then 24-31.
-            // This ensures we don't collide with natural hash values like 1.
+            // Qdrant doesn't allow zero IDs. Use bytes8-15 from the hash to avoid collision
+            // with natural hash values. If that's also0, try bytes16-23, then24-31.
+            // This ensures we don't collide with natural hash values like1.
             qdrantPointId = BitConverter.ToUInt64(hashBytes, 8);
             if (qdrantPointId == 0)
             {
@@ -41,7 +73,7 @@ public class DocumentEmbeddingService(
                 if (qdrantPointId == 0)
                 {
                     qdrantPointId = BitConverter.ToUInt64(hashBytes, 24);
-                    // If all 32 bytes of SHA256 hash to 0 (statistically impossible), use ulong.MaxValue
+                    // If all32 bytes of SHA256 hash to0 (statistically impossible), use ulong.MaxValue
                     // This value is extremely unlikely to occur naturally from SHA256
                     if (qdrantPointId == 0)
                     {
@@ -133,7 +165,7 @@ public class DocumentEmbeddingService(
             ulong qdrantPointId = GenerateQdrantPointId(message.ChunkId);
             activity?.SetTag("embedding.qdrant_point_id", qdrantPointId);
 
-            // Ensure collection exists
+            // Ensure collection exists (dimensions resolved from model)
             await EnsureCollectionExistsAsync(cancellationToken);
 
             // Store embedding in Qdrant
@@ -182,10 +214,13 @@ public class DocumentEmbeddingService(
             // Collection doesn't exist, create it
         }
 
+        // Resolve vector size from the embedding model
+        int dimensions = await ResolveEmbeddingDimensionsAsync(cancellationToken);
+
         // Create collection with vector configuration
         VectorParams vectorParams = new()
         {
-            Size = (ulong)options.EmbeddingDimensions,
+            Size = (ulong)dimensions,
             Distance = Distance.Cosine
         };
 
@@ -195,7 +230,7 @@ public class DocumentEmbeddingService(
             cancellationToken: cancellationToken);
 
         logger.LogInformation("Created Qdrant collection {CollectionName} with {Dimensions} dimensions",
-            options.CollectionName, options.EmbeddingDimensions);
+            options.CollectionName, dimensions);
     }
 
     private async Task StoreEmbeddingInQdrantAsync(
@@ -221,7 +256,7 @@ public class DocumentEmbeddingService(
 
         await qdrantClient.UpsertAsync(
             collectionName: options.CollectionName,
-            points: new[] { point },
+            points: [point],
             cancellationToken: cancellationToken);
     }
 
