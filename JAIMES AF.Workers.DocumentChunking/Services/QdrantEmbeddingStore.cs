@@ -24,7 +24,7 @@ public class QdrantEmbeddingStore(
 
  /// <summary>
  /// Resolves embedding dimensions by generating a sample embedding when an embedding generator is available.
- /// If no generator is provided, dimensions cannot be inferred and a descriptive exception is thrown when needed.
+ /// If no generator is provided, return -1 to indicate unknown.
  /// </summary>
  private async Task<int> ResolveEmbeddingDimensionsAsync(CancellationToken cancellationToken)
  {
@@ -35,7 +35,9 @@ public class QdrantEmbeddingStore(
 
  if (embeddingGenerator is null)
  {
- throw new InvalidOperationException("Cannot infer embedding dimensions without an embedding generator. Provide an IEmbeddingGenerator to QdrantEmbeddingStore or create the collection externally.");
+ // Unknown dimensions; caller should decide whether to proceed
+ logger.LogDebug("Embedding generator not available; cannot infer embedding dimensions.");
+ return -1;
  }
 
  logger.LogDebug("Inferring embedding dimensions from model by generating a sample embedding (chunking store)");
@@ -137,9 +139,17 @@ public class QdrantEmbeddingStore(
  logger.LogInformation("Collection {CollectionName} does not exist, creating it", options.CollectionName);
  }
 
- // Create collection with vector configuration
- // Resolve vector size from the embedding model
+ // Determine vector size by inferring from embedding generator
  int dimensions = await ResolveEmbeddingDimensionsAsync(cancellationToken);
+ if (dimensions <=0)
+ {
+ // We cannot create the collection now. Log and return gracefully so startup doesn't fail.
+ logger.LogWarning(
+ "Embedding dimensions unknown (no embedding generator). Skipping creation of Qdrant collection {CollectionName}.",
+ options.CollectionName);
+ activity?.SetStatus(ActivityStatusCode.Ok);
+ return;
+ }
  try
  {
  VectorParams vectorParams = new()
