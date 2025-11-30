@@ -1,25 +1,25 @@
 using System.Diagnostics;
-using Microsoft.Extensions.AI;
+using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
-using RabbitMQ.Client;
+using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
+using MattEland.Jaimes.Workers.DocumentChunking.Consumers;
+using MattEland.Jaimes.Workers.DocumentChunking.Services;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Logging;
+using OllamaSharp;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
+using RabbitMQ.Client;
 using SemanticChunkerNET;
-using MattEland.Jaimes.Workers.DocumentChunking.Consumers;
-using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
-using MattEland.Jaimes.Workers.DocumentChunking.Services;
-using MattEland.Jaimes.ServiceDefaults;
-using OllamaSharp;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 

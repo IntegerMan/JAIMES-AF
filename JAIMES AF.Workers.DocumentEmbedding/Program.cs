@@ -1,4 +1,10 @@
 using System.Diagnostics;
+using MattEland.Jaimes.ServiceDefaults;
+using MattEland.Jaimes.ServiceDefinitions.Messages;
+using MattEland.Jaimes.ServiceDefinitions.Services;
+using MattEland.Jaimes.Workers.DocumentEmbedding.Configuration;
+using MattEland.Jaimes.Workers.DocumentEmbedding.Consumers;
+using MattEland.Jaimes.Workers.DocumentEmbedding.Services;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,12 +17,6 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Qdrant.Client;
 using RabbitMQ.Client;
-using MattEland.Jaimes.ServiceDefinitions.Messages;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.ServiceDefaults;
-using MattEland.Jaimes.Workers.DocumentEmbedding.Configuration;
-using MattEland.Jaimes.Workers.DocumentEmbedding.Consumers;
-using MattEland.Jaimes.Workers.DocumentEmbedding.Services;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 

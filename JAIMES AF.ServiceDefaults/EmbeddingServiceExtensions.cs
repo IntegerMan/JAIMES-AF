@@ -237,7 +237,7 @@ public static class EmbeddingServiceExtensions
                             _logger.LogError(
                                 "Ollama returned 404 (Not Found) when generating embeddings. " +
                                 "This usually means the model '{Model}' is not available in Ollama at {Endpoint}. " +
-                                "Response: {Response}. To fix this, run: ollama pull {Model}",
+                                "Response: {Response}. To fix this, run: ollama pull {ModelId}",
                                 _modelName, _endpoint, errorContent, _modelName);
 							
                             throw new InvalidOperationException(
@@ -269,7 +269,7 @@ public static class EmbeddingServiceExtensions
                     _logger.LogError(ex, 
                         "Ollama returned 404 (Not Found) when generating embeddings. " +
                         "This usually means the model '{Model}' is not available in Ollama at {Endpoint}. " +
-                        "To fix this, run: ollama pull {Model}",
+                        "To fix this, run: ollama pull {ModelId}",
                         _modelName, _endpoint, _modelName);
 					
                     throw new InvalidOperationException(

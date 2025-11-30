@@ -1,18 +1,18 @@
 using System;
+using System.Diagnostics;
 using FastEndpoints;
 using FastEndpoints.Swagger;
+using MattEland.Jaimes.Agents.Services;
+using MattEland.Jaimes.ApiService.Helpers;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.ServiceDefaults;
-using System.Diagnostics;
-using MattEland.Jaimes.ApiService.Helpers;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Services;
-using RabbitMQ.Client;
+using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
+using MattEland.Jaimes.Workers.DocumentChunking.Services;
 using MongoDB.Driver;
 using Qdrant.Client;
-using MattEland.Jaimes.Workers.DocumentChunking.Services;
-using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
-using MattEland.Jaimes.Agents.Services;
+using RabbitMQ.Client;
 
 namespace MattEland.Jaimes.ApiService;
 

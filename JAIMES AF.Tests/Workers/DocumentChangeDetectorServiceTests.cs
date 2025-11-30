@@ -7,8 +7,8 @@ using MattEland.Jaimes.Tests.TestUtilities;
 using MattEland.Jaimes.Workers.DocumentChangeDetector.Configuration;
 using MattEland.Jaimes.Workers.DocumentChangeDetector.Services;
 using Microsoft.Extensions.Logging;
-using Moq;
 using MongoDB.Driver;
+using Moq;
 using Shouldly;
 
 namespace MattEland.Jaimes.Tests.Workers;

@@ -1,8 +1,8 @@
+using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
+using MattEland.Jaimes.Workers.DocumentChunking.Models;
 using Microsoft.Extensions.Logging;
 using SemanticSlicer;
 using SemanticSlicer.Models;
-using MattEland.Jaimes.Workers.DocumentChunking.Models;
-using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
 
 namespace MattEland.Jaimes.Workers.DocumentChunking.Services;
 
