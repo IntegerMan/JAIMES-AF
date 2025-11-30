@@ -7,6 +7,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
+using MattEland.Jaimes.ServiceDefaults; // added for utilities
 
 namespace MattEland.Jaimes.Workers.DocumentChunking.Services;
 
@@ -33,64 +34,19 @@ public class QdrantEmbeddingStore(
  return _resolvedEmbeddingDimensions.Value;
  }
 
- if (embeddingGenerator is null)
+ int dims = await QdrantUtilities.ResolveEmbeddingDimensionsAsync(embeddingGenerator, logger, cancellationToken);
+ if (dims >0)
  {
- // Unknown dimensions; caller should decide whether to proceed
- logger.LogDebug("Embedding generator not available; cannot infer embedding dimensions.");
- return -1;
- }
-
- logger.LogDebug("Inferring embedding dimensions from model by generating a sample embedding (chunking store)");
- GeneratedEmbeddings<Embedding<float>> sample = await embeddingGenerator.GenerateAsync([""], cancellationToken: cancellationToken);
- if (sample.Count ==0)
- {
- throw new InvalidOperationException("Failed to infer embedding dimensions: no embedding returned by generator");
- }
-
- Embedding<float> first = sample[0];
- int dims = first.Vector.Length;
- if (dims <=0)
- {
- throw new InvalidOperationException("Embedding generator returned an invalid vector length");
- }
-
  _resolvedEmbeddingDimensions = dims;
- logger.LogInformation("Resolved embedding dimensions from model (chunking store): {Dimensions}", dims);
+ }
  return dims;
  }
 
  /// <summary>
- /// Generates a Qdrant point ID from a string point ID using SHA256 hash to prevent collisions.
- /// This replaces the previous GetHashCode() approach which could cause data loss due to hash collisions.
- /// If the first8 bytes hash to0, uses bytes8-15 to avoid collision with natural hash values.
+ /// Generates a Qdrant point ID from a string point ID using shared utility.
  /// </summary>
- private static ulong GenerateQdrantPointId(string pointId)
- {
- byte[] hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(pointId));
- ulong qdrantPointId = BitConverter.ToUInt64(hashBytes,0);
- if (qdrantPointId ==0)
- {
- // Qdrant doesn't allow zero IDs. Use bytes8-15 from the hash to avoid collision
- // with natural hash values. If that's also0, try bytes16-23, then24-31.
- // This ensures we don't collide with natural hash values like1.
- qdrantPointId = BitConverter.ToUInt64(hashBytes,8);
- if (qdrantPointId ==0)
- {
- qdrantPointId = BitConverter.ToUInt64(hashBytes,16);
- if (qdrantPointId ==0)
- {
- qdrantPointId = BitConverter.ToUInt64(hashBytes,24);
- // If all32 bytes of SHA256 hash to0 (statistically impossible), use ulong.MaxValue
- // This value is extremely unlikely to occur naturally from SHA256
- if (qdrantPointId ==0)
- {
- qdrantPointId = ulong.MaxValue;
- }
- }
- }
- }
- return qdrantPointId;
- }
+ private static ulong GenerateQdrantPointId(string pointId) => QdrantUtilities.GeneratePointId(pointId);
+
  public async Task EnsureCollectionExistsAsync(CancellationToken cancellationToken = default)
  {
  using Activity? activity = activitySource.StartActivity("Qdrant.EnsureCollection");

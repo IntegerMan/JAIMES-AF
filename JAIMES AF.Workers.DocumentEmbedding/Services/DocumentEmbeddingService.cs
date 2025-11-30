@@ -8,6 +8,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Qdrant.Client.Grpc;
+using MattEland.Jaimes.ServiceDefaults; // added for utilities
 
 namespace MattEland.Jaimes.Workers.DocumentEmbedding.Services;
 
@@ -32,59 +33,19 @@ public class DocumentEmbeddingService(
             return _resolvedEmbeddingDimensions.Value;
         }
 
-        // Infer by generating a single embedding and reading its vector length
-        logger.LogDebug("Inferring embedding dimensions from model by generating a sample embedding");
-        // Use a non-empty sample to avoid provider400 errors (e.g., $.input is invalid)
-        GeneratedEmbeddings<Embedding<float>> sample = await embeddingGenerator.GenerateAsync(["test"], cancellationToken: cancellationToken);
-        if (sample.Count == 0)
+        int dims = await QdrantUtilities.ResolveEmbeddingDimensionsAsync(embeddingGenerator, logger, cancellationToken);
+        if (dims >0)
         {
-            throw new InvalidOperationException("Failed to infer embedding dimensions: no embedding returned by generator");
+            _resolvedEmbeddingDimensions = dims;
         }
-
-        Embedding<float> first = sample[0];
-        int dims = first.Vector.Length;
-        if (dims <= 0)
-        {
-            throw new InvalidOperationException("Embedding generator returned an invalid vector length");
-        }
-
-        _resolvedEmbeddingDimensions = dims;
-        logger.LogInformation("Resolved embedding dimensions from model: {Dimensions}", dims);
         return dims;
     }
 
     /// <summary>
     /// Generates a Qdrant point ID from a string point ID using SHA256 hash to prevent collisions.
-    /// This matches the implementation in QdrantEmbeddingStore.
-    /// If the first8 bytes hash to0, uses bytes8-15 to avoid collision with natural hash values.
+    /// Utility wrapper to shared implementation.
     /// </summary>
-    private static ulong GenerateQdrantPointId(string pointId)
-    {
-        byte[] hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(pointId));
-        ulong qdrantPointId = BitConverter.ToUInt64(hashBytes, 0);
-        if (qdrantPointId == 0)
-        {
-            // Qdrant doesn't allow zero IDs. Use bytes8-15 from the hash to avoid collision
-            // with natural hash values. If that's also0, try bytes16-23, then24-31.
-            // This ensures we don't collide with natural hash values like1.
-            qdrantPointId = BitConverter.ToUInt64(hashBytes, 8);
-            if (qdrantPointId == 0)
-            {
-                qdrantPointId = BitConverter.ToUInt64(hashBytes, 16);
-                if (qdrantPointId == 0)
-                {
-                    qdrantPointId = BitConverter.ToUInt64(hashBytes, 24);
-                    // If all32 bytes of SHA256 hash to0 (statistically impossible), use ulong.MaxValue
-                    // This value is extremely unlikely to occur naturally from SHA256
-                    if (qdrantPointId == 0)
-                    {
-                        qdrantPointId = ulong.MaxValue;
-                    }
-                }
-            }
-        }
-        return qdrantPointId;
-    }
+    private static ulong GenerateQdrantPointId(string pointId) => QdrantUtilities.GeneratePointId(pointId);
 
     /// <summary>
     /// Extracts the ruleset ID from the relative directory path.
@@ -101,7 +62,7 @@ public class DocumentEmbeddingService(
             [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
             StringSplitOptions.RemoveEmptyEntries);
         
-        return parts.Length > 0 ? parts[0] : "default";
+        return parts.Length >0 ? parts[0] : "default";
     }
 
     public async Task ProcessChunkAsync(ChunkReadyForEmbeddingMessage message, CancellationToken cancellationToken = default)
@@ -136,7 +97,7 @@ public class DocumentEmbeddingService(
             // IEmbeddingGenerator.GenerateAsync returns GeneratedEmbeddings, so we get the first result
             GeneratedEmbeddings<Embedding<float>> embeddingsResult = await embeddingGenerator.GenerateAsync([message.ChunkText], cancellationToken: cancellationToken);
             
-            if (embeddingsResult.Count == 0)
+            if (embeddingsResult.Count ==0)
             {
                 throw new InvalidOperationException("Failed to generate embedding for chunk");
             }
@@ -168,7 +129,7 @@ public class DocumentEmbeddingService(
                 metadata["pageNumber"] = message.PageNumber.Value.ToString();
             }
 
-            // Calculate Qdrant point ID using SHA256 hash
+            // Calculate Qdrant point ID using shared utility
             ulong qdrantPointId = GenerateQdrantPointId(message.ChunkId);
             activity?.SetTag("embedding.qdrant_point_id", qdrantPointId);
 
