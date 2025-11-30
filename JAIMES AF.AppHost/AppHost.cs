@@ -7,16 +7,6 @@ IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(ar
 IResourceBuilder<OllamaResource> ollama = builder.AddOllama("ollama-models")
     .WithIconName("BrainSparkle")
     .WithDataVolume();
-    /*
-    .WithOpenWebUI(webUi => {
-        webUi.WithIconName("ChatSparkle");
-        webUi.WithUrlForEndpoint("http", static _ => new()
-        {
-            Url = "/models",
-            DisplayText = "🤖 Models"
-        });
-    }, "open-webUI");
-    */
 
 // Note: versioning is important for embedding models to ensure consistency and reproducibility.
 var embedModel = ollama.AddModel("embedModel", "nomic-embed-text:v1.5").WithIconName("CodeTextEdit");

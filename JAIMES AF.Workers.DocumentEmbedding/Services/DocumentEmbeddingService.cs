@@ -34,7 +34,8 @@ public class DocumentEmbeddingService(
 
         // Infer by generating a single embedding and reading its vector length
         logger.LogDebug("Inferring embedding dimensions from model by generating a sample embedding");
-        GeneratedEmbeddings<Embedding<float>> sample = await embeddingGenerator.GenerateAsync([""], cancellationToken: cancellationToken);
+        // Use a non-empty sample to avoid provider400 errors (e.g., $.input is invalid)
+        GeneratedEmbeddings<Embedding<float>> sample = await embeddingGenerator.GenerateAsync(["test"], cancellationToken: cancellationToken);
         if (sample.Count == 0)
         {
             throw new InvalidOperationException("Failed to infer embedding dimensions: no embedding returned by generator");
@@ -113,6 +114,12 @@ public class DocumentEmbeddingService(
         {
             logger.LogDebug("Processing chunk for embedding: {ChunkId} (DocumentId: {DocumentId})",
                 message.ChunkId, message.DocumentId);
+
+            // Validate input text to avoid provider400 (e.g., $.input is invalid)
+            if (string.IsNullOrWhiteSpace(message.ChunkText))
+            {
+                throw new ArgumentException("Chunk text is empty or whitespace and cannot be embedded", nameof(message));
+            }
 
             // Use ruleset ID from message (or extract from relative directory as fallback)
             string rulesetId = !string.IsNullOrWhiteSpace(message.RulesetId) 
