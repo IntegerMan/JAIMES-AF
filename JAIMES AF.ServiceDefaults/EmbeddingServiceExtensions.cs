@@ -6,6 +6,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using OpenAI; // added for OpenAIClient
 
 namespace MattEland.Jaimes.ServiceDefaults;
 
@@ -143,10 +144,11 @@ public static class EmbeddingServiceExtensions
                         throw new InvalidOperationException("OpenAI API key is not configured. Set EmbeddingModel:Key.");
                     }
 
-                    logger.LogDebug("Creating OpenAI-compatible embedding generator for model {Model} (Endpoint: {Endpoint})",
+                    logger.LogDebug("Creating OpenAI embedding generator for model {Model} (Endpoint: {Endpoint})",
                         opts.Name, opts.Endpoint ?? "https://api.openai.com/v1");
 
-                    AzureOpenAIClient client = AiModelConfiguration.CreateOpenAICompatibleClient(opts.Endpoint, opts.Key!);
+                    // Use the proper OpenAIClient instead of AzureOpenAIClient
+                    OpenAIClient client = AiModelConfiguration.CreateOpenAIClient(opts.Endpoint, opts.Key!);
                     return client.GetEmbeddingClient(opts.Name).AsIEmbeddingGenerator();
                 });
                 break;

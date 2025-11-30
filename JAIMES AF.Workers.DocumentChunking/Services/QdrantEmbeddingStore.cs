@@ -18,277 +18,276 @@ public class QdrantEmbeddingStore(
  ActivitySource activitySource,
  IEmbeddingGenerator<string, Embedding<float>>? embeddingGenerator = null) : IQdrantEmbeddingStore
 {
- /// <summary>
- /// Lazily determined embedding dimensions from the embedding model, if an embedding generator is provided.
- /// </summary>
- private int? _resolvedEmbeddingDimensions;
+    /// <summary>
+    /// Lazily determined embedding dimensions from the embedding model, if an embedding generator is provided.
+    /// </summary>
+    private int? _resolvedEmbeddingDimensions;
 
- /// <summary>
- /// Resolves embedding dimensions by generating a sample embedding when an embedding generator is available.
- /// If no generator is provided, return -1 to indicate unknown.
- /// </summary>
- private async Task<int> ResolveEmbeddingDimensionsAsync(CancellationToken cancellationToken)
- {
- if (_resolvedEmbeddingDimensions.HasValue)
- {
- return _resolvedEmbeddingDimensions.Value;
- }
+    /// <summary>
+    /// Resolves embedding dimensions by generating a sample embedding when an embedding generator is available.
+    /// If no generator is provided, return -1 to indicate unknown.
+    /// </summary>
+    private async Task<int> ResolveEmbeddingDimensionsAsync(CancellationToken cancellationToken)
+    {
+        if (_resolvedEmbeddingDimensions.HasValue)
+        {
+            return _resolvedEmbeddingDimensions.Value;
+        }
 
- int dims = await QdrantUtilities.ResolveEmbeddingDimensionsAsync(embeddingGenerator, logger, cancellationToken);
- if (dims >0)
- {
- _resolvedEmbeddingDimensions = dims;
- }
- return dims;
- }
+        int dims = await QdrantUtilities.ResolveEmbeddingDimensionsAsync(embeddingGenerator, logger, cancellationToken);
+        if (dims > 0)
+        {
+            _resolvedEmbeddingDimensions = dims;
+        }
+        return dims;
+    }
 
- /// <summary>
- /// Generates a Qdrant point ID from a string point ID using shared utility.
- /// </summary>
- private static ulong GenerateQdrantPointId(string pointId) => QdrantUtilities.GeneratePointId(pointId);
+    /// <summary>
+    /// Generates a Qdrant point ID from a string point ID using shared utility.
+    /// </summary>
+    private static ulong GenerateQdrantPointId(string pointId) => QdrantUtilities.GeneratePointId(pointId);
 
- public async Task EnsureCollectionExistsAsync(CancellationToken cancellationToken = default)
- {
- using Activity? activity = activitySource.StartActivity("Qdrant.EnsureCollection");
- activity?.SetTag("qdrant.collection", options.CollectionName);
+    public async Task EnsureCollectionExistsAsync(CancellationToken cancellationToken = default)
+    {
+        using Activity? activity = activitySource.StartActivity("Qdrant.EnsureCollection");
+        activity?.SetTag("qdrant.collection", options.CollectionName);
 
- try
- {
- // Check if collection exists
- CollectionInfo? collectionInfo = await qdrantClient.GetCollectionInfoAsync(
- options.CollectionName, 
- cancellationToken: cancellationToken);
+        try
+        {
+            // Check if collection exists
+            CollectionInfo? collectionInfo = await qdrantClient.GetCollectionInfoAsync(
+            options.CollectionName,
+            cancellationToken: cancellationToken);
 
- if (collectionInfo != null)
- {
- logger.LogDebug("Collection {CollectionName} already exists", options.CollectionName);
- activity?.SetStatus(ActivityStatusCode.Ok);
- return;
- }
- }
- catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound || 
- ex.StatusCode == StatusCode.Internal)
- {
- // Collection doesn't exist (NotFound) or server error (might be not ready)
- if (ex.StatusCode == Grpc.Core.StatusCode.NotFound)
- {
- logger.LogInformation("Collection {CollectionName} does not exist, creating it", options.CollectionName);
- }
- else
- {
- // Internal error might mean Qdrant isn't ready yet
- logger.LogWarning("Qdrant returned internal error, might not be ready yet: {Message}", ex.Message);
- throw; // Re-throw to allow retry
- }
- }
- catch (Exception ex) when (ex.Message.Contains("doesn't exist") || 
- ex.Message.Contains("not found") ||
- ex.Message.Contains("PROTOCOL_ERROR") ||
- ex.Message.Contains("HTTP/2"))
- {
- // Collection doesn't exist or connection issue
- if (ex.Message.Contains("PROTOCOL_ERROR") || ex.Message.Contains("HTTP/2"))
- {
- logger.LogWarning("Qdrant connection error (might not be ready): {Message}", ex.Message);
- throw; // Re-throw to allow retry
- }
- logger.LogInformation("Collection {CollectionName} does not exist, creating it", options.CollectionName);
- }
+            if (collectionInfo != null)
+            {
+                logger.LogDebug("Collection {CollectionName} already exists", options.CollectionName);
+                activity?.SetStatus(ActivityStatusCode.Ok);
+                return;
+            }
+        }
+        catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound ||
+        ex.StatusCode == StatusCode.Internal)
+        {
+            // Collection doesn't exist (NotFound) or server error (might be not ready)
+            if (ex.StatusCode == Grpc.Core.StatusCode.NotFound)
+            {
+                logger.LogInformation("Collection {CollectionName} does not exist, creating it", options.CollectionName);
+            } else
+            {
+                // Internal error might mean Qdrant isn't ready yet
+                logger.LogWarning("Qdrant returned internal error, might not be ready yet: {Message}", ex.Message);
+                throw; // Re-throw to allow retry
+            }
+        }
+        catch (Exception ex) when (ex.Message.Contains("doesn't exist") ||
+        ex.Message.Contains("not found") ||
+        ex.Message.Contains("PROTOCOL_ERROR") ||
+        ex.Message.Contains("HTTP/2"))
+        {
+            // Collection doesn't exist or connection issue
+            if (ex.Message.Contains("PROTOCOL_ERROR") || ex.Message.Contains("HTTP/2"))
+            {
+                logger.LogWarning("Qdrant connection error (might not be ready): {Message}", ex.Message);
+                throw; // Re-throw to allow retry
+            }
+            logger.LogInformation("Collection {CollectionName} does not exist, creating it", options.CollectionName);
+        }
 
- // Determine vector size by inferring from embedding generator
- int dimensions = await ResolveEmbeddingDimensionsAsync(cancellationToken);
- if (dimensions <=0)
- {
- // We cannot create the collection now. Log and return gracefully so startup doesn't fail.
- logger.LogWarning(
- "Embedding dimensions unknown (no embedding generator). Skipping creation of Qdrant collection {CollectionName}.",
- options.CollectionName);
- activity?.SetStatus(ActivityStatusCode.Ok);
- return;
- }
- try
- {
- VectorParams vectorParams = new()
- {
- Size = (ulong)dimensions,
- Distance = Distance.Cosine
- };
+        // Determine vector size by inferring from embedding generator
+        int dimensions = await ResolveEmbeddingDimensionsAsync(cancellationToken);
+        if (dimensions <= 0)
+        {
+            // We cannot create the collection now. Log and return gracefully so startup doesn't fail.
+            logger.LogWarning(
+            "Embedding dimensions unknown (no embedding generator). Skipping creation of Qdrant collection {CollectionName}.",
+            options.CollectionName);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            return;
+        }
+        try
+        {
+            VectorParams vectorParams = new()
+            {
+                Size = (ulong)dimensions,
+                Distance = Distance.Cosine
+            };
 
- await qdrantClient.CreateCollectionAsync(
- options.CollectionName,
- vectorParams,
- cancellationToken: cancellationToken);
- 
- logger.LogInformation("Created Qdrant collection {CollectionName} with {Dimensions} dimensions", 
- options.CollectionName, dimensions);
- }
- catch (Exception ex) when (ex.Message.Contains("already exists") || ex.Message.Contains("duplicate"))
- {
- logger.LogDebug("Collection {CollectionName} already exists", options.CollectionName);
- }
- 
- activity?.SetStatus(ActivityStatusCode.Ok);
- }
+            await qdrantClient.CreateCollectionAsync(
+            options.CollectionName,
+            vectorParams,
+            cancellationToken: cancellationToken);
 
- public async Task StoreEmbeddingAsync(
- string pointId, 
- float[] embedding, 
- Dictionary<string, string> metadata,
- CancellationToken cancellationToken = default)
- {
- using Activity? activity = activitySource.StartActivity("Qdrant.StoreEmbedding");
- activity?.SetTag("qdrant.collection", options.CollectionName);
- activity?.SetTag("qdrant.point_id", pointId);
- activity?.SetTag("qdrant.embedding_dimensions", embedding.Length);
+            logger.LogInformation("Created Qdrant collection {CollectionName} with {Dimensions} dimensions",
+            options.CollectionName, dimensions);
+        }
+        catch (Exception ex) when (ex.Message.Contains("already exists") || ex.Message.Contains("duplicate"))
+        {
+            logger.LogDebug("Collection {CollectionName} already exists", options.CollectionName);
+        }
 
- try
- {
- // Ensure collection exists before storing (in case it wasn't created earlier)
- // This provides a safety net if EnsureCollectionExistsAsync failed during ProcessDocumentAsync
- await EnsureCollectionExistsAsync(cancellationToken);
+        activity?.SetStatus(ActivityStatusCode.Ok);
+    }
 
- // Convert metadata to Qdrant payload
- Dictionary<string, Value> payload = new();
- foreach ((string key, string value) in metadata)
- {
- payload[key] = new Value { StringValue = value };
- }
+    public async Task StoreEmbeddingAsync(
+    string pointId,
+    float[] embedding,
+    Dictionary<string, string> metadata,
+    CancellationToken cancellationToken = default)
+    {
+        using Activity? activity = activitySource.StartActivity("Qdrant.StoreEmbedding");
+        activity?.SetTag("qdrant.collection", options.CollectionName);
+        activity?.SetTag("qdrant.point_id", pointId);
+        activity?.SetTag("qdrant.embedding_dimensions", embedding.Length);
 
- // Generate a point ID from the provided pointId string using SHA256 hash to prevent collisions
- // For chunks, this will be the chunk ID; for backward compatibility, it can be document ID
- ulong qdrantPointId = GenerateQdrantPointId(pointId);
+        try
+        {
+            // Ensure collection exists before storing (in case it wasn't created earlier)
+            // This provides a safety net if EnsureCollectionExistsAsync failed during ProcessDocumentAsync
+            await EnsureCollectionExistsAsync(cancellationToken);
 
- PointStruct point = new()
- {
- Id = qdrantPointId,
- Vectors = embedding,
- Payload = { payload }
- };
+            // Convert metadata to Qdrant payload
+            Dictionary<string, Value> payload = new();
+            foreach ((string key, string value) in metadata)
+            {
+                payload[key] = new Value { StringValue = value };
+            }
 
- await qdrantClient.UpsertAsync(
- collectionName: options.CollectionName,
- points: new[] { point },
- cancellationToken: cancellationToken);
+            // Generate a point ID from the provided pointId string using SHA256 hash to prevent collisions
+            // For chunks, this will be the chunk ID; for backward compatibility, it can be document ID
+            ulong qdrantPointId = GenerateQdrantPointId(pointId);
 
- logger.LogInformation("Stored embedding for point {PointId} in collection {CollectionName}", 
- pointId, options.CollectionName);
- 
- activity?.SetStatus(ActivityStatusCode.Ok);
- }
- catch (Exception ex)
- {
- logger.LogError(ex, "Failed to store embedding for point {PointId}", pointId);
- activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
- throw;
- }
- }
+            PointStruct point = new()
+            {
+                Id = qdrantPointId,
+                Vectors = embedding,
+                Payload = { payload }
+            };
 
- public async Task<List<EmbeddingInfo>> ListEmbeddingsAsync(CancellationToken cancellationToken = default)
- {
- using Activity? activity = activitySource.StartActivity("Qdrant.ListEmbeddings");
- activity?.SetTag("qdrant.collection", options.CollectionName);
+            await qdrantClient.UpsertAsync(
+            collectionName: options.CollectionName,
+            points: new[] { point },
+            cancellationToken: cancellationToken);
 
- List<EmbeddingInfo> embeddings = new();
+            logger.LogInformation("Stored embedding for point {PointId} in collection {CollectionName}",
+            pointId, options.CollectionName);
 
- try
- {
- // Check if collection exists
- CollectionInfo? collectionInfo = await qdrantClient.GetCollectionInfoAsync(
- options.CollectionName,
- cancellationToken: cancellationToken);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to store embedding for point {PointId}", pointId);
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            throw;
+        }
+    }
 
- if (collectionInfo == null)
- {
- logger.LogInformation("Collection {CollectionName} does not exist, returning empty list", options.CollectionName);
- activity?.SetStatus(ActivityStatusCode.Ok);
- return embeddings;
- }
+    public async Task<List<EmbeddingInfo>> ListEmbeddingsAsync(CancellationToken cancellationToken = default)
+    {
+        using Activity? activity = activitySource.StartActivity("Qdrant.ListEmbeddings");
+        activity?.SetTag("qdrant.collection", options.CollectionName);
 
- // Scroll through all points in the collection
- PointId? nextPageOffset = null;
- const int batchSize =100;
+        List<EmbeddingInfo> embeddings = new();
 
- do
- {
- ScrollResponse scrollResult = await qdrantClient.ScrollAsync(
- collectionName: options.CollectionName,
- filter: null,
- limit: batchSize,
- offset: nextPageOffset,
- cancellationToken: cancellationToken);
+        try
+        {
+            // Check if collection exists
+            CollectionInfo? collectionInfo = await qdrantClient.GetCollectionInfoAsync(
+            options.CollectionName,
+            cancellationToken: cancellationToken);
 
- foreach (RetrievedPoint point in scrollResult.Result)
- {
- try
- {
- // Extract metadata from payload
- string chunkId = point.Payload.GetValueOrDefault("chunkId")?.StringValue ?? string.Empty;
- string documentId = point.Payload.GetValueOrDefault("documentId")?.StringValue ?? string.Empty;
- string fileName = point.Payload.GetValueOrDefault("fileName")?.StringValue ?? string.Empty;
- string chunkText = point.Payload.GetValueOrDefault("chunkText")?.StringValue ?? string.Empty;
- int chunkIndex = int.TryParse(point.Payload.GetValueOrDefault("chunkIndex")?.StringValue, out int index) ? index :0;
+            if (collectionInfo == null)
+            {
+                logger.LogInformation("Collection {CollectionName} does not exist, returning empty list", options.CollectionName);
+                activity?.SetStatus(ActivityStatusCode.Ok);
+                return embeddings;
+            }
 
- // Reconstruct the original pointId from chunkId (which is what we stored)
- string pointId = chunkId;
+            // Scroll through all points in the collection
+            PointId? nextPageOffset = null;
+            const int batchSize = 100;
 
- // Extract ulong from PointId - PointId in RetrievedPoint is a PointId type
- // Since we can't directly access NumId, we reconstruct it from the chunkId using SHA256 hash
- // This matches the point ID generation logic used when storing
- ulong qdrantPointId = GenerateQdrantPointId(chunkId);
+            do
+            {
+                ScrollResponse scrollResult = await qdrantClient.ScrollAsync(
+                collectionName: options.CollectionName,
+                filter: null,
+                limit: batchSize,
+                offset: nextPageOffset,
+                cancellationToken: cancellationToken);
 
- embeddings.Add(new EmbeddingInfo
- {
- PointId = pointId,
- QdrantPointId = qdrantPointId,
- DocumentId = documentId,
- FileName = fileName,
- ChunkId = chunkId,
- ChunkIndex = chunkIndex,
- ChunkText = chunkText
- });
- }
- catch (Exception ex)
- {
- logger.LogWarning(ex, "Failed to parse embedding point, skipping");
- }
- }
+                foreach (RetrievedPoint point in scrollResult.Result)
+                {
+                    try
+                    {
+                        // Extract metadata from payload
+                        string chunkId = point.Payload.GetValueOrDefault("chunkId")?.StringValue ?? string.Empty;
+                        string documentId = point.Payload.GetValueOrDefault("documentId")?.StringValue ?? string.Empty;
+                        string fileName = point.Payload.GetValueOrDefault("fileName")?.StringValue ?? string.Empty;
+                        string chunkText = point.Payload.GetValueOrDefault("chunkText")?.StringValue ?? string.Empty;
+                        int chunkIndex = int.TryParse(point.Payload.GetValueOrDefault("chunkIndex")?.StringValue, out int index) ? index : 0;
 
- // Check if there are more points
- nextPageOffset = scrollResult.NextPageOffset;
- } while (nextPageOffset != null);
+                        // Reconstruct the original pointId from chunkId (which is what we stored)
+                        string pointId = chunkId;
 
- logger.LogInformation("Retrieved {Count} embeddings from collection {CollectionName}", embeddings.Count, options.CollectionName);
- activity?.SetStatus(ActivityStatusCode.Ok);
- }
- catch (Exception ex)
- {
- logger.LogError(ex, "Failed to list embeddings from collection {CollectionName}", options.CollectionName);
- activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
- throw;
- }
+                        // Extract ulong from PointId - PointId in RetrievedPoint is a PointId type
+                        // Since we can't directly access NumId, we reconstruct it from the chunkId using SHA256 hash
+                        // This matches the point ID generation logic used when storing
+                        ulong qdrantPointId = GenerateQdrantPointId(chunkId);
 
- return embeddings;
- }
+                        embeddings.Add(new EmbeddingInfo
+                        {
+                            PointId = pointId,
+                            QdrantPointId = qdrantPointId,
+                            DocumentId = documentId,
+                            FileName = fileName,
+                            ChunkId = chunkId,
+                            ChunkIndex = chunkIndex,
+                            ChunkText = chunkText
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning(ex, "Failed to parse embedding point, skipping");
+                    }
+                }
 
- public async Task DeleteEmbeddingAsync(string pointId, CancellationToken cancellationToken = default)
- {
- using Activity? activity = activitySource.StartActivity("Qdrant.DeleteEmbedding");
- activity?.SetTag("qdrant.collection", options.CollectionName);
- activity?.SetTag("qdrant.point_id", pointId);
+                // Check if there are more points
+                nextPageOffset = scrollResult.NextPageOffset;
+            } while (nextPageOffset != null);
 
- try
- {
- // Convert pointId to Qdrant point ID using SHA256 hash (same logic as in StoreEmbeddingAsync)
- ulong qdrantPointId = GenerateQdrantPointId(pointId);
+            logger.LogInformation("Retrieved {Count} embeddings from collection {CollectionName}", embeddings.Count, options.CollectionName);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to list embeddings from collection {CollectionName}", options.CollectionName);
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            throw;
+        }
 
- // Delete the point by recreating the collection without this point
- // For now, use a workaround: delete and recreate collection, or use HTTP API
- // Since the gRPC API signature is unclear, we'll use a filter-based approach
- // Try using an empty filter with a condition on chunkId in payload
- // Actually, let's use a simpler approach - delete by matching the chunkId in payload
- Filter filter = new()
- {
- Must =
+        return embeddings;
+    }
+
+    public async Task DeleteEmbeddingAsync(string pointId, CancellationToken cancellationToken = default)
+    {
+        using Activity? activity = activitySource.StartActivity("Qdrant.DeleteEmbedding");
+        activity?.SetTag("qdrant.collection", options.CollectionName);
+        activity?.SetTag("qdrant.point_id", pointId);
+
+        try
+        {
+            // Convert pointId to Qdrant point ID using SHA256 hash (same logic as in StoreEmbeddingAsync)
+            ulong qdrantPointId = GenerateQdrantPointId(pointId);
+
+            // Delete the point by recreating the collection without this point
+            // For now, use a workaround: delete and recreate collection, or use HTTP API
+            // Since the gRPC API signature is unclear, we'll use a filter-based approach
+            // Try using an empty filter with a condition on chunkId in payload
+            // Actually, let's use a simpler approach - delete by matching the chunkId in payload
+            Filter filter = new()
+            {
+                Must =
  {
  new Condition
  {
@@ -299,88 +298,88 @@ public class QdrantEmbeddingStore(
  }
  }
  }
- };
- 
- await qdrantClient.DeleteAsync(
- collectionName: options.CollectionName,
- filter: filter,
- cancellationToken: cancellationToken);
+            };
 
- logger.LogInformation("Deleted embedding for point {PointId} from collection {CollectionName}", pointId, options.CollectionName);
- activity?.SetStatus(ActivityStatusCode.Ok);
- }
- catch (Exception ex)
- {
- logger.LogError(ex, "Failed to delete embedding for point {PointId}", pointId);
- activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
- throw;
- }
- }
+            await qdrantClient.DeleteAsync(
+            collectionName: options.CollectionName,
+            filter: filter,
+            cancellationToken: cancellationToken);
 
- public async Task DeleteAllEmbeddingsAsync(CancellationToken cancellationToken = default)
- {
- using Activity? activity = activitySource.StartActivity("Qdrant.DeleteAllEmbeddings");
- activity?.SetTag("qdrant.collection", options.CollectionName);
+            logger.LogInformation("Deleted embedding for point {PointId} from collection {CollectionName}", pointId, options.CollectionName);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to delete embedding for point {PointId}", pointId);
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            throw;
+        }
+    }
 
- try
- {
- // Check if collection exists
- CollectionInfo? collectionInfo = await qdrantClient.GetCollectionInfoAsync(
- options.CollectionName,
- cancellationToken: cancellationToken);
+    public async Task DeleteAllEmbeddingsAsync(CancellationToken cancellationToken = default)
+    {
+        using Activity? activity = activitySource.StartActivity("Qdrant.DeleteAllEmbeddings");
+        activity?.SetTag("qdrant.collection", options.CollectionName);
 
- if (collectionInfo == null)
- {
- logger.LogInformation("Collection {CollectionName} does not exist, nothing to delete", options.CollectionName);
- activity?.SetStatus(ActivityStatusCode.Ok);
- return;
- }
+        try
+        {
+            // Check if collection exists
+            CollectionInfo? collectionInfo = await qdrantClient.GetCollectionInfoAsync(
+            options.CollectionName,
+            cancellationToken: cancellationToken);
 
- // Scroll through all points and count them
- // We count all points, not just those with chunkId, since we delete all points
- int totalPointCount =0;
- PointId? nextPageOffset = null;
- const int batchSize =100;
+            if (collectionInfo == null)
+            {
+                logger.LogInformation("Collection {CollectionName} does not exist, nothing to delete", options.CollectionName);
+                activity?.SetStatus(ActivityStatusCode.Ok);
+                return;
+            }
 
- do
- {
- ScrollResponse scrollResult = await qdrantClient.ScrollAsync(
- collectionName: options.CollectionName,
- filter: null,
- limit: batchSize,
- offset: nextPageOffset,
- cancellationToken: cancellationToken);
+            // Scroll through all points and count them
+            // We count all points, not just those with chunkId, since we delete all points
+            int totalPointCount = 0;
+            PointId? nextPageOffset = null;
+            const int batchSize = 100;
 
- // Count all points in this batch, regardless of whether they have a chunkId
- totalPointCount += scrollResult.Result.Count;
+            do
+            {
+                ScrollResponse scrollResult = await qdrantClient.ScrollAsync(
+                collectionName: options.CollectionName,
+                filter: null,
+                limit: batchSize,
+                offset: nextPageOffset,
+                cancellationToken: cancellationToken);
 
- nextPageOffset = scrollResult.NextPageOffset;
- } while (nextPageOffset != null);
+                // Count all points in this batch, regardless of whether they have a chunkId
+                totalPointCount += scrollResult.Result.Count;
 
- // Delete all points using an empty filter (matches all points)
- // Use a filter with empty Must list to match all points
- Filter deleteAllFilter = new()
- {
- Must = { } // Empty Must list matches all points
- };
- 
- await qdrantClient.DeleteAsync(
- collectionName: options.CollectionName,
- filter: deleteAllFilter,
- cancellationToken: cancellationToken);
- 
- int deletedCount = totalPointCount;
+                nextPageOffset = scrollResult.NextPageOffset;
+            } while (nextPageOffset != null);
 
- logger.LogInformation("Deleted {Count} embeddings from collection {CollectionName}", deletedCount, options.CollectionName);
- activity?.SetStatus(ActivityStatusCode.Ok);
- }
- catch (Exception ex)
- {
- logger.LogError(ex, "Failed to delete all embeddings from collection {CollectionName}", options.CollectionName);
- activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
- throw;
- }
- }
+            // Delete all points using an empty filter (matches all points)
+            // Use a filter with empty Must list to match all points
+            Filter deleteAllFilter = new()
+            {
+                Must = { } // Empty Must list matches all points
+            };
+
+            await qdrantClient.DeleteAsync(
+            collectionName: options.CollectionName,
+            filter: deleteAllFilter,
+            cancellationToken: cancellationToken);
+
+            int deletedCount = totalPointCount;
+
+            logger.LogInformation("Deleted {Count} embeddings from collection {CollectionName}", deletedCount, options.CollectionName);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to delete all embeddings from collection {CollectionName}", options.CollectionName);
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            throw;
+        }
+    }
 }
 
 
