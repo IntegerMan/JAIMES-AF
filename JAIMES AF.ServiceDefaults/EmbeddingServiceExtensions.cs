@@ -249,8 +249,8 @@ public static class EmbeddingServiceExtensions
                     }
 
                     logger.LogInformation("Creating Ollama embedding generator with model {Model} at {Endpoint}. " +
-                        "Ensure the model '{Model}' is available in Ollama (run 'ollama pull {Model}' if needed).",
-                        opts.Name, opts.Endpoint, opts.Name, opts.Name);
+                        "Ensure the model is available in Ollama (run 'ollama pull {ModelId}' if needed).",
+                        opts.Name, opts.Endpoint, opts.Name);
 
                     // Use HTTP client to call Ollama API directly with better error handling
                     return new OllamaEmbeddingGeneratorWrapper(httpClient, opts.Endpoint, opts.Name, logger);
