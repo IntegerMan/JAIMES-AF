@@ -9,6 +9,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using OpenAI;
 
 namespace MattEland.Jaimes.ServiceDefaults;
 
@@ -192,39 +193,32 @@ public static class EmbeddingServiceExtensions
                 {
                     EmbeddingModelOptions opts = sp.GetRequiredService<EmbeddingModelOptions>();
                     ILogger logger = sp.GetRequiredService<ILogger<IEmbeddingGenerator<string, Embedding<float>>>>();
-                    const string DefaultOpenAIEndpoint = "https://api.openai.com/v1";
 
                     if (string.IsNullOrWhiteSpace(opts.Name))
                     {
                         throw new InvalidOperationException("OpenAI model name is not configured. Set EmbeddingModel:Name.");
                     }
 
-                    if (opts.Auth == AuthenticationType.None)
+                    if (opts.Auth != AuthenticationType.ApiKey)
                     {
-                        throw new InvalidOperationException("OpenAI does not support None authentication. Use ApiKey.");
+                        throw new InvalidOperationException("OpenAI requires ApiKey authentication.");
                     }
 
-                    if (opts.Auth == AuthenticationType.Identity)
-                    {
-                        throw new InvalidOperationException("Identity authentication is only supported for Azure OpenAI, not OpenAI.");
-                    }
-
-                    if (opts.Auth == AuthenticationType.ApiKey && string.IsNullOrWhiteSpace(opts.Key))
+                    if (string.IsNullOrWhiteSpace(opts.Key))
                     {
                         throw new InvalidOperationException("OpenAI API key is not configured. Set EmbeddingModel:Key.");
                     }
 
-                    string endpoint = opts.Endpoint ?? DefaultOpenAIEndpoint;
+                    // Endpoint is optional for OpenAI; default is https://api.openai.com/v1
+                    OpenAIClient client = string.IsNullOrWhiteSpace(opts.Endpoint)
+                        ? new OpenAIClient(new ApiKeyCredential(opts.Key))
+                        : new OpenAIClient(new ApiKeyCredential(opts.Key), new OpenAIClientOptions { Endpoint = new Uri(opts.Endpoint!) });
 
-                    logger.LogDebug("Creating OpenAI embedding generator with model {Model} at {Endpoint}",
-                        opts.Name, endpoint);
+                    logger.LogDebug("Creating OpenAI embedding generator for model {Model} (Endpoint: {Endpoint})",
+                        opts.Name, opts.Endpoint ?? "https://api.openai.com/v1");
 
-                    // OpenAI uses the same Azure OpenAI client but with OpenAI endpoint
-                    AzureOpenAIClient client = new(
-                        new Uri(endpoint),
-                        new ApiKeyCredential(opts.Key!));
-
-                    return client.GetEmbeddingClient(opts.Name).AsIEmbeddingGenerator();
+                    // For OpenAI: pass the model name (not a deployment)
+                    return client.GetEmbeddingClient(model: opts.Name).AsIEmbeddingGenerator();
                 });
                 break;
 
