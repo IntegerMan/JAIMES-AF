@@ -9,6 +9,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using OpenAI;
 
 namespace MattEland.Jaimes.ServiceDefaults;
 
@@ -123,10 +124,10 @@ public static class TextGenerationServiceExtensions
                         throw new InvalidOperationException("OpenAI API key is not configured. Set TextGenerationModel:Key.");
                     }
 
-                    logger.LogDebug("Creating OpenAI-compatible chat client with model {Model} at {Endpoint}",
+                    logger.LogDebug("Creating OpenAI chat client with model {Model} at {Endpoint}",
                         opts.Name, opts.Endpoint ?? "https://api.openai.com/v1");
 
-                    AzureOpenAIClient client = AiModelConfiguration.CreateOpenAICompatibleClient(opts.Endpoint, opts.Key!);
+                    OpenAIClient client = AiModelConfiguration.CreateOpenAIClient(opts.Endpoint, opts.Key!);
                     return client.GetChatClient(opts.Name).AsIChatClient();
                 });
                 break;

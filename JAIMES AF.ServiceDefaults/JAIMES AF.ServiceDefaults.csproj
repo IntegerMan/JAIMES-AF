@@ -27,6 +27,7 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
     <PackageReference Include="OpenTelemetry.Instrumentation.StackExchangeRedis" />
     <PackageReference Include="Qdrant.Client" />
+    <PackageReference Include="OpenAI" />
   </ItemGroup>
 
   <ItemGroup>
