@@ -1,7 +1,7 @@
+using MattEland.Jaimes.ServiceDefinitions.Requests;
+using MattEland.Jaimes.ServiceDefinitions.Responses;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MattEland.Jaimes.ServiceDefinitions.Requests;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 

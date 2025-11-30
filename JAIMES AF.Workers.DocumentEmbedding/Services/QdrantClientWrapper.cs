@@ -1,6 +1,6 @@
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
-using MattEland.Jaimes.ServiceDefinitions.Services;
 
 namespace MattEland.Jaimes.Workers.DocumentEmbedding.Services;
 

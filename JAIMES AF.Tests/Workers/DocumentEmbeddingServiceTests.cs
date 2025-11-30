@@ -1,24 +1,20 @@
 using System.Diagnostics;
 using System.Linq;
-using System.Net;
-using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Grpc.Core;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Tests.TestUtilities;
 using MattEland.Jaimes.Workers.DocumentEmbedding.Configuration;
 using MattEland.Jaimes.Workers.DocumentEmbedding.Services;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
-using Moq;
-using Moq.Protected;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using Moq;
 using Qdrant.Client.Grpc;
 using Shouldly;
-using UpdateResult = Qdrant.Client.Grpc.UpdateResult;
 using CollectionInfo = Qdrant.Client.Grpc.CollectionInfo;
+using UpdateResult = Qdrant.Client.Grpc.UpdateResult;
 using VectorParams = Qdrant.Client.Grpc.VectorParams;
 
 namespace MattEland.Jaimes.Tests.Workers;
@@ -298,7 +294,7 @@ public class DocumentEmbeddingServiceTests
     private sealed class DocumentEmbeddingServiceTestContext : IDisposable
     {
         public Mock<IMongoClient> MongoClientMock { get; }
-        public Mock<HttpMessageHandler> HttpMessageHandlerMock { get; }
+        public Mock<IEmbeddingGenerator<string, Embedding<float>>> EmbeddingGeneratorMock { get; }
         public Mock<IQdrantClient> QdrantClientMock { get; }
         public Mock<ILogger<DocumentEmbeddingService>> LoggerMock { get; }
         public DocumentEmbeddingService Service { get; }
@@ -307,7 +303,6 @@ public class DocumentEmbeddingServiceTests
 
         private readonly ActivitySource _activitySource;
         private readonly MongoTestRunner _mongoRunner;
-        private readonly HttpClient _httpClient;
         private readonly DocumentEmbeddingOptions _options;
         private PointStruct[]? _capturedPoints;
         private VectorParams? _capturedVectorParams;
@@ -315,7 +310,7 @@ public class DocumentEmbeddingServiceTests
         public DocumentEmbeddingServiceTestContext()
         {
             MongoClientMock = new Mock<IMongoClient>();
-            HttpMessageHandlerMock = new Mock<HttpMessageHandler>();
+            EmbeddingGeneratorMock = new Mock<IEmbeddingGenerator<string, Embedding<float>>>();
             QdrantClientMock = new Mock<IQdrantClient>();
             LoggerMock = new Mock<ILogger<DocumentEmbeddingService>>();
             _activitySource = new ActivitySource($"DocumentEmbeddingTests-{Guid.NewGuid()}");
@@ -323,13 +318,7 @@ public class DocumentEmbeddingServiceTests
             _mongoRunner.ResetDatabase();
             _options = new DocumentEmbeddingOptions
             {
-                CollectionName = "test-collection",
-                EmbeddingDimensions = 768
-            };
-
-            _httpClient = new HttpClient(HttpMessageHandlerMock.Object)
-            {
-                BaseAddress = new Uri("http://localhost:11434")
+                CollectionName = "test-collection"
             };
 
             IMongoDatabase database = _mongoRunner.Client.GetDatabase("documents");
@@ -367,13 +356,11 @@ public class DocumentEmbeddingServiceTests
 
             Service = new DocumentEmbeddingService(
                 _mongoRunner.Client,
-                _httpClient,
+                EmbeddingGeneratorMock.Object,
                 _options,
                 QdrantClientMock.Object,
                 LoggerMock.Object,
-                _activitySource,
-                "http://localhost:11434",
-                "nomic-embed-text");
+                _activitySource);
         }
 
         public async Task SetupChunkAsync(string chunkId, string documentId, string chunkText, int chunkIndex)
@@ -427,61 +414,39 @@ public class DocumentEmbeddingServiceTests
 
         public Task SetupOllamaEmbeddingResponse(float[] embedding)
         {
-            OllamaEmbeddingResponse response = new()
-            {
-                Embedding = embedding
-            };
-
-            HttpMessageHandlerMock
-                .Protected()
-                .Setup<Task<HttpResponseMessage>>(
-                    "SendAsync",
-                    ItExpr.Is<HttpRequestMessage>(req =>
-                        req.RequestUri != null &&
-                        req.RequestUri.ToString().Contains("/api/embeddings")),
-                    ItExpr.IsAny<CancellationToken>())
-                .ReturnsAsync(new HttpResponseMessage
-                {
-                    StatusCode = HttpStatusCode.OK,
-                    Content = JsonContent.Create(response)
-                });
+            Embedding<float> embeddingObj = new(embedding);
+            GeneratedEmbeddings<Embedding<float>> generatedEmbeddings = new([embeddingObj]);
+            
+            EmbeddingGeneratorMock
+                .Setup(generator => generator.GenerateAsync(
+                    It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<EmbeddingGenerationOptions?>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(generatedEmbeddings);
 
             return Task.CompletedTask;
         }
 
         public void SetupOllamaError(HttpStatusCode statusCode)
         {
-            HttpMessageHandlerMock
-                .Protected()
-                .Setup<Task<HttpResponseMessage>>(
-                    "SendAsync",
-                    ItExpr.IsAny<HttpRequestMessage>(),
-                    ItExpr.IsAny<CancellationToken>())
-                .ReturnsAsync(new HttpResponseMessage
-                {
-                    StatusCode = statusCode,
-                    Content = new StringContent("Error occurred")
-                });
+            EmbeddingGeneratorMock
+                .Setup(generator => generator.GenerateAsync(
+                    It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<EmbeddingGenerationOptions?>(),
+                    It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new HttpRequestException($"Error occurred: {statusCode}"));
         }
 
         public void SetupOllamaEmptyEmbedding()
         {
-            OllamaEmbeddingResponse response = new()
-            {
-                Embedding = Array.Empty<float>()
-            };
-
-            HttpMessageHandlerMock
-                .Protected()
-                .Setup<Task<HttpResponseMessage>>(
-                    "SendAsync",
-                    ItExpr.IsAny<HttpRequestMessage>(),
-                    ItExpr.IsAny<CancellationToken>())
-                .ReturnsAsync(new HttpResponseMessage
-                {
-                    StatusCode = HttpStatusCode.OK,
-                    Content = JsonContent.Create(response)
-                });
+            GeneratedEmbeddings<Embedding<float>> emptyEmbeddings = new(Array.Empty<Embedding<float>>());
+            
+            EmbeddingGeneratorMock
+                .Setup(generator => generator.GenerateAsync(
+                    It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<EmbeddingGenerationOptions?>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(emptyEmbeddings);
         }
 
         public void SetupCollectionNotFound()
@@ -538,7 +503,6 @@ public class DocumentEmbeddingServiceTests
                 Times.Once);
 
             _capturedVectorParams.ShouldNotBeNull();
-            _capturedVectorParams!.Size.ShouldBe((ulong)_options.EmbeddingDimensions);
             _capturedVectorParams.Distance.ShouldBe(Distance.Cosine);
         }
 
@@ -591,15 +555,9 @@ public class DocumentEmbeddingServiceTests
         public void Dispose()
         {
             _activitySource.Dispose();
-            _httpClient.Dispose();
             _mongoRunner.Dispose();
         }
     }
 
-    private record OllamaEmbeddingResponse
-    {
-        [JsonPropertyName("embedding")]
-        public required float[] Embedding { get; init; }
-    }
 }
 

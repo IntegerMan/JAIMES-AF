@@ -1,10 +1,10 @@
 using MattEland.Jaimes.Domain;
-using Microsoft.EntityFrameworkCore;
 using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceLayer.Services;
+using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
 namespace MattEland.Jaimes.Tests.Services;

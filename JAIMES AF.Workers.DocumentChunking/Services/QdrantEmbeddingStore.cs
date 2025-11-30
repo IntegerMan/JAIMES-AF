@@ -2,51 +2,51 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using Grpc.Core;
+using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
-using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
+using MattEland.Jaimes.ServiceDefaults; // added for utilities
 
 namespace MattEland.Jaimes.Workers.DocumentChunking.Services;
 
 public class QdrantEmbeddingStore(
-    QdrantClient qdrantClient,
-    DocumentChunkingOptions options,
-    ILogger<QdrantEmbeddingStore> logger,
-    ActivitySource activitySource) : IQdrantEmbeddingStore
+ QdrantClient qdrantClient,
+ DocumentChunkingOptions options,
+ ILogger<QdrantEmbeddingStore> logger,
+ ActivitySource activitySource,
+ IEmbeddingGenerator<string, Embedding<float>>? embeddingGenerator = null) : IQdrantEmbeddingStore
 {
     /// <summary>
-    /// Generates a Qdrant point ID from a string point ID using SHA256 hash to prevent collisions.
-    /// This replaces the previous GetHashCode() approach which could cause data loss due to hash collisions.
-    /// If the first 8 bytes hash to 0, uses bytes 8-15 to avoid collision with natural hash values.
+    /// Lazily determined embedding dimensions from the embedding model, if an embedding generator is provided.
     /// </summary>
-    private static ulong GenerateQdrantPointId(string pointId)
+    private int? _resolvedEmbeddingDimensions;
+
+    /// <summary>
+    /// Resolves embedding dimensions by generating a sample embedding when an embedding generator is available.
+    /// If no generator is provided, return -1 to indicate unknown.
+    /// </summary>
+    private async Task<int> ResolveEmbeddingDimensionsAsync(CancellationToken cancellationToken)
     {
-        byte[] hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(pointId));
-        ulong qdrantPointId = BitConverter.ToUInt64(hashBytes, 0);
-        if (qdrantPointId == 0)
+        if (_resolvedEmbeddingDimensions.HasValue)
         {
-            // Qdrant doesn't allow zero IDs. Use bytes 8-15 from the hash to avoid collision
-            // with natural hash values. If that's also 0, try bytes 16-23, then 24-31.
-            // This ensures we don't collide with natural hash values like 1.
-            qdrantPointId = BitConverter.ToUInt64(hashBytes, 8);
-            if (qdrantPointId == 0)
-            {
-                qdrantPointId = BitConverter.ToUInt64(hashBytes, 16);
-                if (qdrantPointId == 0)
-                {
-                    qdrantPointId = BitConverter.ToUInt64(hashBytes, 24);
-                    // If all 32 bytes of SHA256 hash to 0 (statistically impossible), use ulong.MaxValue
-                    // This value is extremely unlikely to occur naturally from SHA256
-                    if (qdrantPointId == 0)
-                    {
-                        qdrantPointId = ulong.MaxValue;
-                    }
-                }
-            }
+            return _resolvedEmbeddingDimensions.Value;
         }
-        return qdrantPointId;
+
+        int dims = await QdrantUtilities.ResolveEmbeddingDimensionsAsync(embeddingGenerator, logger, cancellationToken);
+        if (dims > 0)
+        {
+            _resolvedEmbeddingDimensions = dims;
+        }
+        return dims;
     }
+
+    /// <summary>
+    /// Generates a Qdrant point ID from a string point ID using shared utility.
+    /// </summary>
+    private static ulong GenerateQdrantPointId(string pointId) => QdrantUtilities.GeneratePointId(pointId);
+
     public async Task EnsureCollectionExistsAsync(CancellationToken cancellationToken = default)
     {
         using Activity? activity = activitySource.StartActivity("Qdrant.EnsureCollection");
@@ -56,8 +56,8 @@ public class QdrantEmbeddingStore(
         {
             // Check if collection exists
             CollectionInfo? collectionInfo = await qdrantClient.GetCollectionInfoAsync(
-                options.CollectionName, 
-                cancellationToken: cancellationToken);
+            options.CollectionName,
+            cancellationToken: cancellationToken);
 
             if (collectionInfo != null)
             {
@@ -66,25 +66,24 @@ public class QdrantEmbeddingStore(
                 return;
             }
         }
-        catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound || 
-                                       ex.StatusCode == StatusCode.Internal)
+        catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound ||
+        ex.StatusCode == StatusCode.Internal)
         {
             // Collection doesn't exist (NotFound) or server error (might be not ready)
             if (ex.StatusCode == Grpc.Core.StatusCode.NotFound)
             {
                 logger.LogInformation("Collection {CollectionName} does not exist, creating it", options.CollectionName);
-            }
-            else
+            } else
             {
                 // Internal error might mean Qdrant isn't ready yet
                 logger.LogWarning("Qdrant returned internal error, might not be ready yet: {Message}", ex.Message);
                 throw; // Re-throw to allow retry
             }
         }
-        catch (Exception ex) when (ex.Message.Contains("doesn't exist") || 
-                                    ex.Message.Contains("not found") ||
-                                    ex.Message.Contains("PROTOCOL_ERROR") ||
-                                    ex.Message.Contains("HTTP/2"))
+        catch (Exception ex) when (ex.Message.Contains("doesn't exist") ||
+        ex.Message.Contains("not found") ||
+        ex.Message.Contains("PROTOCOL_ERROR") ||
+        ex.Message.Contains("HTTP/2"))
         {
             // Collection doesn't exist or connection issue
             if (ex.Message.Contains("PROTOCOL_ERROR") || ex.Message.Contains("HTTP/2"))
@@ -95,37 +94,46 @@ public class QdrantEmbeddingStore(
             logger.LogInformation("Collection {CollectionName} does not exist, creating it", options.CollectionName);
         }
 
-        // Create collection with vector configuration
-        // Qdrant client API - CreateCollectionAsync(string collectionName, VectorParams vectorParams, ...)
+        // Determine vector size by inferring from embedding generator
+        int dimensions = await ResolveEmbeddingDimensionsAsync(cancellationToken);
+        if (dimensions <= 0)
+        {
+            // We cannot create the collection now. Log and return gracefully so startup doesn't fail.
+            logger.LogWarning(
+            "Embedding dimensions unknown (no embedding generator). Skipping creation of Qdrant collection {CollectionName}.",
+            options.CollectionName);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            return;
+        }
         try
         {
             VectorParams vectorParams = new()
             {
-                Size = (ulong)options.EmbeddingDimensions,
+                Size = (ulong)dimensions,
                 Distance = Distance.Cosine
             };
 
             await qdrantClient.CreateCollectionAsync(
-                options.CollectionName,
-                vectorParams,
-                cancellationToken: cancellationToken);
-            
-            logger.LogInformation("Created Qdrant collection {CollectionName} with {Dimensions} dimensions", 
-                options.CollectionName, options.EmbeddingDimensions);
+            options.CollectionName,
+            vectorParams,
+            cancellationToken: cancellationToken);
+
+            logger.LogInformation("Created Qdrant collection {CollectionName} with {Dimensions} dimensions",
+            options.CollectionName, dimensions);
         }
         catch (Exception ex) when (ex.Message.Contains("already exists") || ex.Message.Contains("duplicate"))
         {
             logger.LogDebug("Collection {CollectionName} already exists", options.CollectionName);
         }
-        
+
         activity?.SetStatus(ActivityStatusCode.Ok);
     }
 
     public async Task StoreEmbeddingAsync(
-        string pointId, 
-        float[] embedding, 
-        Dictionary<string, string> metadata,
-        CancellationToken cancellationToken = default)
+    string pointId,
+    float[] embedding,
+    Dictionary<string, string> metadata,
+    CancellationToken cancellationToken = default)
     {
         using Activity? activity = activitySource.StartActivity("Qdrant.StoreEmbedding");
         activity?.SetTag("qdrant.collection", options.CollectionName);
@@ -157,13 +165,13 @@ public class QdrantEmbeddingStore(
             };
 
             await qdrantClient.UpsertAsync(
-                collectionName: options.CollectionName,
-                points: new[] { point },
-                cancellationToken: cancellationToken);
+            collectionName: options.CollectionName,
+            points: new[] { point },
+            cancellationToken: cancellationToken);
 
-            logger.LogInformation("Stored embedding for point {PointId} in collection {CollectionName}", 
-                pointId, options.CollectionName);
-            
+            logger.LogInformation("Stored embedding for point {PointId} in collection {CollectionName}",
+            pointId, options.CollectionName);
+
             activity?.SetStatus(ActivityStatusCode.Ok);
         }
         catch (Exception ex)
@@ -185,8 +193,8 @@ public class QdrantEmbeddingStore(
         {
             // Check if collection exists
             CollectionInfo? collectionInfo = await qdrantClient.GetCollectionInfoAsync(
-                options.CollectionName,
-                cancellationToken: cancellationToken);
+            options.CollectionName,
+            cancellationToken: cancellationToken);
 
             if (collectionInfo == null)
             {
@@ -202,11 +210,11 @@ public class QdrantEmbeddingStore(
             do
             {
                 ScrollResponse scrollResult = await qdrantClient.ScrollAsync(
-                    collectionName: options.CollectionName,
-                    filter: null,
-                    limit: batchSize,
-                    offset: nextPageOffset,
-                    cancellationToken: cancellationToken);
+                collectionName: options.CollectionName,
+                filter: null,
+                limit: batchSize,
+                offset: nextPageOffset,
+                cancellationToken: cancellationToken);
 
                 foreach (RetrievedPoint point in scrollResult.Result)
                 {
@@ -280,22 +288,22 @@ public class QdrantEmbeddingStore(
             Filter filter = new()
             {
                 Must =
-                {
-                    new Condition
-                    {
-                        Field = new FieldCondition
-                        {
-                            Key = "chunkId",
-                            Match = new Match { Text = pointId }
-                        }
-                    }
-                }
+ {
+ new Condition
+ {
+ Field = new FieldCondition
+ {
+ Key = "chunkId",
+ Match = new Match { Text = pointId }
+ }
+ }
+ }
             };
-            
+
             await qdrantClient.DeleteAsync(
-                collectionName: options.CollectionName,
-                filter: filter,
-                cancellationToken: cancellationToken);
+            collectionName: options.CollectionName,
+            filter: filter,
+            cancellationToken: cancellationToken);
 
             logger.LogInformation("Deleted embedding for point {PointId} from collection {CollectionName}", pointId, options.CollectionName);
             activity?.SetStatus(ActivityStatusCode.Ok);
@@ -317,8 +325,8 @@ public class QdrantEmbeddingStore(
         {
             // Check if collection exists
             CollectionInfo? collectionInfo = await qdrantClient.GetCollectionInfoAsync(
-                options.CollectionName,
-                cancellationToken: cancellationToken);
+            options.CollectionName,
+            cancellationToken: cancellationToken);
 
             if (collectionInfo == null)
             {
@@ -336,11 +344,11 @@ public class QdrantEmbeddingStore(
             do
             {
                 ScrollResponse scrollResult = await qdrantClient.ScrollAsync(
-                    collectionName: options.CollectionName,
-                    filter: null,
-                    limit: batchSize,
-                    offset: nextPageOffset,
-                    cancellationToken: cancellationToken);
+                collectionName: options.CollectionName,
+                filter: null,
+                limit: batchSize,
+                offset: nextPageOffset,
+                cancellationToken: cancellationToken);
 
                 // Count all points in this batch, regardless of whether they have a chunkId
                 totalPointCount += scrollResult.Result.Count;
@@ -354,12 +362,12 @@ public class QdrantEmbeddingStore(
             {
                 Must = { } // Empty Must list matches all points
             };
-            
+
             await qdrantClient.DeleteAsync(
-                collectionName: options.CollectionName,
-                filter: deleteAllFilter,
-                cancellationToken: cancellationToken);
-            
+            collectionName: options.CollectionName,
+            filter: deleteAllFilter,
+            cancellationToken: cancellationToken);
+
             int deletedCount = totalPointCount;
 
             logger.LogInformation("Deleted {Count} embeddings from collection {CollectionName}", deletedCount, options.CollectionName);

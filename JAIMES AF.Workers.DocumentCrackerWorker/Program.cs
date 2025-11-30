@@ -1,8 +1,11 @@
 using System.Diagnostics;
-using Microsoft.Extensions.Configuration;
+using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
-using RabbitMQ.Client;
+using MattEland.Jaimes.Workers.DocumentCrackerWorker.Configuration;
+using MattEland.Jaimes.Workers.DocumentCrackerWorker.Consumers;
+using MattEland.Jaimes.Workers.DocumentCrackerWorker.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -10,10 +13,7 @@ using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using MattEland.Jaimes.Workers.DocumentCrackerWorker.Consumers;
-using MattEland.Jaimes.Workers.DocumentCrackerWorker.Configuration;
-using MattEland.Jaimes.Workers.DocumentCrackerWorker.Services;
-using MattEland.Jaimes.ServiceDefaults;
+using RabbitMQ.Client;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
@@ -48,6 +48,7 @@ builder.Services.AddSingleton(options);
 builder.AddMongoDBClient("documents");
 
 // Register services
+builder.Services.AddSingleton<IPdfTextExtractor, PdfPigTextExtractor>();
 builder.Services.AddSingleton<IDocumentCrackingService, DocumentCrackingService>();
 
 // Configure message publishing and consuming using RabbitMQ.Client (LavinMQ compatible)

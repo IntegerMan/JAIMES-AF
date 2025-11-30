@@ -1,9 +1,9 @@
-using Mongo2Go;
-using MongoDB.Driver;
 using System;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Mongo2Go;
+using MongoDB.Driver;
 
 namespace MattEland.Jaimes.Tests.TestUtilities;
 

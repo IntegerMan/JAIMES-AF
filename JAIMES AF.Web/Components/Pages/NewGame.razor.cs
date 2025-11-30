@@ -1,6 +1,6 @@
-using Microsoft.AspNetCore.Components;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
+using MattEland.Jaimes.ServiceDefinitions.Responses;
+using Microsoft.AspNetCore.Components;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 

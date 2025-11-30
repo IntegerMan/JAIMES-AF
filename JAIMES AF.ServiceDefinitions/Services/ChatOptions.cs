@@ -8,8 +8,4 @@ public class JaimesChatOptions
     /// Deployment name for text generation (chat/completion) models
     /// </summary>
     public required string TextGenerationDeployment { get; init; }
-    /// <summary>
-    /// Deployment name for embedding models (vector embeddings)
-    /// </summary>
-    public required string EmbeddingDeployment { get; init; }
 }

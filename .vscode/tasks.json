@@ -4,6 +4,10 @@
         {
             "label": "stop-running-apps",
             "type": "shell",
+            "command": "echo",
+            "args": [
+                "No running apps to stop on Linux/macOS"
+            ],
             "windows": {
                 "command": "powershell",
                 "args": [
@@ -20,6 +24,10 @@
         {
             "label": "disconnect-debuggers",
             "type": "shell",
+            "command": "echo",
+            "args": [
+                "Note: To disconnect debuggers, use the Debug panel in VS Code and click the Stop button, or use the command palette (Ctrl+Shift+P) and run 'Debug: Stop Debugging'"
+            ],
             "windows": {
                 "command": "powershell",
                 "args": [

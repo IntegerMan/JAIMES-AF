@@ -1,7 +1,8 @@
 using System.Diagnostics;
-using Microsoft.Extensions.Logging;
-using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
+using MattEland.Jaimes.ServiceDefinitions.Services;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 
 namespace MattEland.Jaimes.Agents.Services;
 
@@ -11,16 +12,16 @@ public class RulesSearchService : IRulesSearchService
     
     private readonly ILogger<RulesSearchService> _logger;
     private readonly IQdrantRulesStore _rulesStore;
-    private readonly IAzureOpenAIEmbeddingService _embeddingService;
+    private readonly IEmbeddingGenerator<string, Embedding<float>> _embeddingGenerator;
 
     public RulesSearchService(
         ILogger<RulesSearchService> logger,
         IQdrantRulesStore rulesStore,
-        IAzureOpenAIEmbeddingService embeddingService)
+        IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _rulesStore = rulesStore ?? throw new ArgumentNullException(nameof(rulesStore));
-        _embeddingService = embeddingService ?? throw new ArgumentNullException(nameof(embeddingService));
+        _embeddingGenerator = embeddingGenerator ?? throw new ArgumentNullException(nameof(embeddingGenerator));
 
         _logger.LogInformation("RulesSearchService initialized with Qdrant");
     }
@@ -51,7 +52,8 @@ public class RulesSearchService : IRulesSearchService
         try
         {
             // Generate embedding for the query
-            float[] queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(query, cancellationToken);
+            GeneratedEmbeddings<Embedding<float>> embeddings = await _embeddingGenerator.GenerateAsync([query], cancellationToken: cancellationToken);
+            float[] queryEmbedding = embeddings[0].Vector.ToArray();
             
             // Search for similar rules in Qdrant
             List<RuleSearchResult> results = await _rulesStore.SearchRulesAsync(
@@ -116,7 +118,8 @@ public class RulesSearchService : IRulesSearchService
         try
         {
             // Generate embedding for the query
-            float[] queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(query, cancellationToken);
+            GeneratedEmbeddings<Embedding<float>> embeddings = await _embeddingGenerator.GenerateAsync([query], cancellationToken: cancellationToken);
+            float[] queryEmbedding = embeddings[0].Vector.ToArray();
             
             // Search for similar rules in Qdrant
             List<RuleSearchResult> results = await _rulesStore.SearchRulesAsync(
@@ -267,7 +270,8 @@ public class RulesSearchService : IRulesSearchService
                 : $"Title: {title}\n\nContent: {content}";
 
             // Generate embedding for the rule content
-            float[] embedding = await _embeddingService.GenerateEmbeddingAsync(fullContent, cancellationToken);
+            GeneratedEmbeddings<Embedding<float>> embeddings = await _embeddingGenerator.GenerateAsync([fullContent], cancellationToken: cancellationToken);
+            float[] embedding = embeddings[0].Vector.ToArray();
 
             // Prepare metadata
             Dictionary<string, string> metadata = new()

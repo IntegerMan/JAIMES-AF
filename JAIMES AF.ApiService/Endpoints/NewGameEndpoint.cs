@@ -1,7 +1,7 @@
 ﻿using FastEndpoints;
+using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceLayer.Mapping;
 

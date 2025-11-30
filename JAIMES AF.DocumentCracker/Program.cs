@@ -1,10 +1,9 @@
 ﻿using System.Diagnostics;
 using MattEland.Jaimes.DocumentCracker.Services;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-using RabbitMQ.Client;
 using MattEland.Jaimes.DocumentProcessing.Options;
 using MattEland.Jaimes.DocumentProcessing.Services;
 using MattEland.Jaimes.ServiceDefaults;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -13,6 +12,7 @@ using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using RabbitMQ.Client;
 using Spectre.Console;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);

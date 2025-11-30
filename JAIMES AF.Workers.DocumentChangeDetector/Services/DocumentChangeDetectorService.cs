@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using MattEland.Jaimes.DocumentProcessing.Services;
-using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Models;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Workers.DocumentChangeDetector.Configuration;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;

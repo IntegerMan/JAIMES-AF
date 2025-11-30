@@ -1,7 +1,7 @@
-using Microsoft.EntityFrameworkCore;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace MattEland.Jaimes.Agents.Services;
 

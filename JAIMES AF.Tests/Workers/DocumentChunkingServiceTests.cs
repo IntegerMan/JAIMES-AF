@@ -5,9 +5,9 @@ using MattEland.Jaimes.Tests.TestUtilities;
 using MattEland.Jaimes.Workers.DocumentChunking.Models;
 using MattEland.Jaimes.Workers.DocumentChunking.Services;
 using Microsoft.Extensions.Logging;
-using Moq;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using Moq;
 using Shouldly;
 
 namespace MattEland.Jaimes.Tests.Workers;
