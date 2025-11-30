@@ -1,10 +1,10 @@
 using System.Diagnostics;
-using MongoDB.Driver;
-using Microsoft.Extensions.Logging;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
 using MattEland.Jaimes.Workers.DocumentChunking.Models;
+using Microsoft.Extensions.Logging;
+using MongoDB.Driver;
 
 namespace MattEland.Jaimes.Workers.DocumentChunking.Services;
 

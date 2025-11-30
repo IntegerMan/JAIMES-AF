@@ -1,8 +1,8 @@
 using System.Diagnostics;
-using Microsoft.Extensions.Logging;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Workers.DocumentEmbedding.Services;
+using Microsoft.Extensions.Logging;
 
 namespace MattEland.Jaimes.Workers.DocumentEmbedding.Consumers;
 

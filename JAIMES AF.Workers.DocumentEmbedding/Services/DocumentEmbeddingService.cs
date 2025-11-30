@@ -1,13 +1,13 @@
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
+using MattEland.Jaimes.ServiceDefinitions.Messages;
+using MattEland.Jaimes.ServiceDefinitions.Services;
+using MattEland.Jaimes.Workers.DocumentEmbedding.Configuration;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Qdrant.Client.Grpc;
-using MattEland.Jaimes.ServiceDefinitions.Messages;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.Workers.DocumentEmbedding.Configuration;
 
 namespace MattEland.Jaimes.Workers.DocumentEmbedding.Services;
 

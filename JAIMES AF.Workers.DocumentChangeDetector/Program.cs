@@ -1,8 +1,7 @@
 using System.Diagnostics;
 using MattEland.Jaimes.DocumentProcessing.Services;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-using RabbitMQ.Client;
 using MattEland.Jaimes.ServiceDefaults;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Workers.DocumentChangeDetector.Configuration;
 using MattEland.Jaimes.Workers.DocumentChangeDetector.Services;
 using Microsoft.Extensions.Configuration;
@@ -13,6 +12,7 @@ using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using RabbitMQ.Client;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 

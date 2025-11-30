@@ -1,8 +1,8 @@
 using System.Diagnostics;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.AI;
-using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
+using MattEland.Jaimes.ServiceDefinitions.Services;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 
 namespace MattEland.Jaimes.Agents.Services;
 

@@ -2,6 +2,7 @@ using System.ClientModel;
 using Azure.AI.OpenAI;
 using Azure.Core;
 using Azure.Identity;
+using OpenAI;
 
 namespace MattEland.Jaimes.ServiceDefaults;
 
@@ -100,5 +101,14 @@ internal static class AiModelConfiguration
         const string DefaultOpenAIEndpoint = "https://api.openai.com/v1";
         string resolved = string.IsNullOrWhiteSpace(endpoint) ? DefaultOpenAIEndpoint : endpoint!;
         return new AzureOpenAIClient(new Uri(resolved), new ApiKeyCredential(apiKey));
+    }
+
+    public static OpenAIClient CreateOpenAIClient(
+        string? endpoint,
+        string apiKey)
+    {
+        // If a custom endpoint is provided, use it, otherwise fall back to api.openai.com
+        Uri baseUri = new(string.IsNullOrWhiteSpace(endpoint) ? "https://api.openai.com/v1" : endpoint);
+        return new OpenAIClient(new ApiKeyCredential(apiKey), new OpenAIClientOptions { Endpoint = baseUri });
     }
 }

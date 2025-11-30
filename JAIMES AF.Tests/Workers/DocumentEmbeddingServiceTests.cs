@@ -8,13 +8,13 @@ using MattEland.Jaimes.Workers.DocumentEmbedding.Configuration;
 using MattEland.Jaimes.Workers.DocumentEmbedding.Services;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
-using Moq;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using Moq;
 using Qdrant.Client.Grpc;
 using Shouldly;
-using UpdateResult = Qdrant.Client.Grpc.UpdateResult;
 using CollectionInfo = Qdrant.Client.Grpc.CollectionInfo;
+using UpdateResult = Qdrant.Client.Grpc.UpdateResult;
 using VectorParams = Qdrant.Client.Grpc.VectorParams;
 
 namespace MattEland.Jaimes.Tests.Workers;
