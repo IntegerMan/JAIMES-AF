@@ -38,68 +38,25 @@ public static class TextGenerationServiceExtensions
         // Bind configuration
         TextGenerationModelOptions options = configuration.GetSection(sectionName).Get<TextGenerationModelOptions>() ?? new TextGenerationModelOptions();
 
-        // Parse Provider enum from string if needed (configuration binding may provide string)
-        string? providerConfigValue = configuration[$"{sectionName}:Provider"];
-        if (!string.IsNullOrWhiteSpace(providerConfigValue))
-        {
-            // Handle legacy "Azure" value and map to AzureOpenAI
-            if (string.Equals(providerConfigValue, "Azure", StringComparison.OrdinalIgnoreCase))
-            {
-                options.Provider = ProviderType.AzureOpenAI;
-            }
-            else if (Enum.TryParse<ProviderType>(providerConfigValue, ignoreCase: true, out ProviderType providerType))
-            {
-                options.Provider = providerType;
-            }
-        }
+        // Normalize Provider/Auth from string config values
+        options.Provider = AiModelConfiguration.NormalizeProvider(configuration, sectionName, options.Provider);
+        options.Auth = AiModelConfiguration.NormalizeAuth(configuration, sectionName, options.Auth);
 
-        // Parse Auth enum from string if needed (configuration binding may provide string)
-        // Check if Auth is still at default value (0 = None) and try to parse from config
-        string? authConfigValue = configuration[$"{sectionName}:Auth"];
-        if (!string.IsNullOrWhiteSpace(authConfigValue))
-        {
-            if (Enum.TryParse<AuthenticationType>(authConfigValue, ignoreCase: true, out AuthenticationType authType))
-            {
-                options.Auth = authType;
-            }
-        }
-
-        // If provider is Ollama, use defaults from Aspire if available
+        // If provider is Ollama, apply sensible defaults
         if (options.Provider == ProviderType.Ollama)
         {
-            // Default to None auth for Ollama (local instances don't need auth)
-            if (options.Auth == default)
-            {
-                options.Auth = AuthenticationType.None;
-            }
+            (AuthenticationType resolvedAuth, string endpoint, string name) = AiModelConfiguration.ApplyOllamaDefaults(
+                options.Auth,
+                options.Endpoint,
+                options.Name,
+                defaultOllamaEndpoint,
+                defaultOllamaModel,
+                fallbackEndpoint: "http://localhost:11434",
+                fallbackModel: "gemma3");
 
-            // Use default Ollama endpoint if not configured
-            if (string.IsNullOrWhiteSpace(options.Endpoint))
-            {
-                if (!string.IsNullOrWhiteSpace(defaultOllamaEndpoint))
-                {
-                    options.Endpoint = defaultOllamaEndpoint;
-                }
-                else
-                {
-                    // Default to localhost if no endpoint is configured
-                    options.Endpoint = "http://localhost:11434";
-                }
-            }
-
-            // Use default Ollama model if not configured
-            if (string.IsNullOrWhiteSpace(options.Name))
-            {
-                if (!string.IsNullOrWhiteSpace(defaultOllamaModel))
-                {
-                    options.Name = defaultOllamaModel;
-                }
-                else
-                {
-                    // Default model name if none specified
-                    options.Name = "gemma3";
-                }
-            }
+            options.Auth = resolvedAuth;
+            options.Endpoint = endpoint;
+            options.Name = name;
         }
 
         // Register options
@@ -135,25 +92,7 @@ public static class TextGenerationServiceExtensions
                     logger.LogDebug("Creating Azure OpenAI chat client with deployment {Deployment} at {Endpoint} with auth type {AuthType}",
                         opts.Name, opts.Endpoint, opts.Auth);
 
-                    AzureOpenAIClient client;
-                    if (opts.Auth == AuthenticationType.ApiKey)
-                    {
-                        client = new AzureOpenAIClient(
-                            new Uri(opts.Endpoint),
-                            new ApiKeyCredential(opts.Key!));
-                    }
-                    else if (opts.Auth == AuthenticationType.Identity)
-                    {
-                        DefaultAzureCredential credential = new();
-                        client = new AzureOpenAIClient(
-                            new Uri(opts.Endpoint),
-                            credential);
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException($"Authentication type '{opts.Auth}' is not supported for Azure OpenAI. Use ApiKey or Identity.");
-                    }
-
+                    AzureOpenAIClient client = AiModelConfiguration.CreateAzureOpenAIClient(opts.Endpoint!, opts.Auth, opts.Key);
                     return client.GetChatClient(opts.Name).AsIChatClient();
                 });
                 break;
@@ -163,7 +102,6 @@ public static class TextGenerationServiceExtensions
                 {
                     TextGenerationModelOptions opts = sp.GetRequiredService<TextGenerationModelOptions>();
                     ILogger logger = sp.GetRequiredService<ILogger<IChatClient>>();
-                    const string DefaultOpenAIEndpoint = "https://api.openai.com/v1";
 
                     if (string.IsNullOrWhiteSpace(opts.Name))
                     {
@@ -180,20 +118,15 @@ public static class TextGenerationServiceExtensions
                         throw new InvalidOperationException("Identity authentication is only supported for Azure OpenAI, not OpenAI.");
                     }
 
-                    if (opts.Auth == AuthenticationType.ApiKey && string.IsNullOrWhiteSpace(opts.Key))
+                    if (string.IsNullOrWhiteSpace(opts.Key))
                     {
                         throw new InvalidOperationException("OpenAI API key is not configured. Set TextGenerationModel:Key.");
                     }
 
-                    string endpoint = opts.Endpoint ?? DefaultOpenAIEndpoint;
+                    logger.LogDebug("Creating OpenAI-compatible chat client with model {Model} at {Endpoint}",
+                        opts.Name, opts.Endpoint ?? "https://api.openai.com/v1");
 
-                    logger.LogDebug("Creating OpenAI chat client with model {Model} at {Endpoint} with auth type {AuthType}",
-                        opts.Name, endpoint, opts.Auth);
-
-                    AzureOpenAIClient client = new(
-                        new Uri(endpoint),
-                        new ApiKeyCredential(opts.Key!));
-
+                    AzureOpenAIClient client = AiModelConfiguration.CreateOpenAICompatibleClient(opts.Endpoint, opts.Key!);
                     return client.GetChatClient(opts.Name).AsIChatClient();
                 });
                 break;

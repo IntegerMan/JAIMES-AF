@@ -1,15 +1,11 @@
-using System.ClientModel;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Azure.AI.OpenAI;
-using Azure.Core;
-using Azure.Identity;
 using Microsoft.Agents.AI.OpenAI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using OpenAI;
 
 namespace MattEland.Jaimes.ServiceDefaults;
 
@@ -67,78 +63,34 @@ public static class EmbeddingServiceExtensions
         // Bind configuration
         EmbeddingModelOptions options = configuration.GetSection(sectionName).Get<EmbeddingModelOptions>() ?? new EmbeddingModelOptions();
 
-        // Parse Provider enum from string if needed (configuration binding may provide string)
-        string? providerConfigValue = configuration[$"{sectionName}:Provider"];
-        if (!string.IsNullOrWhiteSpace(providerConfigValue))
-        {
-            // Handle legacy "Azure" value and map to AzureOpenAI
-            if (string.Equals(providerConfigValue, "Azure", StringComparison.OrdinalIgnoreCase))
-            {
-                options.Provider = ProviderType.AzureOpenAI;
-            }
-            else if (Enum.TryParse<ProviderType>(providerConfigValue, ignoreCase: true, out ProviderType providerType))
-            {
-                options.Provider = providerType;
-            }
-        }
+        // Normalize Provider/Auth from string config values
+        options.Provider = AiModelConfiguration.NormalizeProvider(configuration, sectionName, options.Provider);
+        options.Auth = AiModelConfiguration.NormalizeAuth(configuration, sectionName, options.Auth);
 
-        // Parse Auth enum from string if needed (configuration binding may provide string)
-        // Check if Auth is still at default value (0 = None) and try to parse from config
-        string? authConfigValue = configuration[$"{sectionName}:Auth"];
-        if (!string.IsNullOrWhiteSpace(authConfigValue))
-        {
-            if (Enum.TryParse<AuthenticationType>(authConfigValue, ignoreCase: true, out AuthenticationType authType))
-            {
-                options.Auth = authType;
-            }
-        }
-
-        // If provider is Ollama, use defaults from Aspire if available
+        // If provider is Ollama, apply sensible defaults
         if (options.Provider == ProviderType.Ollama)
         {
-            // Default to None auth for Ollama (local instances don't need auth)
-            if (options.Auth == default)
-            {
-                options.Auth = AuthenticationType.None;
-            }
+            (AuthenticationType resolvedAuth, string endpoint, string name) = AiModelConfiguration.ApplyOllamaDefaults(
+                options.Auth,
+                options.Endpoint,
+                options.Name,
+                defaultOllamaEndpoint,
+                defaultOllamaModel,
+                fallbackEndpoint: "http://localhost:11434",
+                fallbackModel: "nomic-embed-text");
 
-            // Use default Ollama endpoint if not configured
-            if (string.IsNullOrWhiteSpace(options.Endpoint))
-            {
-                if (!string.IsNullOrWhiteSpace(defaultOllamaEndpoint))
-                {
-                    options.Endpoint = defaultOllamaEndpoint;
-                }
-                else
-                {
-                    // Default to localhost if no endpoint is configured
-                    options.Endpoint = "http://localhost:11434";
-                }
-            }
-
-            // Use default Ollama model if not configured
-            if (string.IsNullOrWhiteSpace(options.Name))
-            {
-                if (!string.IsNullOrWhiteSpace(defaultOllamaModel))
-                {
-                    options.Name = defaultOllamaModel;
-                }
-                else
-                {
-                    // Default model name if none specified
-                    options.Name = "nomic-embed-text";
-                }
-            }
+            options.Auth = resolvedAuth;
+            options.Endpoint = endpoint;
+            options.Name = name;
         }
 
         // Register options
         services.AddSingleton(options);
 
-        // Register HttpClient if not already registered (needed for Azure OpenAI and OpenAI)
+        // Register HttpClient if not already registered (needed for Azure OpenAI/OpenAI and Ollama)
         services.AddHttpClient();
 
         // Register the appropriate embedding generator based on provider
-        // Uses Microsoft.Extensions.AI's IEmbeddingGenerator<string, Embedding<float>> interface
         switch (options.Provider)
         {
             case ProviderType.AzureOpenAI:
@@ -165,25 +117,7 @@ public static class EmbeddingServiceExtensions
                     logger.LogDebug("Creating Azure OpenAI embedding generator with deployment {Deployment} at {Endpoint} with auth type {AuthType}",
                         opts.Name, opts.Endpoint, opts.Auth);
 
-                    AzureOpenAIClient client;
-                    if (opts.Auth == AuthenticationType.ApiKey)
-                    {
-                        client = new AzureOpenAIClient(
-                            new Uri(opts.Endpoint),
-                            new ApiKeyCredential(opts.Key!));
-                    }
-                    else if (opts.Auth == AuthenticationType.Identity)
-                    {
-                        DefaultAzureCredential credential = new();
-                        client = new AzureOpenAIClient(
-                            new Uri(opts.Endpoint),
-                            credential);
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException($"Authentication type '{opts.Auth}' is not supported for Azure OpenAI. Use ApiKey or Identity.");
-                    }
-
+                    AzureOpenAIClient client = AiModelConfiguration.CreateAzureOpenAIClient(opts.Endpoint!, opts.Auth, opts.Key);
                     return client.GetEmbeddingClient(opts.Name).AsIEmbeddingGenerator();
                 });
                 break;
@@ -209,22 +143,16 @@ public static class EmbeddingServiceExtensions
                         throw new InvalidOperationException("OpenAI API key is not configured. Set EmbeddingModel:Key.");
                     }
 
-                    // Endpoint is optional for OpenAI; default is https://api.openai.com/v1
-                    OpenAIClient client = string.IsNullOrWhiteSpace(opts.Endpoint)
-                        ? new OpenAIClient(new ApiKeyCredential(opts.Key))
-                        : new OpenAIClient(new ApiKeyCredential(opts.Key), new OpenAIClientOptions { Endpoint = new Uri(opts.Endpoint!) });
-
-                    logger.LogDebug("Creating OpenAI embedding generator for model {Model} (Endpoint: {Endpoint})",
+                    logger.LogDebug("Creating OpenAI-compatible embedding generator for model {Model} (Endpoint: {Endpoint})",
                         opts.Name, opts.Endpoint ?? "https://api.openai.com/v1");
 
-                    // For OpenAI: pass the model name (not a deployment)
-                    return client.GetEmbeddingClient(model: opts.Name).AsIEmbeddingGenerator();
+                    AzureOpenAIClient client = AiModelConfiguration.CreateOpenAICompatibleClient(opts.Endpoint, opts.Key!);
+                    return client.GetEmbeddingClient(opts.Name).AsIEmbeddingGenerator();
                 });
                 break;
 
             case ProviderType.Ollama:
             default:
-                services.AddHttpClient();
                 services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(sp =>
                 {
                     IHttpClientFactory httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
@@ -246,7 +174,6 @@ public static class EmbeddingServiceExtensions
                         "Ensure the model is available in Ollama (run 'ollama pull {ModelId}' if needed).",
                         opts.Name, opts.Endpoint, opts.Name);
 
-                    // Use HTTP client to call Ollama API directly with better error handling
                     return new OllamaEmbeddingGeneratorWrapper(httpClient, opts.Endpoint, opts.Name, logger);
                 });
                 break;
@@ -312,13 +239,13 @@ public static class EmbeddingServiceExtensions
                                 "This usually means the model '{Model}' is not available in Ollama at {Endpoint}. " +
                                 "Response: {Response}. To fix this, run: ollama pull {Model}",
                                 _modelName, _endpoint, errorContent, _modelName);
-                            
+							
                             throw new InvalidOperationException(
                                 $"Ollama model '{_modelName}' not found at {_endpoint}. " +
                                 $"Ensure the model is available by running: ollama pull {_modelName}. " +
                                 $"Ollama response: {errorContent}");
                         }
-                        
+						
                         _logger.LogError("Failed to generate embedding. Status: {StatusCode}, Response: {Response}",
                             response.StatusCode, errorContent);
                         response.EnsureSuccessStatusCode();
@@ -344,7 +271,7 @@ public static class EmbeddingServiceExtensions
                         "This usually means the model '{Model}' is not available in Ollama at {Endpoint}. " +
                         "To fix this, run: ollama pull {Model}",
                         _modelName, _endpoint, _modelName);
-                    
+					
                     throw new InvalidOperationException(
                         $"Ollama model '{_modelName}' not found at {_endpoint}. " +
                         $"Ensure the model is available by running: ollama pull {_modelName}. " +
