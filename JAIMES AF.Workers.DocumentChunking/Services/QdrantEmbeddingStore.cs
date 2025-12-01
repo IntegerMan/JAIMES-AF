@@ -1,10 +1,7 @@
 using System.Diagnostics;
-using System.Security.Cryptography;
-using System.Text;
 using Grpc.Core;
 using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
 using Microsoft.Extensions.AI;
-using Microsoft.Extensions.Logging;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
 using MattEland.Jaimes.ServiceDefaults; // added for utilities
