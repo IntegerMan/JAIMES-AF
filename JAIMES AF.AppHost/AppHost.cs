@@ -5,8 +5,9 @@ IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(ar
 
 // We'll be consolidating our various datastores into PostgreSQL with JSONB and pgvector in the future,
 var postgres = builder.AddPostgres("postgres")
-        .WithIconName("DatabaseSwitch")
-        .WithDataVolume(isReadOnly: false);
+    .WithImage("pgvector/pgvector", tag:"pg17-trixie")
+    .WithIconName("DatabaseSwitch")
+    .WithDataVolume("jaimes-pg17-vector", isReadOnly: false);
 
 postgres.WithPgAdmin(admin =>
  {
@@ -20,7 +21,7 @@ postgres.WithPgAdmin(admin =>
      });
  });
 
-var postgresdb = postgres.AddDatabase("postgresdb", "jaimes-db")
+var postgresdb = postgres.AddDatabase("postgres-db", "postgres")
     .WithCreationScript("CREATE EXTENSION IF NOT EXISTS vector;"); // NOTE: Currently erroring, but needed for pgvector support
 
 // Add Ollama with nomic-embed-text model for embeddings
