@@ -6,10 +6,22 @@ IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(ar
 // We'll be consolidating our various datastores into PostgreSQL with JSONB and pgvector in the future,
 var postgres = builder.AddPostgres("postgres")
         .WithIconName("DatabaseSwitch")
-        .WithPgAdmin()
         .WithDataVolume(isReadOnly: false);
-var postgresdb = postgres.AddDatabase("jaimes-db")
-    .WithIconName("TaskListSquareDatabase");
+
+postgres.WithPgAdmin(admin =>
+ {
+     admin.WithIconName("TaskListSquareDatabase");
+     admin.WithHostPort(5858);
+     admin.WithParentRelationship(postgres);
+     admin.WithUrls(u =>
+     {
+         u.Urls.Clear();
+         u.Urls.Add(new() { Url = "http://localhost:5858", DisplayText = "📋 pgAdmin" });
+     });
+ });
+
+var postgresdb = postgres.AddDatabase("postgresdb", "jaimes-db")
+    .WithCreationScript("CREATE EXTENSION IF NOT EXISTS vector;"); // NOTE: Currently erroring, but needed for pgvector support
 
 // Add Ollama with nomic-embed-text model for embeddings
 IResourceBuilder<OllamaResource> ollama = builder.AddOllama("ollama-models")
@@ -49,7 +61,8 @@ IResourceBuilder<MongoDBDatabaseResource> mongoDb = mongo.AddDatabase("documents
 var lavinmq = builder.AddLavinMQ("messaging")
     .WithIconName("DocumentQueue")
     .WithLifetime(ContainerLifetime.Persistent)
-    .WithUrls(u => {
+    .WithUrls(u =>
+    {
         u.Urls.Clear();
         u.Urls.Add(new() { Url = "http://localhost:15672", DisplayText = "📋 Management" });
         u.Urls.Add(new() { Url = "http://localhost:15672/queues", DisplayText = "📬 Queues" });
@@ -157,13 +170,13 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChunking>("document-chunki
         // Set Ollama endpoint for embedding generation (needed for SemanticChunker)
         EndpointReference ollamaEndpoint = ollama.GetEndpoint("http");
         context.EnvironmentVariables["DocumentChunking__OllamaEndpoint"] = $"http://{ollamaEndpoint.Host}:{ollamaEndpoint.Port}";
-        
+
         // Set Qdrant endpoint
         EndpointReference qdrantGrpcEndpoint = qdrant.GetEndpoint("grpc");
         context.EnvironmentVariables["DocumentChunking__QdrantHost"] = qdrantGrpcEndpoint.Host;
         context.EnvironmentVariables["DocumentChunking__QdrantPort"] = qdrantGrpcEndpoint.Port;
         context.EnvironmentVariables["ConnectionStrings__qdrant-embeddings"] = qdrant.Resource.ConnectionStringExpression;
-        
+
         // Set Qdrant API key (use the parameter value)
         context.EnvironmentVariables["qdrant-api-key"] = qdrantApiKey.Resource.ValueExpression;
     });
@@ -183,13 +196,13 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbedding>("document-embed
         // Set Ollama endpoint for embedding generation
         EndpointReference ollamaEndpoint = ollama.GetEndpoint("http");
         context.EnvironmentVariables["DocumentEmbedding__OllamaEndpoint"] = $"http://{ollamaEndpoint.Host}:{ollamaEndpoint.Port}";
-        
+
         // Set Qdrant endpoint
         EndpointReference qdrantGrpcEndpoint = qdrant.GetEndpoint("grpc");
         context.EnvironmentVariables["DocumentEmbedding__QdrantHost"] = qdrantGrpcEndpoint.Host;
         context.EnvironmentVariables["DocumentEmbedding__QdrantPort"] = qdrantGrpcEndpoint.Port;
         context.EnvironmentVariables["ConnectionStrings__qdrant-embeddings"] = qdrant.Resource.ConnectionStringExpression;
-        
+
         // Set Qdrant API key (use the parameter value)
         context.EnvironmentVariables["qdrant-api-key"] = qdrantApiKey.Resource.ValueExpression;
     });
