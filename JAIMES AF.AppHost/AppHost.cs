@@ -3,6 +3,14 @@ Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER", "1", Envir
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
+// We'll be consolidating our various datastores into PostgreSQL with JSONB and pgvector in the future,
+var postgres = builder.AddPostgres("postgres")
+        .WithIconName("DatabaseSwitch")
+        .WithPgAdmin()
+        .WithDataVolume(isReadOnly: false);
+var postgresdb = postgres.AddDatabase("jaimes-db")
+    .WithIconName("TaskListSquareDatabase");
+
 // Add Ollama with nomic-embed-text model for embeddings
 IResourceBuilder<OllamaResource> ollama = builder.AddOllama("ollama-models")
     .WithIconName("BrainSparkle")
