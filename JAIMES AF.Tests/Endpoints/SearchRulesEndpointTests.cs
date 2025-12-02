@@ -51,9 +51,9 @@ public class SearchRulesEndpointTests : EndpointTestBase
                                    d.ServiceType == typeof(JaimesDbContext))
                         .ToArray();
                     
-                    foreach (ServiceDescriptor descriptor in dbContextDescriptors)
+                    foreach (ServiceDescriptor dbDescriptor in dbContextDescriptors)
                     {
-                        services.Remove(descriptor);
+                        services.Remove(dbDescriptor);
                     }
                     
                     services.AddJaimesRepositoriesInMemory(dbName);
