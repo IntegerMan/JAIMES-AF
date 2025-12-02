@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,79 +8,53 @@ namespace MattEland.Jaimes.Repositories;
 
 public static class RepositoryServiceCollectionExtensions
 {
-    public static IServiceCollection AddJaimesRepositories(this IServiceCollection services, DatabaseProvider provider, string? connectionString = null)
+    /// <summary>
+    /// Adds Jaimes repositories with an in-memory database for testing.
+    /// </summary>
+    public static IServiceCollection AddJaimesRepositoriesInMemory(
+        this IServiceCollection services, 
+        string? databaseName = null)
     {
+        string dbName = string.IsNullOrWhiteSpace(databaseName) ? "InMemory" : databaseName;
+        
         services.AddDbContext<JaimesDbContext>(options =>
         {
-            switch (provider)
+            options.UseInMemoryDatabase(dbName, sqlOpts =>
             {
-                case DatabaseProvider.InMemory:
-                    string dbName = string.IsNullOrWhiteSpace(connectionString) ? "InMemory" : connectionString;
-                    options.UseInMemoryDatabase(dbName, sqlOpts =>
-                    {
-                        sqlOpts.EnableNullChecks();
-                    });
-                    break;
-                case DatabaseProvider.SqlServer:
-                    options.UseSqlServer(connectionString, sqlOpts =>
-                    {
-                        sqlOpts.MaxBatchSize(500);
-                        sqlOpts.EnableRetryOnFailure(maxRetryCount: 3);
-                    });
-                    break;
-                case DatabaseProvider.Sqlite:
-                    options.UseSqlite(connectionString, dbOpts =>
-                    {
-                        dbOpts.MaxBatchSize(500);
-                    });
-                    break;
-                case DatabaseProvider.PostgreSql:
-                    options.UseNpgsql(connectionString, dbOpts =>
-                    {
-                        dbOpts.MaxBatchSize(500);
-                        dbOpts.EnableRetryOnFailure(maxRetryCount: 3);
-                    });
-                    break;
-                default:
-                    throw new NotSupportedException($"Database provider {provider} is not supported for adding repositories");
-            }
+                sqlOpts.EnableNullChecks();
+            });
         });
 
         return services;
     }
 
-    [SuppressMessage("ReSharper", "StringLiteralTypo")]
+    /// <summary>
+    /// Adds Jaimes repositories with PostgreSQL from configuration.
+    /// Expects a connection string named "DefaultConnection" or provided via Aspire.
+    /// </summary>
     public static IServiceCollection AddJaimesRepositories(
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        string? providerString = configuration["DatabaseProvider"]
-                                 ?? configuration["Jaimes:DatabaseProvider"];
+        string? connectionString = configuration.GetConnectionString("jaimes-db")
+                           ?? configuration.GetConnectionString("DefaultConnection");
 
-        if (string.IsNullOrWhiteSpace(providerString))
+        if (string.IsNullOrWhiteSpace(connectionString))
         {
-            throw new InvalidOperationException("DatabaseProvider is required");
+            throw new InvalidOperationException(
+                "Database connection string is required. Expected 'jaimes-db' or 'DefaultConnection' in ConnectionStrings configuration.");
         }
 
-        DatabaseProvider provider = providerString.ToLowerInvariant() switch
+        services.AddDbContext<JaimesDbContext>(options =>
         {
-            "sqlserver" => DatabaseProvider.SqlServer,
-            "sqlite" => DatabaseProvider.Sqlite,
-            "postgresql" or "postgres" => DatabaseProvider.PostgreSql,
-            "inmemory" => DatabaseProvider.InMemory,
-            _ => throw new NotSupportedException($"Database provider {providerString} is not yet supported")
-        };
+            options.UseNpgsql(connectionString, dbOpts =>
+            {
+                dbOpts.MaxBatchSize(500);
+                dbOpts.EnableRetryOnFailure(maxRetryCount: 3);
+            });
+        });
 
-        string? connectionString = configuration.GetConnectionString("DefaultConnection")
-                           ?? configuration["ConnectionStrings:DefaultConnection"]
-                           ?? configuration["Jaimes:ConnectionStrings:DefaultConnection"];
-
-        if (provider != DatabaseProvider.InMemory && string.IsNullOrWhiteSpace(connectionString))
-        {
-            throw new InvalidOperationException("DefaultConnection is required for non-InMemory database providers");
-        }
-
-        return services.AddJaimesRepositories(provider, connectionString);
+        return services;
     }
 
     public static async Task InitializeDatabaseAsync(this IServiceProvider serviceProvider)

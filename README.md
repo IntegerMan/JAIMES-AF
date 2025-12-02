@@ -83,20 +83,16 @@ sequenceDiagram
 ## Prerequisites
 
 - .NET 10 SDK
-- Docker Desktop or another container runtime (required by Aspire to provision Redis Stack)
+- Docker Desktop or another container runtime (required by Aspire to provision PostgreSQL, Redis Stack, MongoDB, and other services)
 - Azure OpenAI resource for chat + embeddings
-- (Optional) SQL Server/Azure SQL if you prefer over PostgreSQL
 
 ## Quickstart
 
-1. **Configure secrets (Azure OpenAI + DB overrides as needed)**
+1. **Configure secrets (Azure OpenAI)**
    ```bash
    cd "JAIMES AF.ApiService"
    dotnet user-secrets set "ChatService:Endpoint" "https://YourResource.openai.azure.com/"
    dotnet user-secrets set "ChatService:ApiKey" "your-real-api-key"
-   # Optional SQL Server
-   dotnet user-secrets set "DatabaseProvider" "SqlServer"
-   dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=(localdb)\\mssqllocaldb;Database=Jaimes;Trusted_Connection=True;MultipleActiveResultSets=true"
    ```
 
 2. **Run the Aspire host**
@@ -108,15 +104,9 @@ sequenceDiagram
 
 ## Database Configuration
 
-- **PostgreSQL (default):** The Aspire AppHost provisions a PostgreSQL database with pgvector support. Migrations are applied automatically on startup with seed data.
-- **SQL Server / LocalDB:** Update user secrets to use SQL Server provider, remove existing PostgreSQL migrations, and recreate SQL Server migrations:
-  ```bash
-  dotnet user-secrets set "DatabaseProvider" "SqlServer" --project "JAIMES AF.ApiService"
-  dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=(localdb)\\mssqllocaldb;Database=Jaimes;Trusted_Connection=True;MultipleActiveResultSets=true" --project "JAIMES AF.ApiService"
-  rm -rf "JAIMES AF.Repositories/Migrations"
-  dotnet ef migrations add InitialCreate --project "JAIMES AF.Repositories" --startup-project "JAIMES AF.ApiService"
-  ```
-- **Azure SQL:** Supply a secure connection string via secrets or environment variables. Remember to regenerate migrations for SQL Server compatibility before deploying.
+- **PostgreSQL (default):** The Aspire AppHost automatically provisions a PostgreSQL database with pgvector support. The connection string is provided by Aspire via the `jaimes-db` connection name. Migrations are applied automatically on startup with seed data (D&D 5e ruleset, default player, and island test scenario).
+- **Local Development:** For local development without Aspire, a fallback connection string is provided in `appsettings.Development.json` pointing to `localhost:5432`.
+- **Production:** In production, the connection string should be provided via environment variables or a secure configuration provider (Azure App Configuration, Key Vault, etc.).
 
 ## Redis & Kernel Memory
 

@@ -3,6 +3,7 @@ using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Moq;
 using RabbitMQ.Client;
 using ApiServiceProgram = MattEland.Jaimes.ApiService.Program;
@@ -23,9 +24,7 @@ public abstract class EndpointTestBase : IAsyncLifetime
         Factory = new WebApplicationFactory<ApiServiceProgram>()
             .WithWebHostBuilder(builder =>
             {
-                // Override settings for testing - use environment variable style which takes precedence
-                builder.UseSetting("DatabaseProvider", "InMemory");
-                builder.UseSetting("ConnectionStrings:DefaultConnection", dbName);
+                // Override settings for testing
                 builder.UseSetting("SkipDatabaseInitialization", "true");
                 // Provide a mock messaging connection string for RabbitMQ
                 builder.UseSetting("ConnectionStrings:messaging", "amqp://guest:guest@localhost:5672/");
@@ -40,6 +39,20 @@ public abstract class EndpointTestBase : IAsyncLifetime
                 // Configure test services
                 builder.ConfigureServices(services =>
                 {
+                    // Replace database context with in-memory database
+                    ServiceDescriptor? dbContextDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(DbContextOptions<JaimesDbContext>));
+                    if (dbContextDescriptor != null)
+                    {
+                        services.Remove(dbContextDescriptor);
+                    }
+                    ServiceDescriptor? dbContextServiceDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(JaimesDbContext));
+                    if (dbContextServiceDescriptor != null)
+                    {
+                        services.Remove(dbContextServiceDescriptor);
+                    }
+                    
+                    services.AddJaimesRepositoriesInMemory(dbName);
+                    
                     // Replace RabbitMQ connection factory with a mock
                     ServiceDescriptor? connectionFactoryDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IConnectionFactory));
                     if (connectionFactoryDescriptor != null)

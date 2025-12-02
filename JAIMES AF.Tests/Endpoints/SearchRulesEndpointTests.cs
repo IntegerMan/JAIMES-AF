@@ -6,6 +6,7 @@ using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Moq;
 using RabbitMQ.Client;
 using Shouldly;
@@ -30,8 +31,6 @@ public class SearchRulesEndpointTests : EndpointTestBase
             .WithWebHostBuilder(builder =>
             {
                 // Override settings for testing
-                builder.UseSetting("DatabaseProvider", "InMemory");
-                builder.UseSetting("ConnectionStrings:DefaultConnection", dbName);
                 builder.UseSetting("SkipDatabaseInitialization", "true");
                 builder.UseSetting("ConnectionStrings:messaging", "amqp://guest:guest@localhost:5672/");
                 builder.UseSetting("TextGenerationModel:Provider", "Ollama");
@@ -44,6 +43,20 @@ public class SearchRulesEndpointTests : EndpointTestBase
                 // Configure test services
                 builder.ConfigureServices(services =>
                 {
+                    // Replace database context with in-memory database
+                    ServiceDescriptor? dbContextDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(DbContextOptions<JaimesDbContext>));
+                    if (dbContextDescriptor != null)
+                    {
+                        services.Remove(dbContextDescriptor);
+                    }
+                    ServiceDescriptor? dbContextServiceDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(JaimesDbContext));
+                    if (dbContextServiceDescriptor != null)
+                    {
+                        services.Remove(dbContextServiceDescriptor);
+                    }
+                    
+                    services.AddJaimesRepositoriesInMemory(dbName);
+                    
                     // Replace IRulesSearchService with mock
                     ServiceDescriptor? descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IRulesSearchService));
                     if (descriptor != null)
