@@ -32,6 +32,9 @@ public class SearchRulesEndpointTests : EndpointTestBase
             {
                 // Override settings for testing
                 builder.UseSetting("SkipDatabaseInitialization", "true");
+                // Provide a dummy connection string to satisfy the configuration check
+                // This will be replaced with InMemory in ConfigureTestServices
+                builder.UseSetting("ConnectionStrings:jaimes-db", "Host=localhost;Database=test;Username=test;Password=test");
                 builder.UseSetting("ConnectionStrings:messaging", "amqp://guest:guest@localhost:5672/");
                 builder.UseSetting("TextGenerationModel:Provider", "Ollama");
                 builder.UseSetting("TextGenerationModel:Endpoint", "http://localhost:11434");
@@ -40,11 +43,10 @@ public class SearchRulesEndpointTests : EndpointTestBase
                 builder.UseSetting("EmbeddingModel:Endpoint", "http://localhost:11434");
                 builder.UseSetting("EmbeddingModel:Name", "nomic-embed-text");
                 
-                // Configure test services
-                builder.ConfigureServices(services =>
+                // Use ConfigureTestServices to override AFTER the application's ConfigureServices
+                builder.ConfigureTestServices(services =>
                 {
-                    // Replace database context with in-memory database
-                    // Remove all DbContext-related registrations to avoid provider conflicts
+                    // Remove the PostgreSQL DbContext registration added by the application
                     ServiceDescriptor[] dbContextDescriptors = services
                         .Where(d => d.ServiceType == typeof(DbContextOptions<JaimesDbContext>) ||
                                    d.ServiceType == typeof(DbContextOptions) ||

@@ -26,6 +26,9 @@ public abstract class EndpointTestBase : IAsyncLifetime
             {
                 // Override settings for testing
                 builder.UseSetting("SkipDatabaseInitialization", "true");
+                // Provide a dummy connection string to satisfy the configuration check
+                // This will be replaced with InMemory in ConfigureTestServices
+                builder.UseSetting("ConnectionStrings:jaimes-db", "Host=localhost;Database=test;Username=test;Password=test");
                 // Provide a mock messaging connection string for RabbitMQ
                 builder.UseSetting("ConnectionStrings:messaging", "amqp://guest:guest@localhost:5672/");
                 // Provide default Ollama configuration for text generation and embeddings
@@ -36,11 +39,10 @@ public abstract class EndpointTestBase : IAsyncLifetime
                 builder.UseSetting("EmbeddingModel:Endpoint", "http://localhost:11434");
                 builder.UseSetting("EmbeddingModel:Name", "nomic-embed-text");
                 
-                // Configure test services
-                builder.ConfigureServices(services =>
+                // Use ConfigureTestServices to override AFTER the application's ConfigureServices
+                builder.ConfigureTestServices(services =>
                 {
-                    // Replace database context with in-memory database
-                    // Remove all DbContext-related registrations to avoid provider conflicts
+                    // Remove the PostgreSQL DbContext registration added by the application
                     ServiceDescriptor[] dbContextDescriptors = services
                         .Where(d => d.ServiceType == typeof(DbContextOptions<JaimesDbContext>) ||
                                    d.ServiceType == typeof(DbContextOptions) ||
@@ -52,6 +54,7 @@ public abstract class EndpointTestBase : IAsyncLifetime
                         services.Remove(descriptor);
                     }
                     
+                    // Add InMemory database for tests
                     services.AddJaimesRepositoriesInMemory(dbName);
                     
                     // Replace RabbitMQ connection factory with a mock
