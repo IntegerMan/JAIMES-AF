@@ -11,6 +11,7 @@ public class DatabaseInitializationTests
     public async Task InitializeDatabaseAsync_WithInMemoryProvider_CreatesDatabase()
     {
         // Arrange
+        CancellationToken ct = TestContext.Current.CancellationToken;
         ServiceCollection services = new();
         services.AddJaimesRepositoriesInMemory(Guid.NewGuid().ToString());
         services.AddLogging();
@@ -24,16 +25,16 @@ public class DatabaseInitializationTests
         JaimesDbContext context = scope.ServiceProvider.GetRequiredService<JaimesDbContext>();
         
         // Verify seed data was created
-        Entities.Ruleset? ruleset = await context.Rulesets.FindAsync("dnd5e");
+        Entities.Ruleset? ruleset = await context.Rulesets.FindAsync(["dnd5e"], ct);
         ruleset.ShouldNotBeNull();
         ruleset.Name.ShouldBe("Dungeons and Dragons 5th Edition");
 
-        Entities.Player? player = await context.Players.FindAsync("emcee");
+        Entities.Player? player = await context.Players.FindAsync(["emcee"], ct);
         player.ShouldNotBeNull();
         player.Name.ShouldBe("Emcee");
         player.RulesetId.ShouldBe("dnd5e");
 
-        Entities.Scenario? scenario = await context.Scenarios.FindAsync("islandTest");
+        Entities.Scenario? scenario = await context.Scenarios.FindAsync(["islandTest"], ct);
         scenario.ShouldNotBeNull();
         scenario.Name.ShouldBe("Island Test");
         scenario.RulesetId.ShouldBe("dnd5e");
@@ -45,6 +46,7 @@ public class DatabaseInitializationTests
     public async Task InitializeDatabaseAsync_CalledMultipleTimes_IsIdempotent()
     {
         // Arrange
+        CancellationToken ct = TestContext.Current.CancellationToken;
         ServiceCollection services = new();
         services.AddJaimesRepositoriesInMemory(Guid.NewGuid().ToString());
         services.AddLogging();
@@ -59,7 +61,7 @@ public class DatabaseInitializationTests
         using IServiceScope scope = provider.CreateScope();
         JaimesDbContext context = scope.ServiceProvider.GetRequiredService<JaimesDbContext>();
         
-        int rulesetCount = await context.Rulesets.CountAsync();
+        int rulesetCount = await context.Rulesets.CountAsync(ct);
         rulesetCount.ShouldBe(1); // Should still only have one ruleset
     }
 
@@ -67,6 +69,7 @@ public class DatabaseInitializationTests
     public async Task InitializeDatabaseAsync_WithoutLogger_StillWorks()
     {
         // Arrange
+        CancellationToken ct = TestContext.Current.CancellationToken;
         ServiceCollection services = new();
         services.AddJaimesRepositoriesInMemory(Guid.NewGuid().ToString());
         // Intentionally not adding logging
@@ -77,7 +80,7 @@ public class DatabaseInitializationTests
 
         using IServiceScope scope = provider.CreateScope();
         JaimesDbContext context = scope.ServiceProvider.GetRequiredService<JaimesDbContext>();
-        Entities.Ruleset? ruleset = await context.Rulesets.FindAsync("dnd5e");
+        Entities.Ruleset? ruleset = await context.Rulesets.FindAsync(["dnd5e"], ct);
         ruleset.ShouldNotBeNull();
     }
 

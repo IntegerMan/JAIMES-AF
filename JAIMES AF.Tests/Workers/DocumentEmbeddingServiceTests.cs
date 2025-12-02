@@ -508,9 +508,10 @@ public class DocumentEmbeddingServiceTests
 
         public async Task VerifyChunkUpdated(string chunkId)
         {
+            CancellationToken ct = TestContext.Current.CancellationToken;
             DocumentChunk? chunk = await ChunkCollection
                 .Find(c => c.ChunkId == chunkId)
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(ct);
 
             chunk.ShouldNotBeNull();
             chunk.QdrantPointId.ShouldNotBeNullOrEmpty();
@@ -518,9 +519,10 @@ public class DocumentEmbeddingServiceTests
 
         public async Task VerifyProcessedChunkCountIncremented(string documentId)
         {
+            CancellationToken ct = TestContext.Current.CancellationToken;
             CrackedDocument? document = await DocumentCollection
                 .Find(d => d.Id == documentId)
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(ct);
 
             document.ShouldNotBeNull();
             document.ProcessedChunkCount.ShouldBeGreaterThan(0);

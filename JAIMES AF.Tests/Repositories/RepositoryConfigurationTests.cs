@@ -136,18 +136,19 @@ public class RepositoryConfigurationTests
     public async Task InMemoryDatabase_SupportsBasicOperations()
     {
         // Arrange
+        CancellationToken ct = TestContext.Current.CancellationToken;
         ServiceCollection services = new();
         services.AddJaimesRepositoriesInMemory(Guid.NewGuid().ToString());
         ServiceProvider provider = services.BuildServiceProvider();
         JaimesDbContext context = provider.GetRequiredService<JaimesDbContext>();
-        await context.Database.EnsureCreatedAsync();
+        await context.Database.EnsureCreatedAsync(ct);
 
         // Act
         context.Rulesets.Add(new Entities.Ruleset { Id = "test", Name = "Test Ruleset" });
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(ct);
 
         // Assert
-        Entities.Ruleset? ruleset = await context.Rulesets.FindAsync("test");
+        Entities.Ruleset? ruleset = await context.Rulesets.FindAsync(["test"], ct);
         ruleset.ShouldNotBeNull();
         ruleset.Name.ShouldBe("Test Ruleset");
     }
