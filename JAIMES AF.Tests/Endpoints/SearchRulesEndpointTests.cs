@@ -42,86 +42,84 @@ public class SearchRulesEndpointTests : EndpointTestBase
                 builder.UseSetting("EmbeddingModel:Provider", "Ollama");
                 builder.UseSetting("EmbeddingModel:Endpoint", "http://localhost:11434");
                 builder.UseSetting("EmbeddingModel:Name", "nomic-embed-text");
+            })
+            .ConfigureTestServices(services =>
+            {
+                // Remove the PostgreSQL DbContext registration added by the application
+                ServiceDescriptor[] dbContextDescriptors = services
+                    .Where(d => d.ServiceType == typeof(DbContextOptions<JaimesDbContext>) ||
+                               d.ServiceType == typeof(DbContextOptions) ||
+                               d.ServiceType == typeof(JaimesDbContext))
+                    .ToArray();
                 
-                // Use ConfigureTestServices to override AFTER the application's ConfigureServices
-                builder.ConfigureTestServices(services =>
+                foreach (ServiceDescriptor dbDescriptor in dbContextDescriptors)
                 {
-                    // Remove the PostgreSQL DbContext registration added by the application
-                    ServiceDescriptor[] dbContextDescriptors = services
-                        .Where(d => d.ServiceType == typeof(DbContextOptions<JaimesDbContext>) ||
-                                   d.ServiceType == typeof(DbContextOptions) ||
-                                   d.ServiceType == typeof(JaimesDbContext))
-                        .ToArray();
-                    
-                    foreach (ServiceDescriptor dbDescriptor in dbContextDescriptors)
+                    services.Remove(dbDescriptor);
+                }
+                
+                services.AddJaimesRepositoriesInMemory(dbName);
+                
+                // Replace IRulesSearchService with mock
+                ServiceDescriptor? rulesSearchDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IRulesSearchService));
+                if (rulesSearchDescriptor != null)
+                {
+                    services.Remove(rulesSearchDescriptor);
+                }
+                services.AddSingleton(_mockRulesSearchService.Object);
+                
+                // Replace RabbitMQ connection factory with a mock
+                ServiceDescriptor? connectionFactoryDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IConnectionFactory));
+                if (connectionFactoryDescriptor != null)
+                {
+                    services.Remove(connectionFactoryDescriptor);
+                }
+                
+                Mock<IConnectionFactory> mockConnectionFactory = new();
+                Mock<IConnection> mockConnection = new();
+                Mock<IChannel> mockChannel = new();
+                
+                mockConnectionFactory.Setup(f => f.CreateConnectionAsync(It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(mockConnection.Object);
+                mockConnection.Setup(c => c.CreateChannelAsync(It.IsAny<CreateChannelOptions>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(mockChannel.Object);
+                
+                services.AddSingleton(mockConnectionFactory.Object);
+                
+                // Replace IMessagePublisher with a mock
+                ServiceDescriptor? messagePublisherDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IMessagePublisher));
+                if (messagePublisherDescriptor != null)
+                {
+                    services.Remove(messagePublisherDescriptor);
+                }
+                
+                Mock<IMessagePublisher> mockMessagePublisher = new();
+                services.AddSingleton(mockMessagePublisher.Object);
+                
+                // Replace IChatService with a mock
+                ServiceDescriptor? chatServiceDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IChatService));
+                if (chatServiceDescriptor != null)
+                {
+                    services.Remove(chatServiceDescriptor);
+                }
+                
+                Mock<IChatService> mockChatService = new();
+                mockChatService.Setup(s => s.GenerateInitialMessageAsync(It.IsAny<GenerateInitialMessageRequest>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(new InitialMessageResponse
                     {
-                        services.Remove(dbDescriptor);
-                    }
-                    
-                    services.AddJaimesRepositoriesInMemory(dbName);
-                    
-                    // Replace IRulesSearchService with mock
-                    ServiceDescriptor? rulesSearchDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IRulesSearchService));
-                    if (rulesSearchDescriptor != null)
-                    {
-                        services.Remove(rulesSearchDescriptor);
-                    }
-                    services.AddSingleton(_mockRulesSearchService.Object);
-                    
-                    // Replace RabbitMQ connection factory with a mock
-                    ServiceDescriptor? connectionFactoryDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IConnectionFactory));
-                    if (connectionFactoryDescriptor != null)
-                    {
-                        services.Remove(connectionFactoryDescriptor);
-                    }
-                    
-                    Mock<IConnectionFactory> mockConnectionFactory = new();
-                    Mock<IConnection> mockConnection = new();
-                    Mock<IChannel> mockChannel = new();
-                    
-                    mockConnectionFactory.Setup(f => f.CreateConnectionAsync(It.IsAny<CancellationToken>()))
-                        .ReturnsAsync(mockConnection.Object);
-                    mockConnection.Setup(c => c.CreateChannelAsync(It.IsAny<CreateChannelOptions>(), It.IsAny<CancellationToken>()))
-                        .ReturnsAsync(mockChannel.Object);
-                    
-                    services.AddSingleton(mockConnectionFactory.Object);
-                    
-                    // Replace IMessagePublisher with a mock
-                    ServiceDescriptor? messagePublisherDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IMessagePublisher));
-                    if (messagePublisherDescriptor != null)
-                    {
-                        services.Remove(messagePublisherDescriptor);
-                    }
-                    
-                    Mock<IMessagePublisher> mockMessagePublisher = new();
-                    services.AddSingleton(mockMessagePublisher.Object);
-                    
-                    // Replace IChatService with a mock
-                    ServiceDescriptor? chatServiceDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IChatService));
-                    if (chatServiceDescriptor != null)
-                    {
-                        services.Remove(chatServiceDescriptor);
-                    }
-                    
-                    Mock<IChatService> mockChatService = new();
-                    mockChatService.Setup(s => s.GenerateInitialMessageAsync(It.IsAny<GenerateInitialMessageRequest>(), It.IsAny<CancellationToken>()))
-                        .ReturnsAsync(new InitialMessageResponse
-                        {
-                            Message = "Welcome to the game!",
-                            ThreadJson = "{}"
-                        });
-                    services.AddSingleton(mockChatService.Object);
-                    
-                    // Replace IChatHistoryService with a mock
-                    ServiceDescriptor? chatHistoryServiceDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IChatHistoryService));
-                    if (chatHistoryServiceDescriptor != null)
-                    {
-                        services.Remove(chatHistoryServiceDescriptor);
-                    }
-                    
-                    Mock<IChatHistoryService> mockChatHistoryService = new();
-                    services.AddSingleton(mockChatHistoryService.Object);
-                });
+                        Message = "Welcome to the game!",
+                        ThreadJson = "{}"
+                    });
+                services.AddSingleton(mockChatService.Object);
+                
+                // Replace IChatHistoryService with a mock
+                ServiceDescriptor? chatHistoryServiceDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IChatHistoryService));
+                if (chatHistoryServiceDescriptor != null)
+                {
+                    services.Remove(chatHistoryServiceDescriptor);
+                }
+                
+                Mock<IChatHistoryService> mockChatHistoryService = new();
+                services.AddSingleton(mockChatHistoryService.Object);
             });
 
         Client = Factory.CreateClient();
