@@ -40,15 +40,16 @@ public abstract class EndpointTestBase : IAsyncLifetime
                 builder.ConfigureServices(services =>
                 {
                     // Replace database context with in-memory database
-                    ServiceDescriptor? dbContextDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(DbContextOptions<JaimesDbContext>));
-                    if (dbContextDescriptor != null)
+                    // Remove all DbContext-related registrations to avoid provider conflicts
+                    ServiceDescriptor[] dbContextDescriptors = services
+                        .Where(d => d.ServiceType == typeof(DbContextOptions<JaimesDbContext>) ||
+                                   d.ServiceType == typeof(DbContextOptions) ||
+                                   d.ServiceType == typeof(JaimesDbContext))
+                        .ToArray();
+                    
+                    foreach (ServiceDescriptor descriptor in dbContextDescriptors)
                     {
-                        services.Remove(dbContextDescriptor);
-                    }
-                    ServiceDescriptor? dbContextServiceDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(JaimesDbContext));
-                    if (dbContextServiceDescriptor != null)
-                    {
-                        services.Remove(dbContextServiceDescriptor);
+                        services.Remove(descriptor);
                     }
                     
                     services.AddJaimesRepositoriesInMemory(dbName);
