@@ -1,52 +1,25 @@
-ARG REPO=mcr.microsoft.com/dotnet/aspnet
-# Installer image
-FROM amd64/buildpack-deps:noble-curl AS installer
-
-# Install .NET SDK
-RUN dotnet_sdk_version=10.0.100 \
-    && curl --fail --show-error --location \
-        --remote-name https://builds.dotnet.microsoft.com/dotnet/Sdk/$dotnet_sdk_version/dotnet-sdk-$dotnet_sdk_version-linux-x64.tar.gz \
-        --remote-name https://builds.dotnet.microsoft.com/dotnet/Sdk/$dotnet_sdk_version/dotnet-sdk-$dotnet_sdk_version-linux-x64.tar.gz.sha512 \
-    && sha512sum -c dotnet-sdk-$dotnet_sdk_version-linux-x64.tar.gz.sha512 \
-    && mkdir --parents /dotnet \
-    && tar --gzip --extract --no-same-owner --file dotnet-sdk-$dotnet_sdk_version-linux-x64.tar.gz --directory /dotnet ./dnx ./packs ./sdk ./sdk-manifests ./templates ./LICENSE.txt ./ThirdPartyNotices.txt \
-    && rm \
-        dotnet-sdk-$dotnet_sdk_version-linux-x64.tar.gz \
-        dotnet-sdk-$dotnet_sdk_version-linux-x64.tar.gz.sha512
-
-
-# .NET SDK image
-FROM $REPO:10.0.0-noble-amd64
+FROM mcr.microsoft.com/dotnet/sdk:10.0-noble-amd64
 
 ENV \
-    # Do not generate certificate
     DOTNET_GENERATE_ASPNET_CERTIFICATE=false \
-    # Do not show first run text
     DOTNET_NOLOGO=true \
-    # SDK version
     DOTNET_SDK_VERSION=10.0.100 \
-    # Enable correct mode for dotnet watch (only mode supported in a container)
     DOTNET_USE_POLLING_FILE_WATCHER=true \
-    # Skip extraction of XML docs - generally not useful within an image/container - helps performance
     NUGET_XMLDOC_MODE=skip \
-    # PowerShell telemetry for docker image usage
     POWERSHELL_DISTRIBUTION_CHANNEL=PSDocker-DotnetSDK-Ubuntu-24.04 \
-    # Workaround for https://github.com/PowerShell/PowerShell/issues/20685
     DOTNET_ROLL_FORWARD=Major
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         curl \
         git \
-        libatomic1 \
+        jq \
+        vim \
+        nano \
+        unzip \
         wget \
+        libatomic1 \
     && rm -rf /var/lib/apt/lists/*
-
-COPY --from=installer ["/dotnet", "/usr/share/dotnet"]
-
-RUN ln -s /usr/share/dotnet/dnx /usr/bin/dnx \
-    # Trigger first run experience by running arbitrary cmd
-    && dotnet help
 
 # Install PowerShell global tool
 RUN powershell_version=7.6.0-preview.4 \
@@ -59,5 +32,28 @@ RUN powershell_version=7.6.0-preview.4 \
     && rm PowerShell.Linux.x64.$powershell_version.nupkg \
     && ln -s /usr/share/powershell/pwsh /usr/bin/pwsh \
     && chmod 755 /usr/share/powershell/pwsh \
-    # To reduce image size, remove the copy nupkg that nuget keeps.
     && find /usr/share/powershell -print | grep -i '.*[.]nupkg$' | xargs rm
+
+# Create non-root user
+RUN useradd -m -s /bin/bash ubuntu
+
+# Switch to non-root user
+USER ubuntu
+
+# Set working directory to user home
+WORKDIR /home/ubuntu
+
+# Configure git for the user
+RUN git config --global user.email "agent@cursor.com" \
+    && git config --global user.name "Cursor Agent" \
+    && git config --global init.defaultBranch main
+
+# Install .NET EF Core tools (needed for migrations)
+RUN dotnet tool install --global dotnet-ef --version 10.0.* \
+    && echo 'export PATH="$PATH:/home/ubuntu/.dotnet/tools"' >> /home/ubuntu/.bashrc
+
+# Add .NET tools to PATH
+ENV PATH="${PATH}:/home/ubuntu/.dotnet/tools"
+
+# Verify installation
+RUN dotnet --version && dotnet ef --version && git --version
