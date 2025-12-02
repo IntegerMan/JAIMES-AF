@@ -1,3 +1,4 @@
+using MattEland.Jaimes.Repositories.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -144,11 +145,11 @@ public class RepositoryConfigurationTests
         await context.Database.EnsureCreatedAsync(ct);
 
         // Act
-        context.Rulesets.Add(new Entities.Ruleset { Id = "test", Name = "Test Ruleset" });
+        context.Rulesets.Add(new Ruleset { Id = "test", Name = "Test Ruleset" });
         await context.SaveChangesAsync(ct);
 
         // Assert
-        Entities.Ruleset? ruleset = await context.Rulesets.FindAsync(["test"], ct);
+        Ruleset? ruleset = await context.Rulesets.FindAsync(["test"], ct);
         ruleset.ShouldNotBeNull();
         ruleset.Name.ShouldBe("Test Ruleset");
     }

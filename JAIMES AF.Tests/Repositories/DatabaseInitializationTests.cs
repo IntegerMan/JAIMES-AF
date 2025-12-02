@@ -1,3 +1,4 @@
+using MattEland.Jaimes.Repositories.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -25,16 +26,16 @@ public class DatabaseInitializationTests
         JaimesDbContext context = scope.ServiceProvider.GetRequiredService<JaimesDbContext>();
         
         // Verify seed data was created
-        Entities.Ruleset? ruleset = await context.Rulesets.FindAsync(["dnd5e"], ct);
+        Ruleset? ruleset = await context.Rulesets.FindAsync(["dnd5e"], ct);
         ruleset.ShouldNotBeNull();
         ruleset.Name.ShouldBe("Dungeons and Dragons 5th Edition");
 
-        Entities.Player? player = await context.Players.FindAsync(["emcee"], ct);
+        Player? player = await context.Players.FindAsync(["emcee"], ct);
         player.ShouldNotBeNull();
         player.Name.ShouldBe("Emcee");
         player.RulesetId.ShouldBe("dnd5e");
 
-        Entities.Scenario? scenario = await context.Scenarios.FindAsync(["islandTest"], ct);
+        Scenario? scenario = await context.Scenarios.FindAsync(["islandTest"], ct);
         scenario.ShouldNotBeNull();
         scenario.Name.ShouldBe("Island Test");
         scenario.RulesetId.ShouldBe("dnd5e");
@@ -80,7 +81,7 @@ public class DatabaseInitializationTests
 
         using IServiceScope scope = provider.CreateScope();
         JaimesDbContext context = scope.ServiceProvider.GetRequiredService<JaimesDbContext>();
-        Entities.Ruleset? ruleset = await context.Rulesets.FindAsync(["dnd5e"], ct);
+        Ruleset? ruleset = await context.Rulesets.FindAsync(["dnd5e"], ct);
         ruleset.ShouldNotBeNull();
     }
 
