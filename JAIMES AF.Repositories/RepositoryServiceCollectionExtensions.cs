@@ -35,6 +35,13 @@ public static class RepositoryServiceCollectionExtensions
                         dbOpts.MaxBatchSize(500);
                     });
                     break;
+                case DatabaseProvider.PostgreSql:
+                    options.UseNpgsql(connectionString, dbOpts =>
+                    {
+                        dbOpts.MaxBatchSize(500);
+                        dbOpts.EnableRetryOnFailure(maxRetryCount: 3);
+                    });
+                    break;
                 default:
                     throw new NotSupportedException($"Database provider {provider} is not supported for adding repositories");
             }
@@ -60,6 +67,7 @@ public static class RepositoryServiceCollectionExtensions
         {
             "sqlserver" => DatabaseProvider.SqlServer,
             "sqlite" => DatabaseProvider.Sqlite,
+            "postgresql" or "postgres" => DatabaseProvider.PostgreSql,
             "inmemory" => DatabaseProvider.InMemory,
             _ => throw new NotSupportedException($"Database provider {providerString} is not yet supported")
         };

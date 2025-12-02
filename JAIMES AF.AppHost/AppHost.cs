@@ -1,4 +1,4 @@
-﻿// Use polling instead of inotify to avoid watcher limits
+// Use polling instead of inotify to avoid watcher limits
 Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER", "1", EnvironmentVariableTarget.Process);
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
@@ -43,10 +43,8 @@ IResourceBuilder<QdrantServerResource> qdrant = builder.AddQdrant("qdrant-embedd
     .WithLifetime(ContainerLifetime.Persistent)
     .WithDataVolume();
 
-// Add SQLite database
-IResourceBuilder<IResourceWithConnectionString> sqliteDb = builder.AddSqlite("jaimes-db")
-    .WithIconName("WindowDatabase")
-    .WithSqliteWeb(web => web.WithIconName("DatabaseSearch"));
+// Use PostgreSQL database for relational data
+var jaimesDb = postgres.AddDatabase("jaimes-db", "jaimes");
 
 // Add MongoDB for document storage
 IResourceBuilder<MongoDBServerResource> mongo = builder.AddMongoDB("mongo")
@@ -93,21 +91,15 @@ IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIME
     })
     .WithReference(chatModel)
     .WithReference(embedModel)
-    .WithReference(sqliteDb)
+    .WithReference(jaimesDb)
     .WithReference(qdrant)
     .WithReference(lavinmq)
     .WithReference(mongoDb)
     .WaitFor(qdrant)
     .WaitFor(ollama)
-    .WaitFor(sqliteDb)
+    .WaitFor(postgres)
     .WaitFor(lavinmq)
-    .WaitFor(mongo)
-    .WithEnvironment(context =>
-    {
-        // Explicitly set the SQLite connection string to ensure it's available as DefaultConnection
-        context.EnvironmentVariables["ConnectionStrings__DefaultConnection"] =
-            sqliteDb.Resource.ConnectionStringExpression;
-    });
+    .WaitFor(mongo);
 
 builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")
     .WithIconName("GameChat")
