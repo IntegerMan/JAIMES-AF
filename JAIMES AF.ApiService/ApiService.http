@@ -42,10 +42,6 @@ Content-Type: application/json
  "message": "I want to go on an adventure"
 }
 
-### Backfill unprocessed documents for embedding
-POST {{ApiService_HostAddress}}/documents/backfill-embeddings
-Accept: application/json
-
 ### Search Rules - Basic query
 # @name SearchRulesBasic
 POST {{ApiService_HostAddress}}/rules/search
