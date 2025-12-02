@@ -59,10 +59,10 @@ public class SearchRulesEndpointTests : EndpointTestBase
                     services.AddJaimesRepositoriesInMemory(dbName);
                     
                     // Replace IRulesSearchService with mock
-                    ServiceDescriptor? descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IRulesSearchService));
-                    if (descriptor != null)
+                    ServiceDescriptor? rulesSearchDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IRulesSearchService));
+                    if (rulesSearchDescriptor != null)
                     {
-                        services.Remove(descriptor);
+                        services.Remove(rulesSearchDescriptor);
                     }
                     services.AddSingleton(_mockRulesSearchService.Object);
                     
