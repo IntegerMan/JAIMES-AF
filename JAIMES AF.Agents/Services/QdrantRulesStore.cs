@@ -284,6 +284,8 @@ public class QdrantRulesStore(
                     string chunkText = point.Payload.GetValueOrDefault("chunkText")?.StringValue ?? string.Empty;
                     string documentId = point.Payload.GetValueOrDefault("documentId")?.StringValue ?? string.Empty;
                     string chunkId = point.Payload.GetValueOrDefault("chunkId")?.StringValue ?? string.Empty;
+                    string fileName = point.Payload.GetValueOrDefault("fileName")?.StringValue ?? string.Empty;
+                    string pointRulesetId = point.Payload.GetValueOrDefault("rulesetId")?.StringValue ?? string.Empty;
 
                     if (!string.IsNullOrWhiteSpace(chunkText) && !string.IsNullOrWhiteSpace(documentId) && !string.IsNullOrWhiteSpace(chunkId))
                     {
@@ -296,6 +298,8 @@ public class QdrantRulesStore(
                         {
                             Text = chunkText,
                             DocumentId = documentId,
+                            DocumentName = fileName,
+                            RulesetId = pointRulesetId,
                             EmbeddingId = embeddingId,
                             ChunkId = chunkId,
                             Relevancy = point.Score

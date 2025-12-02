@@ -143,6 +143,8 @@ public class RulesSearchService : IRulesSearchService
             {
                 Text = r.Text,
                 DocumentId = r.DocumentId,
+                DocumentName = r.DocumentName,
+                RulesetId = r.RulesetId,
                 EmbeddingId = r.EmbeddingId,
                 ChunkId = r.ChunkId,
                 Relevancy = r.Relevancy

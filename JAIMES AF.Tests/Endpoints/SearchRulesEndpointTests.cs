@@ -129,6 +129,8 @@ public class SearchRulesEndpointTests : EndpointTestBase
             {
                 Text = "Combat rules for melee attacks",
                 DocumentId = "doc1",
+                DocumentName = "Player's Handbook.pdf",
+                RulesetId = "dnd5e",
                 EmbeddingId = "12345",
                 ChunkId = "chunk1",
                 Relevancy = 0.95
@@ -137,6 +139,8 @@ public class SearchRulesEndpointTests : EndpointTestBase
             {
                 Text = "Ranged combat mechanics",
                 DocumentId = "doc2",
+                DocumentName = "DM Guide.pdf",
+                RulesetId = "dnd5e",
                 EmbeddingId = "12346",
                 ChunkId = "chunk2",
                 Relevancy = 0.87
@@ -162,6 +166,8 @@ public class SearchRulesEndpointTests : EndpointTestBase
         payload.Results.ShouldNotBeNull();
         payload.Results.Length.ShouldBe(2);
         payload.Results[0].Text.ShouldBe("Combat rules for melee attacks");
+        payload.Results[0].DocumentName.ShouldBe("Player's Handbook.pdf");
+        payload.Results[0].RulesetId.ShouldBe("dnd5e");
         payload.Results[0].Relevancy.ShouldBe(0.95);
         payload.Results[1].Relevancy.ShouldBe(0.87);
     }
@@ -176,6 +182,8 @@ public class SearchRulesEndpointTests : EndpointTestBase
             {
                 Text = "D&D 5e spell casting rules",
                 DocumentId = "doc3",
+                DocumentName = "Player's Handbook.pdf",
+                RulesetId = "dnd5e",
                 EmbeddingId = "12347",
                 ChunkId = "chunk3",
                 Relevancy = 0.92
@@ -202,6 +210,8 @@ public class SearchRulesEndpointTests : EndpointTestBase
         payload.Results.Length.ShouldBe(1);
         payload.Results[0].Text.ShouldBe("D&D 5e spell casting rules");
         payload.Results[0].DocumentId.ShouldBe("doc3");
+        payload.Results[0].DocumentName.ShouldBe("Player's Handbook.pdf");
+        payload.Results[0].RulesetId.ShouldBe("dnd5e");
     }
 
     [Fact]
@@ -242,11 +252,11 @@ public class SearchRulesEndpointTests : EndpointTestBase
         // Arrange
         SearchRuleResult[] expectedResults = new[]
         {
-            new SearchRuleResult { Text = "Result 1", DocumentId = "doc1", EmbeddingId = "1", ChunkId = "chunk1", Relevancy = 0.99 },
-            new SearchRuleResult { Text = "Result 2", DocumentId = "doc2", EmbeddingId = "2", ChunkId = "chunk2", Relevancy = 0.95 },
-            new SearchRuleResult { Text = "Result 3", DocumentId = "doc3", EmbeddingId = "3", ChunkId = "chunk3", Relevancy = 0.90 },
-            new SearchRuleResult { Text = "Result 4", DocumentId = "doc4", EmbeddingId = "4", ChunkId = "chunk4", Relevancy = 0.85 },
-            new SearchRuleResult { Text = "Result 5", DocumentId = "doc5", EmbeddingId = "5", ChunkId = "chunk5", Relevancy = 0.80 }
+            new SearchRuleResult { Text = "Result 1", DocumentId = "doc1", DocumentName = "Doc1.pdf", RulesetId = "dnd5e", EmbeddingId = "1", ChunkId = "chunk1", Relevancy = 0.99 },
+            new SearchRuleResult { Text = "Result 2", DocumentId = "doc2", DocumentName = "Doc2.pdf", RulesetId = "dnd5e", EmbeddingId = "2", ChunkId = "chunk2", Relevancy = 0.95 },
+            new SearchRuleResult { Text = "Result 3", DocumentId = "doc3", DocumentName = "Doc3.pdf", RulesetId = "dnd5e", EmbeddingId = "3", ChunkId = "chunk3", Relevancy = 0.90 },
+            new SearchRuleResult { Text = "Result 4", DocumentId = "doc4", DocumentName = "Doc4.pdf", RulesetId = "dnd5e", EmbeddingId = "4", ChunkId = "chunk4", Relevancy = 0.85 },
+            new SearchRuleResult { Text = "Result 5", DocumentId = "doc5", DocumentName = "Doc5.pdf", RulesetId = "dnd5e", EmbeddingId = "5", ChunkId = "chunk5", Relevancy = 0.80 }
         };
 
         _mockRulesSearchService

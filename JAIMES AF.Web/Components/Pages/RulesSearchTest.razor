@@ -71,10 +71,12 @@
 				{
 					<MudPaper Class="pa-4 mb-4" Elevation="1">
 						<MudExpansionPanels>
-							<MudExpansionPanel Text="@($"Relevancy: {result.Relevancy:P2} - Document: {result.DocumentId}")">
+							<MudExpansionPanel Text="@($"{result.DocumentName} ({result.RulesetId}) - Relevancy: {result.Relevancy:P2}")">
 								<MudText Typo="Typo.body2" Class="mb-2"><strong>Text:</strong></MudText>
 								<MudText Typo="Typo.body1" Style="white-space: pre-wrap;" Class="mb-3">@result.Text</MudText>
 								
+								<MudText Typo="Typo.body2" Class="mb-2"><strong>Document Name:</strong> @result.DocumentName</MudText>
+								<MudText Typo="Typo.body2" Class="mb-2"><strong>Ruleset:</strong> @result.RulesetId</MudText>
 								<MudText Typo="Typo.body2" Class="mb-2"><strong>Document ID:</strong> @result.DocumentId</MudText>
 								<MudText Typo="Typo.body2" Class="mb-2"><strong>Embedding ID:</strong> @result.EmbeddingId</MudText>
 								<MudText Typo="Typo.body2" Class="mb-2"><strong>Chunk ID:</strong> @result.ChunkId</MudText>

@@ -21,6 +21,8 @@ public record DocumentRuleSearchResult
 {
     public required string Text { get; init; }
     public required string DocumentId { get; init; }
+    public required string DocumentName { get; init; }
+    public required string RulesetId { get; init; }
     public required string EmbeddingId { get; init; }
     public required string ChunkId { get; init; }
     public required double Relevancy { get; init; }
