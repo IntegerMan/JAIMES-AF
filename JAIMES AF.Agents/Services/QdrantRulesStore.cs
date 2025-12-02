@@ -3,6 +3,7 @@ using Grpc.Core;
 using Microsoft.Extensions.Logging;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
+using MattEland.Jaimes.ServiceDefaults;
 
 namespace MattEland.Jaimes.Agents.Services;
 
@@ -12,6 +13,7 @@ public class QdrantRulesStore(
     ActivitySource activitySource) : IQdrantRulesStore
 {
     private const string CollectionName = "rulesets";
+    private const string DocumentEmbeddingsCollectionName = "document-embeddings";
     // Standard embedding dimensions for text-embedding-3-small model
     // This must match between indexing and searching for vectors to be compatible
     private const int EmbeddingDimensions = 1536;
@@ -228,6 +230,94 @@ public class QdrantRulesStore(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to search rules");
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            throw;
+        }
+    }
+
+    public async Task<List<DocumentRuleSearchResult>> SearchDocumentRulesAsync(
+        float[] queryEmbedding,
+        string? rulesetId,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        using Activity? activity = activitySource.StartActivity("QdrantRules.SearchDocumentRules");
+        activity?.SetTag("qdrant.collection", DocumentEmbeddingsCollectionName);
+        activity?.SetTag("qdrant.limit", limit);
+        activity?.SetTag("qdrant.ruleset_id", rulesetId ?? "all");
+
+        try
+        {
+            // Build filter if searching within a specific ruleset
+            Filter? filter = null;
+            if (!string.IsNullOrWhiteSpace(rulesetId))
+            {
+                filter = new Filter
+                {
+                    Must =
+                    {
+                        new Condition
+                        {
+                            Field = new FieldCondition
+                            {
+                                Key = "rulesetId",
+                                Match = new Match { Text = rulesetId }
+                            }
+                        }
+                    }
+                };
+            }
+
+            // Search for similar vectors using Qdrant client
+            IReadOnlyList<ScoredPoint> searchResults = await qdrantClient.SearchAsync(
+                collectionName: DocumentEmbeddingsCollectionName,
+                vector: queryEmbedding,
+                filter: filter,
+                limit: (ulong)limit,
+                cancellationToken: cancellationToken);
+
+            List<DocumentRuleSearchResult> results = new();
+            foreach (ScoredPoint point in searchResults)
+            {
+                try
+                {
+                    string chunkText = point.Payload.GetValueOrDefault("chunkText")?.StringValue ?? string.Empty;
+                    string documentId = point.Payload.GetValueOrDefault("documentId")?.StringValue ?? string.Empty;
+                    string chunkId = point.Payload.GetValueOrDefault("chunkId")?.StringValue ?? string.Empty;
+
+                    if (!string.IsNullOrWhiteSpace(chunkText) && !string.IsNullOrWhiteSpace(documentId) && !string.IsNullOrWhiteSpace(chunkId))
+                    {
+                        // EmbeddingId is the Qdrant point ID - reconstruct from chunkId using the same logic as when storing
+                        // This matches the approach used in QdrantEmbeddingStore since we can't directly access NumId from PointId
+                        ulong qdrantPointId = QdrantUtilities.GeneratePointId(chunkId);
+                        string embeddingId = qdrantPointId.ToString();
+
+                        results.Add(new DocumentRuleSearchResult
+                        {
+                            Text = chunkText,
+                            DocumentId = documentId,
+                            EmbeddingId = embeddingId,
+                            ChunkId = chunkId,
+                            Relevancy = point.Score
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to parse document rule search result, skipping");
+                }
+            }
+
+            // Sort by relevancy descending (Qdrant should already return sorted, but ensure it)
+            results = results.OrderByDescending(r => r.Relevancy).ToList();
+
+            logger.LogInformation("Found {Count} document rules matching query", results.Count);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            return results;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to search document rules");
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             throw;
         }

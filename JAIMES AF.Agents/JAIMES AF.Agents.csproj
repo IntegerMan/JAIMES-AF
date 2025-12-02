@@ -18,6 +18,7 @@
     <ProjectReference Include="..\JAIMES AF.ServiceDefinitions\JAIMES AF.ServiceDefinitions.csproj" />
     <ProjectReference Include="..\JAIMES AF.Tools\JAIMES AF.Tools.csproj" />
     <ProjectReference Include="..\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj" />
+    <ProjectReference Include="..\JAIMES AF.ServiceDefaults\JAIMES AF.ServiceDefaults.csproj" />
   </ItemGroup>
 
 </Project>

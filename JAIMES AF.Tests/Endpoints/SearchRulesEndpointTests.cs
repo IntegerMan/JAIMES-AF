@@ -1,0 +1,301 @@
+using System.Net;
+using System.Net.Http.Json;
+using MattEland.Jaimes.Repositories;
+using MattEland.Jaimes.Repositories.Entities;
+using MattEland.Jaimes.ServiceDefinitions.Requests;
+using MattEland.Jaimes.ServiceDefinitions.Responses;
+using MattEland.Jaimes.ServiceDefinitions.Services;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Moq;
+using RabbitMQ.Client;
+using Shouldly;
+using ApiServiceProgram = MattEland.Jaimes.ApiService.Program;
+
+namespace MattEland.Jaimes.Tests.Endpoints;
+
+public class SearchRulesEndpointTests : EndpointTestBase
+{
+    private Mock<IRulesSearchService> _mockRulesSearchService = null!;
+
+    public override async ValueTask InitializeAsync()
+    {
+        // Create mock before calling base
+        _mockRulesSearchService = new Mock<IRulesSearchService>();
+        
+        // Use a unique database name per test instance
+        string dbName = $"TestDb_{Guid.NewGuid()}";
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        
+        Factory = new WebApplicationFactory<ApiServiceProgram>()
+            .WithWebHostBuilder(builder =>
+            {
+                // Override settings for testing
+                builder.UseSetting("DatabaseProvider", "InMemory");
+                builder.UseSetting("ConnectionStrings:DefaultConnection", dbName);
+                builder.UseSetting("SkipDatabaseInitialization", "true");
+                builder.UseSetting("ConnectionStrings:messaging", "amqp://guest:guest@localhost:5672/");
+                builder.UseSetting("TextGenerationModel:Provider", "Ollama");
+                builder.UseSetting("TextGenerationModel:Endpoint", "http://localhost:11434");
+                builder.UseSetting("TextGenerationModel:Name", "gemma3");
+                builder.UseSetting("EmbeddingModel:Provider", "Ollama");
+                builder.UseSetting("EmbeddingModel:Endpoint", "http://localhost:11434");
+                builder.UseSetting("EmbeddingModel:Name", "nomic-embed-text");
+                
+                // Configure test services
+                builder.ConfigureServices(services =>
+                {
+                    // Replace IRulesSearchService with mock
+                    ServiceDescriptor? descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IRulesSearchService));
+                    if (descriptor != null)
+                    {
+                        services.Remove(descriptor);
+                    }
+                    services.AddSingleton(_mockRulesSearchService.Object);
+                    
+                    // Replace RabbitMQ connection factory with a mock
+                    ServiceDescriptor? connectionFactoryDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IConnectionFactory));
+                    if (connectionFactoryDescriptor != null)
+                    {
+                        services.Remove(connectionFactoryDescriptor);
+                    }
+                    
+                    Mock<IConnectionFactory> mockConnectionFactory = new();
+                    Mock<IConnection> mockConnection = new();
+                    Mock<IChannel> mockChannel = new();
+                    
+                    mockConnectionFactory.Setup(f => f.CreateConnectionAsync(It.IsAny<CancellationToken>()))
+                        .ReturnsAsync(mockConnection.Object);
+                    mockConnection.Setup(c => c.CreateChannelAsync(It.IsAny<CreateChannelOptions>(), It.IsAny<CancellationToken>()))
+                        .ReturnsAsync(mockChannel.Object);
+                    
+                    services.AddSingleton(mockConnectionFactory.Object);
+                    
+                    // Replace IMessagePublisher with a mock
+                    ServiceDescriptor? messagePublisherDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IMessagePublisher));
+                    if (messagePublisherDescriptor != null)
+                    {
+                        services.Remove(messagePublisherDescriptor);
+                    }
+                    
+                    Mock<IMessagePublisher> mockMessagePublisher = new();
+                    services.AddSingleton(mockMessagePublisher.Object);
+                    
+                    // Replace IChatService with a mock
+                    ServiceDescriptor? chatServiceDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IChatService));
+                    if (chatServiceDescriptor != null)
+                    {
+                        services.Remove(chatServiceDescriptor);
+                    }
+                    
+                    Mock<IChatService> mockChatService = new();
+                    mockChatService.Setup(s => s.GenerateInitialMessageAsync(It.IsAny<GenerateInitialMessageRequest>(), It.IsAny<CancellationToken>()))
+                        .ReturnsAsync(new InitialMessageResponse
+                        {
+                            Message = "Welcome to the game!",
+                            ThreadJson = "{}"
+                        });
+                    services.AddSingleton(mockChatService.Object);
+                    
+                    // Replace IChatHistoryService with a mock
+                    ServiceDescriptor? chatHistoryServiceDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IChatHistoryService));
+                    if (chatHistoryServiceDescriptor != null)
+                    {
+                        services.Remove(chatHistoryServiceDescriptor);
+                    }
+                    
+                    Mock<IChatHistoryService> mockChatHistoryService = new();
+                    services.AddSingleton(mockChatHistoryService.Object);
+                });
+            });
+
+        Client = Factory.CreateClient();
+
+        // Seed test data after initialization
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<JaimesDbContext>();
+            await context.Database.EnsureCreatedAsync(ct);
+            await SeedTestDataAsync(context, ct);
+        }
+    }
+
+    [Fact]
+    public async Task SearchRulesEndpoint_WithValidQuery_ReturnsResults()
+    {
+        // Arrange
+        SearchRuleResult[] expectedResults = new[]
+        {
+            new SearchRuleResult
+            {
+                Text = "Combat rules for melee attacks",
+                DocumentId = "doc1",
+                EmbeddingId = "12345",
+                ChunkId = "chunk1",
+                Relevancy = 0.95
+            },
+            new SearchRuleResult
+            {
+                Text = "Ranged combat mechanics",
+                DocumentId = "doc2",
+                EmbeddingId = "12346",
+                ChunkId = "chunk2",
+                Relevancy = 0.87
+            }
+        };
+
+        _mockRulesSearchService
+            .Setup(s => s.SearchRulesDetailedAsync(null, "combat", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SearchRulesResponse { Results = expectedResults });
+
+        SearchRulesRequest request = new()
+        {
+            Query = "combat"
+        };
+
+        // Act
+        HttpResponseMessage response = await Client.PostAsJsonAsync("/rules/search", request, TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        SearchRulesResponse? payload = await response.Content.ReadFromJsonAsync<SearchRulesResponse>(cancellationToken: TestContext.Current.CancellationToken);
+        payload.ShouldNotBeNull();
+        payload.Results.ShouldNotBeNull();
+        payload.Results.Length.ShouldBe(2);
+        payload.Results[0].Text.ShouldBe("Combat rules for melee attacks");
+        payload.Results[0].Relevancy.ShouldBe(0.95);
+        payload.Results[1].Relevancy.ShouldBe(0.87);
+    }
+
+    [Fact]
+    public async Task SearchRulesEndpoint_WithRulesetFilter_ReturnsFilteredResults()
+    {
+        // Arrange
+        SearchRuleResult[] expectedResults = new[]
+        {
+            new SearchRuleResult
+            {
+                Text = "D&D 5e spell casting rules",
+                DocumentId = "doc3",
+                EmbeddingId = "12347",
+                ChunkId = "chunk3",
+                Relevancy = 0.92
+            }
+        };
+
+        _mockRulesSearchService
+            .Setup(s => s.SearchRulesDetailedAsync("dnd5e", "spell casting", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SearchRulesResponse { Results = expectedResults });
+
+        SearchRulesRequest request = new()
+        {
+            Query = "spell casting",
+            RulesetId = "dnd5e"
+        };
+
+        // Act
+        HttpResponseMessage response = await Client.PostAsJsonAsync("/rules/search", request, TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        SearchRulesResponse? payload = await response.Content.ReadFromJsonAsync<SearchRulesResponse>(cancellationToken: TestContext.Current.CancellationToken);
+        payload.ShouldNotBeNull();
+        payload.Results.Length.ShouldBe(1);
+        payload.Results[0].Text.ShouldBe("D&D 5e spell casting rules");
+        payload.Results[0].DocumentId.ShouldBe("doc3");
+    }
+
+    [Fact]
+    public async Task SearchRulesEndpoint_WithEmptyQuery_ReturnsBadRequest()
+    {
+        // Arrange
+        SearchRulesRequest request = new()
+        {
+            Query = ""
+        };
+
+        // Act
+        HttpResponseMessage response = await Client.PostAsJsonAsync("/rules/search", request, TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task SearchRulesEndpoint_WithWhitespaceQuery_ReturnsBadRequest()
+    {
+        // Arrange
+        SearchRulesRequest request = new()
+        {
+            Query = "   "
+        };
+
+        // Act
+        HttpResponseMessage response = await Client.PostAsJsonAsync("/rules/search", request, TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task SearchRulesEndpoint_ReturnsTop5ResultsOrderedByRelevancy()
+    {
+        // Arrange
+        SearchRuleResult[] expectedResults = new[]
+        {
+            new SearchRuleResult { Text = "Result 1", DocumentId = "doc1", EmbeddingId = "1", ChunkId = "chunk1", Relevancy = 0.99 },
+            new SearchRuleResult { Text = "Result 2", DocumentId = "doc2", EmbeddingId = "2", ChunkId = "chunk2", Relevancy = 0.95 },
+            new SearchRuleResult { Text = "Result 3", DocumentId = "doc3", EmbeddingId = "3", ChunkId = "chunk3", Relevancy = 0.90 },
+            new SearchRuleResult { Text = "Result 4", DocumentId = "doc4", EmbeddingId = "4", ChunkId = "chunk4", Relevancy = 0.85 },
+            new SearchRuleResult { Text = "Result 5", DocumentId = "doc5", EmbeddingId = "5", ChunkId = "chunk5", Relevancy = 0.80 }
+        };
+
+        _mockRulesSearchService
+            .Setup(s => s.SearchRulesDetailedAsync(null, "test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SearchRulesResponse { Results = expectedResults });
+
+        SearchRulesRequest request = new()
+        {
+            Query = "test"
+        };
+
+        // Act
+        HttpResponseMessage response = await Client.PostAsJsonAsync("/rules/search", request, TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        SearchRulesResponse? payload = await response.Content.ReadFromJsonAsync<SearchRulesResponse>(cancellationToken: TestContext.Current.CancellationToken);
+        payload.ShouldNotBeNull();
+        payload.Results.Length.ShouldBe(5);
+        
+        // Verify results are ordered by relevancy descending
+        payload.Results[0].Relevancy.ShouldBe(0.99);
+        payload.Results[1].Relevancy.ShouldBe(0.95);
+        payload.Results[2].Relevancy.ShouldBe(0.90);
+        payload.Results[3].Relevancy.ShouldBe(0.85);
+        payload.Results[4].Relevancy.ShouldBe(0.80);
+    }
+
+    [Fact]
+    public async Task SearchRulesEndpoint_WithNoResults_ReturnsEmptyArray()
+    {
+        // Arrange
+        _mockRulesSearchService
+            .Setup(s => s.SearchRulesDetailedAsync(null, "nonexistent", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SearchRulesResponse { Results = Array.Empty<SearchRuleResult>() });
+
+        SearchRulesRequest request = new()
+        {
+            Query = "nonexistent"
+        };
+
+        // Act
+        HttpResponseMessage response = await Client.PostAsJsonAsync("/rules/search", request, TestContext.Current.CancellationToken);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        SearchRulesResponse? payload = await response.Content.ReadFromJsonAsync<SearchRulesResponse>(cancellationToken: TestContext.Current.CancellationToken);
+        payload.ShouldNotBeNull();
+        payload.Results.Length.ShouldBe(0);
+    }
+}
+

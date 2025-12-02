@@ -63,84 +63,31 @@
 		{
 			<MudDivider Class="my-6" />
 
-			<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Search Results</MudText>
+			<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Search Results (@searchResult.Results.Length)</MudText>
 
-			<MudPaper Class="pa-4 mb-4" Elevation="1">
-				<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Answer</MudText>
-				@if (string.IsNullOrWhiteSpace(searchResult.Answer) || searchResult.Answer == "INFO NOT FOUND")
+			@if (searchResult.Results.Length > 0)
+			{
+				@foreach (var result in searchResult.Results)
 				{
-					<MudAlert Severity="Severity.Warning" Class="mb-2">No answer was generated for this query.</MudAlert>
-					<MudText Typo="Typo.body2" Class="text-muted">The search did not return a generated answer. Check the citations and documents below for relevant source material.</MudText>
-				}
-				else
-				{
-					<MudText Typo="Typo.body1" Style="white-space: pre-wrap;">@searchResult.Answer</MudText>
-				}
-			</MudPaper>
-
-			<MudPaper Class="pa-4 mb-4" Elevation="1">
-				<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Citations (@searchResult.Citations.Length)</MudText>
-				@if (searchResult.Citations.Length > 0)
-				{
-					@foreach (var citation in searchResult.Citations)
-					{
-						<MudExpansionPanels Class="mb-2">
-							<MudExpansionPanel Text="@citation.Source">
-								@if (string.IsNullOrWhiteSpace(citation.Text))
-								{
-									<MudText Typo="Typo.body2" Class="text-muted">No text content available for this citation.</MudText>
-								}
-								else
-								{
-									<MudText Typo="Typo.body2" Style="white-space: pre-wrap;">@citation.Text</MudText>
-								}
-								@if (citation.Relevance.HasValue)
-								{
-									<MudText Typo="Typo.caption" Class="mt-2 text-muted">Relevance: @citation.Relevance.Value.ToString("P2")</MudText>
-								}
+					<MudPaper Class="pa-4 mb-4" Elevation="1">
+						<MudExpansionPanels>
+							<MudExpansionPanel Text="@($"Relevancy: {result.Relevancy:P2} - Document: {result.DocumentId}")">
+								<MudText Typo="Typo.body2" Class="mb-2"><strong>Text:</strong></MudText>
+								<MudText Typo="Typo.body1" Style="white-space: pre-wrap;" Class="mb-3">@result.Text</MudText>
+								
+								<MudText Typo="Typo.body2" Class="mb-2"><strong>Document ID:</strong> @result.DocumentId</MudText>
+								<MudText Typo="Typo.body2" Class="mb-2"><strong>Embedding ID:</strong> @result.EmbeddingId</MudText>
+								<MudText Typo="Typo.body2" Class="mb-2"><strong>Chunk ID:</strong> @result.ChunkId</MudText>
+								<MudText Typo="Typo.body2" Class="mb-2"><strong>Relevancy:</strong> @result.Relevancy.ToString("P4")</MudText>
 							</MudExpansionPanel>
 						</MudExpansionPanels>
-					}
+					</MudPaper>
 				}
-				else
-				{
-					<MudText Typo="Typo.body2" Class="text-muted">No citations were found for this search query.</MudText>
-				}
-			</MudPaper>
-
-			<MudPaper Class="pa-4 mb-4" Elevation="1">
-				<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Documents (@searchResult.Documents.Length)</MudText>
-				@if (searchResult.Documents.Length > 0)
-				{
-					@foreach (var document in searchResult.Documents)
-					{
-						<MudExpansionPanels Class="mb-2">
-							<MudExpansionPanel Text="@document.DocumentId">
-								<MudText Typo="Typo.body2" Class="mb-2"><strong>Document ID:</strong> @document.DocumentId</MudText>
-								<MudText Typo="Typo.body2" Class="mb-2"><strong>Index:</strong> @document.Index</MudText>
-								@if (document.Tags.Count > 0)
-								{
-									<MudText Typo="Typo.body2" Class="mb-2"><strong>Tags:</strong></MudText>
-									<ul>
-										@foreach (var tag in document.Tags)
-										{
-											<li><strong>@tag.Key:</strong> @tag.Value</li>
-										}
-									</ul>
-								}
-								else
-								{
-									<MudText Typo="Typo.body2" Class="text-muted">No tags available for this document.</MudText>
-								}
-							</MudExpansionPanel>
-						</MudExpansionPanels>
-					}
-				}
-				else
-				{
-					<MudText Typo="Typo.body2" Class="text-muted">No documents were found for this search query.</MudText>
-				}
-			</MudPaper>
+			}
+			else
+			{
+				<MudAlert Severity="Severity.Info" Class="mb-4">No results were found for this search query.</MudAlert>
+			}
 		}
 	</MudPaper>
 </MudContainer>

@@ -2,22 +2,15 @@ namespace MattEland.Jaimes.ServiceDefinitions.Responses;
 
 public record SearchRulesResponse
 {
-    public required string Answer { get; init; }
-    public required CitationInfo[] Citations { get; init; }
-    public required DocumentInfo[] Documents { get; init; }
+    public required SearchRuleResult[] Results { get; init; }
 }
 
-public record CitationInfo
+public record SearchRuleResult
 {
-    public required string Source { get; init; }
     public required string Text { get; init; }
-    public double? Relevance { get; init; }
-}
-
-public record DocumentInfo
-{
     public required string DocumentId { get; init; }
-    public required string Index { get; init; }
-    public Dictionary<string, string> Tags { get; init; } = new();
+    public required string EmbeddingId { get; init; }
+    public required string ChunkId { get; init; }
+    public required double Relevancy { get; init; }
 }
 

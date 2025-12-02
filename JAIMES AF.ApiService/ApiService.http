@@ -45,3 +45,39 @@ Content-Type: application/json
 ### Backfill unprocessed documents for embedding
 POST {{ApiService_HostAddress}}/documents/backfill-embeddings
 Accept: application/json
+
+### Search Rules - Basic query
+# @name SearchRulesBasic
+POST {{ApiService_HostAddress}}/rules/search
+Content-Type: application/json
+
+{
+  "query": "combat rules"
+}
+
+### Search Rules - With ruleset filter
+# @name SearchRulesWithRuleset
+POST {{ApiService_HostAddress}}/rules/search
+Content-Type: application/json
+
+{
+  "query": "spell casting",
+  "rulesetId": "dnd5e"
+}
+
+### Search Rules - Another query
+# @name SearchRulesAnother
+POST {{ApiService_HostAddress}}/rules/search
+Content-Type: application/json
+
+{
+  "query": "character creation"
+}
+
+### Search Rules - Empty query (should fail)
+POST {{ApiService_HostAddress}}/rules/search
+Content-Type: application/json
+
+{
+  "query": ""
+}

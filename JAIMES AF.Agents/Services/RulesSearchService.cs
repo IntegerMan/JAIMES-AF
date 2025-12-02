@@ -111,7 +111,7 @@ public class RulesSearchService : IRulesSearchService
         {
             activity.SetTag("ruleset.id", rulesetId ?? "all");
             activity.SetTag("search.query", query);
-            activity.SetTag("search.limit", 10);
+            activity.SetTag("search.limit", 5);
             activity.SetTag("search.scope", string.IsNullOrWhiteSpace(rulesetId) ? "all_rulesets" : "single_ruleset");
         }
         
@@ -121,11 +121,11 @@ public class RulesSearchService : IRulesSearchService
             GeneratedEmbeddings<Embedding<float>> embeddings = await _embeddingGenerator.GenerateAsync([query], cancellationToken: cancellationToken);
             float[] queryEmbedding = embeddings[0].Vector.ToArray();
             
-            // Search for similar rules in Qdrant
-            List<RuleSearchResult> results = await _rulesStore.SearchRulesAsync(
+            // Search for similar document rules in Qdrant (document-embeddings collection)
+            List<DocumentRuleSearchResult> results = await _rulesStore.SearchDocumentRulesAsync(
                 queryEmbedding,
                 rulesetId,
-                limit: 10,
+                limit: 5,
                 cancellationToken);
             
             _logger.LogInformation("Search found {Count} results with filter: {Filter}", 
@@ -138,92 +138,22 @@ public class RulesSearchService : IRulesSearchService
                 activity.SetStatus(ActivityStatusCode.Ok);
             }
             
-            // Convert results to response format
-            List<CitationInfo> citations = [];
-            List<DocumentInfo> documents = [];
-            HashSet<string> seenRuleIds = [];
-            List<string> answerTexts = [];
-            
-            foreach (RuleSearchResult result in results)
+            // Convert to response format - results are already sorted by relevancy descending
+            SearchRuleResult[] searchResults = results.Select(r => new SearchRuleResult
             {
-                // Build citation
-                string source = string.IsNullOrWhiteSpace(result.Title) 
-                    ? $"Rule {result.RuleId}" 
-                    : result.Title;
-                
-                string text = string.IsNullOrWhiteSpace(result.Title) 
-                    ? result.Content 
-                    : $"{result.Title}\n\n{result.Content}";
-                
-                citations.Add(new CitationInfo
-                {
-                    Source = source,
-                    Text = text,
-                    Relevance = result.Score
-                });
-                
-                answerTexts.Add(text);
-                
-                // Build document info (only once per rule)
-                if (!seenRuleIds.Contains(result.RuleId))
-                {
-                    seenRuleIds.Add(result.RuleId);
-                    
-                    Dictionary<string, string> tags = new()
-                    {
-                        { "rulesetId", result.RulesetId },
-                        { "ruleId", result.RuleId }
-                    };
-                    
-                    if (!string.IsNullOrWhiteSpace(result.Title))
-                    {
-                        tags["title"] = result.Title;
-                    }
-                    
-                    documents.Add(new DocumentInfo
-                    {
-                        DocumentId = result.RuleId,
-                        Index = "rulesets",
-                        Tags = tags
-                    });
-                }
-            }
-            
-            // Build answer text from results
-            string answerText;
-            if (answerTexts.Count > 0)
-            {
-                answerText = string.Join("\n\n---\n\n", answerTexts);
-            }
-            else if (citations.Count > 0 || documents.Count > 0)
-            {
-                answerText = "Relevant sources were found, but no text content was available. See citations and documents below.";
-            }
-            else
-            {
-                answerText = "No relevant rules found for your query. No matching documents or citations were found.";
-            }
+                Text = r.Text,
+                DocumentId = r.DocumentId,
+                EmbeddingId = r.EmbeddingId,
+                ChunkId = r.ChunkId,
+                Relevancy = r.Relevancy
+            }).ToArray();
 
             SearchRulesResponse response = new()
             {
-                Answer = answerText,
-                Citations = citations.ToArray(),
-                Documents = documents.ToArray()
+                Results = searchResults
             };
 
-            _logger.LogInformation(
-                "Search completed - Results: {ResultCount}, Citations: {CitationCount}, Documents: {DocumentCount}", 
-                results.Count, citations.Count, documents.Count);
-            
-            if (citations.Count > 0)
-            {
-                _logger.LogInformation("Citation sources found: {Sources}", 
-                    string.Join(", ", citations.Select(c => c.Source)));
-            }
-            else
-            {
-                _logger.LogWarning("No citations found in search results for query: {Query}", query);
-            }
+            _logger.LogInformation("Search completed - Results: {ResultCount}", results.Count);
             
             return response;
         }
