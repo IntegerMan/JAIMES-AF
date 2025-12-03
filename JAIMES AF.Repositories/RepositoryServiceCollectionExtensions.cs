@@ -36,13 +36,13 @@ public static class RepositoryServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        string? connectionString = configuration.GetConnectionString("jaimes-db")
+        string? connectionString = configuration.GetConnectionString("postgres-db")
                            ?? configuration.GetConnectionString("DefaultConnection");
 
         if (string.IsNullOrWhiteSpace(connectionString))
         {
             throw new InvalidOperationException(
-                "Database connection string is required. Expected 'jaimes-db' or 'DefaultConnection' in ConnectionStrings configuration.");
+                "Database connection string is required. Expected 'postgres-db' or 'DefaultConnection' in ConnectionStrings configuration.");
         }
 
         services.AddDbContext<JaimesDbContext>(options =>

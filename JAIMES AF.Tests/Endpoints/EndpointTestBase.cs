@@ -28,7 +28,7 @@ public abstract class EndpointTestBase : IAsyncLifetime
                 builder.UseSetting("SkipDatabaseInitialization", "true");
                 // Provide a dummy connection string to satisfy AddJaimesRepositories validation
                 // This will be replaced with InMemory in ConfigureServices
-                builder.UseSetting("ConnectionStrings:jaimes-db", "Host=localhost;Database=test;Username=test;Password=test");
+                builder.UseSetting("ConnectionStrings:postgres-db", "Host=localhost;Database=test;Username=test;Password=test");
                 // Provide a mock messaging connection string for RabbitMQ
                 builder.UseSetting("ConnectionStrings:messaging", "amqp://guest:guest@localhost:5672/");
                 // Provide default Ollama configuration for text generation and embeddings

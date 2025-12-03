@@ -49,7 +49,7 @@ public class RepositoryConfigurationTests
         ServiceCollection services = new();
         Dictionary<string, string?> configValues = new()
         {
-            { "ConnectionStrings:jaimes-db", "Host=localhost;Database=test;Username=test;Password=test" }
+            { "ConnectionStrings:postgres-db", "Host=localhost;Database=test;Username=test;Password=test" }
         };
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(configValues)
@@ -103,18 +103,18 @@ public class RepositoryConfigurationTests
         });
 
         exception.Message.ShouldContain("connection string is required");
-        exception.Message.ShouldContain("jaimes-db");
+        exception.Message.ShouldContain("postgres-db");
         exception.Message.ShouldContain("DefaultConnection");
     }
 
     [Fact]
-    public void AddJaimesRepositories_PrefersJaimesDbConnectionString_OverDefaultConnection()
+    public void AddJaimesRepositories_PrefersPostgresDbConnectionString_OverDefaultConnection()
     {
         // Arrange
         ServiceCollection services = new();
         Dictionary<string, string?> configValues = new()
         {
-            { "ConnectionStrings:jaimes-db", "Host=jaimes-host;Database=jaimes;Username=jaimes;Password=jaimes" },
+            { "ConnectionStrings:postgres-db", "Host=postgres-host;Database=postgres;Username=postgres;Password=postgres" },
             { "ConnectionStrings:DefaultConnection", "Host=default-host;Database=default;Username=default;Password=default" }
         };
         IConfiguration configuration = new ConfigurationBuilder()
@@ -129,7 +129,7 @@ public class RepositoryConfigurationTests
         // Assert
         context.ShouldNotBeNull();
         context.Database.IsNpgsql().ShouldBeTrue();
-        // The connection string should use the jaimes-db connection (we can't easily verify the exact connection string,
+        // The connection string should use the postgres-db connection (we can't easily verify the exact connection string,
         // but we've verified it doesn't throw and creates a valid context)
     }
 

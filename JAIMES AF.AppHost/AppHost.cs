@@ -7,7 +7,7 @@ IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(ar
 var postgres = builder.AddPostgres("postgres")
     .WithImage("pgvector/pgvector", tag:"pg17-trixie")
     .WithIconName("DatabaseSwitch")
-    .WithDataVolume("jaimes-pg17-vector", isReadOnly: false);
+    .WithDataVolume("jaimes-pg17-vectordb", isReadOnly: false);
 
 postgres.WithPgAdmin(admin =>
  {
@@ -22,7 +22,8 @@ postgres.WithPgAdmin(admin =>
  });
 
 var postgresdb = postgres.AddDatabase("postgres-db", "postgres")
-    .WithCreationScript("CREATE EXTENSION IF NOT EXISTS vector;"); // NOTE: Currently erroring, but needed for pgvector support
+    .WithCreationScript("CREATE EXTENSION IF NOT EXISTS vector;");
+
 
 // Add Ollama with nomic-embed-text model for embeddings
 IResourceBuilder<OllamaResource> ollama = builder.AddOllama("ollama-models")
@@ -42,9 +43,6 @@ IResourceBuilder<QdrantServerResource> qdrant = builder.AddQdrant("qdrant-embedd
     .WithIconName("DatabaseSearch")
     .WithLifetime(ContainerLifetime.Persistent)
     .WithDataVolume();
-
-// Use PostgreSQL database for relational data
-var jaimesDb = postgres.AddDatabase("jaimes-db", "jaimes");
 
 // Add MongoDB for document storage
 IResourceBuilder<MongoDBServerResource> mongo = builder.AddMongoDB("mongo")
@@ -91,7 +89,7 @@ IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIME
     })
     .WithReference(chatModel)
     .WithReference(embedModel)
-    .WithReference(jaimesDb)
+    .WithReference(postgresdb)
     .WithReference(qdrant)
     .WithReference(lavinmq)
     .WithReference(mongoDb)
