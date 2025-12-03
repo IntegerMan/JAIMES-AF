@@ -44,16 +44,6 @@ IResourceBuilder<QdrantServerResource> qdrant = builder.AddQdrant("qdrant-embedd
     .WithLifetime(ContainerLifetime.Persistent)
     .WithDataVolume();
 
-// Add MongoDB for document storage
-IResourceBuilder<MongoDBServerResource> mongo = builder.AddMongoDB("mongo")
-    .WithIconName("BookDatabase")
-    .WithMongoExpress(exp => exp.WithIconName("DocumentAdd"))
-    .WithLifetime(ContainerLifetime.Persistent)
-    .WithDataVolume();
-
-IResourceBuilder<MongoDBDatabaseResource> mongoDb = mongo.AddDatabase("documents")
-    .WithIconName("DocumentData");
-
 // Add LavinMQ for messaging (wire-compatible with RabbitMQ)
 var lavinmq = builder.AddLavinMQ("messaging")
     .WithIconName("DocumentQueue")
@@ -65,6 +55,9 @@ var lavinmq = builder.AddLavinMQ("messaging")
         u.Urls.Add(new() { Url = "http://localhost:15672/queues", DisplayText = "📬 Queues" });
         u.Urls.Add(new() { Url = "http://localhost:15672/consumers", DisplayText = "👥 Consumers" });
     });
+
+// Note: MongoDB has been replaced with PostgreSQL + JSONB for document storage
+// All document data (metadata, cracked documents, and chunks) are now stored in PostgreSQL
 
 IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIMES_AF_ApiService>("jaimes-api")
     .WithIconName("DocumentGlobe", IconVariant.Regular)
@@ -92,12 +85,10 @@ IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIME
     .WithReference(postgresdb)
     .WithReference(qdrant)
     .WithReference(lavinmq)
-    .WithReference(mongoDb)
     .WaitFor(qdrant)
     .WaitFor(ollama)
     .WaitFor(postgres)
-    .WaitFor(lavinmq)
-    .WaitFor(mongo);
+    .WaitFor(lavinmq);
 
 builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")
     .WithIconName("GameChat")
@@ -135,25 +126,25 @@ builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")
 builder.AddProject<Projects.JAIMES_AF_Workers_DocumentCrackerWorker>("document-cracker-worker")
     .WithIconName("DocumentTextExtract")
     .WithReference(lavinmq)
-    .WithReference(mongoDb)
+    .WithReference(postgresdb)
     .WaitFor(lavinmq)
-    .WaitFor(mongo);
+    .WaitFor(postgres);
 
 builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChangeDetector>("document-change-detector")
     .WithIconName("DocumentSearch")
     .WithReference(lavinmq)
-    .WithReference(mongoDb)
+    .WithReference(postgresdb)
     .WaitFor(lavinmq)
-    .WaitFor(mongo);
+    .WaitFor(postgres);
 
 builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChunking>("document-chunking-worker")
     .WithIconName("DocumentSplit")
     .WithReference(lavinmq)
-    .WithReference(mongoDb)
+    .WithReference(postgresdb)
     .WithReference(qdrant)
     .WithReference(embedModel)
     .WaitFor(lavinmq)
-    .WaitFor(mongo)
+    .WaitFor(postgres)
     .WaitFor(qdrant)
     .WaitFor(ollama)
     .WithEnvironment(context =>
@@ -175,11 +166,11 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChunking>("document-chunki
 builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbedding>("document-embedding-worker")
     .WithIconName("DocumentEmbed")
     .WithReference(lavinmq)
-    .WithReference(mongoDb)
+    .WithReference(postgresdb)
     .WithReference(qdrant)
     .WithReference(embedModel)
     .WaitFor(lavinmq)
-    .WaitFor(mongo)
+    .WaitFor(postgres)
     .WaitFor(qdrant)
     .WaitFor(ollama)
     .WithEnvironment(context =>

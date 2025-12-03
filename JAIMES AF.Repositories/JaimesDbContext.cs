@@ -11,6 +11,11 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
     public DbSet<Scenario> Scenarios { get; set; } = null!;
     public DbSet<Ruleset> Rulesets { get; set; } = null!;
     public DbSet<ChatHistory> ChatHistories { get; set; } = null!;
+    
+    // Document storage entities (replacing MongoDB)
+    public DbSet<DocumentMetadata> DocumentMetadata { get; set; } = null!;
+    public DbSet<CrackedDocument> CrackedDocuments { get; set; } = null!;
+    public DbSet<DocumentChunk> DocumentChunks { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -119,6 +124,54 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 .WithMany()
                 .HasForeignKey(ch => ch.MessageId)
                 .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // Document storage entity configurations
+        modelBuilder.Entity<DocumentMetadata>(entity =>
+        {
+            entity.HasKey(dm => dm.Id);
+            entity.Property(dm => dm.FilePath).IsRequired();
+            entity.Property(dm => dm.Hash).IsRequired();
+            entity.Property(dm => dm.LastScanned).IsRequired();
+            entity.Property(dm => dm.DocumentKind).IsRequired();
+            entity.Property(dm => dm.RulesetId).IsRequired();
+            
+            // Create unique index on FilePath for fast lookups
+            entity.HasIndex(dm => dm.FilePath).IsUnique();
+        });
+
+        modelBuilder.Entity<CrackedDocument>(entity =>
+        {
+            entity.HasKey(cd => cd.Id);
+            entity.Property(cd => cd.FilePath).IsRequired();
+            entity.Property(cd => cd.FileName).IsRequired();
+            entity.Property(cd => cd.Content).IsRequired();
+            entity.Property(cd => cd.CrackedAt).IsRequired();
+            entity.Property(cd => cd.DocumentKind).IsRequired();
+            entity.Property(cd => cd.RulesetId).IsRequired();
+            
+            // Create unique index on FilePath for fast lookups
+            entity.HasIndex(cd => cd.FilePath).IsUnique();
+        });
+
+        modelBuilder.Entity<DocumentChunk>(entity =>
+        {
+            entity.HasKey(dc => dc.Id);
+            entity.Property(dc => dc.ChunkId).IsRequired();
+            entity.Property(dc => dc.DocumentId).IsRequired();
+            entity.Property(dc => dc.ChunkText).IsRequired();
+            entity.Property(dc => dc.CreatedAt).IsRequired();
+            
+            // Create unique index on ChunkId for fast lookups
+            entity.HasIndex(dc => dc.ChunkId).IsUnique();
+            
+            // Create index on DocumentId for efficient queries
+            entity.HasIndex(dc => dc.DocumentId);
+            
+            entity.HasOne(dc => dc.CrackedDocument)
+                .WithMany()
+                .HasForeignKey(dc => dc.DocumentId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Seed data - use lowercase ids for new defaults

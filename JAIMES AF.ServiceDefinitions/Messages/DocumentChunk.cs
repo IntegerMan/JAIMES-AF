@@ -1,31 +1,18 @@
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
-
 namespace MattEland.Jaimes.ServiceDefinitions.Messages;
 
+/// <summary>
+/// Legacy model - replaced by EF Core entity in JAIMES AF.Repositories.Entities.DocumentChunk
+/// This class is kept for backward compatibility with messages.
+/// </summary>
+[Obsolete("Use MattEland.Jaimes.Repositories.Entities.DocumentChunk instead")]
 public class DocumentChunk
 {
-    [BsonId]
-    [BsonRepresentation(BsonType.ObjectId)]
     public string? Id { get; set; }
-
-    [BsonElement("chunkId")]
     public string ChunkId { get; set; } = string.Empty;
-
-    [BsonElement("documentId")]
     public string DocumentId { get; set; } = string.Empty;
-
-    [BsonElement("chunkText")]
     public string ChunkText { get; set; } = string.Empty;
-
-    [BsonElement("chunkIndex")]
     public int ChunkIndex { get; set; }
-
-    [BsonElement("createdAt")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    [BsonElement("qdrantPointId")]
-    [BsonRepresentation(BsonType.String)]
     public string? QdrantPointId { get; set; }
 }
 

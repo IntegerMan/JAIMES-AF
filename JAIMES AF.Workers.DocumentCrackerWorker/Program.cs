@@ -5,6 +5,7 @@ using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Workers.DocumentCrackerWorker.Configuration;
 using MattEland.Jaimes.Workers.DocumentCrackerWorker.Consumers;
 using MattEland.Jaimes.Workers.DocumentCrackerWorker.Services;
+using MattEland.Jaimes.Repositories;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -44,8 +45,8 @@ DocumentCrackerWorkerOptions options = builder.Configuration.GetSection("Documen
 
 builder.Services.AddSingleton(options);
 
-// Add MongoDB client integration
-builder.AddMongoDBClient("documents");
+// Add PostgreSQL with EF Core
+builder.Services.AddJaimesRepositories(builder.Configuration);
 
 // Register services
 builder.Services.AddSingleton<IPdfTextExtractor, PdfPigTextExtractor>();

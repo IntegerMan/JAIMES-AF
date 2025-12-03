@@ -3,13 +3,15 @@ using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
 using MattEland.Jaimes.Workers.DocumentChunking.Models;
+using MattEland.Jaimes.Repositories;
+using MattEland.Jaimes.Repositories.Entities;
 using Microsoft.Extensions.Logging;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 
 namespace MattEland.Jaimes.Workers.DocumentChunking.Services;
 
 public class DocumentChunkingService(
-    IMongoClient mongoClient,
+    JaimesDbContext dbContext,
     ITextChunkingStrategy chunkingStrategy,
     IQdrantEmbeddingStore qdrantStore,
     IMessagePublisher messagePublisher,
@@ -28,8 +30,14 @@ public class DocumentChunkingService(
             logger.LogDebug("Processing document for chunking: {DocumentId} ({FileName})", 
                 message.DocumentId, message.FileName);
 
-            // Step 1: Download document content from MongoDB
-            string documentContent = await DownloadDocumentContentAsync(message.DocumentId, cancellationToken);
+            // Parse document ID as integer
+            if (!int.TryParse(message.DocumentId, out int documentId))
+            {
+                throw new InvalidOperationException($"Invalid document ID: {message.DocumentId}");
+            }
+
+            // Step 1: Download document content from PostgreSQL
+            string documentContent = await DownloadDocumentContentAsync(documentId, cancellationToken);
             activity?.SetTag("chunking.content_length", documentContent.Length);
 
             if (string.IsNullOrWhiteSpace(documentContent))
@@ -66,14 +74,14 @@ public class DocumentChunkingService(
                 logger.LogError("Document {DocumentId} produced no chunks after chunking. This is a failure condition.", 
                     message.DocumentId);
                 activity?.SetStatus(ActivityStatusCode.Error, "No chunks produced");
-            throw new InvalidOperationException($"Document {message.DocumentId} produced no chunks after chunking. This may indicate a problem with the chunking strategy or document content.");
+                throw new InvalidOperationException($"Document {message.DocumentId} produced no chunks after chunking. This may indicate a problem with the chunking strategy or document content.");
             }
 
-            // Step 3: Store chunks in MongoDB
-            await StoreChunksAsync(chunks, message.DocumentId, cancellationToken);
+            // Step 3: Store chunks in PostgreSQL
+            await StoreChunksAsync(chunks, documentId, cancellationToken);
 
             // Step 4: Update CrackedDocument with TotalChunks
-            await UpdateDocumentChunkCountAsync(message.DocumentId, chunks.Count, cancellationToken);
+            await UpdateDocumentChunkCountAsync(documentId, chunks.Count, cancellationToken);
 
             // Step 5: Store chunks with embeddings in Qdrant, or queue chunks without embeddings for embedding generation
             int storedCount = 0;
@@ -146,7 +154,7 @@ public class DocumentChunkingService(
             }
 
             // Step 6: Mark document as processed after all chunks are stored
-            await MarkDocumentAsProcessedAsync(message.DocumentId, cancellationToken);
+            await MarkDocumentAsProcessedAsync(documentId, cancellationToken);
 
             activity?.SetTag("chunking.stored_chunks", storedCount);
             activity?.SetTag("chunking.queued_chunks", queuedCount);
@@ -162,23 +170,19 @@ public class DocumentChunkingService(
         }
     }
 
-    private async Task<string> DownloadDocumentContentAsync(string documentId, CancellationToken cancellationToken)
+    private async Task<string> DownloadDocumentContentAsync(int documentId, CancellationToken cancellationToken)
     {
         using Activity? activity = activitySource.StartActivity("DocumentChunking.DownloadDocument");
         activity?.SetTag("chunking.document_id", documentId);
 
         try
         {
-            // Get database from connection string - the database name is "documents" as configured in AppHost
-            IMongoDatabase mongoDatabase = mongoClient.GetDatabase("documents");
-            IMongoCollection<CrackedDocument> collection = mongoDatabase.GetCollection<CrackedDocument>("crackedDocuments");
-
-            FilterDefinition<CrackedDocument> filter = Builders<CrackedDocument>.Filter.Eq(d => d.Id, documentId);
-            CrackedDocument? document = await collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
+            CrackedDocument? document = await dbContext.CrackedDocuments
+                .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken);
 
             if (document == null)
             {
-                throw new InvalidOperationException($"Document with ID {documentId} not found in MongoDB");
+                throw new InvalidOperationException($"Document with ID {documentId} not found in PostgreSQL");
             }
 
             logger.LogDebug("Downloaded document content for {DocumentId} ({Length} characters)", 
@@ -189,13 +193,13 @@ public class DocumentChunkingService(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to download document {DocumentId} from MongoDB", documentId);
+            logger.LogError(ex, "Failed to download document {DocumentId} from PostgreSQL", documentId);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             throw;
         }
     }
 
-    private async Task StoreChunksAsync(List<TextChunk> chunks, string documentId, CancellationToken cancellationToken)
+    private async Task StoreChunksAsync(List<TextChunk> chunks, int documentId, CancellationToken cancellationToken)
     {
         using Activity? activity = activitySource.StartActivity("DocumentChunking.StoreChunks");
         activity?.SetTag("chunking.document_id", documentId);
@@ -203,42 +207,37 @@ public class DocumentChunkingService(
 
         try
         {
-            IMongoDatabase mongoDatabase = mongoClient.GetDatabase("documents");
-            IMongoCollection<DocumentChunk> collection = mongoDatabase.GetCollection<DocumentChunk>("documentChunks");
-
-            // Ensure indexes exist
-            await collection.Indexes.CreateOneAsync(
-                new CreateIndexModel<DocumentChunk>(
-                    Builders<DocumentChunk>.IndexKeys.Ascending(x => x.DocumentId),
-                    new CreateIndexOptions { Name = "idx_documentId" }),
-                cancellationToken: cancellationToken);
-
-            await collection.Indexes.CreateOneAsync(
-                new CreateIndexModel<DocumentChunk>(
-                    Builders<DocumentChunk>.IndexKeys.Ascending(x => x.ChunkId),
-                    new CreateIndexOptions { Unique = true, Name = "idx_chunkId_unique" }),
-                cancellationToken: cancellationToken);
-
-            // Store chunks (using upsert to handle duplicates)
-            // Use UpdateOneAsync instead of ReplaceOneAsync to avoid _id: null issues
+            // Store chunks (using upsert logic to handle duplicates)
             foreach (TextChunk chunk in chunks)
             {
-                FilterDefinition<DocumentChunk> filter = Builders<DocumentChunk>.Filter.Eq(c => c.ChunkId, chunk.Id);
-                UpdateDefinition<DocumentChunk> update = Builders<DocumentChunk>.Update
-                    .Set(c => c.ChunkId, chunk.Id)
-                    .Set(c => c.DocumentId, documentId)
-                    .Set(c => c.ChunkText, chunk.Text)
-                    .Set(c => c.ChunkIndex, chunk.Index)
-                    .SetOnInsert(c => c.CreatedAt, DateTime.UtcNow);
+                DocumentChunk? existingChunk = await dbContext.DocumentChunks
+                    .FirstOrDefaultAsync(c => c.ChunkId == chunk.Id, cancellationToken);
 
-                await collection.UpdateOneAsync(
-                    filter,
-                    update,
-                    new UpdateOptions { IsUpsert = true },
-                    cancellationToken);
+                if (existingChunk != null)
+                {
+                    // Update existing chunk
+                    existingChunk.DocumentId = documentId;
+                    existingChunk.ChunkText = chunk.Text;
+                    existingChunk.ChunkIndex = chunk.Index;
+                }
+                else
+                {
+                    // Create new chunk
+                    DocumentChunk newChunk = new()
+                    {
+                        ChunkId = chunk.Id,
+                        DocumentId = documentId,
+                        ChunkText = chunk.Text,
+                        ChunkIndex = chunk.Index,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    dbContext.DocumentChunks.Add(newChunk);
+                }
             }
 
-            logger.LogDebug("Stored {Count} chunks in MongoDB for document {DocumentId}", 
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            logger.LogDebug("Stored {Count} chunks in PostgreSQL for document {DocumentId}", 
                 chunks.Count, documentId);
 
             activity?.SetStatus(ActivityStatusCode.Ok);
@@ -251,7 +250,7 @@ public class DocumentChunkingService(
         }
     }
 
-    private async Task UpdateDocumentChunkCountAsync(string documentId, int totalChunks, CancellationToken cancellationToken)
+    private async Task UpdateDocumentChunkCountAsync(int documentId, int totalChunks, CancellationToken cancellationToken)
     {
         using Activity? activity = activitySource.StartActivity("DocumentChunking.UpdateChunkCount");
         activity?.SetTag("chunking.document_id", documentId);
@@ -259,22 +258,19 @@ public class DocumentChunkingService(
 
         try
         {
-            IMongoDatabase mongoDatabase = mongoClient.GetDatabase("documents");
-            IMongoCollection<CrackedDocument> collection = mongoDatabase.GetCollection<CrackedDocument>("crackedDocuments");
+            CrackedDocument? document = await dbContext.CrackedDocuments
+                .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken);
 
-            FilterDefinition<CrackedDocument> filter = Builders<CrackedDocument>.Filter.Eq(d => d.Id, documentId);
-            UpdateDefinition<CrackedDocument> update = Builders<CrackedDocument>.Update
-                .Set(d => d.TotalChunks, totalChunks)
-                .Set(d => d.ProcessedChunkCount, 0); // Reset processed count when re-chunking
-
-            UpdateResult result = await collection.UpdateOneAsync(filter, update, cancellationToken: cancellationToken);
-
-            if (result.MatchedCount == 0)
+            if (document == null)
             {
                 logger.LogWarning("Document {DocumentId} not found when updating chunk count", documentId);
             }
             else
             {
+                document.TotalChunks = totalChunks;
+                document.ProcessedChunkCount = 0; // Reset processed count when re-chunking
+                await dbContext.SaveChangesAsync(cancellationToken);
+                
                 logger.LogDebug("Updated document {DocumentId} with TotalChunks={TotalChunks}", 
                     documentId, totalChunks);
             }
@@ -289,28 +285,25 @@ public class DocumentChunkingService(
         }
     }
 
-    private async Task MarkDocumentAsProcessedAsync(string documentId, CancellationToken cancellationToken)
+    private async Task MarkDocumentAsProcessedAsync(int documentId, CancellationToken cancellationToken)
     {
         using Activity? activity = activitySource.StartActivity("DocumentChunking.MarkProcessed");
         activity?.SetTag("chunking.document_id", documentId);
 
         try
         {
-            IMongoDatabase mongoDatabase = mongoClient.GetDatabase("documents");
-            IMongoCollection<CrackedDocument> collection = mongoDatabase.GetCollection<CrackedDocument>("crackedDocuments");
+            CrackedDocument? document = await dbContext.CrackedDocuments
+                .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken);
 
-            FilterDefinition<CrackedDocument> filter = Builders<CrackedDocument>.Filter.Eq(d => d.Id, documentId);
-            UpdateDefinition<CrackedDocument> update = Builders<CrackedDocument>.Update
-                .Set(d => d.IsProcessed, true);
-
-            UpdateResult result = await collection.UpdateOneAsync(filter, update, cancellationToken: cancellationToken);
-
-            if (result.MatchedCount == 0)
+            if (document == null)
             {
                 logger.LogWarning("Document {DocumentId} not found when marking as processed", documentId);
             }
             else
             {
+                document.IsProcessed = true;
+                await dbContext.SaveChangesAsync(cancellationToken);
+                
                 logger.LogDebug("Marked document {DocumentId} as processed", documentId);
             }
 
@@ -364,4 +357,3 @@ public class DocumentChunkingService(
         return null;
     }
 }
-

@@ -4,6 +4,7 @@ using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Workers.DocumentChangeDetector.Configuration;
 using MattEland.Jaimes.Workers.DocumentChangeDetector.Services;
+using MattEland.Jaimes.Repositories;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -48,8 +49,8 @@ if (string.IsNullOrWhiteSpace(options.ContentDirectory))
 
 builder.Services.AddSingleton(options);
 
-// Add MongoDB client integration
-builder.AddMongoDBClient("documents");
+// Add PostgreSQL with EF Core
+builder.Services.AddJaimesRepositories(builder.Configuration);
 
 // Register document processing services
 builder.Services.AddSingleton<IDirectoryScanner, DirectoryScanner>();
