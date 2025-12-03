@@ -104,7 +104,7 @@ sequenceDiagram
 
 ## Database Configuration
 
-- **PostgreSQL (default):** The Aspire AppHost automatically provisions a PostgreSQL database with pgvector support. The connection string is provided by Aspire via the `jaimes-db` connection name. Migrations are applied automatically on startup with seed data (D&D 5e ruleset, default player, and island test scenario).
+- **PostgreSQL (default):** The Aspire AppHost automatically provisions a PostgreSQL database with pgvector support. The connection string is provided by Aspire via the `postgres-db` connection name. Migrations are applied automatically on startup with seed data (D&D 5e ruleset, default player, and island test scenario).
 - **Local Development:** For local development without Aspire, a fallback connection string is provided in `appsettings.Development.json` pointing to `localhost:5432`.
 - **Production:** In production, the connection string should be provided via environment variables or a secure configuration provider (Azure App Configuration, Key Vault, etc.).
 
