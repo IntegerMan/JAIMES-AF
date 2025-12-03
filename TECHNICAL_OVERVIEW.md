@@ -9,7 +9,7 @@ Use this guide to understand the big rocks, discover where specific responsibili
 
 - **Presentation:** `JAIMES AF.Web` (Blazor Server) + FastEndpoints APIs in `JAIMES AF.ApiService`
 - **Business Logic:** `JAIMES AF.Services` for orchestration, validation, mapping, and AI contracts
-- **Persistence:** `JAIMES AF.Repositories` (EF Core, SQLite by default) with migrations under `Migrations/`
+- **Persistence:** `JAIMES AF.Repositories` (EF Core, PostgreSQL by default) with migrations under `Migrations/`
 - **Intelligence & Tools:** `JAIMES AF.Agents`, `JAIMES AF.Tools`, plus document-oriented workers
 - **Background Pipelines:** `JAIMES AF.Workers.*` for scanning, cracking, chunking, embedding, and change detection
 - **Hosting & Defaults:** `JAIMES AF.AppHost` for Aspire orchestration and `JAIMES AF.ServiceDefaults` for shared wiring
@@ -23,7 +23,7 @@ graph TD
     B --> C[Services Layer\n(JAIMES AF.Services)]
     C --> D[Repositories + DbContext\n(JAIMES AF.Repositories)]
     C --> E[Rules Search & Agents\n(JAIMES AF.Agents / Tools)]
-    D --> F[(SQLite / SQL Server)]
+    D --> F[(PostgreSQL / SQL Server)]
     C --> G[(Redis Stack / Kernel Memory)]
     G --> H[Document Workers\n(scanner, cracker, chunker, embedder)]
     H --> F

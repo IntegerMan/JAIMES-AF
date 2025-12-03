@@ -27,7 +27,6 @@
     <PackageReference Include="Aspire.Hosting.PostgreSQL" />
     <PackageReference Include="Aspire.Hosting.Qdrant" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.Ollama" />
-    <PackageReference Include="CommunityToolkit.Aspire.Hosting.SQLite" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.LavinMQ" />
   </ItemGroup>
 

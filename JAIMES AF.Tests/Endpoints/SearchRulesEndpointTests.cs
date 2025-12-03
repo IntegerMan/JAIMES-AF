@@ -6,6 +6,7 @@ using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Moq;
 using RabbitMQ.Client;
 using Shouldly;
@@ -30,9 +31,10 @@ public class SearchRulesEndpointTests : EndpointTestBase
             .WithWebHostBuilder(builder =>
             {
                 // Override settings for testing
-                builder.UseSetting("DatabaseProvider", "InMemory");
-                builder.UseSetting("ConnectionStrings:DefaultConnection", dbName);
                 builder.UseSetting("SkipDatabaseInitialization", "true");
+                // Provide a dummy connection string to satisfy the configuration check
+                // This will be replaced with InMemory in ConfigureServices
+                builder.UseSetting("ConnectionStrings:postgres-db", "Host=localhost;Database=test;Username=test;Password=test");
                 builder.UseSetting("ConnectionStrings:messaging", "amqp://guest:guest@localhost:5672/");
                 builder.UseSetting("TextGenerationModel:Provider", "Ollama");
                 builder.UseSetting("TextGenerationModel:Endpoint", "http://localhost:11434");
@@ -41,14 +43,69 @@ public class SearchRulesEndpointTests : EndpointTestBase
                 builder.UseSetting("EmbeddingModel:Endpoint", "http://localhost:11434");
                 builder.UseSetting("EmbeddingModel:Name", "nomic-embed-text");
                 
-                // Configure test services
                 builder.ConfigureServices(services =>
                 {
-                    // Replace IRulesSearchService with mock
-                    ServiceDescriptor? descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IRulesSearchService));
-                    if (descriptor != null)
+                    // Remove ALL DbContext-related registrations added by the application
+                    // We need to remove both the service registrations AND clear any internal EF Core provider tracking
+                    // The key is to remove ALL descriptors that could be related to DbContext
+                    List<ServiceDescriptor> toRemove = new();
+                    foreach (ServiceDescriptor descriptor in services.ToList())
+                    {
+                        // Remove by exact service type match
+                        if (descriptor.ServiceType == typeof(DbContextOptions<JaimesDbContext>) ||
+                            descriptor.ServiceType == typeof(JaimesDbContext))
+                        {
+                            toRemove.Add(descriptor);
+                            continue;
+                        }
+                        
+                        // Remove generic DbContextOptions<JaimesDbContext> registrations
+                        if (descriptor.ServiceType.IsGenericType &&
+                            descriptor.ServiceType.GetGenericTypeDefinition() == typeof(DbContextOptions<>) &&
+                            descriptor.ServiceType.GetGenericArguments().Length > 0 &&
+                            descriptor.ServiceType.GetGenericArguments()[0] == typeof(JaimesDbContext))
+                        {
+                            toRemove.Add(descriptor);
+                            continue;
+                        }
+                        
+                        // Remove by implementation type
+                        if (descriptor.ImplementationType == typeof(JaimesDbContext))
+                        {
+                            toRemove.Add(descriptor);
+                        }
+                    }
+                    
+                    // Remove all matching descriptors
+                    foreach (ServiceDescriptor descriptor in toRemove)
                     {
                         services.Remove(descriptor);
+                    }
+                    
+                    // Now manually register the DbContext with InMemory
+                    // We manually construct and register the options and context to avoid EF Core's
+                    // internal provider tracking that causes "multiple providers" errors
+                    services.AddSingleton<DbContextOptions<JaimesDbContext>>(sp =>
+                    {
+                        DbContextOptionsBuilder<JaimesDbContext> optionsBuilder = new();
+                        optionsBuilder.UseInMemoryDatabase(dbName, sqlOpts =>
+                        {
+                            sqlOpts.EnableNullChecks();
+                        });
+                        return optionsBuilder.Options;
+                    });
+                    
+                    services.AddScoped<JaimesDbContext>(sp =>
+                    {
+                        DbContextOptions<JaimesDbContext> options = sp.GetRequiredService<DbContextOptions<JaimesDbContext>>();
+                        return new JaimesDbContext(options);
+                    });
+                    
+                    // Replace IRulesSearchService with mock
+                    ServiceDescriptor? rulesSearchDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IRulesSearchService));
+                    if (rulesSearchDescriptor != null)
+                    {
+                        services.Remove(rulesSearchDescriptor);
                     }
                     services.AddSingleton(_mockRulesSearchService.Object);
                     

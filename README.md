@@ -7,7 +7,7 @@ The documentation below highlights the core moving pieces, how information flows
 
 ## Solution Topology
 
-The Aspire AppHost wires together the API, background workers, and dependencies (Redis Stack, SQLite/SQL Server, Azure OpenAI). The diagram below shows the high-level structure.
+The Aspire AppHost wires together the API, background workers, and dependencies (PostgreSQL, Redis Stack, Azure OpenAI). The diagram below shows the high-level structure.
 
 ```mermaid
 flowchart LR
@@ -21,7 +21,7 @@ flowchart LR
         Workers[JAIMES AF.Workers.*\nBackground Pipelines]
     end
     subgraph Data & Intelligence
-        SQLite[(SQLite / SQL Server)]
+        PostgreSQL[(PostgreSQL)]
         Redis[(Redis Stack\nKernel Memory)]
         AOAI[(Azure OpenAI\nEmbeddings + Chat)]
     end
@@ -29,7 +29,7 @@ flowchart LR
     Blazor -->|REST/gRPC| ApiService
     ApiService --> Services
     Services --> Repos
-    Repos --> SQLite
+    Repos --> PostgreSQL
     Services --> Redis
     Services --> AOAI
     Workers --> Redis
@@ -45,7 +45,7 @@ sequenceDiagram
     participant Web as Blazor UI
     participant API as FastEndpoints API
     participant BLL as Services & Mappers
-    participant DB as EF Core / SQLite
+    participant DB as EF Core / PostgreSQL
     participant Vector as Redis + Kernel Memory
     participant AOAI as Azure OpenAI
 
@@ -64,7 +64,7 @@ sequenceDiagram
 
 - FastEndpoints-backed API surface for game, player, scenario, and ruleset management
 - Modular service layer with Scrutor-powered discovery and Shouldly-tested behavior
-- EF Core repositories with SQLite default and SQL Server / Azure SQL option
+- EF Core repositories with PostgreSQL default and SQL Server / Azure SQL option
 - Document processing pipeline (scanner → cracking → chunking → embedding) backed by Aspire workers and Redis Kernel Memory
 - Azure OpenAI integration for chat service prompts and vector embeddings
 - Observability, resilience, and configuration defaults consolidated through `JAIMES AF.ServiceDefaults`
@@ -83,20 +83,16 @@ sequenceDiagram
 ## Prerequisites
 
 - .NET 10 SDK
-- Docker Desktop or another container runtime (required by Aspire to provision Redis Stack)
+- Docker Desktop or another container runtime (required by Aspire to provision PostgreSQL, Redis Stack, MongoDB, and other services)
 - Azure OpenAI resource for chat + embeddings
-- (Optional) SQL Server/Azure SQL if you prefer over SQLite
 
 ## Quickstart
 
-1. **Configure secrets (Azure OpenAI + DB overrides as needed)**
+1. **Configure secrets (Azure OpenAI)**
    ```bash
    cd "JAIMES AF.ApiService"
    dotnet user-secrets set "ChatService:Endpoint" "https://YourResource.openai.azure.com/"
    dotnet user-secrets set "ChatService:ApiKey" "your-real-api-key"
-   # Optional SQL Server
-   dotnet user-secrets set "DatabaseProvider" "SqlServer"
-   dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=(localdb)\\mssqllocaldb;Database=Jaimes;Trusted_Connection=True;MultipleActiveResultSets=true"
    ```
 
 2. **Run the Aspire host**
@@ -108,13 +104,9 @@ sequenceDiagram
 
 ## Database Configuration
 
-- **SQLite (default):** `jaimes.db` is created automatically with seed data. Ideal for cross-platform development.
-- **SQL Server / LocalDB:** Update user secrets as shown above, remove existing SQLite migrations, and recreate SQL Server migrations:
-  ```bash
-  rm -rf "JAIMES AF.Repositories/Migrations"
-  dotnet ef migrations add InitialCreate --project "JAIMES AF.Repositories" --startup-project "JAIMES AF.ApiService"
-  ```
-- **Azure SQL:** Supply a secure connection string via secrets or environment variables. Remember to regenerate migrations for SQL Server compatibility before deploying.
+- **PostgreSQL (default):** The Aspire AppHost automatically provisions a PostgreSQL database with pgvector support. The connection string is provided by Aspire via the `postgres-db` connection name. Migrations are applied automatically on startup with seed data (D&D 5e ruleset, default player, and island test scenario).
+- **Local Development:** For local development without Aspire, a fallback connection string is provided in `appsettings.Development.json` pointing to `localhost:5432`.
+- **Production:** In production, the connection string should be provided via environment variables or a secure configuration provider (Azure App Configuration, Key Vault, etc.).
 
 ## Redis & Kernel Memory
 
