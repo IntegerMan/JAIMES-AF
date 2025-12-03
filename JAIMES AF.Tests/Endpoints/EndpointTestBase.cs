@@ -26,7 +26,7 @@ public abstract class EndpointTestBase : IAsyncLifetime
             {
                 // Override settings for testing
                 builder.UseSetting("SkipDatabaseInitialization", "true");
-                // Provide a dummy connection string to satisfy the configuration check
+                // Provide a dummy connection string to satisfy AddJaimesRepositories validation
                 // This will be replaced with InMemory in ConfigureServices
                 builder.UseSetting("ConnectionStrings:jaimes-db", "Host=localhost;Database=test;Username=test;Password=test");
                 // Provide a mock messaging connection string for RabbitMQ
@@ -41,20 +41,62 @@ public abstract class EndpointTestBase : IAsyncLifetime
                 
                 builder.ConfigureServices(services =>
                 {
-                    // Remove the PostgreSQL DbContext registration added by the application
-                    ServiceDescriptor[] dbContextDescriptors = services
-                        .Where(d => d.ServiceType == typeof(DbContextOptions<JaimesDbContext>) ||
-                                   d.ServiceType == typeof(DbContextOptions) ||
-                                   d.ServiceType == typeof(JaimesDbContext))
-                        .ToArray();
+                    // Remove ALL DbContext-related registrations added by the application
+                    // We need to remove both the service registrations AND clear any internal EF Core provider tracking
+                    // The key is to remove ALL descriptors that could be related to DbContext
+                    List<ServiceDescriptor> toRemove = new();
+                    foreach (ServiceDescriptor descriptor in services.ToList())
+                    {
+                        // Remove by exact service type match
+                        if (descriptor.ServiceType == typeof(DbContextOptions<JaimesDbContext>) ||
+                            descriptor.ServiceType == typeof(JaimesDbContext))
+                        {
+                            toRemove.Add(descriptor);
+                            continue;
+                        }
+                        
+                        // Remove generic DbContextOptions<JaimesDbContext> registrations
+                        if (descriptor.ServiceType.IsGenericType &&
+                            descriptor.ServiceType.GetGenericTypeDefinition() == typeof(DbContextOptions<>) &&
+                            descriptor.ServiceType.GetGenericArguments().Length > 0 &&
+                            descriptor.ServiceType.GetGenericArguments()[0] == typeof(JaimesDbContext))
+                        {
+                            toRemove.Add(descriptor);
+                            continue;
+                        }
+                        
+                        // Remove by implementation type
+                        if (descriptor.ImplementationType == typeof(JaimesDbContext))
+                        {
+                            toRemove.Add(descriptor);
+                        }
+                    }
                     
-                    foreach (ServiceDescriptor descriptor in dbContextDescriptors)
+                    // Remove all matching descriptors
+                    foreach (ServiceDescriptor descriptor in toRemove)
                     {
                         services.Remove(descriptor);
                     }
                     
-                    // Add InMemory database for tests
-                    services.AddJaimesRepositoriesInMemory(dbName);
+                    // Now manually register the DbContext with InMemory
+                    // We use TryAddDbContext to avoid adding if already registered, but since we've removed
+                    // all existing registrations above, this should work. However, to be safe, we'll
+                    // manually construct and register the options and context.
+                    services.AddSingleton<DbContextOptions<JaimesDbContext>>(sp =>
+                    {
+                        DbContextOptionsBuilder<JaimesDbContext> optionsBuilder = new();
+                        optionsBuilder.UseInMemoryDatabase(dbName, sqlOpts =>
+                        {
+                            sqlOpts.EnableNullChecks();
+                        });
+                        return optionsBuilder.Options;
+                    });
+                    
+                    services.AddScoped<JaimesDbContext>(sp =>
+                    {
+                        DbContextOptions<JaimesDbContext> options = sp.GetRequiredService<DbContextOptions<JaimesDbContext>>();
+                        return new JaimesDbContext(options);
+                    });
                     
                     // Replace RabbitMQ connection factory with a mock
                     ServiceDescriptor? connectionFactoryDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IConnectionFactory));

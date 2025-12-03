@@ -45,19 +45,61 @@ public class SearchRulesEndpointTests : EndpointTestBase
                 
                 builder.ConfigureServices(services =>
                 {
-                    // Remove the PostgreSQL DbContext registration added by the application
-                    ServiceDescriptor[] dbContextDescriptors = services
-                        .Where(d => d.ServiceType == typeof(DbContextOptions<JaimesDbContext>) ||
-                                   d.ServiceType == typeof(DbContextOptions) ||
-                                   d.ServiceType == typeof(JaimesDbContext))
-                        .ToArray();
-                    
-                    foreach (ServiceDescriptor dbDescriptor in dbContextDescriptors)
+                    // Remove ALL DbContext-related registrations added by the application
+                    // We need to remove both the service registrations AND clear any internal EF Core provider tracking
+                    // The key is to remove ALL descriptors that could be related to DbContext
+                    List<ServiceDescriptor> toRemove = new();
+                    foreach (ServiceDescriptor descriptor in services.ToList())
                     {
-                        services.Remove(dbDescriptor);
+                        // Remove by exact service type match
+                        if (descriptor.ServiceType == typeof(DbContextOptions<JaimesDbContext>) ||
+                            descriptor.ServiceType == typeof(JaimesDbContext))
+                        {
+                            toRemove.Add(descriptor);
+                            continue;
+                        }
+                        
+                        // Remove generic DbContextOptions<JaimesDbContext> registrations
+                        if (descriptor.ServiceType.IsGenericType &&
+                            descriptor.ServiceType.GetGenericTypeDefinition() == typeof(DbContextOptions<>) &&
+                            descriptor.ServiceType.GetGenericArguments().Length > 0 &&
+                            descriptor.ServiceType.GetGenericArguments()[0] == typeof(JaimesDbContext))
+                        {
+                            toRemove.Add(descriptor);
+                            continue;
+                        }
+                        
+                        // Remove by implementation type
+                        if (descriptor.ImplementationType == typeof(JaimesDbContext))
+                        {
+                            toRemove.Add(descriptor);
+                        }
                     }
                     
-                    services.AddJaimesRepositoriesInMemory(dbName);
+                    // Remove all matching descriptors
+                    foreach (ServiceDescriptor descriptor in toRemove)
+                    {
+                        services.Remove(descriptor);
+                    }
+                    
+                    // Now manually register the DbContext with InMemory
+                    // We manually construct and register the options and context to avoid EF Core's
+                    // internal provider tracking that causes "multiple providers" errors
+                    services.AddSingleton<DbContextOptions<JaimesDbContext>>(sp =>
+                    {
+                        DbContextOptionsBuilder<JaimesDbContext> optionsBuilder = new();
+                        optionsBuilder.UseInMemoryDatabase(dbName, sqlOpts =>
+                        {
+                            sqlOpts.EnableNullChecks();
+                        });
+                        return optionsBuilder.Options;
+                    });
+                    
+                    services.AddScoped<JaimesDbContext>(sp =>
+                    {
+                        DbContextOptions<JaimesDbContext> options = sp.GetRequiredService<DbContextOptions<JaimesDbContext>>();
+                        return new JaimesDbContext(options);
+                    });
                     
                     // Replace IRulesSearchService with mock
                     ServiceDescriptor? rulesSearchDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IRulesSearchService));
