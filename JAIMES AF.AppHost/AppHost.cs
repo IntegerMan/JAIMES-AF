@@ -87,7 +87,7 @@ IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIME
     .WithReference(lavinmq)
     .WaitFor(qdrant)
     .WaitFor(ollama)
-    .WaitFor(postgres)
+    .WaitFor(postgresdb)
     .WaitFor(lavinmq);
 
 builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")
@@ -128,14 +128,14 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentCrackerWorker>("document-c
     .WithReference(lavinmq)
     .WithReference(postgresdb)
     .WaitFor(lavinmq)
-    .WaitFor(postgres);
+    .WaitFor(postgresdb);
 
 builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChangeDetector>("document-change-detector")
     .WithIconName("DocumentSearch")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
     .WaitFor(lavinmq)
-    .WaitFor(postgres);
+    .WaitFor(postgresdb);
 
 builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChunking>("document-chunking-worker")
     .WithIconName("DocumentSplit")
@@ -144,7 +144,7 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChunking>("document-chunki
     .WithReference(qdrant)
     .WithReference(embedModel)
     .WaitFor(lavinmq)
-    .WaitFor(postgres)
+    .WaitFor(postgresdb)
     .WaitFor(qdrant)
     .WaitFor(ollama)
     .WithEnvironment(context =>
@@ -170,7 +170,7 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbedding>("document-embed
     .WithReference(qdrant)
     .WithReference(embedModel)
     .WaitFor(lavinmq)
-    .WaitFor(postgres)
+    .WaitFor(postgresdb)
     .WaitFor(qdrant)
     .WaitFor(ollama)
     .WithEnvironment(context =>
