@@ -91,19 +91,46 @@ public class DocumentCrackingService(
         await dbContext.SaveChangesAsync(cancellationToken);
         
         // Get the document ID after save
-        CrackedDocument? savedDocument = await dbContext.CrackedDocuments
-            .FirstOrDefaultAsync(d => d.FilePath == filePath, cancellationToken);
+        // For existing documents, use the existing entity's ID
+        // For new documents, EF Core populates the Id after SaveChangesAsync
+        int documentId;
+        CrackedDocument? documentForProcessing;
         
-        int documentId = savedDocument?.Id ?? 0;
+        if (existingDocument != null)
+        {
+            documentId = existingDocument.Id;
+            documentForProcessing = existingDocument;
+        }
+        else
+        {
+            // For new documents, query the database to get the saved document with its ID
+            CrackedDocument? savedDocument = await dbContext.CrackedDocuments
+                .FirstOrDefaultAsync(d => d.FilePath == filePath, cancellationToken);
+            
+            if (savedDocument == null)
+            {
+                logger.LogError("Failed to retrieve document after SaveChangesAsync. FilePath: {FilePath}", filePath);
+                throw new InvalidOperationException($"Document was saved but could not be retrieved from database. FilePath: {filePath}");
+            }
+            
+            if (savedDocument.Id == 0)
+            {
+                logger.LogError("Document ID is 0 after save. FilePath: {FilePath}", filePath);
+                throw new InvalidOperationException($"Document ID is invalid (0) after save. FilePath: {filePath}");
+            }
+            
+            documentId = savedDocument.Id;
+            documentForProcessing = savedDocument;
+        }
         
-        logger.LogInformation("Cracked and saved to PostgreSQL: {FilePath} ({PageCount} pages, {FileSize} bytes)", 
-            filePath, pageCount, fileInfo.Length);
+        logger.LogInformation("Cracked and saved to PostgreSQL: {FilePath} (DocumentId: {DocumentId}, {PageCount} pages, {FileSize} bytes)", 
+            filePath, documentId, pageCount, fileInfo.Length);
         
         activity?.SetTag("cracker.document_id", documentId);
         activity?.SetStatus(ActivityStatusCode.Ok);
         
         // Check if document needs processing (not processed yet)
-        bool needsProcessing = savedDocument == null || !savedDocument.IsProcessed;
+        bool needsProcessing = !documentForProcessing.IsProcessed;
         
         if (needsProcessing)
         {

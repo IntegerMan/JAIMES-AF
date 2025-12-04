@@ -150,10 +150,14 @@ public class DocumentEmbeddingService(
             await UpdateChunkInPostgreSQLAsync(message.ChunkId, qdrantPointId, cancellationToken);
 
             // Increment ProcessedChunkCount in CrackedDocument
-            if (int.TryParse(message.DocumentId, out int documentId))
+            if (!int.TryParse(message.DocumentId, out int documentId))
             {
-                await IncrementProcessedChunkCountAsync(documentId, cancellationToken);
+                logger.LogError("Failed to parse DocumentId '{DocumentId}' as integer for chunk {ChunkId}. ProcessedChunkCount will not be incremented.", 
+                    message.DocumentId, message.ChunkId);
+                throw new ArgumentException($"Invalid DocumentId format: '{message.DocumentId}'. Expected an integer.", nameof(message));
             }
+
+            await IncrementProcessedChunkCountAsync(documentId, cancellationToken);
 
             logger.LogInformation("Marked chunk {ChunkId} as processed in PostgreSQL", message.ChunkId);
             activity?.SetStatus(ActivityStatusCode.Ok);
