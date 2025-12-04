@@ -182,7 +182,7 @@ public class DocumentCrackingOrchestrator(
         activity?.SetStatus(ActivityStatusCode.Ok);
         
         // Check if document needs processing (not processed yet)
-        bool needsProcessing = savedDocument == null || !savedDocument.IsProcessed;
+        bool needsProcessing = savedDocument is not {IsProcessed: true};
         
         if (needsProcessing)
         {
