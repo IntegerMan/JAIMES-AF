@@ -6,6 +6,7 @@ using MattEland.Jaimes.Workers.DocumentEmbedding.Configuration;
 using MattEland.Jaimes.Workers.DocumentEmbedding.Consumers;
 using MattEland.Jaimes.Workers.DocumentEmbedding.Services;
 using MattEland.Jaimes.Repositories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -98,14 +99,14 @@ builder.Services.AddSingleton<IQdrantClient>(sp =>
 // Register DocumentEmbeddingService
 builder.Services.AddSingleton<IDocumentEmbeddingService>(sp =>
 {
-    JaimesDbContext dbContext = sp.GetRequiredService<JaimesDbContext>();
+    IDbContextFactory<JaimesDbContext> dbContextFactory = sp.GetRequiredService<IDbContextFactory<JaimesDbContext>>();
     IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator = sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
     IQdrantClient qdrantClient = sp.GetRequiredService<IQdrantClient>();
     ILogger<DocumentEmbeddingService> logger = sp.GetRequiredService<ILogger<DocumentEmbeddingService>>();
     ActivitySource activitySource = sp.GetRequiredService<ActivitySource>();
     
     return new DocumentEmbeddingService(
-        dbContext,
+        dbContextFactory,
         embeddingGenerator,
         options,
         qdrantClient,

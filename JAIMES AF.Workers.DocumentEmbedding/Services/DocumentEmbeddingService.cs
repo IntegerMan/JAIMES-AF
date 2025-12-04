@@ -12,7 +12,7 @@ using MattEland.Jaimes.ServiceDefaults; // added for utilities
 namespace MattEland.Jaimes.Workers.DocumentEmbedding.Services;
 
 public class DocumentEmbeddingService(
-    JaimesDbContext dbContext,
+    IDbContextFactory<JaimesDbContext> dbContextFactory,
     IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator,
     DocumentEmbeddingOptions options,
     IQdrantClient qdrantClient,
@@ -239,6 +239,8 @@ public class DocumentEmbeddingService(
         ulong qdrantPointId,
         CancellationToken cancellationToken)
     {
+        await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        
         DocumentChunk? chunk = await dbContext.DocumentChunks
             .FirstOrDefaultAsync(c => c.ChunkId == chunkId, cancellationToken);
 
@@ -265,6 +267,8 @@ public class DocumentEmbeddingService(
 
         try
         {
+            await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            
             CrackedDocument? document = await dbContext.CrackedDocuments
                 .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken);
 

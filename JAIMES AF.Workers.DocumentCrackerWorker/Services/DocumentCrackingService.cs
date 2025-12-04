@@ -9,7 +9,7 @@ namespace MattEland.Jaimes.Workers.DocumentCrackerWorker.Services;
 
 public class DocumentCrackingService(
     ILogger<DocumentCrackingService> logger,
-    JaimesDbContext dbContext,
+    IDbContextFactory<JaimesDbContext> dbContextFactory,
     IMessagePublisher messagePublisher,
     ActivitySource activitySource,
     IPdfTextExtractor pdfTextExtractor) : IDocumentCrackingService
@@ -45,6 +45,8 @@ public class DocumentCrackingService(
         
         activity?.SetTag("cracker.page_count", pageCount);
 
+        await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        
         // Check if document already exists
         CrackedDocument? existingDocument = await dbContext.CrackedDocuments
             .FirstOrDefaultAsync(d => d.FilePath == filePath, cancellationToken);

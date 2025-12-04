@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using MattEland.Jaimes.Domain;
+using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
@@ -104,7 +105,11 @@ public class DocumentChunkingServiceTests
         queuedChunk.DocumentKind.ShouldBe(message.DocumentKind);
         queuedChunk.RulesetId.ShouldBe(message.RulesetId);
 
+        // Clear change tracker to ensure we reload from database after service operations
+        context.DbContext.ChangeTracker.Clear();
+        
         List<DocumentChunk> storedChunks = await context.DbContext.DocumentChunks
+            .AsNoTracking()
             .Where(chunk => chunk.DocumentId == documentId)
             .ToListAsync(TestContext.Current.CancellationToken);
         storedChunks.Count.ShouldBe(chunks.Count);
@@ -112,6 +117,7 @@ public class DocumentChunkingServiceTests
         storedChunks.Any(chunk => chunk.ChunkId == "chunk-unembedded").ShouldBeTrue();
 
         CrackedDocument? updatedDocument = await context.DbContext.CrackedDocuments
+            .AsNoTracking()
             .FirstOrDefaultAsync(doc => doc.Id == documentId, TestContext.Current.CancellationToken);
         updatedDocument.ShouldNotBeNull();
         updatedDocument!.IsProcessed.ShouldBeTrue();
@@ -232,8 +238,10 @@ public class DocumentChunkingServiceTests
                     It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
+            TestDbContextFactory dbContextFactory = new(dbOptions);
+
             Service = new DocumentChunkingService(
-                DbContext,
+                dbContextFactory,
                 ChunkingStrategyMock.Object,
                 QdrantStoreMock.Object,
                 MessagePublisherMock.Object,
@@ -262,6 +270,31 @@ public class DocumentChunkingServiceTests
         {
             _activitySource.Dispose();
             DbContext.Dispose();
+        }
+    }
+
+    private sealed class TestDbContextFactory : IDbContextFactory<JaimesDbContext>
+    {
+        private readonly DbContextOptions<JaimesDbContext> _options;
+
+        public TestDbContextFactory(DbContextOptions<JaimesDbContext> options)
+        {
+            _options = options;
+        }
+
+        public JaimesDbContext CreateDbContext()
+        {
+            // Return a new context that shares the same in-memory database
+            // This allows the service to dispose it without affecting the test's context
+            return new JaimesDbContext(_options);
+        }
+
+        public async Task<JaimesDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
+        {
+            await Task.CompletedTask;
+            // Return a new context that shares the same in-memory database
+            // This allows the service to dispose it without affecting the test's context
+            return new JaimesDbContext(_options);
         }
     }
 }

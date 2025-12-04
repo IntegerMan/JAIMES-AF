@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace MattEland.Jaimes.Workers.DocumentChunking.Services;
 
 public class DocumentChunkingService(
-    JaimesDbContext dbContext,
+    IDbContextFactory<JaimesDbContext> dbContextFactory,
     ITextChunkingStrategy chunkingStrategy,
     IQdrantEmbeddingStore qdrantStore,
     IMessagePublisher messagePublisher,
@@ -175,6 +175,8 @@ public class DocumentChunkingService(
 
         try
         {
+            await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            
             CrackedDocument? document = await dbContext.CrackedDocuments
                 .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken);
 
@@ -205,6 +207,8 @@ public class DocumentChunkingService(
 
         try
         {
+            await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            
             // Store chunks (using upsert logic to handle duplicates)
             foreach (TextChunk chunk in chunks)
             {
@@ -256,6 +260,8 @@ public class DocumentChunkingService(
 
         try
         {
+            await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            
             CrackedDocument? document = await dbContext.CrackedDocuments
                 .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken);
 
@@ -290,6 +296,8 @@ public class DocumentChunkingService(
 
         try
         {
+            await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            
             CrackedDocument? document = await dbContext.CrackedDocuments
                 .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken);
 

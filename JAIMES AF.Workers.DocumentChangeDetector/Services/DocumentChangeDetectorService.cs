@@ -13,7 +13,7 @@ public class DocumentChangeDetectorService(
     ILogger<DocumentChangeDetectorService> logger,
     IDirectoryScanner directoryScanner,
     IChangeTracker changeTracker,
-    JaimesDbContext dbContext,
+    IDbContextFactory<JaimesDbContext> dbContextFactory,
     IMessagePublisher messagePublisher,
     ActivitySource activitySource,
     DocumentChangeDetectorOptions options) : IDocumentChangeDetectorService
@@ -150,6 +150,8 @@ public class DocumentChangeDetectorService(
         string filePath,
         CancellationToken cancellationToken)
     {
+        await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        
         return await dbContext.DocumentMetadata
             .FirstOrDefaultAsync(x => x.FilePath == filePath, cancellationToken);
     }
@@ -158,6 +160,8 @@ public class DocumentChangeDetectorService(
         string filePath,
         CancellationToken cancellationToken)
     {
+        await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        
         CrackedDocument? crackedDocument = await dbContext.CrackedDocuments
             .FirstOrDefaultAsync(x => x.FilePath == filePath, cancellationToken);
         return crackedDocument != null && !string.IsNullOrWhiteSpace(crackedDocument.Content);
@@ -169,6 +173,8 @@ public class DocumentChangeDetectorService(
         string? relativeDirectory,
         CancellationToken cancellationToken)
     {
+        await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        
         string rulesetId = DocumentMetadataExtractor.ExtractRulesetId(relativeDirectory);
         string documentKind = DocumentMetadataExtractor.DetermineDocumentKind(relativeDirectory);
 

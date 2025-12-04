@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.DocumentProcessing.Services;
+using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
@@ -181,6 +182,7 @@ public class DocumentChangeDetectorServiceTests
         public Mock<IMessagePublisher> MessagePublisherMock { get; }
 
         private readonly ActivitySource _activitySource;
+        private readonly DbContextOptions<JaimesDbContext> _dbOptions;
 
         public DocumentChangeDetectorTestContext()
         {
@@ -194,10 +196,10 @@ public class DocumentChangeDetectorServiceTests
             ChangeTrackerMock = new Mock<IChangeTracker>();
             MessagePublisherMock = new Mock<IMessagePublisher>();
             
-            DbContextOptions<JaimesDbContext> dbOptions = new DbContextOptionsBuilder<JaimesDbContext>()
+            _dbOptions = new DbContextOptionsBuilder<JaimesDbContext>()
                 .UseInMemoryDatabase(databaseName: $"DocumentChangeDetectorTests-{Guid.NewGuid()}")
                 .Options;
-            DbContext = new JaimesDbContext(dbOptions);
+            DbContext = new JaimesDbContext(_dbOptions);
             DbContext.Database.EnsureCreated();
             
             _activitySource = new ActivitySource($"DocumentChangeDetectorTests-{Guid.NewGuid()}");
@@ -205,11 +207,13 @@ public class DocumentChangeDetectorServiceTests
 
         public DocumentChangeDetectorService CreateService()
         {
+            TestDbContextFactory dbContextFactory = new(_dbOptions);
+            
             return new DocumentChangeDetectorService(
                 LoggerMock.Object,
                 DirectoryScannerMock.Object,
                 ChangeTrackerMock.Object,
-                DbContext,
+                dbContextFactory,
                 MessagePublisherMock.Object,
                 _activitySource,
                 Options);
@@ -238,6 +242,31 @@ public class DocumentChangeDetectorServiceTests
             {
                 Directory.Delete(Path, true);
             }
+        }
+    }
+
+    private sealed class TestDbContextFactory : IDbContextFactory<JaimesDbContext>
+    {
+        private readonly DbContextOptions<JaimesDbContext> _options;
+
+        public TestDbContextFactory(DbContextOptions<JaimesDbContext> options)
+        {
+            _options = options;
+        }
+
+        public JaimesDbContext CreateDbContext()
+        {
+            // Return a new context that shares the same in-memory database
+            // This allows the service to dispose it without affecting the test's context
+            return new JaimesDbContext(_options);
+        }
+
+        public async Task<JaimesDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
+        {
+            await Task.CompletedTask;
+            // Return a new context that shares the same in-memory database
+            // This allows the service to dispose it without affecting the test's context
+            return new JaimesDbContext(_options);
         }
     }
 }
