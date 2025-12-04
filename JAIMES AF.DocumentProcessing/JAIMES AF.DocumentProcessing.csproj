@@ -11,4 +11,8 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\JAIMES AF.Domain\JAIMES AF.Domain.csproj" />
+  </ItemGroup>
+
 </Project>

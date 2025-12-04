@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using MattEland.Jaimes.Domain;
 
 namespace MattEland.Jaimes.Repositories.Entities;
 
@@ -81,7 +82,7 @@ public class CrackedDocument
     /// </summary>
     [Required]
     [MaxLength(100)]
-    public string DocumentKind { get; set; } = "Sourcebook";
+    public string DocumentKind { get; set; } = DocumentKinds.Sourcebook;
 
     /// <summary>
     /// Gets or sets the ruleset ID this document belongs to (e.g., "dnd5e").

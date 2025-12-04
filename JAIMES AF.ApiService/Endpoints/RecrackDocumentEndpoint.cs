@@ -1,4 +1,5 @@
 using FastEndpoints;
+using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
@@ -31,7 +32,7 @@ public class RecrackDocumentEndpoint(IMessagePublisher messagePublisher, JaimesD
 
         // Get rulesetId and documentKind from DocumentMetadata if available, otherwise use defaults
         string rulesetId = "default";
-        string documentKind = "Sourcebook";
+        string documentKind = DocumentKinds.Sourcebook;
         
         DocumentMetadata? metadata = await dbContext.DocumentMetadata
             .FirstOrDefaultAsync(x => x.FilePath == req.FilePath, ct);

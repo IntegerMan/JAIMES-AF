@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Tests.TestUtilities;
@@ -30,7 +31,7 @@ public class DocumentChunkingServiceTests
             FileSize = 1024,
             PageCount = 12,
             CrackedAt = DateTime.UtcNow,
-            DocumentKind = "Sourcebook",
+            DocumentKind = DocumentKinds.Sourcebook,
             RulesetId = "ruleset-z"
         };
 
@@ -137,7 +138,7 @@ public class DocumentChunkingServiceTests
             FileSize = 1024,
             PageCount = 12,
             CrackedAt = DateTime.UtcNow,
-            DocumentKind = "Sourcebook",
+            DocumentKind = DocumentKinds.Sourcebook,
             RulesetId = "ruleset-z"
         };
 

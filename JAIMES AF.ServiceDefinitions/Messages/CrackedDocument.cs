@@ -1,3 +1,5 @@
+using MattEland.Jaimes.Domain;
+
 namespace MattEland.Jaimes.ServiceDefinitions.Messages;
 
 /// <summary>
@@ -18,7 +20,7 @@ public class CrackedDocument
     public bool IsProcessed { get; set; } = false;
     public int TotalChunks { get; set; } = 0;
     public int ProcessedChunkCount { get; set; } = 0;
-    public string DocumentKind { get; set; } = "Sourcebook";
+    public string DocumentKind { get; set; } = DocumentKinds.Sourcebook;
     public string RulesetId { get; set; } = string.Empty;
 }
 

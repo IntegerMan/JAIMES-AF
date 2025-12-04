@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Tests.TestUtilities;
@@ -26,7 +27,7 @@ public class DocumentCrackingServiceTests
                 tempFile,
                 null,
                 "ruleset-x",
-                "Sourcebook",
+                DocumentKinds.Sourcebook,
                 TestContext.Current.CancellationToken);
 
             context.MessagePublisherMock.Verify(
@@ -87,12 +88,12 @@ public class DocumentCrackingServiceTests
         storedDocument!.Content.ShouldBe("page content");
         storedDocument.IsProcessed.ShouldBeFalse();
         storedDocument.RulesetId.ShouldBe("ruleset-y");
-        storedDocument.DocumentKind.ShouldBe("Sourcebook");
+        storedDocument.DocumentKind.ShouldBe(DocumentKinds.Sourcebook);
 
         publishedMessage.ShouldNotBeNull();
         publishedMessage!.FilePath.ShouldBe(filePath);
         publishedMessage.RelativeDirectory.ShouldBe("ruleset-y/core");
-        publishedMessage.DocumentKind.ShouldBe("Sourcebook");
+        publishedMessage.DocumentKind.ShouldBe(DocumentKinds.Sourcebook);
         publishedMessage.RulesetId.ShouldBe("ruleset-y");
         publishedMessage.DocumentId.ShouldNotBeNullOrWhiteSpace();
     }

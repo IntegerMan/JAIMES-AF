@@ -1,3 +1,5 @@
+using MattEland.Jaimes.Domain;
+
 namespace MattEland.Jaimes.ServiceDefinitions.Models;
 
 /// <summary>
@@ -11,7 +13,7 @@ public class DocumentMetadata
     public string FilePath { get; set; } = string.Empty;
     public string Hash { get; set; } = string.Empty;
     public DateTime LastScanned { get; set; }
-    public string DocumentKind { get; set; } = "Sourcebook";
+    public string DocumentKind { get; set; } = DocumentKinds.Sourcebook;
     public string RulesetId { get; set; } = string.Empty;
 }
 

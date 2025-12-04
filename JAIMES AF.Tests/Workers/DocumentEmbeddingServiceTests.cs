@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Linq;
 using Grpc.Core;
+using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Tests.TestUtilities;
@@ -37,7 +38,7 @@ public class DocumentEmbeddingServiceTests
             RelativeDirectory = "ruleset-a/source",
             FileSize = 1024,
             PageCount = 10,
-            DocumentKind = "Sourcebook",
+            DocumentKind = DocumentKinds.Sourcebook,
             RulesetId = "ruleset-a"
         };
 
@@ -69,7 +70,7 @@ public class DocumentEmbeddingServiceTests
             FileName = "test.pdf",
             RelativeDirectory = "dnd5e/sourcebooks/phb",
             FileSize = 1024,
-            DocumentKind = "Sourcebook"
+            DocumentKind = DocumentKinds.Sourcebook
         };
 
         string actualDocumentId = await context.SetupDocumentAsync(message.DocumentId, message.FileName);
@@ -98,7 +99,7 @@ public class DocumentEmbeddingServiceTests
             FileName = "test.pdf",
             RelativeDirectory = "",
             FileSize = 1024,
-            DocumentKind = "Sourcebook"
+            DocumentKind = DocumentKinds.Sourcebook
         };
 
         string actualDocumentId = await context.SetupDocumentAsync(message.DocumentId, message.FileName);
@@ -128,7 +129,7 @@ public class DocumentEmbeddingServiceTests
             RelativeDirectory = "ruleset-a/source",
             FileSize = 1024,
             PageNumber = 5,
-            DocumentKind = "Sourcebook",
+            DocumentKind = DocumentKinds.Sourcebook,
             RulesetId = "ruleset-a"
         };
 
@@ -158,7 +159,7 @@ public class DocumentEmbeddingServiceTests
             FileName = "test.pdf",
             RelativeDirectory = "ruleset-a/source",
             FileSize = 1024,
-            DocumentKind = "Sourcebook",
+            DocumentKind = DocumentKinds.Sourcebook,
             RulesetId = "ruleset-a"
         };
 
@@ -186,7 +187,7 @@ public class DocumentEmbeddingServiceTests
             FileName = "test.pdf",
             RelativeDirectory = "ruleset-a/source",
             FileSize = 1024,
-            DocumentKind = "Sourcebook",
+            DocumentKind = DocumentKinds.Sourcebook,
             RulesetId = "ruleset-a"
         };
 
@@ -214,7 +215,7 @@ public class DocumentEmbeddingServiceTests
             FileName = "test.pdf",
             RelativeDirectory = "ruleset-a/source",
             FileSize = 1024,
-            DocumentKind = "Sourcebook",
+            DocumentKind = DocumentKinds.Sourcebook,
             RulesetId = "ruleset-a"
         };
 
@@ -246,7 +247,7 @@ public class DocumentEmbeddingServiceTests
             FileName = "test.pdf",
             RelativeDirectory = "ruleset-a/source",
             FileSize = 1024,
-            DocumentKind = "Sourcebook",
+            DocumentKind = DocumentKinds.Sourcebook,
             RulesetId = "ruleset-a"
         };
 
@@ -275,7 +276,7 @@ public class DocumentEmbeddingServiceTests
             FileName = "test.pdf",
             RelativeDirectory = "ruleset-a/source",
             FileSize = 1024,
-            DocumentKind = "Sourcebook",
+            DocumentKind = DocumentKinds.Sourcebook,
             RulesetId = "ruleset-a"
         };
 
