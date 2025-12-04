@@ -1,13 +1,14 @@
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using MattEland.Jaimes.DocumentProcessing.Options;
 using MattEland.Jaimes.DocumentProcessing.Services;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
+using MattEland.Jaimes.Repositories;
+using MattEland.Jaimes.Repositories.Entities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using MongoDB.Driver;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
@@ -18,7 +19,7 @@ public class DocumentCrackingOrchestrator(
     ILogger<DocumentCrackingOrchestrator> logger,
     IDirectoryScanner directoryScanner,
     DocumentScanOptions options,
-    IMongoClient mongoClient,
+    JaimesDbContext dbContext,
     IMessagePublisher messagePublisher,
     ActivitySource activitySource)
 {
@@ -28,10 +29,6 @@ public class DocumentCrackingOrchestrator(
         {
             throw new InvalidOperationException("SourceDirectory configuration is required for document cracking.");
         }
-
-        // Get database from connection string - the database name is "documents" as configured in AppHost
-        IMongoDatabase mongoDatabase = mongoClient.GetDatabase("documents");
-        IMongoCollection<CrackedDocument> collection = mongoDatabase.GetCollection<CrackedDocument>("crackedDocuments");
 
         DocumentCrackingSummary summary = new();
 
@@ -81,7 +78,7 @@ public class DocumentCrackingOrchestrator(
                 {
                     string rulesetId = DocumentMetadataExtractor.ExtractRulesetId(relativeDirectory);
                     string documentKind = DocumentMetadataExtractor.DetermineDocumentKind(relativeDirectory);
-                    await CrackDocumentAsync(filePath, relativeDirectory, rulesetId, documentKind, collection, cancellationToken);
+                    await CrackDocumentAsync(filePath, relativeDirectory, rulesetId, documentKind, cancellationToken);
                     summary.TotalCracked++;
                     directoryCracked++;
                 }
@@ -104,7 +101,7 @@ public class DocumentCrackingOrchestrator(
         return summary;
     }
 
-    private async Task CrackDocumentAsync(string filePath, string relativeDirectory, string rulesetId, string documentKind, IMongoCollection<CrackedDocument> collection, CancellationToken cancellationToken)
+    private async Task CrackDocumentAsync(string filePath, string relativeDirectory, string rulesetId, string documentKind, CancellationToken cancellationToken)
     {
         logger.LogInformation("Starting to crack document: {FilePath}", filePath);
         
@@ -127,58 +124,71 @@ public class DocumentCrackingOrchestrator(
         activity?.SetTag("cracker.ruleset_id", rulesetId);
         activity?.SetTag("cracker.document_kind", documentKind);
 
-        // Use UpdateOneAsync with upsert to avoid _id conflicts
-        // This will update if the document exists (by FilePath) or insert if it doesn't
-        FilterDefinition<CrackedDocument> filter = Builders<CrackedDocument>.Filter.Eq(d => d.FilePath, filePath);
+        // Check if document already exists
+        CrackedDocument? existingDocument = await dbContext.CrackedDocuments
+            .FirstOrDefaultAsync(d => d.FilePath == filePath, cancellationToken);
         
-        // Check existing document to see if content changed and if it's already processed
-        CrackedDocument? existingDocument = await collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
         bool contentChanged = existingDocument == null || existingDocument.Content != contents;
         
-        // Update document - reset IsProcessed to false if content changed, otherwise preserve current state
-        UpdateDefinition<CrackedDocument> update = Builders<CrackedDocument>.Update
-            .Set(d => d.FilePath, filePath)
-            .Set(d => d.RelativeDirectory, relativeDirectory)
-            .Set(d => d.FileName, Path.GetFileName(filePath))
-            .Set(d => d.Content, contents)
-            .Set(d => d.CrackedAt, DateTime.UtcNow)
-            .Set(d => d.FileSize, fileInfo.Length)
-            .Set(d => d.PageCount, pageCount)
-            .Set(d => d.RulesetId, rulesetId)
-            .Set(d => d.DocumentKind, documentKind);
-        
-        // Reset processed flag only if content changed
-        if (contentChanged)
+        if (existingDocument != null)
         {
-            update = update.Set(d => d.IsProcessed, false);
+            // Update existing document
+            existingDocument.RelativeDirectory = relativeDirectory;
+            existingDocument.FileName = Path.GetFileName(filePath);
+            existingDocument.Content = contents;
+            existingDocument.CrackedAt = DateTime.UtcNow;
+            existingDocument.FileSize = fileInfo.Length;
+            existingDocument.PageCount = pageCount;
+            existingDocument.RulesetId = rulesetId;
+            existingDocument.DocumentKind = documentKind;
+            
+            // Reset processed flag only if content changed
+            if (contentChanged)
+            {
+                existingDocument.IsProcessed = false;
+            }
+        }
+        else
+        {
+            // Create new document
+            CrackedDocument newDocument = new()
+            {
+                FilePath = filePath,
+                RelativeDirectory = relativeDirectory,
+                FileName = Path.GetFileName(filePath),
+                Content = contents,
+                CrackedAt = DateTime.UtcNow,
+                FileSize = fileInfo.Length,
+                PageCount = pageCount,
+                RulesetId = rulesetId,
+                DocumentKind = documentKind,
+                IsProcessed = false
+            };
+            dbContext.CrackedDocuments.Add(newDocument);
         }
         
-        UpdateOptions updateOptions = new() { IsUpsert = true };
+        await dbContext.SaveChangesAsync(cancellationToken);
         
-        UpdateResult result = await collection.UpdateOneAsync(filter, update, updateOptions, cancellationToken);
+        // Get the document ID after save
+        CrackedDocument? savedDocument = await dbContext.CrackedDocuments
+            .FirstOrDefaultAsync(d => d.FilePath == filePath, cancellationToken);
         
-        // Get the document ID after upsert
-        // If it was an insert, use the UpsertedId; otherwise, query the document by FilePath
-        // UpsertedId is a BsonObjectId, so we use ToString() instead of AsString
-        string documentId = result.UpsertedId?.ToString() ?? 
-            (await collection.Find(filter).FirstOrDefaultAsync(cancellationToken))?.Id ?? string.Empty;
+        int documentId = savedDocument?.Id ?? 0;
         
-        logger.LogInformation("Cracked and saved to MongoDB: {FilePath} ({PageCount} pages, {FileSize} bytes)", 
+        logger.LogInformation("Cracked and saved to PostgreSQL: {FilePath} ({PageCount} pages, {FileSize} bytes)", 
             filePath, pageCount, fileInfo.Length);
         
         activity?.SetTag("cracker.document_id", documentId);
         activity?.SetStatus(ActivityStatusCode.Ok);
         
         // Check if document needs processing (not processed yet)
-        // Re-query to get the current IsProcessed state after update
-        CrackedDocument? updatedDocument = await collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
-        bool needsProcessing = updatedDocument == null || !updatedDocument.IsProcessed;
+        bool needsProcessing = savedDocument == null || !savedDocument.IsProcessed;
         
         if (needsProcessing)
         {
             // Publish message to generate documentMetadata
             await PublishDocumentCrackedMessageAsync(documentId, filePath, relativeDirectory, 
-                Path.GetFileName(filePath), fileInfo.Length, pageCount, cancellationToken);
+                Path.GetFileName(filePath), fileInfo.Length, pageCount, documentKind, rulesetId, cancellationToken);
         }
         else
         {
@@ -186,22 +196,24 @@ public class DocumentCrackingOrchestrator(
         }
     }
     
-    private async Task PublishDocumentCrackedMessageAsync(string documentId, string filePath, 
+    private async Task PublishDocumentCrackedMessageAsync(int documentId, string filePath, 
         string relativeDirectory, string fileName, long fileSize, int pageCount, 
-        CancellationToken cancellationToken)
+        string documentKind, string rulesetId, CancellationToken cancellationToken)
     {
         try
         {
             // Create message
             DocumentReadyForChunkingMessage message = new()
             {
-                DocumentId = documentId,
+                DocumentId = documentId.ToString(),
                 FilePath = filePath,
                 FileName = fileName,
                 RelativeDirectory = relativeDirectory,
                 FileSize = fileSize,
                 PageCount = pageCount,
-                CrackedAt = DateTime.UtcNow
+                CrackedAt = DateTime.UtcNow,
+                DocumentKind = documentKind,
+                RulesetId = rulesetId
             };
             
             // Publish using message publisher

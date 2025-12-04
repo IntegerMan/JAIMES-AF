@@ -2,7 +2,6 @@ using System.Diagnostics;
 using MattEland.Jaimes.DocumentProcessing.Services;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
-using MattEland.Jaimes.ServiceDefinitions.Models;
 using MattEland.Jaimes.Workers.DocumentChangeDetector.Configuration;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;

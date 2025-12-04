@@ -9,13 +9,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspire.MongoDB.Driver" />
     <PackageReference Include="Microsoft.Extensions.Configuration" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" />
     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="RabbitMQ.Client" />
     <PackageReference Include="Spectre.Console" />
     <PackageReference Include="UglyToad.PdfPig" />
@@ -24,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\JAIMES AF.DocumentProcessing\JAIMES AF.DocumentProcessing.csproj" />
+    <ProjectReference Include="..\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj" />
     <ProjectReference Include="..\JAIMES AF.ServiceDefinitions\JAIMES AF.ServiceDefinitions.csproj" />
     <ProjectReference Include="..\JAIMES AF.ServiceDefaults\JAIMES AF.ServiceDefaults.csproj" />
   </ItemGroup>

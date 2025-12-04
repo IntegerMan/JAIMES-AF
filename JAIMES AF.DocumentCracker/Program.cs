@@ -2,12 +2,15 @@
 using MattEland.Jaimes.DocumentCracker.Services;
 using MattEland.Jaimes.DocumentProcessing.Options;
 using MattEland.Jaimes.DocumentProcessing.Services;
+using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.ServiceDefinitions.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Npgsql.EntityFrameworkCore.PostgreSQL;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -53,8 +56,16 @@ builder.Configuration
 
 DocumentScanOptions options = BindOptions(builder);
 
-// Add MongoDB client integration
-builder.AddMongoDBClient("documents");
+// Add EF Core database context
+builder.Services.AddDbContext<MattEland.Jaimes.Repositories.JaimesDbContext>(options =>
+{
+    string? connectionString = builder.Configuration.GetConnectionString("postgres-db");
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        throw new InvalidOperationException("Connection string 'postgres-db' is required.");
+    }
+    options.UseNpgsql(connectionString);
+});
 
 // Configure message publishing using RabbitMQ.Client (LavinMQ compatible)
 IConnectionFactory connectionFactory = RabbitMqConnectionFactory.CreateConnectionFactory(builder.Configuration);
@@ -114,7 +125,7 @@ try
             .HideHeaders()
             .Border(TableBorder.None)
             .AddRow("[dim]Source Directory:[/]", $"[cyan]{options.SourceDirectory}[/]")
-            .AddRow("[dim]Storage:[/]", "[cyan]MongoDB (documents database)[/]")
+            .AddRow("[dim]Storage:[/]", "[cyan]PostgreSQL[/]")
             .AddRow("[dim]Supported Extensions:[/]", $"[cyan]{string.Join(", ", options.SupportedExtensions)}[/]"))
     {
         Header = new PanelHeader("[bold yellow]Configuration[/]", Justify.Left),
