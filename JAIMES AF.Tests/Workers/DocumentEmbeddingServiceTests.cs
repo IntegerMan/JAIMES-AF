@@ -1,15 +1,14 @@
 using System.Diagnostics;
-using System.Linq;
 using Grpc.Core;
+using MattEland.Jaimes.Domain;
+using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.Tests.TestUtilities;
 using MattEland.Jaimes.Workers.DocumentEmbedding.Configuration;
 using MattEland.Jaimes.Workers.DocumentEmbedding.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
-using MongoDB.Bson;
-using MongoDB.Driver;
 using Moq;
 using Qdrant.Client.Grpc;
 using Shouldly;
@@ -37,13 +36,13 @@ public class DocumentEmbeddingServiceTests
             RelativeDirectory = "ruleset-a/source",
             FileSize = 1024,
             PageCount = 10,
-            DocumentKind = "Sourcebook",
+            DocumentKind = DocumentKinds.Sourcebook,
             RulesetId = "ruleset-a"
         };
 
-        string actualDocumentId = await context.SetupDocumentAsync(message.DocumentId, message.FileName);
-        message.DocumentId = actualDocumentId;
-        await context.SetupChunkAsync(message.ChunkId, message.DocumentId, message.ChunkText, message.ChunkIndex);
+        int actualDocumentId = await context.SetupDocumentAsync(message.FileName);
+        message.DocumentId = actualDocumentId.ToString();
+        await context.SetupChunkAsync(message.ChunkId, actualDocumentId, message.ChunkText, message.ChunkIndex);
 
         float[] expectedEmbedding = new float[] { 0.1f, 0.2f, 0.3f };
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
@@ -69,12 +68,12 @@ public class DocumentEmbeddingServiceTests
             FileName = "test.pdf",
             RelativeDirectory = "dnd5e/sourcebooks/phb",
             FileSize = 1024,
-            DocumentKind = "Sourcebook"
+            DocumentKind = DocumentKinds.Sourcebook
         };
 
-        string actualDocumentId = await context.SetupDocumentAsync(message.DocumentId, message.FileName);
-        message.DocumentId = actualDocumentId;
-        await context.SetupChunkAsync(message.ChunkId, message.DocumentId, message.ChunkText, message.ChunkIndex);
+        int actualDocumentId = await context.SetupDocumentAsync(message.FileName);
+        message.DocumentId = actualDocumentId.ToString();
+        await context.SetupChunkAsync(message.ChunkId, actualDocumentId, message.ChunkText, message.ChunkIndex);
 
         float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
@@ -98,12 +97,12 @@ public class DocumentEmbeddingServiceTests
             FileName = "test.pdf",
             RelativeDirectory = "",
             FileSize = 1024,
-            DocumentKind = "Sourcebook"
+            DocumentKind = DocumentKinds.Sourcebook
         };
 
-        string actualDocumentId = await context.SetupDocumentAsync(message.DocumentId, message.FileName);
-        message.DocumentId = actualDocumentId;
-        await context.SetupChunkAsync(message.ChunkId, message.DocumentId, message.ChunkText, message.ChunkIndex);
+        int actualDocumentId = await context.SetupDocumentAsync(message.FileName);
+        message.DocumentId = actualDocumentId.ToString();
+        await context.SetupChunkAsync(message.ChunkId, actualDocumentId, message.ChunkText, message.ChunkIndex);
 
         float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
@@ -128,13 +127,13 @@ public class DocumentEmbeddingServiceTests
             RelativeDirectory = "ruleset-a/source",
             FileSize = 1024,
             PageNumber = 5,
-            DocumentKind = "Sourcebook",
+            DocumentKind = DocumentKinds.Sourcebook,
             RulesetId = "ruleset-a"
         };
 
-        string actualDocumentId = await context.SetupDocumentAsync(message.DocumentId, message.FileName);
-        message.DocumentId = actualDocumentId;
-        await context.SetupChunkAsync(message.ChunkId, message.DocumentId, message.ChunkText, message.ChunkIndex);
+        int actualDocumentId = await context.SetupDocumentAsync(message.FileName);
+        message.DocumentId = actualDocumentId.ToString();
+        await context.SetupChunkAsync(message.ChunkId, actualDocumentId, message.ChunkText, message.ChunkIndex);
 
         float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
@@ -158,13 +157,13 @@ public class DocumentEmbeddingServiceTests
             FileName = "test.pdf",
             RelativeDirectory = "ruleset-a/source",
             FileSize = 1024,
-            DocumentKind = "Sourcebook",
+            DocumentKind = DocumentKinds.Sourcebook,
             RulesetId = "ruleset-a"
         };
 
-        string actualDocumentId = await context.SetupDocumentAsync(message.DocumentId, message.FileName);
-        message.DocumentId = actualDocumentId;
-        await context.SetupChunkAsync(message.ChunkId, message.DocumentId, message.ChunkText, message.ChunkIndex);
+        int actualDocumentId = await context.SetupDocumentAsync(message.FileName);
+        message.DocumentId = actualDocumentId.ToString();
+        await context.SetupChunkAsync(message.ChunkId, actualDocumentId, message.ChunkText, message.ChunkIndex);
 
         context.SetupOllamaError(HttpStatusCode.InternalServerError);
 
@@ -186,13 +185,13 @@ public class DocumentEmbeddingServiceTests
             FileName = "test.pdf",
             RelativeDirectory = "ruleset-a/source",
             FileSize = 1024,
-            DocumentKind = "Sourcebook",
+            DocumentKind = DocumentKinds.Sourcebook,
             RulesetId = "ruleset-a"
         };
 
-        string actualDocumentId = await context.SetupDocumentAsync(message.DocumentId, message.FileName);
-        message.DocumentId = actualDocumentId;
-        await context.SetupChunkAsync(message.ChunkId, message.DocumentId, message.ChunkText, message.ChunkIndex);
+        int actualDocumentId = await context.SetupDocumentAsync(message.FileName);
+        message.DocumentId = actualDocumentId.ToString();
+        await context.SetupChunkAsync(message.ChunkId, actualDocumentId, message.ChunkText, message.ChunkIndex);
 
         context.SetupOllamaEmptyEmbedding();
 
@@ -214,19 +213,19 @@ public class DocumentEmbeddingServiceTests
             FileName = "test.pdf",
             RelativeDirectory = "ruleset-a/source",
             FileSize = 1024,
-            DocumentKind = "Sourcebook",
+            DocumentKind = DocumentKinds.Sourcebook,
             RulesetId = "ruleset-a"
         };
 
-        string actualDocumentId = await context.SetupDocumentAsync(message.DocumentId, message.FileName);
-        message.DocumentId = actualDocumentId;
+        int actualDocumentId = await context.SetupDocumentAsync(message.FileName);
+        message.DocumentId = actualDocumentId.ToString();
 
         float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
 
         await context.Service.ProcessChunkAsync(message, CancellationToken.None);
 
-        context.VerifyWarningLogged("not found in MongoDB when updating Qdrant point ID");
+        context.VerifyWarningLogged("not found in PostgreSQL when updating Qdrant point ID");
     }
 
     [Fact]
@@ -234,23 +233,23 @@ public class DocumentEmbeddingServiceTests
     {
         using DocumentEmbeddingServiceTestContext context = new();
 
-        // Use a valid ObjectId format for the documentId (but don't insert it into MongoDB)
-        string nonExistentDocumentId = ObjectId.GenerateNewId().ToString();
+        // Use a non-existent document ID (but don't insert it into the database)
+        int nonExistentDocumentId = 999999;
         
         ChunkReadyForEmbeddingMessage message = new()
         {
             ChunkId = "chunk-1",
             ChunkText = "Test chunk text",
             ChunkIndex = 0,
-            DocumentId = nonExistentDocumentId,
+            DocumentId = nonExistentDocumentId.ToString(),
             FileName = "test.pdf",
             RelativeDirectory = "ruleset-a/source",
             FileSize = 1024,
-            DocumentKind = "Sourcebook",
+            DocumentKind = DocumentKinds.Sourcebook,
             RulesetId = "ruleset-a"
         };
 
-        await context.SetupChunkAsync(message.ChunkId, message.DocumentId, message.ChunkText, message.ChunkIndex);
+        await context.SetupChunkAsync(message.ChunkId, nonExistentDocumentId, message.ChunkText, message.ChunkIndex);
         // Note: Not setting up document here to test missing document scenario
 
         float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
@@ -275,13 +274,13 @@ public class DocumentEmbeddingServiceTests
             FileName = "test.pdf",
             RelativeDirectory = "ruleset-a/source",
             FileSize = 1024,
-            DocumentKind = "Sourcebook",
+            DocumentKind = DocumentKinds.Sourcebook,
             RulesetId = "ruleset-a"
         };
 
-        string actualDocumentId = await context.SetupDocumentAsync(message.DocumentId, message.FileName);
-        message.DocumentId = actualDocumentId;
-        await context.SetupChunkAsync(message.ChunkId, message.DocumentId, message.ChunkText, message.ChunkIndex);
+        int actualDocumentId = await context.SetupDocumentAsync(message.FileName);
+        message.DocumentId = actualDocumentId.ToString();
+        await context.SetupChunkAsync(message.ChunkId, actualDocumentId, message.ChunkText, message.ChunkIndex);
 
         float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
@@ -293,41 +292,34 @@ public class DocumentEmbeddingServiceTests
 
     private sealed class DocumentEmbeddingServiceTestContext : IDisposable
     {
-        public Mock<IMongoClient> MongoClientMock { get; }
         public Mock<IEmbeddingGenerator<string, Embedding<float>>> EmbeddingGeneratorMock { get; }
         public Mock<IQdrantClient> QdrantClientMock { get; }
         public Mock<ILogger<DocumentEmbeddingService>> LoggerMock { get; }
         public DocumentEmbeddingService Service { get; }
-        public IMongoCollection<DocumentChunk> ChunkCollection { get; }
-        public IMongoCollection<CrackedDocument> DocumentCollection { get; }
+        public JaimesDbContext DbContext { get; }
 
         private readonly ActivitySource _activitySource;
-        private readonly MongoTestRunner _mongoRunner;
         private readonly DocumentEmbeddingOptions _options;
         private PointStruct[]? _capturedPoints;
         private VectorParams? _capturedVectorParams;
 
         public DocumentEmbeddingServiceTestContext()
         {
-            MongoClientMock = new Mock<IMongoClient>();
             EmbeddingGeneratorMock = new Mock<IEmbeddingGenerator<string, Embedding<float>>>();
             QdrantClientMock = new Mock<IQdrantClient>();
             LoggerMock = new Mock<ILogger<DocumentEmbeddingService>>();
             _activitySource = new ActivitySource($"DocumentEmbeddingTests-{Guid.NewGuid()}");
-            _mongoRunner = new MongoTestRunner();
-            _mongoRunner.ResetDatabase();
+            
+            DbContextOptions<JaimesDbContext> dbOptions = new DbContextOptionsBuilder<JaimesDbContext>()
+                .UseInMemoryDatabase(databaseName: $"DocumentEmbeddingTests-{Guid.NewGuid()}")
+                .Options;
+            DbContext = new JaimesDbContext(dbOptions);
+            DbContext.Database.EnsureCreated();
+            
             _options = new DocumentEmbeddingOptions
             {
                 CollectionName = "test-collection"
             };
-
-            IMongoDatabase database = _mongoRunner.Client.GetDatabase("documents");
-            ChunkCollection = database.GetCollection<DocumentChunk>("documentChunks");
-            DocumentCollection = database.GetCollection<CrackedDocument>("crackedDocuments");
-
-            MongoClientMock
-                .Setup(client => client.GetDatabase("documents", It.IsAny<MongoDatabaseSettings>()))
-                .Returns(database);
 
             // Setup UpsertAsync - returns Task<UpdateResult>
             QdrantClientMock
@@ -355,7 +347,7 @@ public class DocumentEmbeddingServiceTests
                 .ReturnsAsync((CollectionInfo?)null);
 
             Service = new DocumentEmbeddingService(
-                _mongoRunner.Client,
+                DbContext,
                 EmbeddingGeneratorMock.Object,
                 _options,
                 QdrantClientMock.Object,
@@ -363,53 +355,37 @@ public class DocumentEmbeddingServiceTests
                 _activitySource);
         }
 
-        public async Task SetupChunkAsync(string chunkId, string documentId, string chunkText, int chunkIndex)
+        public async Task SetupChunkAsync(string chunkId, int documentId, string chunkText, int chunkIndex)
         {
             DocumentChunk chunk = new()
             {
-                Id = ObjectId.GenerateNewId().ToString(),
                 ChunkId = chunkId,
                 DocumentId = documentId,
                 ChunkText = chunkText,
                 ChunkIndex = chunkIndex
             };
 
-            await ChunkCollection.InsertOneAsync(chunk);
+            DbContext.DocumentChunks.Add(chunk);
+            await DbContext.SaveChangesAsync();
         }
 
-        public async Task<string> SetupDocumentAsync(string documentId, string fileName)
+        public async Task<int> SetupDocumentAsync(string fileName)
         {
-            // Generate a valid ObjectId from the documentId string for MongoDB compatibility
-            // Use a deterministic approach: if documentId is already a valid ObjectId, use it; otherwise generate one
-            string objectId;
-            if (ObjectId.TryParse(documentId, out ObjectId _))
-            {
-                objectId = documentId;
-            }
-            else
-            {
-                // Generate a deterministic ObjectId from the documentId string using a hash
-                // This ensures the same documentId always produces the same ObjectId for test consistency
-                byte[] hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(documentId));
-                // Take first 12 bytes (ObjectId is 12 bytes = 24 hex chars)
-                byte[] objectIdBytes = new byte[12];
-                Array.Copy(hash, 0, objectIdBytes, 0, 12);
-                objectId = new ObjectId(objectIdBytes).ToString();
-            }
-
             CrackedDocument document = new()
             {
-                Id = objectId,
                 FileName = fileName,
                 FilePath = $"/{fileName}",
                 Content = "Test content",
                 IsProcessed = false,
                 TotalChunks = 1,
-                ProcessedChunkCount = 0
+                ProcessedChunkCount = 0,
+                RulesetId = "test-ruleset",
+                DocumentKind = DocumentKinds.Sourcebook
             };
 
-            await DocumentCollection.InsertOneAsync(document);
-            return objectId;
+            DbContext.CrackedDocuments.Add(document);
+            await DbContext.SaveChangesAsync();
+            return document.Id;
         }
 
         public Task SetupOllamaEmbeddingResponse(float[] embedding)
@@ -509,9 +485,8 @@ public class DocumentEmbeddingServiceTests
         public async Task VerifyChunkUpdated(string chunkId)
         {
             CancellationToken ct = TestContext.Current.CancellationToken;
-            DocumentChunk? chunk = await ChunkCollection
-                .Find(c => c.ChunkId == chunkId)
-                .FirstOrDefaultAsync(ct);
+            DocumentChunk? chunk = await DbContext.DocumentChunks
+                .FirstOrDefaultAsync(c => c.ChunkId == chunkId, ct);
 
             chunk.ShouldNotBeNull();
             chunk.QdrantPointId.ShouldNotBeNullOrEmpty();
@@ -520,9 +495,12 @@ public class DocumentEmbeddingServiceTests
         public async Task VerifyProcessedChunkCountIncremented(string documentId)
         {
             CancellationToken ct = TestContext.Current.CancellationToken;
-            CrackedDocument? document = await DocumentCollection
-                .Find(d => d.Id == documentId)
-                .FirstOrDefaultAsync(ct);
+            if (!int.TryParse(documentId, out int docId))
+            {
+                throw new InvalidOperationException($"Invalid document ID: {documentId}");
+            }
+            CrackedDocument? document = await DbContext.CrackedDocuments
+                .FirstOrDefaultAsync(d => d.Id == docId, ct);
 
             document.ShouldNotBeNull();
             document.ProcessedChunkCount.ShouldBeGreaterThan(0);
@@ -557,7 +535,7 @@ public class DocumentEmbeddingServiceTests
         public void Dispose()
         {
             _activitySource.Dispose();
-            _mongoRunner.Dispose();
+            DbContext.Dispose();
         }
     }
 

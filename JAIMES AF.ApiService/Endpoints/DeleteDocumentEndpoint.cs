@@ -1,16 +1,14 @@
 using FastEndpoints;
-using MattEland.Jaimes.ServiceDefinitions.Messages;
-using MattEland.Jaimes.ServiceDefinitions.Models;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MongoDB.Driver;
+using MattEland.Jaimes.Repositories;
+using MattEland.Jaimes.Repositories.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
-public class DeleteDocumentEndpoint : Endpoint<DeleteDocumentRequest, DocumentOperationResponse>
+public class DeleteDocumentEndpoint(JaimesDbContext dbContext) : Endpoint<DeleteDocumentRequest, DocumentOperationResponse>
 {
-    public required IMongoClient MongoClient { get; set; }
-
     public override void Configure()
     {
         Post("/documents/delete");
@@ -29,21 +27,35 @@ public class DeleteDocumentEndpoint : Endpoint<DeleteDocumentRequest, DocumentOp
             return;
         }
 
-        IMongoDatabase database = MongoClient.GetDatabase("documents");
-        IMongoCollection<DocumentMetadata> metadataCollection = database.GetCollection<DocumentMetadata>("documentMetadata");
-        IMongoCollection<CrackedDocument> crackedCollection = database.GetCollection<CrackedDocument>("crackedDocuments");
+        // Find and delete metadata
+        DocumentMetadata? metadata = await dbContext.DocumentMetadata
+            .FirstOrDefaultAsync(x => x.FilePath == req.FilePath, ct);
+        
+        int metadataDeletedCount = 0;
+        if (metadata != null)
+        {
+            dbContext.DocumentMetadata.Remove(metadata);
+            metadataDeletedCount = 1;
+        }
 
-        FilterDefinition<DocumentMetadata> metadataFilter = Builders<DocumentMetadata>.Filter.Eq(x => x.FilePath, req.FilePath);
-        FilterDefinition<CrackedDocument> crackedFilter = Builders<CrackedDocument>.Filter.Eq(x => x.FilePath, req.FilePath);
+        // Find and delete cracked document (this will cascade delete chunks due to FK relationship)
+        CrackedDocument? crackedDocument = await dbContext.CrackedDocuments
+            .FirstOrDefaultAsync(x => x.FilePath == req.FilePath, ct);
+        
+        int crackedDeletedCount = 0;
+        if (crackedDocument != null)
+        {
+            dbContext.CrackedDocuments.Remove(crackedDocument);
+            crackedDeletedCount = 1;
+        }
 
-        DeleteResult metadataResult = await metadataCollection.DeleteOneAsync(metadataFilter, ct);
-        DeleteResult crackedResult = await crackedCollection.DeleteOneAsync(crackedFilter, ct);
+        await dbContext.SaveChangesAsync(ct);
 
         Logger.LogInformation(
             "Deleted document {FilePath}. MetadataDeleted={MetadataCount}, CrackedDeleted={CrackedCount}",
             req.FilePath,
-            metadataResult.DeletedCount,
-            crackedResult.DeletedCount);
+            metadataDeletedCount,
+            crackedDeletedCount);
 
         DocumentOperationResponse response = new()
         {
@@ -54,4 +66,3 @@ public class DeleteDocumentEndpoint : Endpoint<DeleteDocumentRequest, DocumentOp
         await Send.OkAsync(response, cancellation: ct);
     }
 }
-

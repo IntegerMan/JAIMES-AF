@@ -1,4 +1,3 @@
-using System.Linq;
 using Microsoft.Extensions.Logging;
 
 namespace MattEland.Jaimes.DocumentProcessing.Services;

@@ -1,15 +1,13 @@
 using FastEndpoints;
-using MattEland.Jaimes.ServiceDefinitions.Messages;
-using MattEland.Jaimes.ServiceDefinitions.Models;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MongoDB.Driver;
+using MattEland.Jaimes.Repositories;
+using MattEland.Jaimes.Repositories.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
-public class ListDocumentsEndpoint : Ep.NoReq.Res<DocumentStatusResponse>
+public class ListDocumentsEndpoint(JaimesDbContext dbContext) : Ep.NoReq.Res<DocumentStatusResponse>
 {
-    public required IMongoClient MongoClient { get; set; }
-
     public override void Configure()
     {
         Get("/documents");
@@ -24,21 +22,13 @@ public class ListDocumentsEndpoint : Ep.NoReq.Res<DocumentStatusResponse>
     {
         Logger.LogInformation("Listing all documents with processing status");
 
-        // Get database and collections
-        IMongoDatabase mongoDatabase = MongoClient.GetDatabase("documents");
-        Logger.LogDebug("Connected to MongoDB database: documents");
-
-        IMongoCollection<DocumentMetadata> metadataCollection = mongoDatabase.GetCollection<DocumentMetadata>("documentMetadata");
-        IMongoCollection<CrackedDocument> crackedCollection = mongoDatabase.GetCollection<CrackedDocument>("crackedDocuments");
-        Logger.LogDebug("Retrieved collections: documentMetadata, crackedDocuments");
-
         // Get all detected documents
-        List<DocumentMetadata> allMetadata = await metadataCollection.Find(_ => true).ToListAsync(ct);
-        Logger.LogInformation("Found {Count} detected documents in documentMetadata collection", allMetadata.Count);
+        List<DocumentMetadata> allMetadata = await dbContext.DocumentMetadata.ToListAsync(ct);
+        Logger.LogInformation("Found {Count} detected documents in DocumentMetadata table", allMetadata.Count);
 
         // Get all cracked documents for quick lookup
-        List<CrackedDocument> allCracked = await crackedCollection.Find(_ => true).ToListAsync(ct);
-        Logger.LogInformation("Found {Count} cracked documents in crackedDocuments collection", allCracked.Count);
+        List<CrackedDocument> allCracked = await dbContext.CrackedDocuments.ToListAsync(ct);
+        Logger.LogInformation("Found {Count} cracked documents in CrackedDocuments table", allCracked.Count);
 
         Dictionary<string, CrackedDocument> crackedByPath = allCracked
             .Where(d => !string.IsNullOrWhiteSpace(d.FilePath))
@@ -54,7 +44,7 @@ public class ListDocumentsEndpoint : Ep.NoReq.Res<DocumentStatusResponse>
 
             documents.Add(new DocumentStatusInfo
             {
-                DocumentId = hasCracked ? cracked!.Id : null,
+                DocumentId = hasCracked ? cracked!.Id.ToString() : null,
                 FilePath = metadata.FilePath,
                 FileName = Path.GetFileName(metadata.FilePath),
                 RelativeDirectory = hasCracked ? cracked!.RelativeDirectory : string.Empty,
@@ -79,4 +69,3 @@ public class ListDocumentsEndpoint : Ep.NoReq.Res<DocumentStatusResponse>
         }, cancellation: ct);
     }
 }
-

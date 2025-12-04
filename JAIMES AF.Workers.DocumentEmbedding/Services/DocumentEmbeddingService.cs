@@ -1,19 +1,18 @@
 using System.Diagnostics;
-using System.Security.Cryptography;
-using System.Text;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Workers.DocumentEmbedding.Configuration;
+using MattEland.Jaimes.Repositories;
+using MattEland.Jaimes.Repositories.Entities;
 using Microsoft.Extensions.AI;
-using Microsoft.Extensions.Logging;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 using Qdrant.Client.Grpc;
 using MattEland.Jaimes.ServiceDefaults; // added for utilities
 
 namespace MattEland.Jaimes.Workers.DocumentEmbedding.Services;
 
 public class DocumentEmbeddingService(
-    IMongoClient mongoClient,
+    JaimesDbContext dbContext,
     IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator,
     DocumentEmbeddingOptions options,
     IQdrantClient qdrantClient,
@@ -34,7 +33,7 @@ public class DocumentEmbeddingService(
         }
 
         int dims = await QdrantUtilities.ResolveEmbeddingDimensionsAsync(embeddingGenerator, logger, cancellationToken);
-        if (dims >0)
+        if (dims > 0)
         {
             _resolvedEmbeddingDimensions = dims;
         }
@@ -62,7 +61,7 @@ public class DocumentEmbeddingService(
             [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
             StringSplitOptions.RemoveEmptyEntries);
         
-        return parts.Length >0 ? parts[0] : "default";
+        return parts.Length > 0 ? parts[0] : "default";
     }
 
     public async Task ProcessChunkAsync(ChunkReadyForEmbeddingMessage message, CancellationToken cancellationToken = default)
@@ -97,7 +96,7 @@ public class DocumentEmbeddingService(
             // IEmbeddingGenerator.GenerateAsync returns GeneratedEmbeddings, so we get the first result
             GeneratedEmbeddings<Embedding<float>> embeddingsResult = await embeddingGenerator.GenerateAsync([message.ChunkText], cancellationToken: cancellationToken);
             
-            if (embeddingsResult.Count ==0)
+            if (embeddingsResult.Count == 0)
             {
                 throw new InvalidOperationException("Failed to generate embedding for chunk");
             }
@@ -147,13 +146,20 @@ public class DocumentEmbeddingService(
             logger.LogInformation("Stored embedding for chunk {ChunkId} in Qdrant (point ID: {PointId})",
                 message.ChunkId, qdrantPointId);
 
-            // Update MongoDB to mark chunk as processed
-            await UpdateChunkInMongoDBAsync(message.ChunkId, qdrantPointId, cancellationToken);
+            // Update PostgreSQL to mark chunk as processed
+            await UpdateChunkInPostgreSQLAsync(message.ChunkId, qdrantPointId, cancellationToken);
 
             // Increment ProcessedChunkCount in CrackedDocument
-            await IncrementProcessedChunkCountAsync(message.DocumentId, cancellationToken);
+            if (!int.TryParse(message.DocumentId, out int documentId))
+            {
+                logger.LogError("Failed to parse DocumentId '{DocumentId}' as integer for chunk {ChunkId}. ProcessedChunkCount will not be incremented.", 
+                    message.DocumentId, message.ChunkId);
+                throw new ArgumentException($"Invalid DocumentId format: '{message.DocumentId}'. Expected an integer.", nameof(message));
+            }
 
-            logger.LogInformation("Marked chunk {ChunkId} as processed in MongoDB", message.ChunkId);
+            await IncrementProcessedChunkCountAsync(documentId, cancellationToken);
+
+            logger.LogInformation("Marked chunk {ChunkId} as processed in PostgreSQL", message.ChunkId);
             activity?.SetStatus(ActivityStatusCode.Ok);
         }
         catch (Exception ex)
@@ -228,33 +234,30 @@ public class DocumentEmbeddingService(
             cancellationToken: cancellationToken);
     }
 
-    private async Task UpdateChunkInMongoDBAsync(
+    private async Task UpdateChunkInPostgreSQLAsync(
         string chunkId,
         ulong qdrantPointId,
         CancellationToken cancellationToken)
     {
-        IMongoDatabase mongoDatabase = mongoClient.GetDatabase("documents");
-        IMongoCollection<DocumentChunk> collection = mongoDatabase.GetCollection<DocumentChunk>("documentChunks");
+        DocumentChunk? chunk = await dbContext.DocumentChunks
+            .FirstOrDefaultAsync(c => c.ChunkId == chunkId, cancellationToken);
 
-        FilterDefinition<DocumentChunk> filter = Builders<DocumentChunk>.Filter.Eq(c => c.ChunkId, chunkId);
-        UpdateDefinition<DocumentChunk> update = Builders<DocumentChunk>.Update
-            .Set(c => c.QdrantPointId, qdrantPointId.ToString());
-
-        MongoDB.Driver.UpdateResult result = await collection.UpdateOneAsync(filter, update, cancellationToken: cancellationToken);
-
-        if (result.MatchedCount == 0)
+        if (chunk == null)
         {
-            logger.LogWarning("Chunk {ChunkId} not found in MongoDB when updating Qdrant point ID", chunkId);
+            logger.LogWarning("Chunk {ChunkId} not found in PostgreSQL when updating Qdrant point ID", chunkId);
         }
         else
         {
+            chunk.QdrantPointId = qdrantPointId.ToString();
+            await dbContext.SaveChangesAsync(cancellationToken);
+            
             logger.LogDebug("Updated chunk {ChunkId} with Qdrant point ID {PointId}",
                 chunkId, qdrantPointId);
         }
     }
 
     private async Task IncrementProcessedChunkCountAsync(
-        string documentId,
+        int documentId,
         CancellationToken cancellationToken)
     {
         using Activity? activity = activitySource.StartActivity("DocumentEmbedding.IncrementProcessedChunkCount");
@@ -262,21 +265,18 @@ public class DocumentEmbeddingService(
 
         try
         {
-            IMongoDatabase mongoDatabase = mongoClient.GetDatabase("documents");
-            IMongoCollection<CrackedDocument> collection = mongoDatabase.GetCollection<CrackedDocument>("crackedDocuments");
+            CrackedDocument? document = await dbContext.CrackedDocuments
+                .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken);
 
-            FilterDefinition<CrackedDocument> filter = Builders<CrackedDocument>.Filter.Eq(d => d.Id, documentId);
-            UpdateDefinition<CrackedDocument> update = Builders<CrackedDocument>.Update
-                .Inc(d => d.ProcessedChunkCount, 1);
-
-            MongoDB.Driver.UpdateResult result = await collection.UpdateOneAsync(filter, update, cancellationToken: cancellationToken);
-
-            if (result.MatchedCount == 0)
+            if (document == null)
             {
                 logger.LogWarning("Document {DocumentId} not found when incrementing processed chunk count", documentId);
             }
             else
             {
+                document.ProcessedChunkCount++;
+                await dbContext.SaveChangesAsync(cancellationToken);
+                
                 logger.LogDebug("Incremented processed chunk count for document {DocumentId}", documentId);
             }
 
@@ -290,4 +290,3 @@ public class DocumentEmbeddingService(
         }
     }
 }
-

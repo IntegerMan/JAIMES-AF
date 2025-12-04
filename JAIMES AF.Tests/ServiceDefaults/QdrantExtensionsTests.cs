@@ -1,7 +1,5 @@
-using System.Collections.Generic;
 using MattEland.Jaimes.ServiceDefaults;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Qdrant.Client;
 using Shouldly;
 

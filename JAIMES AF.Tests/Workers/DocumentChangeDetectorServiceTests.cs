@@ -1,13 +1,13 @@
 using System.Diagnostics;
+using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.DocumentProcessing.Services;
+using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
-using MattEland.Jaimes.ServiceDefinitions.Models;
 using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.Tests.TestUtilities;
 using MattEland.Jaimes.Workers.DocumentChangeDetector.Configuration;
 using MattEland.Jaimes.Workers.DocumentChangeDetector.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using MongoDB.Driver;
 using Moq;
 using Shouldly;
 
@@ -84,16 +84,22 @@ public class DocumentChangeDetectorServiceTests
         {
             FilePath = filePath,
             Hash = "hash-static",
-            LastScanned = DateTime.UtcNow
+            LastScanned = DateTime.UtcNow,
+            RulesetId = "ruleset-b",
+            DocumentKind = DocumentKinds.Sourcebook
         };
-        await context.MetadataCollection.InsertOneAsync(metadata, cancellationToken: TestContext.Current.CancellationToken);
+        context.DbContext.DocumentMetadata.Add(metadata);
 
         CrackedDocument crackedDocument = new()
         {
             FilePath = filePath,
-            Content = "already processed"
+            Content = "already processed",
+            FileName = Path.GetFileName(filePath),
+            RulesetId = "ruleset-b",
+            DocumentKind = DocumentKinds.Sourcebook
         };
-        await context.CrackedCollection.InsertOneAsync(crackedDocument, cancellationToken: TestContext.Current.CancellationToken);
+        context.DbContext.CrackedDocuments.Add(crackedDocument);
+        await context.DbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         DocumentChangeDetectorService service = context.CreateService();
 
@@ -140,9 +146,12 @@ public class DocumentChangeDetectorServiceTests
         {
             FilePath = filePath,
             Hash = "hash-stale",
-            LastScanned = DateTime.UtcNow
+            LastScanned = DateTime.UtcNow,
+            RulesetId = "ruleset-c",
+            DocumentKind = DocumentKinds.Sourcebook
         };
-        await context.MetadataCollection.InsertOneAsync(metadata, cancellationToken: TestContext.Current.CancellationToken);
+        context.DbContext.DocumentMetadata.Add(metadata);
+        await context.DbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         DocumentChangeDetectorService service = context.CreateService();
 
@@ -168,9 +177,7 @@ public class DocumentChangeDetectorServiceTests
         public Mock<ILogger<DocumentChangeDetectorService>> LoggerMock { get; }
         public Mock<IDirectoryScanner> DirectoryScannerMock { get; }
         public Mock<IChangeTracker> ChangeTrackerMock { get; }
-        public MongoTestRunner MongoRunner { get; }
-        public IMongoCollection<DocumentMetadata> MetadataCollection => MongoRunner.Client.GetDatabase("documents").GetCollection<DocumentMetadata>("documentMetadata");
-        public IMongoCollection<CrackedDocument> CrackedCollection => MongoRunner.Client.GetDatabase("documents").GetCollection<CrackedDocument>("crackedDocuments");
+        public JaimesDbContext DbContext { get; }
         public Mock<IMessagePublisher> MessagePublisherMock { get; }
 
         private readonly ActivitySource _activitySource;
@@ -186,8 +193,13 @@ public class DocumentChangeDetectorServiceTests
             DirectoryScannerMock = new Mock<IDirectoryScanner>();
             ChangeTrackerMock = new Mock<IChangeTracker>();
             MessagePublisherMock = new Mock<IMessagePublisher>();
-            MongoRunner = new MongoTestRunner();
-            MongoRunner.ResetDatabase();
+            
+            DbContextOptions<JaimesDbContext> dbOptions = new DbContextOptionsBuilder<JaimesDbContext>()
+                .UseInMemoryDatabase(databaseName: $"DocumentChangeDetectorTests-{Guid.NewGuid()}")
+                .Options;
+            DbContext = new JaimesDbContext(dbOptions);
+            DbContext.Database.EnsureCreated();
+            
             _activitySource = new ActivitySource($"DocumentChangeDetectorTests-{Guid.NewGuid()}");
         }
 
@@ -197,7 +209,7 @@ public class DocumentChangeDetectorServiceTests
                 LoggerMock.Object,
                 DirectoryScannerMock.Object,
                 ChangeTrackerMock.Object,
-                MongoRunner.Client,
+                DbContext,
                 MessagePublisherMock.Object,
                 _activitySource,
                 Options);
@@ -206,7 +218,7 @@ public class DocumentChangeDetectorServiceTests
         public void Dispose()
         {
             _activitySource.Dispose();
-            MongoRunner.Dispose();
+            DbContext.Dispose();
         }
     }
 

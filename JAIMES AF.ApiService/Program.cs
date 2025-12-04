@@ -1,4 +1,3 @@
-using System;
 using System.Diagnostics;
 using FastEndpoints;
 using FastEndpoints.Swagger;
@@ -10,8 +9,6 @@ using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Services;
 using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
 using MattEland.Jaimes.Workers.DocumentChunking.Services;
-using MongoDB.Driver;
-using Qdrant.Client;
 using RabbitMQ.Client;
 
 namespace MattEland.Jaimes.ApiService;
@@ -24,21 +21,6 @@ public class Program
 
         // Add service defaults & Aspire client integrations.
         builder.AddServiceDefaults();
-
-        // Add MongoDB client integration when connection information is available (Aspire/local config)
-        string? mongoConnectionString = builder.Configuration.GetConnectionString("documents")
-            ?? builder.Configuration["ConnectionStrings:documents"]
-            ?? builder.Configuration["ConnectionStrings__documents"]
-            ?? builder.Configuration["Aspire:MongoDB:Driver:ConnectionString"];
-        if (!string.IsNullOrWhiteSpace(mongoConnectionString))
-        {
-            builder.AddMongoDBClient("documents");
-        }
-        else
-        {
-            builder.Services.AddSingleton<IMongoClient>(_ =>
-                new MongoClient("mongodb://localhost:27017"));
-        }
 
         // Configure message publishing using RabbitMQ.Client (LavinMQ compatible)
         IConnectionFactory connectionFactory = RabbitMqConnectionFactory.CreateConnectionFactory(builder.Configuration);

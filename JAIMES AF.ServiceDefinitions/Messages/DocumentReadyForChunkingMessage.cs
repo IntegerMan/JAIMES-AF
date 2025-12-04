@@ -1,3 +1,5 @@
+using MattEland.Jaimes.Domain;
+
 namespace MattEland.Jaimes.ServiceDefinitions.Messages;
 
 public class DocumentReadyForChunkingMessage
@@ -9,7 +11,7 @@ public class DocumentReadyForChunkingMessage
     public long FileSize { get; set; }
     public int PageCount { get; set; }
     public DateTime CrackedAt { get; set; }
-    public string DocumentKind { get; set; } = "Sourcebook";
+    public string DocumentKind { get; set; } = DocumentKinds.Sourcebook;
     public string RulesetId { get; set; } = string.Empty;
 }
 

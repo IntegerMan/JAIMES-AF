@@ -1,7 +1,6 @@
 using MattEland.Jaimes.Repositories.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 
 namespace MattEland.Jaimes.Tests.Repositories;

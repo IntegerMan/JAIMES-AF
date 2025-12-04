@@ -1,3 +1,5 @@
+using MattEland.Jaimes.Domain;
+
 namespace MattEland.Jaimes.ServiceDefinitions.Messages;
 
 public class ChunkReadyForEmbeddingMessage
@@ -14,7 +16,7 @@ public class ChunkReadyForEmbeddingMessage
     public int? PageNumber { get; set; }
     public DateTime CrackedAt { get; set; }
     public int TotalChunks { get; set; }
-    public string DocumentKind { get; set; } = "Sourcebook";
+    public string DocumentKind { get; set; } = DocumentKinds.Sourcebook;
     public string RulesetId { get; set; } = string.Empty;
 }
 

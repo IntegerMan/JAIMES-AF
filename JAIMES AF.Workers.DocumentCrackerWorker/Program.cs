@@ -5,11 +5,7 @@ using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Workers.DocumentCrackerWorker.Configuration;
 using MattEland.Jaimes.Workers.DocumentCrackerWorker.Consumers;
 using MattEland.Jaimes.Workers.DocumentCrackerWorker.Services;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using OpenTelemetry;
+using MattEland.Jaimes.Repositories;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -44,8 +40,8 @@ DocumentCrackerWorkerOptions options = builder.Configuration.GetSection("Documen
 
 builder.Services.AddSingleton(options);
 
-// Add MongoDB client integration
-builder.AddMongoDBClient("documents");
+// Add PostgreSQL with EF Core
+builder.Services.AddJaimesRepositories(builder.Configuration);
 
 // Register services
 builder.Services.AddSingleton<IPdfTextExtractor, PdfPigTextExtractor>();
@@ -88,6 +84,8 @@ builder.Services.AddSingleton(activitySource);
 using IHost host = builder.Build();
 
 ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
+
+await host.InitializeDatabaseAsync();
 
 logger.LogInformation("Starting Document Cracker Worker");
 

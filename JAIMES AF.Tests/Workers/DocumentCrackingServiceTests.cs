@@ -1,10 +1,11 @@
 using System.Diagnostics;
+using MattEland.Jaimes.Domain;
+using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.Tests.TestUtilities;
 using MattEland.Jaimes.Workers.DocumentCrackerWorker.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using MongoDB.Driver;
 using Moq;
 using Shouldly;
 
@@ -26,7 +27,7 @@ public class DocumentCrackingServiceTests
                 tempFile,
                 null,
                 "ruleset-x",
-                "Sourcebook",
+                DocumentKinds.Sourcebook,
                 TestContext.Current.CancellationToken);
 
             context.MessagePublisherMock.Verify(
@@ -80,19 +81,18 @@ public class DocumentCrackingServiceTests
                 It.IsAny<CancellationToken>()),
             Times.Once);
 
-        CrackedDocument? storedDocument = await context.CrackedCollection
-            .Find(d => d.FilePath == filePath)
-            .FirstOrDefaultAsync(TestContext.Current.CancellationToken);
+        CrackedDocument? storedDocument = await context.DbContext.CrackedDocuments
+            .FirstOrDefaultAsync(d => d.FilePath == filePath, TestContext.Current.CancellationToken);
         storedDocument.ShouldNotBeNull();
         storedDocument!.Content.ShouldBe("page content");
         storedDocument.IsProcessed.ShouldBeFalse();
         storedDocument.RulesetId.ShouldBe("ruleset-y");
-        storedDocument.DocumentKind.ShouldBe("Sourcebook");
+        storedDocument.DocumentKind.ShouldBe(DocumentKinds.Sourcebook);
 
         publishedMessage.ShouldNotBeNull();
         publishedMessage!.FilePath.ShouldBe(filePath);
         publishedMessage.RelativeDirectory.ShouldBe("ruleset-y/core");
-        publishedMessage.DocumentKind.ShouldBe("Sourcebook");
+        publishedMessage.DocumentKind.ShouldBe(DocumentKinds.Sourcebook);
         publishedMessage.RulesetId.ShouldBe("ruleset-y");
         publishedMessage.DocumentId.ShouldNotBeNullOrWhiteSpace();
     }
@@ -103,8 +103,7 @@ public class DocumentCrackingServiceTests
         public Mock<IMessagePublisher> MessagePublisherMock { get; }
         public Mock<IPdfTextExtractor> PdfTextExtractorMock { get; }
         public DocumentCrackingService Service { get; }
-        public IMongoCollection<CrackedDocument> CrackedCollection => MongoRunner.Client.GetDatabase("documents").GetCollection<CrackedDocument>("crackedDocuments");
-        private MongoTestRunner MongoRunner { get; }
+        public JaimesDbContext DbContext { get; }
 
         private readonly ActivitySource _activitySource;
 
@@ -113,13 +112,18 @@ public class DocumentCrackingServiceTests
             LoggerMock = new Mock<ILogger<DocumentCrackingService>>();
             MessagePublisherMock = new Mock<IMessagePublisher>();
             PdfTextExtractorMock = new Mock<IPdfTextExtractor>();
-            MongoRunner = new MongoTestRunner();
-            MongoRunner.ResetDatabase();
+            
+            DbContextOptions<JaimesDbContext> dbOptions = new DbContextOptionsBuilder<JaimesDbContext>()
+                .UseInMemoryDatabase(databaseName: $"DocumentCrackerTests-{Guid.NewGuid()}")
+                .Options;
+            DbContext = new JaimesDbContext(dbOptions);
+            DbContext.Database.EnsureCreated();
+            
             _activitySource = new ActivitySource($"DocumentCrackerTests-{Guid.NewGuid()}");
 
             Service = new DocumentCrackingService(
                 LoggerMock.Object,
-                MongoRunner.Client,
+                DbContext,
                 MessagePublisherMock.Object,
                 _activitySource,
                 PdfTextExtractorMock.Object);
@@ -128,7 +132,7 @@ public class DocumentCrackingServiceTests
         public void Dispose()
         {
             _activitySource.Dispose();
-            MongoRunner.Dispose();
+            DbContext.Dispose();
         }
 
     }

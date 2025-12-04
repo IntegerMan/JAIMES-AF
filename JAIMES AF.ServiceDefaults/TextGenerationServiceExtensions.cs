@@ -1,10 +1,6 @@
-using System.ClientModel;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Azure.AI.OpenAI;
-using Azure.Core;
-using Azure.Identity;
-using Microsoft.Agents.AI.OpenAI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

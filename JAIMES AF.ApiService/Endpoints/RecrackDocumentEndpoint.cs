@@ -1,18 +1,17 @@
 using FastEndpoints;
+using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
-using MattEland.Jaimes.ServiceDefinitions.Models;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Services;
-using MongoDB.Driver;
+using MattEland.Jaimes.Repositories;
+using MattEland.Jaimes.Repositories.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
-public class RecrackDocumentEndpoint : Endpoint<RecrackDocumentRequest, DocumentOperationResponse>
+public class RecrackDocumentEndpoint(IMessagePublisher messagePublisher, JaimesDbContext dbContext) : Endpoint<RecrackDocumentRequest, DocumentOperationResponse>
 {
-    public required IMessagePublisher MessagePublisher { get; set; }
-    public required IMongoClient MongoClient { get; set; }
-
     public override void Configure()
     {
         Post("/documents/recrack");
@@ -33,12 +32,10 @@ public class RecrackDocumentEndpoint : Endpoint<RecrackDocumentRequest, Document
 
         // Get rulesetId and documentKind from DocumentMetadata if available, otherwise use defaults
         string rulesetId = "default";
-        string documentKind = "Sourcebook";
+        string documentKind = DocumentKinds.Sourcebook;
         
-        IMongoDatabase database = MongoClient.GetDatabase("documents");
-        IMongoCollection<DocumentMetadata> metadataCollection = database.GetCollection<DocumentMetadata>("documentMetadata");
-        FilterDefinition<DocumentMetadata> filter = Builders<DocumentMetadata>.Filter.Eq(x => x.FilePath, req.FilePath);
-        DocumentMetadata? metadata = await metadataCollection.Find(filter).FirstOrDefaultAsync(ct);
+        DocumentMetadata? metadata = await dbContext.DocumentMetadata
+            .FirstOrDefaultAsync(x => x.FilePath == req.FilePath, ct);
         
         if (metadata != null && !string.IsNullOrWhiteSpace(metadata.RulesetId))
         {
@@ -54,7 +51,7 @@ public class RecrackDocumentEndpoint : Endpoint<RecrackDocumentRequest, Document
             DocumentKind = documentKind
         };
 
-        await MessagePublisher.PublishAsync(message, ct);
+        await messagePublisher.PublishAsync(message, ct);
         Logger.LogInformation("Requested re-crack for document {FilePath}", req.FilePath);
 
         DocumentOperationResponse response = new()
@@ -66,4 +63,3 @@ public class RecrackDocumentEndpoint : Endpoint<RecrackDocumentRequest, Document
         await Send.OkAsync(response, cancellation: ct);
     }
 }
-

@@ -1,3 +1,5 @@
+using MattEland.Jaimes.Domain;
+
 namespace MattEland.Jaimes.DocumentProcessing.Services;
 
 /// <summary>
@@ -32,7 +34,7 @@ public static class DocumentMetadataExtractor
     {
         // For now, all documents are Sourcebooks
         // In the future, this could extract from the path structure (e.g., "dnd5e/sourcebooks/..." or "dnd5e/transcripts/...")
-        return "Sourcebook";
+        return DocumentKinds.Sourcebook;
     }
 }
 

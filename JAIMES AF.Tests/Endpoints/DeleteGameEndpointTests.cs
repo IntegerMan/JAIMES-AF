@@ -1,4 +1,3 @@
-using System.Net;
 using System.Net.Http.Json;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using Shouldly;

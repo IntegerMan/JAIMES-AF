@@ -5,13 +5,8 @@ using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Workers.DocumentEmbedding.Configuration;
 using MattEland.Jaimes.Workers.DocumentEmbedding.Consumers;
 using MattEland.Jaimes.Workers.DocumentEmbedding.Services;
+using MattEland.Jaimes.Repositories;
 using Microsoft.Extensions.AI;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using MongoDB.Driver;
-using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -52,8 +47,8 @@ DocumentEmbeddingOptions options = builder.Configuration.GetSection("DocumentEmb
 
 builder.Services.AddSingleton(options);
 
-// Add MongoDB client integration
-builder.AddMongoDBClient("documents");
+// Add PostgreSQL with EF Core
+builder.Services.AddJaimesRepositories(builder.Configuration);
 
 // Configure Qdrant client using centralized extension method
 // DocumentEmbedding worker uses "qdrant" as default API key (matching ApiService configuration)
@@ -103,14 +98,14 @@ builder.Services.AddSingleton<IQdrantClient>(sp =>
 // Register DocumentEmbeddingService
 builder.Services.AddSingleton<IDocumentEmbeddingService>(sp =>
 {
-    IMongoClient mongoClient = sp.GetRequiredService<IMongoClient>();
+    JaimesDbContext dbContext = sp.GetRequiredService<JaimesDbContext>();
     IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator = sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
     IQdrantClient qdrantClient = sp.GetRequiredService<IQdrantClient>();
     ILogger<DocumentEmbeddingService> logger = sp.GetRequiredService<ILogger<DocumentEmbeddingService>>();
     ActivitySource activitySource = sp.GetRequiredService<ActivitySource>();
     
     return new DocumentEmbeddingService(
-        mongoClient,
+        dbContext,
         embeddingGenerator,
         options,
         qdrantClient,

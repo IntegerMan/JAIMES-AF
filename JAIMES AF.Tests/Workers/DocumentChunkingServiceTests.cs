@@ -1,12 +1,12 @@
 using System.Diagnostics;
+using MattEland.Jaimes.Domain;
+using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.Tests.TestUtilities;
 using MattEland.Jaimes.Workers.DocumentChunking.Models;
 using MattEland.Jaimes.Workers.DocumentChunking.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using MongoDB.Bson;
-using MongoDB.Driver;
 using Moq;
 using Shouldly;
 
@@ -19,22 +19,20 @@ public class DocumentChunkingServiceTests
     {
         using DocumentChunkingServiceTestContext context = new();
 
-        string documentId = ObjectId.GenerateNewId().ToString();
+        int documentId = await context.SetupDocumentContentAsync("Document content", TestContext.Current.CancellationToken);
 
         DocumentReadyForChunkingMessage message = new()
         {
-            DocumentId = documentId,
+            DocumentId = documentId.ToString(),
             FileName = "rules.pdf",
             FilePath = "/content/rules.pdf",
             RelativeDirectory = "ruleset-z/source",
             FileSize = 1024,
             PageCount = 12,
             CrackedAt = DateTime.UtcNow,
-            DocumentKind = "Sourcebook",
+            DocumentKind = DocumentKinds.Sourcebook,
             RulesetId = "ruleset-z"
         };
-
-        await context.SetupDocumentContentAsync(message.DocumentId, "Document content", TestContext.Current.CancellationToken);
 
         List<TextChunk> chunks = new()
         {
@@ -106,16 +104,15 @@ public class DocumentChunkingServiceTests
         queuedChunk.DocumentKind.ShouldBe(message.DocumentKind);
         queuedChunk.RulesetId.ShouldBe(message.RulesetId);
 
-        List<DocumentChunk> storedChunks = await context.DocumentChunkCollection
-            .Find(Builders<DocumentChunk>.Filter.Eq(chunk => chunk.DocumentId, message.DocumentId))
+        List<DocumentChunk> storedChunks = await context.DbContext.DocumentChunks
+            .Where(chunk => chunk.DocumentId == documentId)
             .ToListAsync(TestContext.Current.CancellationToken);
         storedChunks.Count.ShouldBe(chunks.Count);
         storedChunks.Any(chunk => chunk.ChunkId == "chunk-embedded").ShouldBeTrue();
         storedChunks.Any(chunk => chunk.ChunkId == "chunk-unembedded").ShouldBeTrue();
 
-        CrackedDocument? updatedDocument = await context.CrackedCollection
-            .Find(doc => doc.Id == message.DocumentId)
-            .FirstOrDefaultAsync(TestContext.Current.CancellationToken);
+        CrackedDocument? updatedDocument = await context.DbContext.CrackedDocuments
+            .FirstOrDefaultAsync(doc => doc.Id == documentId, TestContext.Current.CancellationToken);
         updatedDocument.ShouldNotBeNull();
         updatedDocument!.IsProcessed.ShouldBeTrue();
         updatedDocument.TotalChunks.ShouldBe(chunks.Count);
@@ -126,22 +123,20 @@ public class DocumentChunkingServiceTests
     {
         using DocumentChunkingServiceTestContext context = new();
 
-        string documentId = ObjectId.GenerateNewId().ToString();
+        int documentId = await context.SetupDocumentContentAsync("Document content", TestContext.Current.CancellationToken);
 
         DocumentReadyForChunkingMessage message = new()
         {
-            DocumentId = documentId,
+            DocumentId = documentId.ToString(),
             FileName = "rules.pdf",
             FilePath = "/content/rules.pdf",
             RelativeDirectory = "ruleset-z/source",
             FileSize = 1024,
             PageCount = 12,
             CrackedAt = DateTime.UtcNow,
-            DocumentKind = "Sourcebook",
+            DocumentKind = DocumentKinds.Sourcebook,
             RulesetId = "ruleset-z"
         };
-
-        await context.SetupDocumentContentAsync(message.DocumentId, "Document content", TestContext.Current.CancellationToken);
 
         List<TextChunk> chunks = new()
         {
@@ -204,11 +199,9 @@ public class DocumentChunkingServiceTests
         public Mock<IMessagePublisher> MessagePublisherMock { get; }
         public Mock<ILogger<DocumentChunkingService>> LoggerMock { get; }
         public DocumentChunkingService Service { get; }
-        public IMongoCollection<CrackedDocument> CrackedCollection => MongoRunner.Client.GetDatabase("documents").GetCollection<CrackedDocument>("crackedDocuments");
-        public IMongoCollection<DocumentChunk> DocumentChunkCollection => MongoRunner.Client.GetDatabase("documents").GetCollection<DocumentChunk>("documentChunks");
+        public JaimesDbContext DbContext { get; }
 
         private readonly ActivitySource _activitySource;
-        private MongoTestRunner MongoRunner { get; }
 
         public DocumentChunkingServiceTestContext()
         {
@@ -216,8 +209,13 @@ public class DocumentChunkingServiceTests
             QdrantStoreMock = new Mock<IQdrantEmbeddingStore>();
             MessagePublisherMock = new Mock<IMessagePublisher>();
             LoggerMock = new Mock<ILogger<DocumentChunkingService>>();
-            MongoRunner = new MongoTestRunner();
-            MongoRunner.ResetDatabase();
+            
+            DbContextOptions<JaimesDbContext> dbOptions = new DbContextOptionsBuilder<JaimesDbContext>()
+                .UseInMemoryDatabase(databaseName: $"DocumentChunkingTests-{Guid.NewGuid()}")
+                .Options;
+            DbContext = new JaimesDbContext(dbOptions);
+            DbContext.Database.EnsureCreated();
+            
             _activitySource = new ActivitySource($"DocumentChunkingTests-{Guid.NewGuid()}");
 
             QdrantStoreMock
@@ -235,7 +233,7 @@ public class DocumentChunkingServiceTests
                 .Returns(Task.CompletedTask);
 
             Service = new DocumentChunkingService(
-                MongoRunner.Client,
+                DbContext,
                 ChunkingStrategyMock.Object,
                 QdrantStoreMock.Object,
                 MessagePublisherMock.Object,
@@ -243,22 +241,27 @@ public class DocumentChunkingServiceTests
                 _activitySource);
         }
 
-        public async Task SetupDocumentContentAsync(string documentId, string content, CancellationToken cancellationToken)
+        public async Task<int> SetupDocumentContentAsync(string content, CancellationToken cancellationToken)
         {
             CrackedDocument document = new()
             {
-                Id = documentId,
+                FilePath = "/content/rules.pdf",
+                FileName = "rules.pdf",
                 Content = content,
-                IsProcessed = false
+                IsProcessed = false,
+                RulesetId = "ruleset-z",
+                DocumentKind = DocumentKinds.Sourcebook
             };
 
-            await CrackedCollection.InsertOneAsync(document, cancellationToken: cancellationToken);
+            DbContext.CrackedDocuments.Add(document);
+            await DbContext.SaveChangesAsync(cancellationToken);
+            return document.Id;
         }
 
         public void Dispose()
         {
             _activitySource.Dispose();
-            MongoRunner.Dispose();
+            DbContext.Dispose();
         }
     }
 }

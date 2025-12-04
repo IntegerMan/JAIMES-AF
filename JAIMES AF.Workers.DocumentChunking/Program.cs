@@ -5,19 +5,12 @@ using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
 using MattEland.Jaimes.Workers.DocumentChunking.Consumers;
 using MattEland.Jaimes.Workers.DocumentChunking.Services;
+using MattEland.Jaimes.Repositories;
 using Microsoft.Extensions.AI;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Http.Resilience;
-using Microsoft.Extensions.Logging;
 using OllamaSharp;
-using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using Qdrant.Client;
-using Qdrant.Client.Grpc;
 using RabbitMQ.Client;
 using SemanticChunkerNET;
 
@@ -55,8 +48,8 @@ DocumentChunkingOptions options = builder.Configuration.GetSection("DocumentChun
 
 builder.Services.AddSingleton(options);
 
-// Add MongoDB client integration
-builder.AddMongoDBClient("documents");
+// Add PostgreSQL with EF Core
+builder.Services.AddJaimesRepositories(builder.Configuration);
 
 // Configure Qdrant client using centralized extension method
 builder.Services.AddQdrantClient(builder.Configuration, new QdrantExtensions.QdrantConfigurationOptions
@@ -194,6 +187,8 @@ using IHost host = builder.Build();
 
 ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 IQdrantEmbeddingStore qdrantStore = host.Services.GetRequiredService<IQdrantEmbeddingStore>();
+
+await host.InitializeDatabaseAsync();
 
 logger.LogInformation("Starting Document Chunking and Embedding Worker");
 logger.LogInformation("Chunking Strategy: {Strategy}", chunkingStrategy);
