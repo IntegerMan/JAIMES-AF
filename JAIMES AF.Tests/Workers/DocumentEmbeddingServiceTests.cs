@@ -227,7 +227,7 @@ public class DocumentEmbeddingServiceTests
 
         await context.Service.ProcessChunkAsync(message, CancellationToken.None);
 
-        context.VerifyWarningLogged("not found in MongoDB when updating Qdrant point ID");
+        context.VerifyWarningLogged("not found in PostgreSQL when updating Qdrant point ID");
     }
 
     [Fact]
