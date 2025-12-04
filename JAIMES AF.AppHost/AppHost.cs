@@ -7,9 +7,9 @@ IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(ar
 var postgres = builder.AddPostgres("postgres")
     .WithImage("pgvector/pgvector", tag:"pg17-trixie")
     .WithIconName("DatabaseSwitch")
-    .WithDataVolume("jaimes-pg17-vectordb", isReadOnly: false);
+    .WithDataVolume("jaimes-pg17-v4", isReadOnly: false);
 
-postgres.WithPgAdmin(admin =>
+var pgAdmin = postgres.WithPgAdmin(admin =>
  {
      admin.WithIconName("TaskListSquareDatabase");
      admin.WithHostPort(5858);
@@ -87,6 +87,7 @@ IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIME
     .WithReference(lavinmq)
     .WaitFor(qdrant)
     .WaitFor(ollama)
+    .WaitFor(postgres)
     .WaitFor(postgresdb)
     .WaitFor(lavinmq);
 
@@ -128,6 +129,7 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentCrackerWorker>("document-c
     .WithReference(lavinmq)
     .WithReference(postgresdb)
     .WaitFor(lavinmq)
+    .WaitFor(postgres)
     .WaitFor(postgresdb);
 
 builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChangeDetector>("document-change-detector")
@@ -135,6 +137,7 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChangeDetector>("document-
     .WithReference(lavinmq)
     .WithReference(postgresdb)
     .WaitFor(lavinmq)
+    .WaitFor(postgres)
     .WaitFor(postgresdb);
 
 builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChunking>("document-chunking-worker")
@@ -144,6 +147,7 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChunking>("document-chunki
     .WithReference(qdrant)
     .WithReference(embedModel)
     .WaitFor(lavinmq)
+    .WaitFor(postgres)
     .WaitFor(postgresdb)
     .WaitFor(qdrant)
     .WaitFor(ollama)
@@ -170,6 +174,7 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbedding>("document-embed
     .WithReference(qdrant)
     .WithReference(embedModel)
     .WaitFor(lavinmq)
+    .WaitFor(postgres)
     .WaitFor(postgresdb)
     .WaitFor(qdrant)
     .WaitFor(ollama)

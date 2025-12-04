@@ -64,7 +64,6 @@ public static class RepositoryServiceCollectionExtensions
         var logger = loggerFactory?.CreateLogger("DatabaseInitialization") ??
                      NullLoggerFactory.Instance.CreateLogger("DatabaseInitialization");
 
-
         string providerName = context.Database.ProviderName ?? "unknown";
         logger.LogInformation("Starting database initialization. EF provider: {Provider}", providerName);
 
