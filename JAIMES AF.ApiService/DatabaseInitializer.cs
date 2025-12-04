@@ -27,7 +27,8 @@ public class DatabaseInitializer(ActivitySource activitySource, ILogger<Database
 
             try
             {
-                await app.Services.InitializeDatabaseAsync();
+                // Use the centralized database initialization method
+                await app.InitializeDatabaseAsync();
                 migrateActivity?.SetTag("db.migrate.success", true);
             }
             catch (Exception ex)

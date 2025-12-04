@@ -1,6 +1,5 @@
 using MattEland.Jaimes.Repositories.Entities;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Shouldly;
 

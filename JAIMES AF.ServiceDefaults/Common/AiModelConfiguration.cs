@@ -1,6 +1,5 @@
 using System.ClientModel;
 using Azure.AI.OpenAI;
-using Azure.Core;
 using Azure.Identity;
 using OpenAI;
 

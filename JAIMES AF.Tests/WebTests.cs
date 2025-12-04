@@ -1,6 +1,5 @@
 using Aspire.Hosting;
 using Microsoft.Extensions.Logging;
-using Xunit;
 
 namespace MattEland.Jaimes.Tests;
 

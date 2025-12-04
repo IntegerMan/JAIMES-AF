@@ -1,6 +1,4 @@
 using MattEland.Jaimes.Workers.DocumentChangeDetector.Configuration;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
 namespace MattEland.Jaimes.Workers.DocumentChangeDetector.Services;
 

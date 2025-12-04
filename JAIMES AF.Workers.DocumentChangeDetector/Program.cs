@@ -5,11 +5,6 @@ using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Workers.DocumentChangeDetector.Configuration;
 using MattEland.Jaimes.Workers.DocumentChangeDetector.Services;
 using MattEland.Jaimes.Repositories;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -91,6 +86,8 @@ builder.Services.AddSingleton(activitySource);
 using IHost host = builder.Build();
 
 ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
+
+await host.InitializeDatabaseAsync();
 
 logger.LogInformation("Starting Document Change Detector Worker");
 

@@ -6,11 +6,6 @@ using MattEland.Jaimes.Workers.DocumentCrackerWorker.Configuration;
 using MattEland.Jaimes.Workers.DocumentCrackerWorker.Consumers;
 using MattEland.Jaimes.Workers.DocumentCrackerWorker.Services;
 using MattEland.Jaimes.Repositories;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -89,6 +84,8 @@ builder.Services.AddSingleton(activitySource);
 using IHost host = builder.Build();
 
 ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
+
+await host.InitializeDatabaseAsync();
 
 logger.LogInformation("Starting Document Cracker Worker");
 

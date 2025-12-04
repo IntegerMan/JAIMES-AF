@@ -3,7 +3,6 @@ using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
-using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 
 namespace MattEland.Jaimes.Workers.DocumentCrackerWorker.Services;

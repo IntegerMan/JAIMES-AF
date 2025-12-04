@@ -1,10 +1,7 @@
 using MattEland.Jaimes.ServiceDefaults;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Shouldly;
-using Xunit;
 
 namespace MattEland.Jaimes.Tests.ServiceDefaults;
 

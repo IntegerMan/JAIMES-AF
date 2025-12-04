@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -12,17 +13,14 @@ public static class RepositoryServiceCollectionExtensions
     /// Adds Jaimes repositories with an in-memory database for testing.
     /// </summary>
     public static IServiceCollection AddJaimesRepositoriesInMemory(
-        this IServiceCollection services, 
+        this IServiceCollection services,
         string? databaseName = null)
     {
         string dbName = string.IsNullOrWhiteSpace(databaseName) ? "InMemory" : databaseName;
-        
+
         services.AddDbContext<JaimesDbContext>(options =>
         {
-            options.UseInMemoryDatabase(dbName, sqlOpts =>
-            {
-                sqlOpts.EnableNullChecks();
-            });
+            options.UseInMemoryDatabase(dbName, sqlOpts => { sqlOpts.EnableNullChecks(); });
         });
 
         return services;
@@ -37,7 +35,7 @@ public static class RepositoryServiceCollectionExtensions
         IConfiguration configuration)
     {
         string? connectionString = configuration.GetConnectionString("postgres-db")
-                           ?? configuration.GetConnectionString("DefaultConnection");
+                                   ?? configuration.GetConnectionString("DefaultConnection");
 
         if (string.IsNullOrWhiteSpace(connectionString))
         {
@@ -47,11 +45,12 @@ public static class RepositoryServiceCollectionExtensions
 
         services.AddDbContext<JaimesDbContext>(options =>
         {
-            options.UseNpgsql(connectionString, dbOpts =>
-            {
-                dbOpts.MaxBatchSize(500);
-                dbOpts.EnableRetryOnFailure(maxRetryCount: 3);
-            });
+            options.UseNpgsql(connectionString,
+                dbOpts =>
+                {
+                    dbOpts.MaxBatchSize(500);
+                    dbOpts.EnableRetryOnFailure(maxRetryCount: 3);
+                });
         });
 
         return services;
@@ -62,7 +61,8 @@ public static class RepositoryServiceCollectionExtensions
         using IServiceScope scope = serviceProvider.CreateScope();
         JaimesDbContext context = scope.ServiceProvider.GetRequiredService<JaimesDbContext>();
         var loggerFactory = scope.ServiceProvider.GetService<ILoggerFactory>();
-        var logger = loggerFactory?.CreateLogger("DatabaseInitialization") ?? NullLoggerFactory.Instance.CreateLogger("DatabaseInitialization");
+        var logger = loggerFactory?.CreateLogger("DatabaseInitialization") ??
+                     NullLoggerFactory.Instance.CreateLogger("DatabaseInitialization");
 
         try
         {
@@ -109,16 +109,20 @@ public static class RepositoryServiceCollectionExtensions
                 // If the exception indicates pending model changes relative to migrations, surface a clear error
                 // so the developer knows to add a migration. For other InvalidOperationException cases (e.g., provider
                 // doesn't support Migrate), fall back to EnsureCreated.
-                var message = ex.Message ?? string.Empty;
+                var message = ex.Message;
                 if (message.Contains("PendingModelChangesWarning", StringComparison.OrdinalIgnoreCase) ||
                     message.Contains("pending changes", StringComparison.OrdinalIgnoreCase) ||
                     message.Contains("has pending changes", StringComparison.OrdinalIgnoreCase))
                 {
-                    logger.LogError(ex, "Migrations cannot be applied because the model has pending changes. Add a new migration before updating the database.");
-                    throw new InvalidOperationException("Database model has pending changes. Add and apply a new EF Core migration (e.g. 'dotnet ef migrations add <Name>' and 'dotnet ef database update'). See https://aka.ms/efcore-docs-pending-changes.", ex);
+                    logger.LogError(ex,
+                        "Migrations cannot be applied because the model has pending changes. Add a new migration before updating the database.");
+                    throw new InvalidOperationException(
+                        "Database model has pending changes. Add and apply a new EF Core migration (e.g. 'dotnet ef migrations add <Name>' and 'dotnet ef database update'). See https://aka.ms/efcore-docs-pending-changes.",
+                        ex);
                 }
 
-                logger.LogInformation(ex, "MigrateAsync not supported for this provider; falling back to EnsureCreated.");
+                logger.LogInformation(ex,
+                    "MigrateAsync not supported for this provider; falling back to EnsureCreated.");
                 await context.Database.EnsureCreatedAsync();
                 logger.LogInformation("Database.EnsureCreatedAsync() completed.");
             }
@@ -132,5 +136,18 @@ public static class RepositoryServiceCollectionExtensions
         {
             // Nothing specific to dispose here beyond the scope
         }
+    }
+
+    /// <summary>
+    /// Initializes the database for a worker application by applying pending migrations.
+    /// This method should be called after building the host and before starting the worker.
+    /// Delegates to <see cref="InitializeDatabaseAsync(IServiceProvider)"/> which contains the core implementation.
+    /// </summary>
+    /// <param name="host">The host instance to initialize the database for.</param>
+    /// <exception cref="Exception">Thrown if database initialization fails. The worker should not start in this case.</exception>
+    public static async Task InitializeDatabaseAsync(this IHost host)
+    {
+        // Delegate to the IServiceProvider implementation which contains all the migration logic and logging
+        await host.Services.InitializeDatabaseAsync();
     }
 }

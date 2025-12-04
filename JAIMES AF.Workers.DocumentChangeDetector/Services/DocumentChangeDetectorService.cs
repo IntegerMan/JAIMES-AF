@@ -5,7 +5,6 @@ using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.Workers.DocumentChangeDetector.Configuration;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
-using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 
 namespace MattEland.Jaimes.Workers.DocumentChangeDetector.Services;

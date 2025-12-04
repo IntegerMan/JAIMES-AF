@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Linq;
 using System.Text;
 using MattEland.Jaimes.DocumentProcessing.Options;
 using MattEland.Jaimes.DocumentProcessing.Services;
@@ -8,7 +7,6 @@ using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;

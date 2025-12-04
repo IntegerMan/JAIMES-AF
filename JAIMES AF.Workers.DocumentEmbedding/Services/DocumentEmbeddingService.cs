@@ -1,13 +1,10 @@
 using System.Diagnostics;
-using System.Security.Cryptography;
-using System.Text;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Workers.DocumentEmbedding.Configuration;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 using Microsoft.Extensions.AI;
-using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using Qdrant.Client.Grpc;
 using MattEland.Jaimes.ServiceDefaults; // added for utilities

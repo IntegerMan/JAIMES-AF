@@ -1,7 +1,4 @@
-using System.Net;
 using System.Net.Http.Json;
-using MattEland.Jaimes.Repositories;
-using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Services;

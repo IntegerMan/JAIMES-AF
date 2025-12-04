@@ -1,4 +1,3 @@
-using System;
 using System.Diagnostics;
 using FastEndpoints;
 using FastEndpoints.Swagger;
@@ -10,7 +9,6 @@ using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Services;
 using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
 using MattEland.Jaimes.Workers.DocumentChunking.Services;
-using Qdrant.Client;
 using RabbitMQ.Client;
 
 namespace MattEland.Jaimes.ApiService;

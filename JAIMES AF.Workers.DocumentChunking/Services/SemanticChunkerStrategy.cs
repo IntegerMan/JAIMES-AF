@@ -1,6 +1,5 @@
 using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
 using MattEland.Jaimes.Workers.DocumentChunking.Models;
-using Microsoft.Extensions.Logging;
 using SemanticChunkerNET;
 
 namespace MattEland.Jaimes.Workers.DocumentChunking.Services;
