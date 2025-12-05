@@ -269,10 +269,14 @@ public class DocumentEmbeddingService(
         {
             await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
             
-            // Try atomic database update first (supported by PostgreSQL, SQL Server, etc.)
-            // This prevents race conditions when multiple chunks for the same document are processed concurrently
-            try
+            // Check if the database provider supports ExecuteUpdateAsync
+            // In-memory database doesn't support it, so we use a fallback for tests
+            bool supportsExecuteUpdate = dbContext.Database.ProviderName != "Microsoft.EntityFrameworkCore.InMemory";
+            
+            if (supportsExecuteUpdate)
             {
+                // Use atomic database update to prevent race conditions when multiple chunks
+                // for the same document are processed concurrently (PostgreSQL, SQL Server, etc.)
                 int rowsAffected = await dbContext.CrackedDocuments
                     .Where(d => d.Id == documentId)
                     .ExecuteUpdateAsync(
@@ -288,7 +292,7 @@ public class DocumentEmbeddingService(
                     logger.LogDebug("Incremented processed chunk count for document {DocumentId}", documentId);
                 }
             }
-            catch (InvalidOperationException ex) when (ex.Message.Contains("ExecuteUpdate", StringComparison.Ordinal) && ex.Message.Contains("not supported", StringComparison.Ordinal))
+            else
             {
                 // Fallback for database providers that don't support ExecuteUpdateAsync (e.g., in-memory database in tests)
                 // Note: This fallback has a race condition risk, but is acceptable for test scenarios
