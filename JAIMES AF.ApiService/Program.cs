@@ -73,6 +73,10 @@ public class Program
         // Register QdrantRulesStore
         builder.Services.AddSingleton<IQdrantRulesStore, QdrantRulesStore>();
         
+        // Register RAG search storage service (BackgroundService with async queue)
+        builder.Services.AddSingleton<IRagSearchStorageService, RagSearchStorageService>();
+        builder.Services.AddHostedService(provider => (RagSearchStorageService)provider.GetRequiredService<IRagSearchStorageService>());
+        
         // Register embedding generator for rules (supports Ollama, Azure OpenAI, and OpenAI)
         // Get Ollama endpoint and model from Aspire connection strings (for default Ollama provider)
         // Get the embedding model connection string provided by Aspire via .WithReference(embedModel)

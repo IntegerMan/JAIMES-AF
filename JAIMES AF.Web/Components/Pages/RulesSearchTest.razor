@@ -40,6 +40,11 @@
 					}
 				</MudSelect>
 
+				<MudCheckBox @bind-Value="storeResults" 
+				            Label="Store search results for diagnostics" 
+				            Class="mb-4"
+				            HelperText="When enabled, search queries and results will be stored in the database for diagnostic and evaluation purposes" />
+
 				<MudButton Variant="Variant.Filled" 
 				           Color="Color.Primary" 
 				           OnClick="SearchRulesAsync" 

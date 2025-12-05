@@ -32,6 +32,7 @@ public class SearchRulesEndpoint : Ep.Req<SearchRulesRequest>.Res<SearchRulesRes
             SearchRulesResponse response = await RulesSearchService.SearchRulesDetailedAsync(
                 req.RulesetId,
                 req.Query,
+                req.StoreResults,
                 ct);
 
             await Send.OkAsync(response, cancellation: ct);

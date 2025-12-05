@@ -19,6 +19,10 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
     public DbSet<DocumentMetadata> DocumentMetadata { get; set; } = null!;
     public DbSet<CrackedDocument> CrackedDocuments { get; set; } = null!;
     public DbSet<DocumentChunk> DocumentChunks { get; set; } = null!;
+    
+    // RAG search diagnostic entities
+    public DbSet<RagSearchQuery> RagSearchQueries { get; set; } = null!;
+    public DbSet<RagSearchResultChunk> RagSearchResultChunks { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -204,6 +208,44 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 .WithMany()
                 .HasForeignKey(dc => dc.DocumentId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // RAG search diagnostic entity configurations
+        modelBuilder.Entity<RagSearchQuery>(entity =>
+        {
+            entity.HasKey(rsq => rsq.Id);
+            entity.Property(rsq => rsq.Query).IsRequired();
+            entity.Property(rsq => rsq.IndexName).IsRequired();
+            entity.Property(rsq => rsq.CreatedAt).IsRequired();
+            
+            // Create index on CreatedAt for efficient time-based queries
+            entity.HasIndex(rsq => rsq.CreatedAt);
+            
+            // Create index on RulesetId for filtering
+            entity.HasIndex(rsq => rsq.RulesetId);
+        });
+
+        modelBuilder.Entity<RagSearchResultChunk>(entity =>
+        {
+            entity.HasKey(rsc => rsc.Id);
+            entity.Property(rsc => rsc.RagSearchQueryId).IsRequired();
+            entity.Property(rsc => rsc.ChunkId).IsRequired();
+            entity.Property(rsc => rsc.DocumentId).IsRequired();
+            entity.Property(rsc => rsc.DocumentName).IsRequired();
+            entity.Property(rsc => rsc.EmbeddingId).IsRequired();
+            entity.Property(rsc => rsc.RulesetId).IsRequired();
+            entity.Property(rsc => rsc.Relevancy).IsRequired();
+            
+            entity.HasOne(rsc => rsc.RagSearchQuery)
+                .WithMany(rsq => rsq.ResultChunks)
+                .HasForeignKey(rsc => rsc.RagSearchQueryId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            // Create index on ChunkId for finding frequently matched chunks
+            entity.HasIndex(rsc => rsc.ChunkId);
+            
+            // Create index on Relevancy for analysis queries
+            entity.HasIndex(rsc => rsc.Relevancy);
         });
 
         // Seed data - use lowercase ids for new defaults

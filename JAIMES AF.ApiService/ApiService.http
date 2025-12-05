@@ -48,7 +48,8 @@ POST {{ApiService_HostAddress}}/rules/search
 Content-Type: application/json
 
 {
-  "query": "combat rules"
+  "query": "combat rules",
+  "storeResults": false
 }
 
 ### Search Rules - With ruleset filter
@@ -58,7 +59,8 @@ Content-Type: application/json
 
 {
   "query": "spell casting",
-  "rulesetId": "dnd5e"
+  "rulesetId": "dnd5e",
+  "storeResults": false
 }
 
 ### Search Rules - Another query
@@ -67,7 +69,8 @@ POST {{ApiService_HostAddress}}/rules/search
 Content-Type: application/json
 
 {
-  "query": "character creation"
+  "query": "character creation",
+  "storeResults": false
 }
 
 ### Search Rules - Empty query (should fail)

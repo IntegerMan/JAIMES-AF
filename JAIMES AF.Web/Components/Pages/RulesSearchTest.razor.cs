@@ -16,6 +16,7 @@ public partial class RulesSearchTest
     private RulesetInfoResponse[] rulesets = [];
     private string searchQuery = string.Empty;
     private string? selectedRulesetId;
+    private bool storeResults = true;
     private bool isSearching = false;
     private string? errorMessage;
     private SearchRulesResponse? searchResult;
@@ -64,7 +65,8 @@ public partial class RulesSearchTest
             SearchRulesRequest request = new()
             {
                 Query = searchQuery,
-                RulesetId = selectedRulesetId
+                RulesetId = selectedRulesetId,
+                StoreResults = storeResults
             };
 
             HttpResponseMessage response = await Http.PostAsJsonAsync("/rules/search", request);

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.Extensions.AI;
@@ -9,24 +10,28 @@ namespace MattEland.Jaimes.Agents.Services;
 public class RulesSearchService : IRulesSearchService
 {
     private static readonly ActivitySource ActivitySource = new("Jaimes.Agents.RulesSearch");
+    private const string DocumentEmbeddingsCollectionName = "document-embeddings";
     
     private readonly ILogger<RulesSearchService> _logger;
     private readonly IQdrantRulesStore _rulesStore;
     private readonly IEmbeddingGenerator<string, Embedding<float>> _embeddingGenerator;
+    private readonly IRagSearchStorageService? _storageService;
 
     public RulesSearchService(
         ILogger<RulesSearchService> logger,
         IQdrantRulesStore rulesStore,
-        IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator)
+        IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator,
+        IRagSearchStorageService? storageService = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _rulesStore = rulesStore ?? throw new ArgumentNullException(nameof(rulesStore));
         _embeddingGenerator = embeddingGenerator ?? throw new ArgumentNullException(nameof(embeddingGenerator));
+        _storageService = storageService;
 
         _logger.LogInformation("RulesSearchService initialized with Qdrant");
     }
 
-    public async Task<string> SearchRulesAsync(string rulesetId, string query, CancellationToken cancellationToken = default)
+    public async Task<string> SearchRulesAsync(string rulesetId, string query, bool storeResults = true, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(rulesetId))
         {
@@ -156,6 +161,27 @@ public class RulesSearchService : IRulesSearchService
             };
 
             _logger.LogInformation("Search completed - Results: {ResultCount}", results.Count);
+            
+            // Store search results asynchronously if requested
+            if (storeResults && _storageService != null)
+            {
+                string? filterJson = null;
+                if (!string.IsNullOrWhiteSpace(rulesetId))
+                {
+                    Dictionary<string, string> filter = new()
+                    {
+                        { "rulesetId", rulesetId }
+                    };
+                    filterJson = JsonSerializer.Serialize(filter);
+                }
+
+                _storageService.EnqueueSearchResults(
+                    query,
+                    rulesetId,
+                    DocumentEmbeddingsCollectionName,
+                    filterJson,
+                    searchResults);
+            }
             
             return response;
         }
