@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using MattEland.Jaimes.ServiceDefaults;
+using MattEland.Jaimes.ServiceDefinitions.Configuration;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
 using MattEland.Jaimes.Workers.DocumentChunking.Consumers;
-using MattEland.Jaimes.Workers.DocumentChunking.Services;
+using MattEland.Jaimes.Workers.Services;
 using MattEland.Jaimes.Repositories;
 using Microsoft.Extensions.AI;
 using OllamaSharp;
@@ -130,7 +130,7 @@ if (useSemanticChunker)
 
         return chunker;
     });
-    builder.Services.AddSingleton<ITextChunkingStrategy, SemanticChunkerStrategy>();
+    builder.Services.AddSingleton<ITextChunkingStrategy, MattEland.Jaimes.Workers.Services.SemanticChunkerStrategy>();
 
     // Capture for logging
     logOllamaEndpoint = ollamaEndpoint;
@@ -138,7 +138,7 @@ if (useSemanticChunker)
 } else if (useSemanticSlicer)
 {
     // Register SemanticSlicer strategy (does not require embedding model)
-    builder.Services.AddSingleton<ITextChunkingStrategy, SemanticSlicerStrategy>();
+    builder.Services.AddSingleton<ITextChunkingStrategy, MattEland.Jaimes.Workers.Services.SemanticSlicerStrategy>();
 } else
 {
     throw new InvalidOperationException(
@@ -147,8 +147,8 @@ if (useSemanticChunker)
 }
 
 // Register services
-builder.Services.AddSingleton<IQdrantEmbeddingStore, QdrantEmbeddingStore>();
-builder.Services.AddSingleton<IDocumentChunkingService, DocumentChunkingService>();
+builder.Services.AddSingleton<IQdrantEmbeddingStore, MattEland.Jaimes.Workers.Services.QdrantEmbeddingStore>();
+builder.Services.AddSingleton<IDocumentChunkingService, MattEland.Jaimes.Workers.Services.DocumentChunkingService>();
 
 // Configure OpenTelemetry ActivitySource (register before MessageConsumerService to ensure it's available for injection)
 const string activitySourceName = "Jaimes.Workers.DocumentChunking";

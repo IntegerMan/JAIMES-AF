@@ -1,0 +1,1 @@
+Test the solution by running "dotnet test" and verifying that the solution builds and all tests pass. If tests do not pass or there is a build issue, resolve it, then make sure you run dotnet test again to ensure the issue is fully resolved.

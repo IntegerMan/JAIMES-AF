@@ -1,9 +1,11 @@
-using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
-using MattEland.Jaimes.Workers.DocumentChunking.Models;
+using MattEland.Jaimes.ServiceDefinitions.Configuration;
+using MattEland.Jaimes.ServiceDefinitions.Models;
+using MattEland.Jaimes.ServiceDefinitions.Services;
+using Microsoft.Extensions.Logging;
 using SemanticSlicer;
 using SemanticSlicer.Models;
 
-namespace MattEland.Jaimes.Workers.DocumentChunking.Services;
+namespace MattEland.Jaimes.Workers.Services;
 
 /// <summary>
 /// Chunking strategy using SemanticSlicer for text-based chunking without requiring embeddings
@@ -92,4 +94,3 @@ public class SemanticSlicerStrategy(
         return $"{sourceDocumentId}_chunk_{chunkIndex}";
     }
 }
-

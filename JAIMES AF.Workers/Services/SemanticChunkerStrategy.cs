@@ -1,8 +1,10 @@
-using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
-using MattEland.Jaimes.Workers.DocumentChunking.Models;
+using MattEland.Jaimes.ServiceDefinitions.Configuration;
+using MattEland.Jaimes.ServiceDefinitions.Models;
+using MattEland.Jaimes.ServiceDefinitions.Services;
+using Microsoft.Extensions.Logging;
 using SemanticChunkerNET;
 
-namespace MattEland.Jaimes.Workers.DocumentChunking.Services;
+namespace MattEland.Jaimes.Workers.Services;
 
 /// <summary>
 /// Chunking strategy using SemanticChunker.NET for embedding-driven, context-aware text chunking
@@ -86,4 +88,3 @@ public class SemanticChunkerStrategy(
         return $"{sourceDocumentId}_chunk_{chunkIndex}";
     }
 }
-

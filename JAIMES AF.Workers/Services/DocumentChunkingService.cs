@@ -1,15 +1,16 @@
 using System.Diagnostics;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
+using MattEland.Jaimes.ServiceDefinitions.Models;
 using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.Workers.DocumentChunking.Models;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
-namespace MattEland.Jaimes.Workers.DocumentChunking.Services;
+namespace MattEland.Jaimes.Workers.Services;
 
 public class DocumentChunkingService(
-    JaimesDbContext dbContext,
+    IDbContextFactory<JaimesDbContext> dbContextFactory,
     ITextChunkingStrategy chunkingStrategy,
     IQdrantEmbeddingStore qdrantStore,
     IMessagePublisher messagePublisher,
@@ -175,6 +176,8 @@ public class DocumentChunkingService(
 
         try
         {
+            await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            
             CrackedDocument? document = await dbContext.CrackedDocuments
                 .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken);
 
@@ -205,6 +208,8 @@ public class DocumentChunkingService(
 
         try
         {
+            await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            
             // Store chunks (using upsert logic to handle duplicates)
             foreach (TextChunk chunk in chunks)
             {
@@ -256,6 +261,8 @@ public class DocumentChunkingService(
 
         try
         {
+            await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            
             CrackedDocument? document = await dbContext.CrackedDocuments
                 .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken);
 
@@ -290,6 +297,8 @@ public class DocumentChunkingService(
 
         try
         {
+            await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            
             CrackedDocument? document = await dbContext.CrackedDocuments
                 .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken);
 

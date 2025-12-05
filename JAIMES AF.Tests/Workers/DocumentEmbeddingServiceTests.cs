@@ -346,8 +346,10 @@ public class DocumentEmbeddingServiceTests
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync((CollectionInfo?)null);
 
+            TestDbContextFactory dbContextFactory = new(dbOptions);
+
             Service = new DocumentEmbeddingService(
-                DbContext,
+                dbContextFactory,
                 EmbeddingGeneratorMock.Object,
                 _options,
                 QdrantClientMock.Object,
@@ -485,7 +487,10 @@ public class DocumentEmbeddingServiceTests
         public async Task VerifyChunkUpdated(string chunkId)
         {
             CancellationToken ct = TestContext.Current.CancellationToken;
+            // Clear change tracker to ensure we reload from database
+            DbContext.ChangeTracker.Clear();
             DocumentChunk? chunk = await DbContext.DocumentChunks
+                .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.ChunkId == chunkId, ct);
 
             chunk.ShouldNotBeNull();
@@ -499,7 +504,10 @@ public class DocumentEmbeddingServiceTests
             {
                 throw new InvalidOperationException($"Invalid document ID: {documentId}");
             }
+            // Clear change tracker to ensure we reload from database
+            DbContext.ChangeTracker.Clear();
             CrackedDocument? document = await DbContext.CrackedDocuments
+                .AsNoTracking()
                 .FirstOrDefaultAsync(d => d.Id == docId, ct);
 
             document.ShouldNotBeNull();
@@ -539,5 +547,29 @@ public class DocumentEmbeddingServiceTests
         }
     }
 
+    private sealed class TestDbContextFactory : IDbContextFactory<JaimesDbContext>
+    {
+        private readonly DbContextOptions<JaimesDbContext> _options;
+
+        public TestDbContextFactory(DbContextOptions<JaimesDbContext> options)
+        {
+            _options = options;
+        }
+
+        public JaimesDbContext CreateDbContext()
+        {
+            // Return a new context that shares the same in-memory database
+            // This allows the service to dispose it without affecting the test's context
+            return new JaimesDbContext(_options);
+        }
+
+        public async Task<JaimesDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
+        {
+            await Task.CompletedTask;
+            // Return a new context that shares the same in-memory database
+            // This allows the service to dispose it without affecting the test's context
+            return new JaimesDbContext(_options);
+        }
+    }
 }
 

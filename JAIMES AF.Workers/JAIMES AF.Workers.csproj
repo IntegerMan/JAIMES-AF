@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>MattEland.Jaimes.Workers</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj" />
+    <ProjectReference Include="..\JAIMES AF.ServiceDefinitions\JAIMES AF.ServiceDefinitions.csproj" />
+    <ProjectReference Include="..\JAIMES AF.DocumentProcessing\JAIMES AF.DocumentProcessing.csproj" />
+    <ProjectReference Include="..\JAIMES AF.ServiceDefaults\JAIMES AF.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="UglyToad.PdfPig" />
+    <PackageReference Include="UglyToad.PdfPig.DocumentLayoutAnalysis" />
+    <PackageReference Include="Qdrant.Client" />
+    <PackageReference Include="Microsoft.Extensions.AI" />
+    <PackageReference Include="SemanticChunker.NET" />
+    <PackageReference Include="drittich.SemanticSlicer" />
+  </ItemGroup>
+
+</Project>

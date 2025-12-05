@@ -7,8 +7,8 @@ using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Services;
-using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
-using MattEland.Jaimes.Workers.DocumentChunking.Services;
+using MattEland.Jaimes.ServiceDefinitions.Configuration;
+using MattEland.Jaimes.Workers.Services;
 using RabbitMQ.Client;
 
 namespace MattEland.Jaimes.ApiService;
@@ -119,7 +119,7 @@ public class Program
         builder.Services.AddSingleton(qdrantActivitySource);
 
         // Always register QdrantEmbeddingStore - it will handle missing configuration gracefully
-        builder.Services.AddSingleton<IQdrantEmbeddingStore, QdrantEmbeddingStore>();
+        builder.Services.AddSingleton<IQdrantEmbeddingStore, MattEland.Jaimes.Workers.Services.QdrantEmbeddingStore>();
 
         WebApplication app = builder.Build();
 

@@ -1,12 +1,14 @@
 using System.Diagnostics;
 using Grpc.Core;
-using MattEland.Jaimes.Workers.DocumentChunking.Configuration;
+using MattEland.Jaimes.ServiceDefinitions.Configuration;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
-using MattEland.Jaimes.ServiceDefaults; // added for utilities
+using MattEland.Jaimes.ServiceDefaults;
 
-namespace MattEland.Jaimes.Workers.DocumentChunking.Services;
+namespace MattEland.Jaimes.Workers.Services;
 
 public class QdrantEmbeddingStore(
  QdrantClient qdrantClient,
@@ -378,6 +380,3 @@ public class QdrantEmbeddingStore(
         }
     }
 }
-
-
-

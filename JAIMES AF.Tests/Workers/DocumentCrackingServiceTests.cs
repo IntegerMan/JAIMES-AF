@@ -1,9 +1,10 @@
 using System.Diagnostics;
 using MattEland.Jaimes.Domain;
+using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.Workers.DocumentCrackerWorker.Services;
+using MattEland.Jaimes.Workers.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -121,9 +122,11 @@ public class DocumentCrackingServiceTests
             
             _activitySource = new ActivitySource($"DocumentCrackerTests-{Guid.NewGuid()}");
 
+            TestDbContextFactory dbContextFactory = new(dbOptions);
+
             Service = new DocumentCrackingService(
                 LoggerMock.Object,
-                DbContext,
+                dbContextFactory,
                 MessagePublisherMock.Object,
                 _activitySource,
                 PdfTextExtractorMock.Object);
@@ -134,6 +137,30 @@ public class DocumentCrackingServiceTests
             _activitySource.Dispose();
             DbContext.Dispose();
         }
+    }
 
+    private sealed class TestDbContextFactory : IDbContextFactory<JaimesDbContext>
+    {
+        private readonly DbContextOptions<JaimesDbContext> _options;
+
+        public TestDbContextFactory(DbContextOptions<JaimesDbContext> options)
+        {
+            _options = options;
+        }
+
+        public JaimesDbContext CreateDbContext()
+        {
+            // Return a new context that shares the same in-memory database
+            // This allows the service to dispose it without affecting the test's context
+            return new JaimesDbContext(_options);
+        }
+
+        public async Task<JaimesDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
+        {
+            await Task.CompletedTask;
+            // Return a new context that shares the same in-memory database
+            // This allows the service to dispose it without affecting the test's context
+            return new JaimesDbContext(_options);
+        }
     }
 }

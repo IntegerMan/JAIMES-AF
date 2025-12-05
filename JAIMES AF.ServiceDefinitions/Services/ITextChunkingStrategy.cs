@@ -1,11 +1,8 @@
-using MattEland.Jaimes.Workers.DocumentChunking.Models;
+using MattEland.Jaimes.ServiceDefinitions.Models;
 
-namespace MattEland.Jaimes.Workers.DocumentChunking.Services;
+namespace MattEland.Jaimes.ServiceDefinitions.Services;
 
 public interface ITextChunkingStrategy
 {
     IEnumerable<TextChunk> ChunkText(string text, string sourceDocumentId);
 }
-
-
-
