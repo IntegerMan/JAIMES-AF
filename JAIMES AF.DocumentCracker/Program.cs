@@ -96,11 +96,21 @@ builder.Services.AddSingleton(activitySource);
 builder.Services.AddSingleton(options);
 builder.Services.AddSingleton<IDirectoryScanner, DirectoryScanner>();
 
-// Register DbContext factory wrapper for console app (uses singleton DbContext)
+// Register DbContext factory wrapper for console app
+// Creates new DbContext instances for each call, allowing services to dispose them safely
 builder.Services.AddSingleton<IDbContextFactory<JaimesDbContext>>(sp =>
 {
-    JaimesDbContext dbContext = sp.GetRequiredService<JaimesDbContext>();
-    return new SingletonDbContextFactory(dbContext);
+    string? connectionString = builder.Configuration.GetConnectionString("postgres-db");
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        throw new InvalidOperationException("Connection string 'postgres-db' is required.");
+    }
+    
+    DbContextOptionsBuilder<JaimesDbContext> optionsBuilder = new();
+    optionsBuilder.UseNpgsql(connectionString);
+    DbContextOptions<JaimesDbContext> options = optionsBuilder.Options;
+    
+    return new SingletonDbContextFactory(options);
 });
 
 // Register shared worker services
