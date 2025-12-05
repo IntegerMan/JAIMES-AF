@@ -1,0 +1,1 @@
+Verify the solution builds by running dotnet build.

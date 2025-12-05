@@ -253,7 +253,7 @@ public class DocumentEmbeddingService(
         else
         {
             chunk.QdrantPointId = qdrantPointId.ToString();
-            chunk.Embedding = new Vector(embedding);
+            chunk.Embedding = new Pgvector.Vector(embedding);
             await dbContext.SaveChangesAsync(cancellationToken);
             
             logger.LogDebug("Updated chunk {ChunkId} with Qdrant point ID {PointId} and embedding vector ({Dimensions} dimensions)",
