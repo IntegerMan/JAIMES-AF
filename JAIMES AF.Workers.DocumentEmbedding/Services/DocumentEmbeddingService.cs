@@ -269,18 +269,20 @@ public class DocumentEmbeddingService(
         {
             await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
             
-            CrackedDocument? document = await dbContext.CrackedDocuments
-                .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken);
+            // Use atomic database update to prevent race conditions when multiple chunks
+            // for the same document are processed concurrently
+            int rowsAffected = await dbContext.CrackedDocuments
+                .Where(d => d.Id == documentId)
+                .ExecuteUpdateAsync(
+                    setter => setter.SetProperty(d => d.ProcessedChunkCount, d => d.ProcessedChunkCount + 1),
+                    cancellationToken);
 
-            if (document == null)
+            if (rowsAffected == 0)
             {
                 logger.LogWarning("Document {DocumentId} not found when incrementing processed chunk count", documentId);
             }
             else
             {
-                document.ProcessedChunkCount++;
-                await dbContext.SaveChangesAsync(cancellationToken);
-                
                 logger.LogDebug("Incremented processed chunk count for document {DocumentId}", documentId);
             }
 
