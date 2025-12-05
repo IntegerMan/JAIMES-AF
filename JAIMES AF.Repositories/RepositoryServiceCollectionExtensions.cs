@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Pgvector.EntityFrameworkCore;
 
 namespace MattEland.Jaimes.Repositories;
 
@@ -58,6 +59,7 @@ public static class RepositoryServiceCollectionExtensions
             options.UseNpgsql(connectionString,
                 dbOpts =>
                 {
+                    dbOpts.UseVector(); // Enable pgvector support
                     dbOpts.MaxBatchSize(500);
                     dbOpts.EnableRetryOnFailure(maxRetryCount: 3);
                 });
@@ -69,6 +71,7 @@ public static class RepositoryServiceCollectionExtensions
             options.UseNpgsql(connectionString,
                 dbOpts =>
                 {
+                    dbOpts.UseVector(); // Enable pgvector support
                     dbOpts.MaxBatchSize(500);
                     dbOpts.EnableRetryOnFailure(maxRetryCount: 3);
                 });
