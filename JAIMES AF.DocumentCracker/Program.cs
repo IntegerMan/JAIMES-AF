@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using MattEland.Jaimes.DocumentCracker.Services;
 using MattEland.Jaimes.DocumentProcessing.Options;
 using MattEland.Jaimes.DocumentProcessing.Services;
@@ -94,6 +94,8 @@ builder.Services.AddSingleton(activitySource);
 
 builder.Services.AddSingleton(options);
 builder.Services.AddSingleton<IDirectoryScanner, DirectoryScanner>();
+builder.Services.AddSingleton<IPdfTextExtractor, PdfPigTextExtractor>();
+builder.Services.AddSingleton<IDocumentCrackingService, DocumentCrackingService>();
 builder.Services.AddSingleton<DocumentCrackingOrchestrator>();
 
 using IHost host = builder.Build();
