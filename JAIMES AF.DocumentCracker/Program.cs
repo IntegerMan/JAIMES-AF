@@ -4,6 +4,7 @@ using MattEland.Jaimes.DocumentProcessing.Options;
 using MattEland.Jaimes.DocumentProcessing.Services;
 using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.ServiceDefinitions.Services;
+using MattEland.Jaimes.Repositories;
 using Microsoft.EntityFrameworkCore;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -94,8 +95,17 @@ builder.Services.AddSingleton(activitySource);
 
 builder.Services.AddSingleton(options);
 builder.Services.AddSingleton<IDirectoryScanner, DirectoryScanner>();
-builder.Services.AddSingleton<IPdfTextExtractor, PdfPigTextExtractor>();
-builder.Services.AddSingleton<IDocumentCrackingService, DocumentCrackingService>();
+
+// Register DbContext factory wrapper for console app (uses singleton DbContext)
+builder.Services.AddSingleton<IDbContextFactory<JaimesDbContext>>(sp =>
+{
+    JaimesDbContext dbContext = sp.GetRequiredService<JaimesDbContext>();
+    return new SingletonDbContextFactory(dbContext);
+});
+
+// Register shared worker services
+builder.Services.AddSingleton<IPdfTextExtractor, MattEland.Jaimes.Workers.Services.PdfPigTextExtractor>();
+builder.Services.AddSingleton<IDocumentCrackingService, MattEland.Jaimes.Workers.Services.DocumentCrackingService>();
 builder.Services.AddSingleton<DocumentCrackingOrchestrator>();
 
 using IHost host = builder.Build();

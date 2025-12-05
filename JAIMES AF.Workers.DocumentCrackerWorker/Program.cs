@@ -4,7 +4,6 @@ using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Workers.DocumentCrackerWorker.Configuration;
 using MattEland.Jaimes.Workers.DocumentCrackerWorker.Consumers;
-using MattEland.Jaimes.Workers.DocumentCrackerWorker.Services;
 using MattEland.Jaimes.Repositories;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -43,9 +42,9 @@ builder.Services.AddSingleton(options);
 // Add PostgreSQL with EF Core
 builder.Services.AddJaimesRepositories(builder.Configuration);
 
-// Register services
-builder.Services.AddSingleton<IPdfTextExtractor, PdfPigTextExtractor>();
-builder.Services.AddSingleton<IDocumentCrackingService, DocumentCrackingService>();
+// Register shared worker services
+builder.Services.AddSingleton<IPdfTextExtractor, MattEland.Jaimes.Workers.Services.PdfPigTextExtractor>();
+builder.Services.AddSingleton<IDocumentCrackingService, MattEland.Jaimes.Workers.Services.DocumentCrackingService>();
 
 // Configure message publishing and consuming using RabbitMQ.Client (LavinMQ compatible)
 IConnectionFactory connectionFactory = RabbitMqConnectionFactory.CreateConnectionFactory(builder.Configuration);

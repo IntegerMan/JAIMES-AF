@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.Workers.DocumentCrackerWorker.Services;
 
 namespace MattEland.Jaimes.Workers.DocumentCrackerWorker.Consumers;
 

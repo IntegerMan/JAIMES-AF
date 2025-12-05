@@ -1,9 +1,10 @@
 using System.Text;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 
-namespace MattEland.Jaimes.DocumentCracker.Services;
+namespace MattEland.Jaimes.Workers.Services;
 
 /// <summary>
 /// PDF text extractor implementation using PdfPig.

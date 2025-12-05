@@ -1,4 +1,4 @@
-namespace MattEland.Jaimes.Workers.DocumentChunking.Configuration;
+namespace MattEland.Jaimes.ServiceDefinitions.Configuration;
 
 public class DocumentChunkingOptions
 {
@@ -25,4 +25,3 @@ public class DocumentChunkingOptions
     // Qdrant configuration
     public string CollectionName { get; set; } = "document-embeddings";
 }
-

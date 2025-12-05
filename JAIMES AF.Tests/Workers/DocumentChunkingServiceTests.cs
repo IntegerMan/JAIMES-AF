@@ -4,8 +4,8 @@ using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.Workers.DocumentChunking.Models;
-using MattEland.Jaimes.Workers.DocumentChunking.Services;
+using MattEland.Jaimes.ServiceDefinitions.Models;
+using MattEland.Jaimes.Workers.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -203,8 +203,8 @@ public class DocumentChunkingServiceTests
         public Mock<ITextChunkingStrategy> ChunkingStrategyMock { get; }
         public Mock<IQdrantEmbeddingStore> QdrantStoreMock { get; }
         public Mock<IMessagePublisher> MessagePublisherMock { get; }
-        public Mock<ILogger<DocumentChunkingService>> LoggerMock { get; }
-        public DocumentChunkingService Service { get; }
+        public Mock<ILogger<MattEland.Jaimes.Workers.Services.DocumentChunkingService>> LoggerMock { get; }
+        public MattEland.Jaimes.Workers.Services.DocumentChunkingService Service { get; }
         public JaimesDbContext DbContext { get; }
 
         private readonly ActivitySource _activitySource;
@@ -214,7 +214,7 @@ public class DocumentChunkingServiceTests
             ChunkingStrategyMock = new Mock<ITextChunkingStrategy>();
             QdrantStoreMock = new Mock<IQdrantEmbeddingStore>();
             MessagePublisherMock = new Mock<IMessagePublisher>();
-            LoggerMock = new Mock<ILogger<DocumentChunkingService>>();
+            LoggerMock = new Mock<ILogger<MattEland.Jaimes.Workers.Services.DocumentChunkingService>>();
             
             DbContextOptions<JaimesDbContext> dbOptions = new DbContextOptionsBuilder<JaimesDbContext>()
                 .UseInMemoryDatabase(databaseName: $"DocumentChunkingTests-{Guid.NewGuid()}")
@@ -240,7 +240,7 @@ public class DocumentChunkingServiceTests
 
             TestDbContextFactory dbContextFactory = new(dbOptions);
 
-            Service = new DocumentChunkingService(
+            Service = new MattEland.Jaimes.Workers.Services.DocumentChunkingService(
                 dbContextFactory,
                 ChunkingStrategyMock.Object,
                 QdrantStoreMock.Object,

@@ -1,4 +1,4 @@
-namespace MattEland.Jaimes.DocumentCracker.Services;
+namespace MattEland.Jaimes.ServiceDefinitions.Services;
 
 /// <summary>
 /// Abstraction for extracting text and page count from a PDF file.
