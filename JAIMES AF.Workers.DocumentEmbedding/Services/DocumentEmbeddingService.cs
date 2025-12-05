@@ -269,21 +269,42 @@ public class DocumentEmbeddingService(
         {
             await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
             
-            // Use atomic database update to prevent race conditions when multiple chunks
-            // for the same document are processed concurrently
-            int rowsAffected = await dbContext.CrackedDocuments
-                .Where(d => d.Id == documentId)
-                .ExecuteUpdateAsync(
-                    setter => setter.SetProperty(d => d.ProcessedChunkCount, d => d.ProcessedChunkCount + 1),
-                    cancellationToken);
+            // Try atomic database update first (supported by PostgreSQL, SQL Server, etc.)
+            // This prevents race conditions when multiple chunks for the same document are processed concurrently
+            try
+            {
+                int rowsAffected = await dbContext.CrackedDocuments
+                    .Where(d => d.Id == documentId)
+                    .ExecuteUpdateAsync(
+                        setter => setter.SetProperty(d => d.ProcessedChunkCount, d => d.ProcessedChunkCount + 1),
+                        cancellationToken);
 
-            if (rowsAffected == 0)
-            {
-                logger.LogWarning("Document {DocumentId} not found when incrementing processed chunk count", documentId);
+                if (rowsAffected == 0)
+                {
+                    logger.LogWarning("Document {DocumentId} not found when incrementing processed chunk count", documentId);
+                }
+                else
+                {
+                    logger.LogDebug("Incremented processed chunk count for document {DocumentId}", documentId);
+                }
             }
-            else
+            catch (InvalidOperationException ex) when (ex.Message.Contains("ExecuteUpdate", StringComparison.Ordinal) && ex.Message.Contains("not supported", StringComparison.Ordinal))
             {
-                logger.LogDebug("Incremented processed chunk count for document {DocumentId}", documentId);
+                // Fallback for database providers that don't support ExecuteUpdateAsync (e.g., in-memory database in tests)
+                // Note: This fallback has a race condition risk, but is acceptable for test scenarios
+                CrackedDocument? document = await dbContext.CrackedDocuments
+                    .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken);
+
+                if (document == null)
+                {
+                    logger.LogWarning("Document {DocumentId} not found when incrementing processed chunk count", documentId);
+                }
+                else
+                {
+                    document.ProcessedChunkCount++;
+                    await dbContext.SaveChangesAsync(cancellationToken);
+                    logger.LogDebug("Incremented processed chunk count for document {DocumentId} (using fallback method)", documentId);
+                }
             }
 
             activity?.SetStatus(ActivityStatusCode.Ok);
