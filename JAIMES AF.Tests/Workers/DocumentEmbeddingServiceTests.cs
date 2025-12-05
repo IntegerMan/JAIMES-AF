@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using Grpc.Core;
 using MattEland.Jaimes.Domain;
-using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;

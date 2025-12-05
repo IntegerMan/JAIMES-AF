@@ -11,6 +11,7 @@ public static class RepositoryServiceCollectionExtensions
 {
     /// <summary>
     /// Adds Jaimes repositories with an in-memory database for testing.
+    /// Registers both DbContext (for direct injection) and IDbContextFactory (for worker service tests).
     /// </summary>
     public static IServiceCollection AddJaimesRepositoriesInMemory(
         this IServiceCollection services,
@@ -18,7 +19,14 @@ public static class RepositoryServiceCollectionExtensions
     {
         string dbName = string.IsNullOrWhiteSpace(databaseName) ? "InMemory" : databaseName;
 
+        // Register DbContext for direct injection
         services.AddDbContext<JaimesDbContext>(options =>
+        {
+            options.UseInMemoryDatabase(dbName, sqlOpts => { sqlOpts.EnableNullChecks(); });
+        });
+
+        // Register DbContextFactory for worker service tests
+        services.AddDbContextFactory<JaimesDbContext>(options =>
         {
             options.UseInMemoryDatabase(dbName, sqlOpts => { sqlOpts.EnableNullChecks(); });
         });
@@ -29,6 +37,7 @@ public static class RepositoryServiceCollectionExtensions
     /// <summary>
     /// Adds Jaimes repositories with PostgreSQL from configuration.
     /// Expects a connection string named "DefaultConnection" or provided via Aspire.
+    /// Registers both DbContext (for direct injection) and IDbContextFactory (for worker services).
     /// </summary>
     public static IServiceCollection AddJaimesRepositories(
         this IServiceCollection services,
@@ -43,7 +52,19 @@ public static class RepositoryServiceCollectionExtensions
                 "Database connection string is required. Expected 'postgres-db' or 'DefaultConnection' in ConnectionStrings configuration.");
         }
 
+        // Register DbContext for direct injection (used by ApiService endpoints and services)
         services.AddDbContext<JaimesDbContext>(options =>
+        {
+            options.UseNpgsql(connectionString,
+                dbOpts =>
+                {
+                    dbOpts.MaxBatchSize(500);
+                    dbOpts.EnableRetryOnFailure(maxRetryCount: 3);
+                });
+        });
+
+        // Register DbContextFactory for worker services (more efficient for background services)
+        services.AddPooledDbContextFactory<JaimesDbContext>(options =>
         {
             options.UseNpgsql(connectionString,
                 dbOpts =>
