@@ -4,26 +4,26 @@ using Microsoft.EntityFrameworkCore;
 namespace MattEland.Jaimes.DocumentCracker.Services;
 
 /// <summary>
-/// Factory that wraps a singleton DbContext for use with services that require IDbContextFactory.
-/// This is used by the console app which uses a singleton DbContext.
+/// Factory that creates new DbContext instances for use with services that require IDbContextFactory.
+/// Each call returns a new instance that can be safely disposed, while all instances share the same connection configuration.
 /// </summary>
 public sealed class SingletonDbContextFactory : IDbContextFactory<JaimesDbContext>
 {
-    private readonly JaimesDbContext _dbContext;
+    private readonly DbContextOptions<JaimesDbContext> _options;
 
-    public SingletonDbContextFactory(JaimesDbContext dbContext)
+    public SingletonDbContextFactory(DbContextOptions<JaimesDbContext> options)
     {
-        _dbContext = dbContext;
+        _options = options;
     }
 
     public JaimesDbContext CreateDbContext()
     {
-        return _dbContext;
+        return new JaimesDbContext(_options);
     }
 
     public async Task<JaimesDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
     {
         await Task.CompletedTask;
-        return _dbContext;
+        return new JaimesDbContext(_options);
     }
 }
