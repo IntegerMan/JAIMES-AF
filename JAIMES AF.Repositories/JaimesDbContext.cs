@@ -1,5 +1,6 @@
 using MattEland.Jaimes.Repositories.Entities;
 using Microsoft.EntityFrameworkCore;
+using Pgvector.EntityFrameworkCore;
 
 namespace MattEland.Jaimes.Repositories;
 
@@ -20,6 +21,9 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // Enable pgvector extension for PostgreSQL
+        modelBuilder.HasPostgresExtension("vector");
 
         modelBuilder.Entity<Ruleset>(entity =>
         {

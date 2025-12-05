@@ -495,6 +495,7 @@ public class DocumentEmbeddingServiceTests
 
             chunk.ShouldNotBeNull();
             chunk.QdrantPointId.ShouldNotBeNullOrEmpty();
+            chunk.Embedding.ShouldNotBeNull();
         }
 
         public async Task VerifyProcessedChunkCountIncremented(string documentId)

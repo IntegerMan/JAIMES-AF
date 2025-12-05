@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Pgvector;
 
 namespace MattEland.Jaimes.Repositories.Entities;
 
@@ -54,6 +55,13 @@ public class DocumentChunk
     /// </summary>
     [MaxLength(100)]
     public string? QdrantPointId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the embedding vector for this chunk.
+    /// Stored in PostgreSQL using the pgvector extension.
+    /// </summary>
+    [Column(TypeName = "vector")]
+    public Vector? Embedding { get; set; }
 
     /// <summary>
     /// Navigation property to the cracked document this chunk belongs to.

@@ -8,6 +8,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.EntityFrameworkCore;
 using Qdrant.Client.Grpc;
 using MattEland.Jaimes.ServiceDefaults; // added for utilities
+using Pgvector;
 
 namespace MattEland.Jaimes.Workers.DocumentEmbedding.Services;
 
@@ -146,8 +147,8 @@ public class DocumentEmbeddingService(
             logger.LogInformation("Stored embedding for chunk {ChunkId} in Qdrant (point ID: {PointId})",
                 message.ChunkId, qdrantPointId);
 
-            // Update PostgreSQL to mark chunk as processed
-            await UpdateChunkInPostgreSQLAsync(message.ChunkId, qdrantPointId, cancellationToken);
+            // Update PostgreSQL to mark chunk as processed and store embedding vector
+            await UpdateChunkInPostgreSQLAsync(message.ChunkId, qdrantPointId, embedding, cancellationToken);
 
             // Increment ProcessedChunkCount in CrackedDocument
             if (!int.TryParse(message.DocumentId, out int documentId))
@@ -237,6 +238,7 @@ public class DocumentEmbeddingService(
     private async Task UpdateChunkInPostgreSQLAsync(
         string chunkId,
         ulong qdrantPointId,
+        float[] embedding,
         CancellationToken cancellationToken)
     {
         await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -246,15 +248,16 @@ public class DocumentEmbeddingService(
 
         if (chunk == null)
         {
-            logger.LogWarning("Chunk {ChunkId} not found in PostgreSQL when updating Qdrant point ID", chunkId);
+            logger.LogWarning("Chunk {ChunkId} not found in PostgreSQL when updating Qdrant point ID and embedding", chunkId);
         }
         else
         {
             chunk.QdrantPointId = qdrantPointId.ToString();
+            chunk.Embedding = new Vector(embedding);
             await dbContext.SaveChangesAsync(cancellationToken);
             
-            logger.LogDebug("Updated chunk {ChunkId} with Qdrant point ID {PointId}",
-                chunkId, qdrantPointId);
+            logger.LogDebug("Updated chunk {ChunkId} with Qdrant point ID {PointId} and embedding vector ({Dimensions} dimensions)",
+                chunkId, qdrantPointId, embedding.Length);
         }
     }
 
