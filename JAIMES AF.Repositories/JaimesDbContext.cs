@@ -26,7 +26,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
 
         // Enable pgvector extension for PostgreSQL (skip for in-memory database used in tests)
         // Only call HasPostgresExtension if we're using the Npgsql provider
-        if (Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+        if (string.Equals(Database.ProviderName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
         {
             modelBuilder.HasPostgresExtension("vector");
         }
@@ -176,7 +176,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             // For PostgreSQL: pgvector extension handles Vector natively via the [Column(TypeName = "vector")] attribute
             // For other providers (like in-memory): use a value converter to store as byte array
             string? providerName = Database.ProviderName;
-            if (providerName != "Npgsql.EntityFrameworkCore.PostgreSQL")
+            if (!string.Equals(providerName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
             {
                 // For non-PostgreSQL providers (like in-memory), convert Vector to/from byte array
                 // Override the column type from the attribute to allow in-memory database to work
@@ -193,7 +193,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 // The [Column(TypeName = "vector")] attribute ensures the correct database type
                 // No explicit configuration needed - pgvector handles it
             }
-            
+
             // Create unique index on ChunkId for fast lookups
             entity.HasIndex(dc => dc.ChunkId).IsUnique();
             
@@ -242,11 +242,11 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
 
         // Get the float array from the vector
         float[] values = vector.ToArray();
-        
+
         // Convert float array to byte array
         byte[] bytes = new byte[values.Length * sizeof(float)];
         Buffer.BlockCopy(values, 0, bytes, 0, bytes.Length);
-        
+
         return bytes;
     }
 
@@ -264,7 +264,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
         int floatCount = bytes.Length / sizeof(float);
         float[] values = new float[floatCount];
         Buffer.BlockCopy(bytes, 0, values, 0, bytes.Length);
-        
+
         return new Vector(values);
     }
 }

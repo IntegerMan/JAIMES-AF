@@ -148,7 +148,7 @@ public class DocumentEmbeddingService(
                 message.ChunkId, qdrantPointId);
 
             // Update PostgreSQL to mark chunk as processed and store embedding vector
-            await UpdateChunkInPostgreSQLAsync(message.ChunkId, qdrantPointId, embedding, cancellationToken);
+            await UpdateChunkInPostgreSQLAsync(message.ChunkId, qdrantPointId, embedding, cancellationToken).ConfigureAwait(false);
 
             // Increment ProcessedChunkCount in CrackedDocument
             if (!int.TryParse(message.DocumentId, out int documentId))
@@ -255,9 +255,12 @@ public class DocumentEmbeddingService(
             chunk.QdrantPointId = qdrantPointId.ToString();
             chunk.Embedding = new Pgvector.Vector(embedding);
             await dbContext.SaveChangesAsync(cancellationToken);
-            
-            logger.LogDebug("Updated chunk {ChunkId} with Qdrant point ID {PointId} and embedding vector ({Dimensions} dimensions)",
-                chunkId, qdrantPointId, embedding.Length);
+
+            logger.LogDebug(
+                "Updated chunk {ChunkId} with Qdrant point ID {PointId} and embedding vector ({Dimensions} dimensions)",
+                chunkId,
+                qdrantPointId,
+                embedding.Length);
         }
     }
 
