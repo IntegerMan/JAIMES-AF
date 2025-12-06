@@ -59,6 +59,12 @@ public class DocumentChunk
     /// <summary>
     /// Gets or sets the embedding vector for this chunk.
     /// Stored in PostgreSQL using the pgvector extension.
+    /// 
+    /// NOTE: The embedding values stored here will NOT match the values stored in Qdrant for the same chunk.
+    /// This is expected behavior:
+    /// - Qdrant automatically normalizes vectors when using Cosine distance metric (scales to unit length)
+    /// - PostgreSQL (pgvector) stores vectors as-is without normalization
+    /// Both stores use the same original embedding, but Qdrant applies normalization for efficient cosine similarity calculations.
     /// </summary>
     [Column(TypeName = "vector")]
     public Vector? Embedding { get; set; }
