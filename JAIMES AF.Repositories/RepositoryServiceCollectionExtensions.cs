@@ -53,20 +53,9 @@ public static class RepositoryServiceCollectionExtensions
                 "Database connection string is required. Expected 'postgres-db' or 'DefaultConnection' in ConnectionStrings configuration.");
         }
 
-        // Register DbContext for direct injection (used by ApiService endpoints and services)
-        services.AddDbContext<JaimesDbContext>(options =>
-        {
-            options.UseNpgsql(connectionString,
-                dbOpts =>
-                {
-                    dbOpts.UseVector(); // Enable pgvector support
-                    dbOpts.MaxBatchSize(500);
-                    dbOpts.EnableRetryOnFailure(maxRetryCount: 3);
-                });
-        });
-
-        // Register DbContextFactory for worker services (more efficient for background services)
-        services.AddPooledDbContextFactory<JaimesDbContext>(options =>
+        // Register DbContext with pooling for direct injection (used by ApiService endpoints and services)
+        // Note: Worker services that need IDbContextFactory should register AddPooledDbContextFactory separately
+        services.AddDbContextPool<JaimesDbContext>(options =>
         {
             options.UseNpgsql(connectionString,
                 dbOpts =>
