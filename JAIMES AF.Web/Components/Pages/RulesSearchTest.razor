@@ -43,12 +43,14 @@
 					}
 				</MudSelect>
 
-				<MudCheckBox @bind-Value="_storeResults"
-				             Label="Store search results for diagnostics"
-				             Class="mb-4"/>
-				<MudText Typo="Typo.caption" Class="mb-4 text-muted">When enabled, search queries and results will be
-					stored in the database for diagnostic and evaluation purposes
-				</MudText>
+				<div class="mb-4">
+					<MudCheckBox @bind-Value="_storeResults"
+					             Label="Store search results for diagnostics"
+					             Class="mb-1"/>
+					<MudText Typo="Typo.caption" Class="ms-4" Color="Color.Info">When enabled, search queries and results will be
+						stored in the database for diagnostic and evaluation purposes
+					</MudText>
+				</div>
 
 				<MudButton Variant="Variant.Filled"
 				           Color="Color.Primary"
