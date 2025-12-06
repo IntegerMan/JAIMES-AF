@@ -3,18 +3,18 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Aspire.Hosting" Version="13.0.1" />
-    <PackageVersion Include="Aspire.Hosting.Azure" Version="13.0.1" />
-    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.0.1" />
-    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.0.1" />
-    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.0.1" />
+    <PackageVersion Include="Aspire.Hosting" Version="13.0.2" />
+    <PackageVersion Include="Aspire.Hosting.Azure" Version="13.0.2" />
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.0.2" />
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.0.2" />
+    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.0.2" />
     <PackageVersion Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
     <PackageVersion Include="Azure.AI.OpenAI" Version="2.5.0-beta.1" />
-    <PackageVersion Include="Azure.Core" Version="1.49.0" />
-    <PackageVersion Include="Azure.Identity" Version="1.14.2" />
+    <PackageVersion Include="Azure.Core" Version="1.50.0" />
+    <PackageVersion Include="Azure.Identity" Version="1.17.1" />
     <PackageVersion Include="Microsoft.Extensions.AI" Version="10.0.1" />
-    <PackageVersion Include="OllamaSharp" Version="5.4.11" />
-    <PackageVersion Include="OpenAI" Version="2.6.0" />
+    <PackageVersion Include="OllamaSharp" Version="5.4.12" />
+    <PackageVersion Include="OpenAI" Version="2.7.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="FastEndpoints" Version="7.1.1" />
     <PackageVersion Include="FastEndpoints.Swagger" Version="7.1.1" />
@@ -44,41 +44,43 @@
     <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.0.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageVersion Include="Moq" Version="4.20.72" />
-    <PackageVersion Include="Markdig" Version="0.37.0" />
-    <PackageVersion Include="Meziantou.Analyzer" Version="2.0.155" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" />
-    <PackageVersion Include="MudBlazor" Version="8.14.0" />
+    <PackageVersion Include="Markdig" Version="0.44.0" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="2.0.257" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.100" />
+    <PackageVersion Include="MudBlazor" Version="8.15.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.14.0" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.14.0" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.14.0-rc.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.14.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.13.0-beta.2" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.14.0-rc.1" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.13.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.14.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.14.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.StackExchangeRedis" Version="1.14.0-beta.1" />
     <PackageVersion Include="Riok.Mapperly" Version="4.3.0" />
-    <PackageVersion Include="Scrutor" Version="6.1.0" />
+    <PackageVersion Include="Scrutor" Version="7.0.0" />
     <PackageVersion Include="SemanticChunker.NET" Version="1.1.0" />
-    <PackageVersion Include="drittich.SemanticSlicer" Version="1.4.2" />
-    <PackageVersion Include="Serilog.AspNetCore" Version="9.0.0" />
+    <PackageVersion Include="drittich.SemanticSlicer" Version="1.6.0" />
+    <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageVersion Include="StackExchange.Redis" Version="2.8.16" />
-    <PackageVersion Include="Spectre.Console" Version="0.49.0" />
+    <PackageVersion Include="Spectre.Console" Version="0.54.0" />
     <PackageVersion Include="StyleCop.Analyzers" Version="1.2.0-beta.556" />
     <PackageVersion Include="Shouldly" Version="4.3.0" />
     <PackageVersion Include="System.Text.Json" Version="10.0.0" />
     <PackageVersion Include="UglyToad.PdfPig" Version="1.7.0-custom-5" />
     <PackageVersion Include="UglyToad.PdfPig.DocumentLayoutAnalysis" Version="1.7.0-custom-5" />
-    <PackageVersion Include="xunit.v3" Version="3.1.0" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.0" />
-    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Ollama" Version="9.9.0" />
-    <PackageVersion Include="CommunityToolkit.Aspire.OllamaSharp" Version="9.9.0" />
+    <PackageVersion Include="xunit.v3" Version="3.2.1" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageVersion>
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Ollama" Version="13.0.0" />
+    <PackageVersion Include="CommunityToolkit.Aspire.OllamaSharp" Version="13.0.0" />
     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.SQLite" Version="9.9.0" />
-    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.LavinMQ" Version="9.9.0" />
-    <PackageVersion Include="Aspire.Hosting.Qdrant" Version="13.0.1" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.LavinMQ" Version="13.0.0" />
+    <PackageVersion Include="Aspire.Hosting.Qdrant" Version="13.0.2" />
     <PackageVersion Include="Aspire.Hosting.MongoDB" Version="13.0.1" />
     <PackageVersion Include="Aspire.MongoDB.Driver" Version="13.0.1" />
     <PackageVersion Include="MongoDB.Bson" Version="3.1.0" />
-    <PackageVersion Include="Mongo2Go" Version="4.0.0" />
     <PackageVersion Include="RabbitMQ.Client" Version="7.2.0" />
-    <PackageVersion Include="Qdrant.Client" Version="1.9.0" />
+    <PackageVersion Include="Qdrant.Client" Version="1.16.1" />
   </ItemGroup>
 </Project>

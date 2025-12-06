@@ -6,7 +6,6 @@
         <RootNamespace>MattEland.Jaimes.DocumentCracker</RootNamespace>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <NoWarn>$(NoWarn);ICU4N_IDE_0002</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
