@@ -1,8 +1,3 @@
-using FastEndpoints;
-using MattEland.Jaimes.Domain;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
 public class GetPlayerEndpoint : EndpointWithoutRequest<PlayerResponse>
@@ -21,7 +16,7 @@ public class GetPlayerEndpoint : EndpointWithoutRequest<PlayerResponse>
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        string? id = Route<string>("id", isRequired: true);
+        string? id = Route<string>("id", true);
         if (string.IsNullOrEmpty(id))
         {
             ThrowError("Player ID is required");
@@ -40,7 +35,7 @@ public class GetPlayerEndpoint : EndpointWithoutRequest<PlayerResponse>
                 Name = player.Name
             };
 
-            await Send.OkAsync(response, cancellation: ct);
+            await Send.OkAsync(response, ct);
         }
         catch (ArgumentException ex)
         {
@@ -48,4 +43,3 @@ public class GetPlayerEndpoint : EndpointWithoutRequest<PlayerResponse>
         }
     }
 }
-

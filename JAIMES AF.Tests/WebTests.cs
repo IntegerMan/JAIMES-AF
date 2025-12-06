@@ -10,15 +10,13 @@ public class WebTests
     [Fact]
     public async Task GetWebResourceRootReturnsOkStatusCode()
     {
-        if (!AspireTestsEnabled())
-        {
-            return;
-        }
+        if (!AspireTestsEnabled()) return;
 
         // Arrange
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
 
-        IDistributedApplicationTestingBuilder appHost = await DistributedApplicationTestingBuilder.CreateAsync<Projects.JAIMES_AF_AppHost>(cancellationToken);
+        IDistributedApplicationTestingBuilder appHost =
+            await DistributedApplicationTestingBuilder.CreateAsync<Projects.JAIMES_AF_AppHost>(cancellationToken);
         appHost.Services.AddLogging(logging =>
         {
             logging.SetMinimumLevel(LogLevel.Debug);
@@ -32,12 +30,14 @@ public class WebTests
             clientBuilder.AddStandardResilienceHandler();
         });
 
-        await using DistributedApplication app = await appHost.BuildAsync(cancellationToken).WaitAsync(DefaultTimeout, cancellationToken);
+        await using DistributedApplication app =
+            await appHost.BuildAsync(cancellationToken).WaitAsync(DefaultTimeout, cancellationToken);
         await app.StartAsync(cancellationToken).WaitAsync(DefaultTimeout, cancellationToken);
 
         // Act
         HttpClient httpClient = app.CreateHttpClient("webfrontend");
-        await app.ResourceNotifications.WaitForResourceHealthyAsync("webfrontend", cancellationToken).WaitAsync(DefaultTimeout, cancellationToken);
+        await app.ResourceNotifications.WaitForResourceHealthyAsync("webfrontend", cancellationToken)
+            .WaitAsync(DefaultTimeout, cancellationToken);
         HttpResponseMessage response = await httpClient.GetAsync("/", cancellationToken);
 
         // Assert
@@ -48,15 +48,9 @@ public class WebTests
     {
         string? enabledValue = Environment.GetEnvironmentVariable("ENABLE_ASPIRE_TESTS");
 
-        if (string.IsNullOrWhiteSpace(enabledValue))
-        {
-            return false;
-        }
+        if (string.IsNullOrWhiteSpace(enabledValue)) return false;
 
-        if (bool.TryParse(enabledValue, out bool parsedValue))
-        {
-            return parsedValue;
-        }
+        if (bool.TryParse(enabledValue, out bool parsedValue)) return parsedValue;
 
         return string.Equals(enabledValue, "1", StringComparison.OrdinalIgnoreCase);
     }

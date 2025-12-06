@@ -27,13 +27,13 @@ public class DocumentChangeDetectorServiceTests
         using DocumentChangeDetectorTestContext context = new();
         context.DirectoryScannerMock
             .Setup(scanner => scanner.GetSubdirectories(root.Path))
-            .Returns(new[] { subDirectory });
+            .Returns(new[] {subDirectory});
         context.DirectoryScannerMock
             .Setup(scanner => scanner.GetFiles(root.Path, context.Options.SupportedExtensions))
             .Returns(Array.Empty<string>());
         context.DirectoryScannerMock
             .Setup(scanner => scanner.GetFiles(subDirectory, context.Options.SupportedExtensions))
-            .Returns(new[] { filePath });
+            .Returns(new[] {filePath});
         context.ChangeTrackerMock
             .Setup(tracker => tracker.ComputeFileHashAsync(filePath, It.IsAny<CancellationToken>()))
             .ReturnsAsync("hash-new");
@@ -69,13 +69,13 @@ public class DocumentChangeDetectorServiceTests
         using DocumentChangeDetectorTestContext context = new();
         context.DirectoryScannerMock
             .Setup(scanner => scanner.GetSubdirectories(root.Path))
-            .Returns(new[] { subDirectory });
+            .Returns(new[] {subDirectory});
         context.DirectoryScannerMock
             .Setup(scanner => scanner.GetFiles(root.Path, context.Options.SupportedExtensions))
             .Returns(Array.Empty<string>());
         context.DirectoryScannerMock
             .Setup(scanner => scanner.GetFiles(subDirectory, context.Options.SupportedExtensions))
-            .Returns(new[] { filePath });
+            .Returns(new[] {filePath});
 
         context.ChangeTrackerMock
             .Setup(tracker => tracker.ComputeFileHashAsync(filePath, It.IsAny<CancellationToken>()))
@@ -131,13 +131,13 @@ public class DocumentChangeDetectorServiceTests
         using DocumentChangeDetectorTestContext context = new();
         context.DirectoryScannerMock
             .Setup(scanner => scanner.GetSubdirectories(root.Path))
-            .Returns(new[] { subDirectory });
+            .Returns(new[] {subDirectory});
         context.DirectoryScannerMock
             .Setup(scanner => scanner.GetFiles(root.Path, context.Options.SupportedExtensions))
             .Returns(Array.Empty<string>());
         context.DirectoryScannerMock
             .Setup(scanner => scanner.GetFiles(subDirectory, context.Options.SupportedExtensions))
-            .Returns(new[] { filePath });
+            .Returns(new[] {filePath});
 
         context.ChangeTrackerMock
             .Setup(tracker => tracker.ComputeFileHashAsync(filePath, It.IsAny<CancellationToken>()))
@@ -195,20 +195,20 @@ public class DocumentChangeDetectorServiceTests
             DirectoryScannerMock = new Mock<IDirectoryScanner>();
             ChangeTrackerMock = new Mock<IChangeTracker>();
             MessagePublisherMock = new Mock<IMessagePublisher>();
-            
+
             _dbOptions = new DbContextOptionsBuilder<JaimesDbContext>()
-                .UseInMemoryDatabase(databaseName: $"DocumentChangeDetectorTests-{Guid.NewGuid()}")
+                .UseInMemoryDatabase($"DocumentChangeDetectorTests-{Guid.NewGuid()}")
                 .Options;
             DbContext = new JaimesDbContext(_dbOptions);
             DbContext.Database.EnsureCreated();
-            
+
             _activitySource = new ActivitySource($"DocumentChangeDetectorTests-{Guid.NewGuid()}");
         }
 
         public DocumentChangeDetectorService CreateService()
         {
             TestDbContextFactory dbContextFactory = new(_dbOptions);
-            
+
             return new DocumentChangeDetectorService(
                 LoggerMock.Object,
                 DirectoryScannerMock.Object,
@@ -238,27 +238,18 @@ public class DocumentChangeDetectorServiceTests
 
         public void Dispose()
         {
-            if (Directory.Exists(Path))
-            {
-                Directory.Delete(Path, true);
-            }
+            if (Directory.Exists(Path)) Directory.Delete(Path, true);
         }
     }
 
-    private sealed class TestDbContextFactory : IDbContextFactory<JaimesDbContext>
+    private sealed class TestDbContextFactory(DbContextOptions<JaimesDbContext> options)
+        : IDbContextFactory<JaimesDbContext>
     {
-        private readonly DbContextOptions<JaimesDbContext> _options;
-
-        public TestDbContextFactory(DbContextOptions<JaimesDbContext> options)
-        {
-            _options = options;
-        }
-
         public JaimesDbContext CreateDbContext()
         {
             // Return a new context that shares the same in-memory database
             // This allows the service to dispose it without affecting the test's context
-            return new JaimesDbContext(_options);
+            return new JaimesDbContext(options);
         }
 
         public async Task<JaimesDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
@@ -266,7 +257,7 @@ public class DocumentChangeDetectorServiceTests
             await Task.CompletedTask;
             // Return a new context that shares the same in-memory database
             // This allows the service to dispose it without affecting the test's context
-            return new JaimesDbContext(_options);
+            return new JaimesDbContext(options);
         }
     }
 }

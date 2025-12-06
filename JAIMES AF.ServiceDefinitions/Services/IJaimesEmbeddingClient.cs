@@ -1,11 +1,9 @@
-using Qdrant.Client.Grpc;
-
 namespace MattEland.Jaimes.ServiceDefinitions.Services;
 
 /// <summary>
 /// Interface for Qdrant client operations, allowing for testability and mocking.
 /// </summary>
-public interface IQdrantClient
+public interface IJaimesEmbeddingClient
 {
     /// <summary>
     /// Gets information about a collection.
@@ -28,4 +26,3 @@ public interface IQdrantClient
         PointStruct[] points,
         CancellationToken cancellationToken = default);
 }
-

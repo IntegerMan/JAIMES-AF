@@ -1,32 +1,24 @@
-using MattEland.Jaimes.ServiceDefinitions.Requests;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using Microsoft.AspNetCore.Components;
-
 namespace MattEland.Jaimes.Web.Components.Pages;
 
 public partial class EditScenario
 {
-    [Parameter]
-    public string ScenarioId { get; set; } = string.Empty;
+    [Parameter] public string ScenarioId { get; set; } = string.Empty;
 
-    [Inject]
-    public HttpClient Http { get; set; } = null!;
+    [Inject] public HttpClient Http { get; set; } = null!;
 
-    [Inject]
-    public ILoggerFactory LoggerFactory { get; set; } = null!;
+    [Inject] public ILoggerFactory LoggerFactory { get; set; } = null!;
 
-    [Inject]
-    public NavigationManager Navigation { get; set; } = null!;
+    [Inject] public NavigationManager Navigation { get; set; } = null!;
 
-    private RulesetInfoResponse[] rulesets = [];
-    private string? selectedRulesetId;
-    private string name = string.Empty;
-    private string? description;
-    private string systemPrompt = string.Empty;
-    private string newGameInstructions = string.Empty;
-    private bool isLoading = true;
-    private bool isSaving = false;
-    private string? errorMessage;
+    private RulesetInfoResponse[] _rulesets = [];
+    private string? _selectedRulesetId;
+    private string _name = string.Empty;
+    private string? _description;
+    private string _systemPrompt = string.Empty;
+    private string _newGameInstructions = string.Empty;
+    private bool _isLoading = true;
+    private bool _isSaving = false;
+    private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -35,12 +27,12 @@ public partial class EditScenario
 
     private async Task LoadDataAsync()
     {
-        isLoading = true;
-        errorMessage = null;
+        _isLoading = true;
+        _errorMessage = null;
         try
         {
-            var rulesetsTask = Http.GetFromJsonAsync<RulesetListResponse>("/rulesets");
-            var scenarioTask = Http.GetFromJsonAsync<ScenarioResponse>($"/scenarios/{ScenarioId}");
+            Task<RulesetListResponse?> rulesetsTask = Http.GetFromJsonAsync<RulesetListResponse>("/rulesets");
+            Task<ScenarioResponse?> scenarioTask = Http.GetFromJsonAsync<ScenarioResponse>($"/scenarios/{ScenarioId}");
 
             await Task.WhenAll(rulesetsTask, scenarioTask);
 
@@ -49,59 +41,59 @@ public partial class EditScenario
 
             if (scenarioResponse == null)
             {
-                errorMessage = $"Scenario with ID '{ScenarioId}' not found.";
-                isLoading = false;
+                _errorMessage = $"Scenario with ID '{ScenarioId}' not found.";
+                _isLoading = false;
                 StateHasChanged();
                 return;
             }
 
-            rulesets = rulesetsResponse?.Rulesets ?? [];
-            selectedRulesetId = scenarioResponse.RulesetId;
-            name = scenarioResponse.Name;
-            description = scenarioResponse.Description;
-            systemPrompt = scenarioResponse.SystemPrompt;
-            newGameInstructions = scenarioResponse.NewGameInstructions;
+            _rulesets = rulesetsResponse?.Rulesets ?? [];
+            _selectedRulesetId = scenarioResponse.RulesetId;
+            _name = scenarioResponse.Name;
+            _description = scenarioResponse.Description;
+            _systemPrompt = scenarioResponse.SystemPrompt;
+            _newGameInstructions = scenarioResponse.NewGameInstructions;
         }
         catch (Exception ex)
         {
             LoggerFactory.CreateLogger("EditScenario").LogError(ex, "Failed to load scenario or rulesets from API");
-            errorMessage = "Failed to load scenario: " + ex.Message;
+            _errorMessage = "Failed to load scenario: " + ex.Message;
         }
         finally
         {
-            isLoading = false;
+            _isLoading = false;
             StateHasChanged();
         }
     }
 
     private bool IsFormValid()
     {
-        return !string.IsNullOrWhiteSpace(selectedRulesetId) &&
-               !string.IsNullOrWhiteSpace(name) &&
-               !string.IsNullOrWhiteSpace(systemPrompt) &&
-               !string.IsNullOrWhiteSpace(newGameInstructions);
+        return !string.IsNullOrWhiteSpace(_selectedRulesetId) &&
+               !string.IsNullOrWhiteSpace(_name) &&
+               !string.IsNullOrWhiteSpace(_systemPrompt) &&
+               !string.IsNullOrWhiteSpace(_newGameInstructions);
     }
 
     private async Task UpdateScenarioAsync()
     {
         if (!IsFormValid())
         {
-            errorMessage = "Please fill in all required fields.";
+            _errorMessage = "Please fill in all required fields.";
             StateHasChanged();
             return;
         }
 
-        isSaving = true;
-        errorMessage = null;
+        _isSaving = true;
+        _errorMessage = null;
         try
         {
             UpdateScenarioRequest request = new()
             {
-                RulesetId = selectedRulesetId!,
-                Description = description,
-                Name = name,
-                SystemPrompt = systemPrompt,
-                NewGameInstructions = newGameInstructions
+                RulesetId = _selectedRulesetId!,
+                Description = _description,
+                Name = _name,
+                SystemPrompt = _systemPrompt,
+                NewGameInstructions = _newGameInstructions
             };
 
             HttpResponseMessage response = await Http.PutAsJsonAsync($"/scenarios/{ScenarioId}", request);
@@ -122,19 +114,20 @@ public partial class EditScenario
                     // ignored
                 }
 
-                errorMessage = $"Failed to update scenario: {response.ReasonPhrase}{(string.IsNullOrEmpty(body) ? string.Empty : " - " + body)}";
+                _errorMessage =
+                    $"Failed to update scenario: {response.ReasonPhrase}{(string.IsNullOrEmpty(body) ? string.Empty : " - " + body)}";
                 StateHasChanged();
             }
         }
         catch (Exception ex)
         {
             LoggerFactory.CreateLogger("EditScenario").LogError(ex, "Failed to update scenario");
-            errorMessage = "Failed to update scenario: " + ex.Message;
+            _errorMessage = "Failed to update scenario: " + ex.Message;
             StateHasChanged();
         }
         finally
         {
-            isSaving = false;
+            _isSaving = false;
             StateHasChanged();
         }
     }
@@ -144,4 +137,3 @@ public partial class EditScenario
         Navigation.NavigateTo("/scenarios");
     }
 }
-

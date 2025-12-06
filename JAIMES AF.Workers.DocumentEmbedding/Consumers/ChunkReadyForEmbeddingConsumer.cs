@@ -1,8 +1,3 @@
-using System.Diagnostics;
-using MattEland.Jaimes.ServiceDefinitions.Messages;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.Workers.DocumentEmbedding.Services;
-
 namespace MattEland.Jaimes.Workers.DocumentEmbedding.Consumers;
 
 public class ChunkReadyForEmbeddingConsumer(
@@ -21,7 +16,9 @@ public class ChunkReadyForEmbeddingConsumer(
         {
             logger.LogDebug(
                 "Received chunk ready for embedding message: ChunkId={ChunkId}, DocumentId={DocumentId}, FileName={FileName}",
-                message.ChunkId, message.DocumentId, message.FileName);
+                message.ChunkId,
+                message.DocumentId,
+                message.FileName);
 
             // Validate message
             if (string.IsNullOrWhiteSpace(message.ChunkId))
@@ -29,7 +26,8 @@ public class ChunkReadyForEmbeddingConsumer(
                 logger.LogError(
                     "Received chunk ready for embedding message with empty ChunkId. DocumentId={DocumentId}, FileName={FileName}. " +
                     "Skipping processing to avoid errors.",
-                    message.DocumentId, message.FileName);
+                    message.DocumentId,
+                    message.FileName);
                 activity?.SetStatus(ActivityStatusCode.Error, "Empty ChunkId");
                 // Don't throw - just skip this message to avoid infinite retries
                 return;
@@ -40,7 +38,8 @@ public class ChunkReadyForEmbeddingConsumer(
                 logger.LogError(
                     "Received chunk ready for embedding message with empty ChunkText. ChunkId={ChunkId}, DocumentId={DocumentId}. " +
                     "Skipping processing.",
-                    message.ChunkId, message.DocumentId);
+                    message.ChunkId,
+                    message.DocumentId);
                 activity?.SetStatus(ActivityStatusCode.Error, "Empty ChunkText");
                 return;
             }
@@ -54,10 +53,9 @@ public class ChunkReadyForEmbeddingConsumer(
         {
             logger.LogError(ex, "Failed to process chunk ready for embedding message for {ChunkId}", message.ChunkId);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-            
+
             // Re-throw to let message consumer service handle retry logic
             throw;
         }
     }
 }
-

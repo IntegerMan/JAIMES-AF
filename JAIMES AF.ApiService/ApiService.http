@@ -7,9 +7,9 @@ POST {{ApiService_HostAddress}}/games/
 Content-Type: application/json
 
 {
- "rulesetId": "dnd5e",
- "scenarioId": "default",
- "playerId": "emcee"
+  "rulesetId": "dnd5e",
+  "scenarioId": "default",
+  "playerId": "emcee"
 }
 
 
@@ -38,8 +38,8 @@ POST {{ApiService_HostAddress}}/games/95d26a53-5b62-43f2-bc19-3c64ff013c4f
 Content-Type: application/json
 
 {
- "gameId": "95d26a53-5b62-43f2-bc19-3c64ff013c4f",
- "message": "I want to go on an adventure"
+  "gameId": "95d26a53-5b62-43f2-bc19-3c64ff013c4f",
+  "message": "I want to go on an adventure"
 }
 
 ### Search Rules - Basic query
@@ -48,7 +48,8 @@ POST {{ApiService_HostAddress}}/rules/search
 Content-Type: application/json
 
 {
-  "query": "combat rules"
+  "query": "combat rules",
+  "storeResults": false
 }
 
 ### Search Rules - With ruleset filter
@@ -58,7 +59,8 @@ Content-Type: application/json
 
 {
   "query": "spell casting",
-  "rulesetId": "dnd5e"
+  "rulesetId": "dnd5e",
+  "storeResults": false
 }
 
 ### Search Rules - Another query
@@ -67,7 +69,8 @@ POST {{ApiService_HostAddress}}/rules/search
 Content-Type: application/json
 
 {
-  "query": "character creation"
+  "query": "character creation",
+  "storeResults": false
 }
 
 ### Search Rules - Empty query (should fail)

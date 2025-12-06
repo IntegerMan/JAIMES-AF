@@ -1,8 +1,3 @@
-using System.Diagnostics;
-using Microsoft.Agents.AI;
-using Microsoft.Extensions.AI;
-using Microsoft.Extensions.Logging;
-
 namespace MattEland.Jaimes.Agents.Middleware;
 
 /// <summary>
@@ -18,22 +13,25 @@ public static class AgentRunMiddleware
     /// </summary>
     /// <param name="logger">The logger to use for logging agent runs.</param>
     /// <returns>A middleware function that can be used with the agent builder.</returns>
-    public static Func<IEnumerable<ChatMessage>, AgentThread?, AgentRunOptions?, AIAgent, CancellationToken, Task<AgentRunResponse>> CreateRunFunc(ILogger logger)
+    public static
+        Func<IEnumerable<ChatMessage>, AgentThread?, AgentRunOptions?, AIAgent, CancellationToken,
+            Task<AgentRunResponse>>
+        CreateRunFunc(ILogger logger)
     {
         // Log that middleware is being created/registered
         logger.LogInformation("AgentRunMiddleware created and registered");
-        
+
         return async (messages, thread, options, innerAgent, cancellationToken) =>
         {
             int messageCount = messages.Count();
             string agentName = innerAgent.Name ?? "unknown";
-            
+
             // Log that an agent run is starting
             logger.LogInformation(
                 "🤖 Agent run started: {AgentName} with {MessageCount} message(s)",
                 agentName,
                 messageCount);
-            
+
             // Log run details for debugging
             string threadStatus = thread != null ? "existing" : "new";
             logger.LogDebug(
@@ -41,29 +39,29 @@ public static class AgentRunMiddleware
                 agentName,
                 messageCount,
                 threadStatus,
-                options != null ? System.Text.Json.JsonSerializer.Serialize(options) : "null");
+                options != null ? JsonSerializer.Serialize(options) : "null");
 
             // Create an OpenTelemetry activity for the agent run
             using Activity? activity = ActivitySource.StartActivity($"Agent.Run.{agentName}");
-            
+
             if (activity != null)
             {
                 activity.SetTag("agent.name", agentName);
                 activity.SetTag("agent.message_count", messageCount);
                 activity.SetTag("agent.thread_status", threadStatus);
-                activity.SetTag("agent.options", options != null ? System.Text.Json.JsonSerializer.Serialize(options) : "null");
+                activity.SetTag("agent.options", options != null ? JsonSerializer.Serialize(options) : "null");
             }
 
             AgentRunResponse? response = null;
             Exception? exception = null;
-            
+
             try
             {
                 // Execute the actual agent run
                 response = await innerAgent.RunAsync(messages, thread, options, cancellationToken);
-                
+
                 int responseMessageCount = response.Messages?.Count() ?? 0;
-                
+
                 // Log successful run
                 logger.LogInformation(
                     "Agent run completed: {AgentName} with {ResponseMessageCount} response message(s)",
@@ -83,13 +81,13 @@ public static class AgentRunMiddleware
                     ex,
                     "Agent run failed: {AgentName}",
                     agentName);
-                
+
                 if (activity != null)
                 {
                     activity.SetTag("agent.error", ex.Message);
                     activity.SetStatus(ActivityStatusCode.Error, ex.Message);
                 }
-                
+
                 throw;
             }
             finally
@@ -101,10 +99,7 @@ public static class AgentRunMiddleware
                     if (!string.IsNullOrEmpty(responseSummary))
                     {
                         // Truncate long responses for logging
-                        if (responseSummary.Length > 500)
-                        {
-                            responseSummary = responseSummary[..500] + "... (truncated)";
-                        }
+                        if (responseSummary.Length > 500) responseSummary = responseSummary[..500] + "... (truncated)";
                         activity.SetTag("agent.response_summary", responseSummary);
                     }
                 }
@@ -114,4 +109,3 @@ public static class AgentRunMiddleware
         };
     }
 }
-

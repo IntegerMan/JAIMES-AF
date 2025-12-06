@@ -2,5 +2,5 @@ namespace MattEland.Jaimes.ServiceDefinitions.Responses;
 
 public record ScenarioListResponse
 {
- public required ScenarioInfoResponse[] Scenarios { get; init; }
+    public required ScenarioInfoResponse[] Scenarios { get; init; }
 }

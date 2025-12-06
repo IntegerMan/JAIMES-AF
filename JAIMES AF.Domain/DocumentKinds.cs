@@ -20,4 +20,3 @@ public static class DocumentKinds
     /// </summary>
     public const string Transcript = "Transcript";
 }
-

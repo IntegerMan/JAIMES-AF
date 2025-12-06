@@ -1,7 +1,3 @@
-using MattEland.Jaimes.Agents.Services;
-using MattEland.Jaimes.ServiceLayer.Services;
-using Microsoft.Extensions.DependencyInjection;
-
 namespace MattEland.Jaimes.Services;
 
 public static class ServiceCollectionExtensions

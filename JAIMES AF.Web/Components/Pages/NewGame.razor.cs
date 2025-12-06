@@ -1,27 +1,20 @@
-using MattEland.Jaimes.ServiceDefinitions.Requests;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using Microsoft.AspNetCore.Components;
-
 namespace MattEland.Jaimes.Web.Components.Pages;
 
 public partial class NewGame
 {
-    [Inject]
-    public HttpClient Http { get; set; } = null!;
+    [Inject] public HttpClient Http { get; set; } = null!;
 
-    [Inject]
-    public ILoggerFactory LoggerFactory { get; set; } = null!;
+    [Inject] public ILoggerFactory LoggerFactory { get; set; } = null!;
 
-    [Inject]
-    public NavigationManager Navigation { get; set; } = null!;
+    [Inject] public NavigationManager Navigation { get; set; } = null!;
 
-    private ScenarioInfoResponse[] scenarios = [];
-    private PlayerInfoResponse[] players = [];
-    private string? selectedScenarioId;
-    private string? selectedPlayerId;
-    private bool isLoading = true;
-    private bool isCreating = false;
-    private string? errorMessage;
+    private ScenarioInfoResponse[] _scenarios = [];
+    private PlayerInfoResponse[] _players = [];
+    private string? _selectedScenarioId;
+    private string? _selectedPlayerId;
+    private bool _isLoading = true;
+    private bool _isCreating = false;
+    private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -30,65 +23,59 @@ public partial class NewGame
 
     private async Task LoadDataAsync()
     {
-        isLoading = true;
-        errorMessage = null;
+        _isLoading = true;
+        _errorMessage = null;
         try
         {
-            var scenariosTask = Http.GetFromJsonAsync<ScenarioListResponse>("/scenarios");
-            var playersTask = Http.GetFromJsonAsync<PlayerListResponse>("/players");
+            Task<ScenarioListResponse?> scenariosTask = Http.GetFromJsonAsync<ScenarioListResponse>("/scenarios");
+            Task<PlayerListResponse?> playersTask = Http.GetFromJsonAsync<PlayerListResponse>("/players");
 
             await Task.WhenAll(scenariosTask, playersTask);
 
-            var scenariosResponse = await scenariosTask;
-            var playersResponse = await playersTask;
+            ScenarioListResponse? scenariosResponse = await scenariosTask;
+            PlayerListResponse? playersResponse = await playersTask;
 
-            scenarios = scenariosResponse?.Scenarios ?? [];
-            players = playersResponse?.Players ?? [];
+            _scenarios = scenariosResponse?.Scenarios ?? [];
+            _players = playersResponse?.Players ?? [];
         }
         catch (Exception ex)
         {
             LoggerFactory.CreateLogger("NewGame").LogError(ex, "Failed to load scenarios or players from API");
-            errorMessage = "Failed to load scenarios or players: " + ex.Message;
+            _errorMessage = "Failed to load scenarios or players: " + ex.Message;
         }
         finally
         {
-            isLoading = false;
+            _isLoading = false;
             StateHasChanged();
         }
     }
 
     private string GetScenarioDisplayName(ScenarioInfoResponse scenario)
     {
-        if (!string.IsNullOrWhiteSpace(scenario.Name))
-        {
-            return scenario.Name;
-        }
-        
-        if (!string.IsNullOrWhiteSpace(scenario.Description))
-        {
-            return scenario.Description;
-        }
-        
+        if (!string.IsNullOrWhiteSpace(scenario.Name)) return scenario.Name;
+
+        if (!string.IsNullOrWhiteSpace(scenario.Description)) return scenario.Description;
+
         return "Unnamed Scenario";
     }
 
     private async Task CreateGameAsync()
     {
-        if (string.IsNullOrEmpty(selectedScenarioId) || string.IsNullOrEmpty(selectedPlayerId))
+        if (string.IsNullOrEmpty(_selectedScenarioId) || string.IsNullOrEmpty(_selectedPlayerId))
         {
-            errorMessage = "Please select both a scenario and a player.";
+            _errorMessage = "Please select both a scenario and a player.";
             StateHasChanged();
             return;
         }
 
-        isCreating = true;
-        errorMessage = null;
+        _isCreating = true;
+        _errorMessage = null;
         try
         {
             NewGameRequest request = new()
             {
-                ScenarioId = selectedScenarioId,
-                PlayerId = selectedPlayerId
+                ScenarioId = _selectedScenarioId,
+                PlayerId = _selectedPlayerId
             };
 
             HttpResponseMessage response = await Http.PostAsJsonAsync("/games/", request);
@@ -102,7 +89,7 @@ public partial class NewGame
                 }
                 else
                 {
-                    errorMessage = "Game was created but the response was invalid.";
+                    _errorMessage = "Game was created but the response was invalid.";
                     StateHasChanged();
                 }
             }
@@ -118,21 +105,21 @@ public partial class NewGame
                     // ignored
                 }
 
-                errorMessage = $"Failed to create game: {response.ReasonPhrase}{(string.IsNullOrEmpty(body) ? string.Empty : " - " + body)}";
+                _errorMessage =
+                    $"Failed to create game: {response.ReasonPhrase}{(string.IsNullOrEmpty(body) ? string.Empty : " - " + body)}";
                 StateHasChanged();
             }
         }
         catch (Exception ex)
         {
             LoggerFactory.CreateLogger("NewGame").LogError(ex, "Failed to create game");
-            errorMessage = "Failed to create game: " + ex.Message;
+            _errorMessage = "Failed to create game: " + ex.Message;
             StateHasChanged();
         }
         finally
         {
-            isCreating = false;
+            _isCreating = false;
             StateHasChanged();
         }
     }
 }
-

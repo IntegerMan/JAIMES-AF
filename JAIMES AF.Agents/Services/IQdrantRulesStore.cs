@@ -3,9 +3,21 @@ namespace MattEland.Jaimes.Agents.Services;
 public interface IQdrantRulesStore
 {
     Task EnsureCollectionExistsAsync(CancellationToken cancellationToken = default);
-    Task StoreRuleAsync(string ruleId, float[] embedding, Dictionary<string, string> metadata, CancellationToken cancellationToken = default);
-    Task<List<RuleSearchResult>> SearchRulesAsync(float[] queryEmbedding, string? rulesetId, int limit, CancellationToken cancellationToken = default);
-    Task<List<DocumentRuleSearchResult>> SearchDocumentRulesAsync(float[] queryEmbedding, string? rulesetId, int limit, CancellationToken cancellationToken = default);
+
+    Task StoreRuleAsync(string ruleId,
+        float[] embedding,
+        Dictionary<string, string> metadata,
+        CancellationToken cancellationToken = default);
+
+    Task<List<RuleSearchResult>> SearchRulesAsync(float[] queryEmbedding,
+        string? rulesetId,
+        int limit,
+        CancellationToken cancellationToken = default);
+
+    Task<List<DocumentRuleSearchResult>> SearchDocumentRulesAsync(float[] queryEmbedding,
+        string? rulesetId,
+        int limit,
+        CancellationToken cancellationToken = default);
 }
 
 public record RuleSearchResult
@@ -27,4 +39,3 @@ public record DocumentRuleSearchResult
     public required string ChunkId { get; init; }
     public required double Relevancy { get; init; }
 }
-

@@ -9,7 +9,7 @@ public class GameRepositoryTests : RepositoryTestBase
     public async Task CanCreateAndRetrieveGame()
     {
         // Arrange
-        Game game = new Game
+        Game game = new()
         {
             Id = Guid.NewGuid(),
             RulesetId = "test-ruleset",
@@ -36,7 +36,7 @@ public class GameRepositoryTests : RepositoryTestBase
     public async Task DeletingGameCascadesDeleteToMessages()
     {
         // Arrange
-        Game game = new Game
+        Game game = new()
         {
             Id = Guid.NewGuid(),
             RulesetId = "test-ruleset",
@@ -46,7 +46,7 @@ public class GameRepositoryTests : RepositoryTestBase
         };
         Context.Games.Add(game);
 
-        Message message = new Message
+        Message message = new()
         {
             GameId = game.Id,
             Text = "Test message",

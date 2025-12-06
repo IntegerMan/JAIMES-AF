@@ -1,8 +1,3 @@
-using FastEndpoints;
-using MattEland.Jaimes.ServiceDefinitions.Requests;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
 public class SearchRulesEndpoint : Ep.Req<SearchRulesRequest>.Res<SearchRulesResponse>
@@ -32,9 +27,10 @@ public class SearchRulesEndpoint : Ep.Req<SearchRulesRequest>.Res<SearchRulesRes
             SearchRulesResponse response = await RulesSearchService.SearchRulesDetailedAsync(
                 req.RulesetId,
                 req.Query,
+                req.StoreResults,
                 ct);
 
-            await Send.OkAsync(response, cancellation: ct);
+            await Send.OkAsync(response, ct);
         }
         catch (ArgumentException ex)
         {
@@ -42,4 +38,3 @@ public class SearchRulesEndpoint : Ep.Req<SearchRulesRequest>.Res<SearchRulesRes
         }
     }
 }
-

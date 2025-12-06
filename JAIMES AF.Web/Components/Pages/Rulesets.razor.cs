@@ -1,12 +1,10 @@
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-
 namespace MattEland.Jaimes.Web.Components.Pages;
 
 public partial class Rulesets
 {
-    private RulesetInfoResponse[]? rulesets;
-    private bool isLoading = true;
-    private string? errorMessage;
+    private RulesetInfoResponse[]? _rulesets;
+    private bool _isLoading = true;
+    private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -15,23 +13,22 @@ public partial class Rulesets
 
     private async Task LoadRulesetsAsync()
     {
-        isLoading = true;
-        errorMessage = null;
+        _isLoading = true;
+        _errorMessage = null;
         try
         {
             RulesetListResponse? resp = await Http.GetFromJsonAsync<RulesetListResponse>("/rulesets");
-            rulesets = resp?.Rulesets ?? [];
+            _rulesets = resp?.Rulesets ?? [];
         }
         catch (Exception ex)
         {
             LoggerFactory.CreateLogger("Rulesets").LogError(ex, "Failed to load rulesets from API");
-            errorMessage = "Failed to load rulesets: " + ex.Message;
+            _errorMessage = "Failed to load rulesets: " + ex.Message;
         }
         finally
         {
-            isLoading = false;
+            _isLoading = false;
             StateHasChanged();
         }
     }
 }
-

@@ -1,12 +1,7 @@
-using FastEndpoints;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MattEland.Jaimes.Repositories;
-using MattEland.Jaimes.Repositories.Entities;
-using Microsoft.EntityFrameworkCore;
-
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
-public class ListDocumentsEndpoint(IDbContextFactory<JaimesDbContext> dbContextFactory) : Ep.NoReq.Res<DocumentStatusResponse>
+public class ListDocumentsEndpoint(IDbContextFactory<JaimesDbContext> dbContextFactory)
+    : Ep.NoReq.Res<DocumentStatusResponse>
 {
     public override void Configure()
     {
@@ -23,7 +18,7 @@ public class ListDocumentsEndpoint(IDbContextFactory<JaimesDbContext> dbContextF
         Logger.LogInformation("Listing all documents with processing status");
 
         await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(ct);
-        
+
         // Get all detected documents
         List<DocumentMetadata> allMetadata = await dbContext.DocumentMetadata.ToListAsync(ct);
         Logger.LogInformation("Found {Count} detected documents in DocumentMetadata table", allMetadata.Count);
@@ -66,8 +61,9 @@ public class ListDocumentsEndpoint(IDbContextFactory<JaimesDbContext> dbContextF
         Logger.LogInformation("Returning {Count} documents with status information", documents.Count);
 
         await Send.OkAsync(new DocumentStatusResponse
-        {
-            Documents = documents.ToArray()
-        }, cancellation: ct);
+            {
+                Documents = documents.ToArray()
+            },
+            ct);
     }
 }

@@ -1,24 +1,16 @@
-using MattEland.Jaimes.ServiceDefinitions.Services;
-using Qdrant.Client;
-using Qdrant.Client.Grpc;
-
 namespace MattEland.Jaimes.Workers.DocumentEmbedding.Services;
 
 /// <summary>
 /// Wrapper around QdrantClient to enable testability and mocking.
 /// </summary>
-public class QdrantClientWrapper : IQdrantClient
+public class QdrantClientWrapper(QdrantClient client) : IJaimesEmbeddingClient
 {
-    private readonly QdrantClient _client;
+    private readonly QdrantClient _client = client ?? throw new ArgumentNullException(nameof(client));
 
-    public QdrantClientWrapper(QdrantClient client)
+    public async Task<CollectionInfo?> GetCollectionInfoAsync(string collectionName,
+        CancellationToken cancellationToken = default)
     {
-        _client = client ?? throw new ArgumentNullException(nameof(client));
-    }
-
-    public async Task<CollectionInfo?> GetCollectionInfoAsync(string collectionName, CancellationToken cancellationToken = default)
-    {
-        CollectionInfo? result = await _client.GetCollectionInfoAsync(collectionName, cancellationToken: cancellationToken);
+        CollectionInfo? result = await _client.GetCollectionInfoAsync(collectionName, cancellationToken);
         return result;
     }
 
@@ -44,4 +36,3 @@ public class QdrantClientWrapper : IQdrantClient
             cancellationToken: cancellationToken);
     }
 }
-

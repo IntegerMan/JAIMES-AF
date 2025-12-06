@@ -20,7 +20,8 @@ public class DocumentChunkingServiceTests
     {
         using DocumentChunkingServiceTestContext context = new();
 
-        int documentId = await context.SetupDocumentContentAsync("Document content", TestContext.Current.CancellationToken);
+        int documentId =
+            await context.SetupDocumentContentAsync("Document content", TestContext.Current.CancellationToken);
 
         DocumentReadyForChunkingMessage message = new()
         {
@@ -43,7 +44,7 @@ public class DocumentChunkingServiceTests
                 Text = "With embedding",
                 Index = 0,
                 SourceDocumentId = message.DocumentId,
-                Embedding = new float[] { 0.1f, 0.2f }
+                Embedding = new float[] {0.1f, 0.2f}
             },
             new TextChunk
             {
@@ -74,7 +75,8 @@ public class DocumentChunkingServiceTests
                 It.IsAny<float[]>(),
                 It.IsAny<Dictionary<string, string>>(),
                 It.IsAny<CancellationToken>()))
-            .Callback<string, float[], Dictionary<string, string>, CancellationToken>((_, _, metadata, _) => storedMetadata = metadata)
+            .Callback<string, float[], Dictionary<string, string>, CancellationToken>((_, _, metadata, _) =>
+                storedMetadata = metadata)
             .Returns(Task.CompletedTask);
 
         await context.Service.ProcessDocumentAsync(
@@ -107,7 +109,7 @@ public class DocumentChunkingServiceTests
 
         // Clear change tracker to ensure we reload from database after service operations
         context.DbContext.ChangeTracker.Clear();
-        
+
         List<DocumentChunk> storedChunks = await context.DbContext.DocumentChunks
             .AsNoTracking()
             .Where(chunk => chunk.DocumentId == documentId)
@@ -129,7 +131,8 @@ public class DocumentChunkingServiceTests
     {
         using DocumentChunkingServiceTestContext context = new();
 
-        int documentId = await context.SetupDocumentContentAsync("Document content", TestContext.Current.CancellationToken);
+        int documentId =
+            await context.SetupDocumentContentAsync("Document content", TestContext.Current.CancellationToken);
 
         DocumentReadyForChunkingMessage message = new()
         {
@@ -177,13 +180,8 @@ public class DocumentChunkingServiceTests
             .Callback<ChunkReadyForEmbeddingMessage, CancellationToken>((chunk, _) =>
             {
                 if (chunk.ChunkId == "chunk-with-page")
-                {
                     queuedChunkWithPage = chunk;
-                }
-                else if (chunk.ChunkId == "chunk-no-page")
-                {
-                    queuedChunkNoPage = chunk;
-                }
+                else if (chunk.ChunkId == "chunk-no-page") queuedChunkNoPage = chunk;
             })
             .Returns(Task.CompletedTask);
 
@@ -203,8 +201,8 @@ public class DocumentChunkingServiceTests
         public Mock<ITextChunkingStrategy> ChunkingStrategyMock { get; }
         public Mock<IQdrantEmbeddingStore> QdrantStoreMock { get; }
         public Mock<IMessagePublisher> MessagePublisherMock { get; }
-        public Mock<ILogger<MattEland.Jaimes.Workers.Services.DocumentChunkingService>> LoggerMock { get; }
-        public MattEland.Jaimes.Workers.Services.DocumentChunkingService Service { get; }
+        public Mock<ILogger<DocumentChunkingService>> LoggerMock { get; }
+        public DocumentChunkingService Service { get; }
         public JaimesDbContext DbContext { get; }
 
         private readonly ActivitySource _activitySource;
@@ -214,14 +212,14 @@ public class DocumentChunkingServiceTests
             ChunkingStrategyMock = new Mock<ITextChunkingStrategy>();
             QdrantStoreMock = new Mock<IQdrantEmbeddingStore>();
             MessagePublisherMock = new Mock<IMessagePublisher>();
-            LoggerMock = new Mock<ILogger<MattEland.Jaimes.Workers.Services.DocumentChunkingService>>();
-            
+            LoggerMock = new Mock<ILogger<DocumentChunkingService>>();
+
             DbContextOptions<JaimesDbContext> dbOptions = new DbContextOptionsBuilder<JaimesDbContext>()
-                .UseInMemoryDatabase(databaseName: $"DocumentChunkingTests-{Guid.NewGuid()}")
+                .UseInMemoryDatabase($"DocumentChunkingTests-{Guid.NewGuid()}")
                 .Options;
             DbContext = new JaimesDbContext(dbOptions);
             DbContext.Database.EnsureCreated();
-            
+
             _activitySource = new ActivitySource($"DocumentChunkingTests-{Guid.NewGuid()}");
 
             QdrantStoreMock
@@ -240,7 +238,7 @@ public class DocumentChunkingServiceTests
 
             TestDbContextFactory dbContextFactory = new(dbOptions);
 
-            Service = new MattEland.Jaimes.Workers.Services.DocumentChunkingService(
+            Service = new DocumentChunkingService(
                 dbContextFactory,
                 ChunkingStrategyMock.Object,
                 QdrantStoreMock.Object,
@@ -273,20 +271,14 @@ public class DocumentChunkingServiceTests
         }
     }
 
-    private sealed class TestDbContextFactory : IDbContextFactory<JaimesDbContext>
+    private sealed class TestDbContextFactory(DbContextOptions<JaimesDbContext> options)
+        : IDbContextFactory<JaimesDbContext>
     {
-        private readonly DbContextOptions<JaimesDbContext> _options;
-
-        public TestDbContextFactory(DbContextOptions<JaimesDbContext> options)
-        {
-            _options = options;
-        }
-
         public JaimesDbContext CreateDbContext()
         {
             // Return a new context that shares the same in-memory database
             // This allows the service to dispose it without affecting the test's context
-            return new JaimesDbContext(_options);
+            return new JaimesDbContext(options);
         }
 
         public async Task<JaimesDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
@@ -294,7 +286,7 @@ public class DocumentChunkingServiceTests
             await Task.CompletedTask;
             // Return a new context that shares the same in-memory database
             // This allows the service to dispose it without affecting the test's context
-            return new JaimesDbContext(_options);
+            return new JaimesDbContext(options);
         }
     }
 }

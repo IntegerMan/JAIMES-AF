@@ -1,15 +1,3 @@
-using System.Diagnostics;
-using MattEland.Jaimes.ServiceDefaults;
-using MattEland.Jaimes.ServiceDefinitions.Messages;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.Workers.DocumentCrackerWorker.Configuration;
-using MattEland.Jaimes.Workers.DocumentCrackerWorker.Consumers;
-using MattEland.Jaimes.Repositories;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
-using RabbitMQ.Client;
-
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
 // Configure OpenTelemetry for Aspire telemetry
@@ -27,14 +15,15 @@ builder.Logging.AddOpenTelemetry(logging =>
 // Load configuration
 builder.Configuration
     .SetBasePath(Directory.GetCurrentDirectory())
-    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
-    .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: false)
+    .AddJsonFile("appsettings.json", false, false)
+    .AddJsonFile("appsettings.Development.json", true, false)
     .AddUserSecrets(typeof(Program).Assembly)
     .AddEnvironmentVariables()
     .AddCommandLine(args);
 
 // Bind configuration
-DocumentCrackerWorkerOptions options = builder.Configuration.GetSection("DocumentCrackerWorker").Get<DocumentCrackerWorkerOptions>()
+DocumentCrackerWorkerOptions options =
+    builder.Configuration.GetSection("DocumentCrackerWorker").Get<DocumentCrackerWorkerOptions>()
     ?? throw new InvalidOperationException("DocumentCrackerWorker configuration section is required");
 
 builder.Services.AddSingleton(options);
@@ -89,4 +78,3 @@ await host.InitializeDatabaseAsync();
 logger.LogInformation("Starting Document Cracker Worker");
 
 await host.RunAsync();
-

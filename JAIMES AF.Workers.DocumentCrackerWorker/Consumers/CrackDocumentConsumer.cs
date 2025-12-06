@@ -1,7 +1,3 @@
-using System.Diagnostics;
-using MattEland.Jaimes.ServiceDefinitions.Messages;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-
 namespace MattEland.Jaimes.Workers.DocumentCrackerWorker.Consumers;
 
 public class CrackDocumentConsumer(
@@ -19,7 +15,8 @@ public class CrackDocumentConsumer(
         {
             logger.LogInformation(
                 "Received crack document message: FilePath={FilePath}, RelativeDirectory={RelativeDirectory}",
-                message.FilePath, message.RelativeDirectory);
+                message.FilePath,
+                message.RelativeDirectory);
 
             // Validate message
             if (string.IsNullOrWhiteSpace(message.FilePath))
@@ -41,7 +38,11 @@ public class CrackDocumentConsumer(
                 return;
             }
 
-            await crackingService.ProcessDocumentAsync(message.FilePath, message.RelativeDirectory, message.RulesetId, message.DocumentKind, cancellationToken);
+            await crackingService.ProcessDocumentAsync(message.FilePath,
+                message.RelativeDirectory,
+                message.RulesetId,
+                message.DocumentKind,
+                cancellationToken);
 
             logger.LogInformation("Successfully processed document: {FilePath}", message.FilePath);
             activity?.SetStatus(ActivityStatusCode.Ok);
@@ -50,10 +51,9 @@ public class CrackDocumentConsumer(
         {
             logger.LogError(ex, "Failed to process crack document message for {FilePath}", message.FilePath);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-            
+
             // Re-throw to let message consumer service handle retry logic
             throw;
         }
     }
 }
-

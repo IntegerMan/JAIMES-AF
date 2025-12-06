@@ -1,5 +1,3 @@
-using MattEland.Jaimes.ServiceDefaults;
-using MattEland.Jaimes.Web.Components;
 using MudBlazor.Services;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -11,34 +9,33 @@ builder.AddServiceDefaults();
 // Service discovery handlers added by AddServiceDefaults will resolve this logical host to the real address at runtime.
 // Configure longer timeout for AI chat requests which can take significant time
 TimeSpan httpClientTimeout = TimeSpan.FromMinutes(5); // 5 minutes for AI chat requests
-if (builder.Configuration["ApiService:TimeoutMinutes"] != null 
+if (builder.Configuration["ApiService:TimeoutMinutes"] != null
     && int.TryParse(builder.Configuration["ApiService:TimeoutMinutes"], out int timeoutMinutes))
-{
     httpClientTimeout = TimeSpan.FromMinutes(timeoutMinutes);
-}
 
-builder.Services.AddHttpClient("Api", client =>
-{
-    // Allow configuring an override in configuration if needed; otherwise use the Aspire project reference name
-    client.BaseAddress = new Uri(builder.Configuration["ApiService:BaseAddress"] ?? "http://apiservice/");
-    // Set longer timeout for AI chat requests which can take significant time to process
-    client.Timeout = httpClientTimeout;
-})
+builder.Services.AddHttpClient("Api",
+        client =>
+        {
+            // Allow configuring an override in configuration if needed; otherwise use the Aspire project reference name
+            client.BaseAddress = new Uri(builder.Configuration["ApiService:BaseAddress"] ?? "http://apiservice/");
+            // Set longer timeout for AI chat requests which can take significant time to process
+            client.Timeout = httpClientTimeout;
+        })
 // Ensure service discovery is added on IHttpClientBuilder, then add resilience pipeline
-.AddServiceDiscovery()
-.AddStandardResilienceHandler(options =>
-{
-    // Use the same retry logic as the default configuration
-    Extensions.ConfigureResilienceHandlerExcludingPost(options);
-    
-    // Override attempt and total timeouts so the resilience pipeline allows long-running requests
-    TimeSpan attemptTimeout = httpClientTimeout;
-    options.AttemptTimeout.Timeout = attemptTimeout;
-    options.TotalRequestTimeout.Timeout = attemptTimeout.Add(TimeSpan.FromMinutes(1));
-    
-    // Match circuit breaker sampling duration requirements (must be at least double attempt timeout)
-    options.CircuitBreaker.SamplingDuration = attemptTimeout + attemptTimeout;
-});
+    .AddServiceDiscovery()
+    .AddStandardResilienceHandler(options =>
+    {
+        // Use the same retry logic as the default configuration
+        Extensions.ConfigureResilienceHandlerExcludingPost(options);
+
+        // Override attempt and total timeouts so the resilience pipeline allows long-running requests
+        TimeSpan attemptTimeout = httpClientTimeout;
+        options.AttemptTimeout.Timeout = attemptTimeout;
+        options.TotalRequestTimeout.Timeout = attemptTimeout.Add(TimeSpan.FromMinutes(1));
+
+        // Match circuit breaker sampling duration requirements (must be at least double attempt timeout)
+        options.CircuitBreaker.SamplingDuration = attemptTimeout + attemptTimeout;
+    });
 
 // Make the named client the default HttpClient that's injected with `@inject HttpClient Http`
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api"));
@@ -79,7 +76,7 @@ WebApplication app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    app.UseExceptionHandler("/Error", true);
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }

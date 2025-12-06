@@ -11,9 +11,9 @@ public class ListRulesetsEndpointTests : EndpointTestBase
     {
         CancellationToken ct = TestContext.Current.CancellationToken;
         HttpResponseMessage response = await Client.GetAsync("/rulesets", ct);
-        response.StatusCode.ShouldBe(System.Net.HttpStatusCode.OK);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
 
-        RulesetListResponse? payload = await response.Content.ReadFromJsonAsync<RulesetListResponse>(cancellationToken: ct);
+        RulesetListResponse? payload = await response.Content.ReadFromJsonAsync<RulesetListResponse>(ct);
         payload.ShouldNotBeNull();
         payload.Rulesets.ShouldNotBeNull();
         payload.Rulesets.Length.ShouldBeGreaterThan(0);

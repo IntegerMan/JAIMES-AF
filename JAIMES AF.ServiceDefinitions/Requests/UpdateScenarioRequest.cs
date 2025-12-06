@@ -8,4 +8,3 @@ public class UpdateScenarioRequest
     public required string SystemPrompt { get; set; }
     public required string NewGameInstructions { get; set; }
 }
-

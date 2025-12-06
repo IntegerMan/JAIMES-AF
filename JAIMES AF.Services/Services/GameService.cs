@@ -1,44 +1,35 @@
-using MattEland.Jaimes.Domain;
-using MattEland.Jaimes.Repositories;
-using MattEland.Jaimes.Repositories.Entities;
-using MattEland.Jaimes.ServiceDefinitions.Requests;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.ServiceLayer.Mapping;
-using Microsoft.EntityFrameworkCore;
-
 namespace MattEland.Jaimes.ServiceLayer.Services;
 
-public class GameService(IDbContextFactory<JaimesDbContext> contextFactory, IChatService chatService, IChatHistoryService chatHistoryService) : IGameService
+public class GameService(
+    IDbContextFactory<JaimesDbContext> contextFactory,
+    IChatService chatService,
+    IChatHistoryService chatHistoryService) : IGameService
 {
-    public async Task<GameDto> CreateGameAsync(string scenarioId, string playerId, CancellationToken cancellationToken = default)
+    public async Task<GameDto> CreateGameAsync(string scenarioId,
+        string playerId,
+        CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        
+
         // Validate that the player exists
-        var player = await context.Players.FindAsync([playerId], cancellationToken);
-        if (player == null)
-        {
-            throw new ArgumentException($"Player '{playerId}' does not exist.", nameof(playerId));
-        }
+        Player? player = await context.Players.FindAsync([playerId], cancellationToken);
+        if (player == null) throw new ArgumentException($"Player '{playerId}' does not exist.", nameof(playerId));
 
         // Validate that the scenario exists
-        var scenario = await context.Scenarios.FindAsync([scenarioId], cancellationToken);
+        Scenario? scenario = await context.Scenarios.FindAsync([scenarioId], cancellationToken);
         if (scenario == null)
-        {
             throw new ArgumentException($"Scenario '{scenarioId}' does not exist.", nameof(scenarioId));
-        }
 
         // Validate that player and scenario have the same ruleset
         if (player.RulesetId != scenario.RulesetId)
-        {
-            throw new ArgumentException($"Player '{playerId}' uses ruleset '{player.RulesetId}' but scenario '{scenarioId}' uses ruleset '{scenario.RulesetId}'. They must use the same ruleset.", nameof(scenarioId));
-        }
+            throw new ArgumentException(
+                $"Player '{playerId}' uses ruleset '{player.RulesetId}' but scenario '{scenarioId}' uses ruleset '{scenario.RulesetId}'. They must use the same ruleset.",
+                nameof(scenarioId));
 
         // Use the ruleset from the player (which we've validated matches the scenario)
         string rulesetId = player.RulesetId;
 
-        Game game = new Game
+        Game game = new()
         {
             Id = Guid.NewGuid(),
             RulesetId = rulesetId,
@@ -61,10 +52,11 @@ public class GameService(IDbContextFactory<JaimesDbContext> contextFactory, ICha
             PlayerDescription = player.Description
         };
 
-        InitialMessageResponse initialResponse = await chatService.GenerateInitialMessageAsync(request, cancellationToken);
+        InitialMessageResponse initialResponse =
+            await chatService.GenerateInitialMessageAsync(request, cancellationToken);
 
         // Create the initial message from the AI
-        Message message = new Message
+        Message message = new()
         {
             GameId = game.Id,
             Text = initialResponse.Message,
@@ -76,7 +68,10 @@ public class GameService(IDbContextFactory<JaimesDbContext> contextFactory, ICha
         await context.SaveChangesAsync(cancellationToken);
 
         // Save the thread JSON with the message ID
-        await chatHistoryService.SaveThreadJsonAsync(game.Id, initialResponse.ThreadJson, message.Id, cancellationToken);
+        await chatHistoryService.SaveThreadJsonAsync(game.Id,
+            initialResponse.ThreadJson,
+            message.Id,
+            cancellationToken);
 
         // Reload game with navigation properties for mapping
         Game gameWithNav = await context.Games
@@ -93,19 +88,17 @@ public class GameService(IDbContextFactory<JaimesDbContext> contextFactory, ICha
     public async Task<GameDto?> GetGameAsync(Guid gameId, CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        
+
         Game? game = await context.Games
             .AsNoTracking()
-            .Include(g => g.Messages).ThenInclude(message => message.Player)
+            .Include(g => g.Messages)
+            .ThenInclude(message => message.Player)
             .Include(g => g.Scenario)
             .Include(g => g.Player)
             .Include(g => g.Ruleset)
             .FirstOrDefaultAsync(g => g.Id == gameId, cancellationToken);
 
-        if (game == null)
-        {
-            return null;
-        }
+        if (game == null) return null;
 
         return game.ToDto();
     }
@@ -113,43 +106,46 @@ public class GameService(IDbContextFactory<JaimesDbContext> contextFactory, ICha
     public async Task<GameDto[]> GetGamesAsync(CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        
+
         Game[] games = await context.Games
             .AsNoTracking()
             .Include(g => g.Scenario)
             .Include(g => g.Player)
             .Include(g => g.Ruleset)
-            .ToArrayAsync(cancellationToken: cancellationToken);
+            .ToArrayAsync(cancellationToken);
 
         return games.ToDto();
     }
 
-    public async Task<JaimesChatResponse> ProcessChatMessageAsync(Guid gameId, string message, CancellationToken cancellationToken = default)
+    public async Task<JaimesChatResponse> ProcessChatMessageAsync(Guid gameId,
+        string message,
+        CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        
+
         // Get the game (need to query directly since we're in a different context)
         Game? game = await context.Games
             .AsNoTracking()
-            .Include(g => g.Messages).ThenInclude(message => message.Player)
+            .Include(g => g.Messages)
+            .ThenInclude(message => message.Player)
             .Include(g => g.Scenario)
             .Include(g => g.Player)
             .Include(g => g.Ruleset)
             .FirstOrDefaultAsync(g => g.Id == gameId, cancellationToken);
-        
-        if (game == null)
-        {
-            throw new ArgumentException($"Game '{gameId}' does not exist.", nameof(gameId));
-        }
+
+        if (game == null) throw new ArgumentException($"Game '{gameId}' does not exist.", nameof(gameId));
 
         GameDto gameDto = game.ToDto();
 
         // Get AI response from chat service
-        JaimesChatResponse chatResponse = await chatService.ProcessChatMessageAsync(gameDto, message, cancellationToken);
+        JaimesChatResponse chatResponse =
+            await chatService.ProcessChatMessageAsync(gameDto, message, cancellationToken);
 
         // Create Message entities for persistence
-        List<Message> messagesToPersist = [
-            new() {
+        List<Message> messagesToPersist =
+        [
+            new()
+            {
                 GameId = gameDto.GameId,
                 Text = message,
                 PlayerId = gameDto.Player.Id,
@@ -172,13 +168,15 @@ public class GameService(IDbContextFactory<JaimesDbContext> contextFactory, ICha
         // After SaveChangesAsync, EF Core will have populated the Id property
         int? lastAiMessageId = messagesToPersist
             .Where(m => m.PlayerId == null)
-            .LastOrDefault()?.Id;
+            .LastOrDefault()
+            ?.Id;
 
         // Save the thread JSON if provided
         if (!string.IsNullOrEmpty(chatResponse.ThreadJson))
-        {
-            await chatHistoryService.SaveThreadJsonAsync(gameDto.GameId, chatResponse.ThreadJson, lastAiMessageId, cancellationToken);
-        }
+            await chatHistoryService.SaveThreadJsonAsync(gameDto.GameId,
+                chatResponse.ThreadJson,
+                lastAiMessageId,
+                cancellationToken);
 
         // Map the persisted messages (which now have Ids) back to MessageResponse
         // Only return the AI messages (PlayerId == null), as the player message is added on the client
@@ -197,12 +195,9 @@ public class GameService(IDbContextFactory<JaimesDbContext> contextFactory, ICha
     public async Task DeleteGameAsync(Guid gameId, CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        
+
         Game? game = await context.Games.FindAsync([gameId], cancellationToken);
-        if (game == null)
-        {
-            throw new ArgumentException($"Game '{gameId}' does not exist.", nameof(gameId));
-        }
+        if (game == null) throw new ArgumentException($"Game '{gameId}' does not exist.", nameof(gameId));
 
         context.Games.Remove(game);
         await context.SaveChangesAsync(cancellationToken);

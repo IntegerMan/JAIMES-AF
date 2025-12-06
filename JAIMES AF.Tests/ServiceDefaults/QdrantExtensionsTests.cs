@@ -12,9 +12,9 @@ public class QdrantExtensionsTests
     {
         Dictionary<string, string?> configData = new()
         {
-            { "TestSection:QdrantHost", "test-host" },
-            { "TestSection:QdrantPort", "6335" },
-            { "TestSection:QdrantUseHttps", "true" }
+            {"TestSection:QdrantHost", "test-host"},
+            {"TestSection:QdrantPort", "6335"},
+            {"TestSection:QdrantUseHttps", "true"}
         };
 
         IConfiguration configuration = new ConfigurationBuilder()
@@ -42,7 +42,7 @@ public class QdrantExtensionsTests
     {
         Dictionary<string, string?> configData = new()
         {
-            { "ConnectionStrings:qdrant-embeddings", "grpc://connection-host:6336" }
+            {"ConnectionStrings:qdrant-embeddings", "grpc://connection-host:6336"}
         };
 
         IConfiguration configuration = new ConfigurationBuilder()
@@ -68,7 +68,7 @@ public class QdrantExtensionsTests
     {
         Dictionary<string, string?> configData = new()
         {
-            { "ConnectionStrings:qdrant-embeddings", "grpc://test-host:6334?api-key=test-api-key" }
+            {"ConnectionStrings:qdrant-embeddings", "grpc://test-host:6334?api-key=test-api-key"}
         };
 
         IConfiguration configuration = new ConfigurationBuilder()
@@ -94,9 +94,9 @@ public class QdrantExtensionsTests
     {
         Dictionary<string, string?> configData = new()
         {
-            { "TestSection:QdrantHost", "test-host" },
-            { "TestSection:QdrantPort", "6334" },
-            { "Qdrant:ApiKey", "config-api-key" }
+            {"TestSection:QdrantHost", "test-host"},
+            {"TestSection:QdrantPort", "6334"},
+            {"Qdrant:ApiKey", "config-api-key"}
         };
 
         IConfiguration configuration = new ConfigurationBuilder()
@@ -121,9 +121,9 @@ public class QdrantExtensionsTests
     {
         Dictionary<string, string?> configData = new()
         {
-            { "TestSection:QdrantHost", "test-host" },
-            { "TestSection:QdrantPort", "6334" },
-            { "Custom:ApiKey", "custom-api-key" }
+            {"TestSection:QdrantHost", "test-host"},
+            {"TestSection:QdrantPort", "6334"},
+            {"Custom:ApiKey", "custom-api-key"}
         };
 
         IConfiguration configuration = new ConfigurationBuilder()
@@ -135,7 +135,7 @@ public class QdrantExtensionsTests
         {
             SectionPrefix = "TestSection",
             RequireConfiguration = true,
-            AdditionalApiKeyKeys = new[] { "Custom:ApiKey" }
+            AdditionalApiKeyKeys = new[] {"Custom:ApiKey"}
         };
 
         services.AddQdrantClient(configuration, options, out _);
@@ -149,8 +149,8 @@ public class QdrantExtensionsTests
     {
         Dictionary<string, string?> configData = new()
         {
-            { "TestSection:QdrantHost", "test-host" },
-            { "TestSection:QdrantPort", "6334" }
+            {"TestSection:QdrantHost", "test-host"},
+            {"TestSection:QdrantPort", "6334"}
         };
 
         IConfiguration configuration = new ConfigurationBuilder()
@@ -215,8 +215,8 @@ public class QdrantExtensionsTests
     {
         Dictionary<string, string?> configData = new()
         {
-            { "TestSection:QdrantHost", "test-host" },
-            { "TestSection:QdrantPort", "invalid-port" }
+            {"TestSection:QdrantHost", "test-host"},
+            {"TestSection:QdrantPort", "invalid-port"}
         };
 
         IConfiguration configuration = new ConfigurationBuilder()
@@ -239,8 +239,8 @@ public class QdrantExtensionsTests
     {
         Dictionary<string, string?> configData = new()
         {
-            { "TestSection:QdrantHost", "test-host" },
-            { "TestSection:QdrantPort", "6334" }
+            {"TestSection:QdrantHost", "test-host"},
+            {"TestSection:QdrantPort", "6334"}
         };
 
         IConfiguration configuration = new ConfigurationBuilder()
@@ -266,8 +266,8 @@ public class QdrantExtensionsTests
     {
         Dictionary<string, string?> configData = new()
         {
-            { "QdrantHost", "test-host" },
-            { "QdrantPort", "6334" }
+            {"QdrantHost", "test-host"},
+            {"QdrantPort", "6334"}
         };
 
         IConfiguration configuration = new ConfigurationBuilder()
@@ -278,11 +278,13 @@ public class QdrantExtensionsTests
 
         // When options is null, it creates default options with RequireConfiguration=true
         // So we need to provide the configuration values
-        services.AddQdrantClient(configuration, new QdrantExtensions.QdrantConfigurationOptions
-        {
-            SectionPrefix = "",
-            RequireConfiguration = false
-        }, out QdrantExtensions.QdrantConnectionConfig config);
+        services.AddQdrantClient(configuration,
+            new QdrantExtensions.QdrantConfigurationOptions
+            {
+                SectionPrefix = "",
+                RequireConfiguration = false
+            },
+            out QdrantExtensions.QdrantConnectionConfig config);
 
         QdrantClient? client = services.BuildServiceProvider().GetService<QdrantClient>();
         client.ShouldNotBeNull();
@@ -293,9 +295,9 @@ public class QdrantExtensionsTests
     {
         Dictionary<string, string?> configData = new()
         {
-            { "TestSection:QdrantHost", "config-host" },
-            { "TestSection:QdrantPort", "6337" },
-            { "TestSection:QdrantUseHttps", "true" }
+            {"TestSection:QdrantHost", "config-host"},
+            {"TestSection:QdrantPort", "6337"},
+            {"TestSection:QdrantUseHttps", "true"}
         };
 
         IConfiguration configuration = new ConfigurationBuilder()
@@ -308,7 +310,8 @@ public class QdrantExtensionsTests
             RequireConfiguration = false
         };
 
-        QdrantExtensions.QdrantConnectionConfig config = QdrantExtensions.GetQdrantConfiguration(configuration, options);
+        QdrantExtensions.QdrantConnectionConfig
+            config = QdrantExtensions.GetQdrantConfiguration(configuration, options);
 
         config.Host.ShouldBe("config-host");
         config.Port.ShouldBe(6337);
@@ -320,7 +323,7 @@ public class QdrantExtensionsTests
     {
         Dictionary<string, string?> configData = new()
         {
-            { "ConnectionStrings:qdrant-embeddings", "grpc://conn-host:6338" }
+            {"ConnectionStrings:qdrant-embeddings", "grpc://conn-host:6338"}
         };
 
         IConfiguration configuration = new ConfigurationBuilder()
@@ -334,7 +337,8 @@ public class QdrantExtensionsTests
             RequireConfiguration = false
         };
 
-        QdrantExtensions.QdrantConnectionConfig config = QdrantExtensions.GetQdrantConfiguration(configuration, options);
+        QdrantExtensions.QdrantConnectionConfig
+            config = QdrantExtensions.GetQdrantConfiguration(configuration, options);
 
         config.Host.ShouldBe("conn-host");
         config.Port.ShouldBe(6338);
@@ -353,7 +357,8 @@ public class QdrantExtensionsTests
             RequireConfiguration = false
         };
 
-        QdrantExtensions.QdrantConnectionConfig config = QdrantExtensions.GetQdrantConfiguration(configuration, options);
+        QdrantExtensions.QdrantConnectionConfig
+            config = QdrantExtensions.GetQdrantConfiguration(configuration, options);
 
         config.Host.ShouldBe("localhost");
         config.Port.ShouldBe(6334);
@@ -365,8 +370,8 @@ public class QdrantExtensionsTests
     {
         Dictionary<string, string?> configData = new()
         {
-            { "TestSection:QdrantHost", "test-host" },
-            { "TestSection:QdrantPort", "not-a-number" }
+            {"TestSection:QdrantHost", "test-host"},
+            {"TestSection:QdrantPort", "not-a-number"}
         };
 
         IConfiguration configuration = new ConfigurationBuilder()
@@ -379,7 +384,8 @@ public class QdrantExtensionsTests
             RequireConfiguration = false
         };
 
-        QdrantExtensions.QdrantConnectionConfig config = QdrantExtensions.GetQdrantConfiguration(configuration, options);
+        QdrantExtensions.QdrantConnectionConfig
+            config = QdrantExtensions.GetQdrantConfiguration(configuration, options);
 
         config.Host.ShouldBe("test-host");
         config.Port.ShouldBe(6334); // Falls back to default
@@ -390,9 +396,9 @@ public class QdrantExtensionsTests
     {
         Dictionary<string, string?> configData = new()
         {
-            { "TestSection:QdrantHost", "test-host" },
-            { "TestSection:QdrantPort", "6334" },
-            { "Qdrant:ApiKey", "{qdrant-api-key}" }
+            {"TestSection:QdrantHost", "test-host"},
+            {"TestSection:QdrantPort", "6334"},
+            {"Qdrant:ApiKey", "{qdrant-api-key}"}
         };
 
         IConfiguration configuration = new ConfigurationBuilder()
@@ -426,9 +432,9 @@ public class QdrantExtensionsTests
     {
         Dictionary<string, string?> configData = new()
         {
-            { "TestSection:QdrantHost", "test-host" },
-            { "TestSection:QdrantPort", "6334" },
-            { "Qdrant:ApiKey", "{qdrant-api-key}" }
+            {"TestSection:QdrantHost", "test-host"},
+            {"TestSection:QdrantPort", "6334"},
+            {"Qdrant:ApiKey", "{qdrant-api-key}"}
         };
 
         IConfiguration configuration = new ConfigurationBuilder()
@@ -449,5 +455,3 @@ public class QdrantExtensionsTests
         client.ShouldNotBeNull();
     }
 }
-
-

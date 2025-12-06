@@ -1,9 +1,3 @@
-using MattEland.Jaimes.Domain;
-using MattEland.Jaimes.Repositories;
-using MattEland.Jaimes.Repositories.Entities;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-using Microsoft.EntityFrameworkCore;
-
 namespace MattEland.Jaimes.ServiceLayer.Services;
 
 public class ScenariosService(IDbContextFactory<JaimesDbContext> contextFactory) : IScenariosService
@@ -11,34 +5,32 @@ public class ScenariosService(IDbContextFactory<JaimesDbContext> contextFactory)
     public async Task<ScenarioDto[]> GetScenariosAsync(CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        
+
         Scenario[] scenarios = await context.Scenarios
-        .AsNoTracking()
-        .ToArrayAsync(cancellationToken);
+            .AsNoTracking()
+            .ToArrayAsync(cancellationToken);
 
         return scenarios.Select(s => new ScenarioDto
-        {
-            Id = s.Id,
-            RulesetId = s.RulesetId,
-            Description = s.Description,
-            Name = s.Name,
-            SystemPrompt = s.SystemPrompt,
-            NewGameInstructions = s.NewGameInstructions
-        }).ToArray();
+            {
+                Id = s.Id,
+                RulesetId = s.RulesetId,
+                Description = s.Description,
+                Name = s.Name,
+                SystemPrompt = s.SystemPrompt,
+                NewGameInstructions = s.NewGameInstructions
+            })
+            .ToArray();
     }
 
     public async Task<ScenarioDto> GetScenarioAsync(string id, CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        
+
         Scenario? scenario = await context.Scenarios
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
 
-        if (scenario == null)
-        {
-            throw new ArgumentException($"Scenario with id '{id}' not found.", nameof(id));
-        }
+        if (scenario == null) throw new ArgumentException($"Scenario with id '{id}' not found.", nameof(id));
 
         return new ScenarioDto
         {
@@ -51,27 +43,27 @@ public class ScenariosService(IDbContextFactory<JaimesDbContext> contextFactory)
         };
     }
 
-    public async Task<ScenarioDto> CreateScenarioAsync(string id, string rulesetId, string? description, string name, string systemPrompt, string newGameInstructions, CancellationToken cancellationToken = default)
+    public async Task<ScenarioDto> CreateScenarioAsync(string id,
+        string rulesetId,
+        string? description,
+        string name,
+        string systemPrompt,
+        string newGameInstructions,
+        CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        
+
         // Check if scenario already exists
         bool exists = await context.Scenarios
             .AnyAsync(s => s.Id == id, cancellationToken);
 
-        if (exists)
-        {
-            throw new ArgumentException($"Scenario with id '{id}' already exists.", nameof(id));
-        }
+        if (exists) throw new ArgumentException($"Scenario with id '{id}' already exists.", nameof(id));
 
         // Verify ruleset exists
         bool rulesetExists = await context.Rulesets
             .AnyAsync(r => r.Id == rulesetId, cancellationToken);
 
-        if (!rulesetExists)
-        {
-            throw new ArgumentException($"Ruleset with id '{rulesetId}' not found.", nameof(rulesetId));
-        }
+        if (!rulesetExists) throw new ArgumentException($"Ruleset with id '{rulesetId}' not found.", nameof(rulesetId));
 
         Scenario newScenario = new()
         {
@@ -97,26 +89,26 @@ public class ScenariosService(IDbContextFactory<JaimesDbContext> contextFactory)
         };
     }
 
-    public async Task<ScenarioDto> UpdateScenarioAsync(string id, string rulesetId, string? description, string name, string systemPrompt, string newGameInstructions, CancellationToken cancellationToken = default)
+    public async Task<ScenarioDto> UpdateScenarioAsync(string id,
+        string rulesetId,
+        string? description,
+        string name,
+        string systemPrompt,
+        string newGameInstructions,
+        CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        
+
         Scenario? scenario = await context.Scenarios
             .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
 
-        if (scenario == null)
-        {
-            throw new ArgumentException($"Scenario with id '{id}' not found.", nameof(id));
-        }
+        if (scenario == null) throw new ArgumentException($"Scenario with id '{id}' not found.", nameof(id));
 
         // Verify ruleset exists
         bool rulesetExists = await context.Rulesets
             .AnyAsync(r => r.Id == rulesetId, cancellationToken);
 
-        if (!rulesetExists)
-        {
-            throw new ArgumentException($"Ruleset with id '{rulesetId}' not found.", nameof(rulesetId));
-        }
+        if (!rulesetExists) throw new ArgumentException($"Ruleset with id '{rulesetId}' not found.", nameof(rulesetId));
 
         scenario.RulesetId = rulesetId;
         scenario.Description = description;

@@ -8,4 +8,3 @@ public record GenerateInitialMessageRequest
     public required string PlayerName { get; init; }
     public string? PlayerDescription { get; init; }
 }
-

@@ -44,7 +44,7 @@ public class DocumentEmbeddingServiceTests
         message.DocumentId = actualDocumentId.ToString();
         await context.SetupChunkAsync(message.ChunkId, actualDocumentId, message.ChunkText, message.ChunkIndex);
 
-        float[] expectedEmbedding = new float[] { 0.1f, 0.2f, 0.3f };
+        float[] expectedEmbedding = new float[] {0.1f, 0.2f, 0.3f};
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
 
         await context.Service.ProcessChunkAsync(message, CancellationToken.None);
@@ -75,7 +75,7 @@ public class DocumentEmbeddingServiceTests
         message.DocumentId = actualDocumentId.ToString();
         await context.SetupChunkAsync(message.ChunkId, actualDocumentId, message.ChunkText, message.ChunkIndex);
 
-        float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
+        float[] expectedEmbedding = new float[] {0.1f, 0.2f};
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
 
         await context.Service.ProcessChunkAsync(message, CancellationToken.None);
@@ -104,7 +104,7 @@ public class DocumentEmbeddingServiceTests
         message.DocumentId = actualDocumentId.ToString();
         await context.SetupChunkAsync(message.ChunkId, actualDocumentId, message.ChunkText, message.ChunkIndex);
 
-        float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
+        float[] expectedEmbedding = new float[] {0.1f, 0.2f};
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
 
         await context.Service.ProcessChunkAsync(message, CancellationToken.None);
@@ -135,7 +135,7 @@ public class DocumentEmbeddingServiceTests
         message.DocumentId = actualDocumentId.ToString();
         await context.SetupChunkAsync(message.ChunkId, actualDocumentId, message.ChunkText, message.ChunkIndex);
 
-        float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
+        float[] expectedEmbedding = new float[] {0.1f, 0.2f};
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
 
         await context.Service.ProcessChunkAsync(message, CancellationToken.None);
@@ -220,7 +220,7 @@ public class DocumentEmbeddingServiceTests
         int actualDocumentId = await context.SetupDocumentAsync(message.FileName);
         message.DocumentId = actualDocumentId.ToString();
 
-        float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
+        float[] expectedEmbedding = new float[] {0.1f, 0.2f};
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
 
         await context.Service.ProcessChunkAsync(message, CancellationToken.None);
@@ -235,7 +235,7 @@ public class DocumentEmbeddingServiceTests
 
         // Use a non-existent document ID (but don't insert it into the database)
         int nonExistentDocumentId = 999999;
-        
+
         ChunkReadyForEmbeddingMessage message = new()
         {
             ChunkId = "chunk-1",
@@ -252,7 +252,7 @@ public class DocumentEmbeddingServiceTests
         await context.SetupChunkAsync(message.ChunkId, nonExistentDocumentId, message.ChunkText, message.ChunkIndex);
         // Note: Not setting up document here to test missing document scenario
 
-        float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
+        float[] expectedEmbedding = new float[] {0.1f, 0.2f};
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
 
         await context.Service.ProcessChunkAsync(message, CancellationToken.None);
@@ -282,7 +282,7 @@ public class DocumentEmbeddingServiceTests
         message.DocumentId = actualDocumentId.ToString();
         await context.SetupChunkAsync(message.ChunkId, actualDocumentId, message.ChunkText, message.ChunkIndex);
 
-        float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
+        float[] expectedEmbedding = new float[] {0.1f, 0.2f};
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
 
         await context.Service.ProcessChunkAsync(message, CancellationToken.None);
@@ -293,7 +293,7 @@ public class DocumentEmbeddingServiceTests
     private sealed class DocumentEmbeddingServiceTestContext : IDisposable
     {
         public Mock<IEmbeddingGenerator<string, Embedding<float>>> EmbeddingGeneratorMock { get; }
-        public Mock<IQdrantClient> QdrantClientMock { get; }
+        public Mock<IJaimesEmbeddingClient> QdrantClientMock { get; }
         public Mock<ILogger<DocumentEmbeddingService>> LoggerMock { get; }
         public DocumentEmbeddingService Service { get; }
         public JaimesDbContext DbContext { get; }
@@ -306,16 +306,16 @@ public class DocumentEmbeddingServiceTests
         public DocumentEmbeddingServiceTestContext()
         {
             EmbeddingGeneratorMock = new Mock<IEmbeddingGenerator<string, Embedding<float>>>();
-            QdrantClientMock = new Mock<IQdrantClient>();
+            QdrantClientMock = new Mock<IJaimesEmbeddingClient>();
             LoggerMock = new Mock<ILogger<DocumentEmbeddingService>>();
             _activitySource = new ActivitySource($"DocumentEmbeddingTests-{Guid.NewGuid()}");
-            
+
             DbContextOptions<JaimesDbContext> dbOptions = new DbContextOptionsBuilder<JaimesDbContext>()
-                .UseInMemoryDatabase(databaseName: $"DocumentEmbeddingTests-{Guid.NewGuid()}")
+                .UseInMemoryDatabase($"DocumentEmbeddingTests-{Guid.NewGuid()}")
                 .Options;
             DbContext = new JaimesDbContext(dbOptions);
             DbContext.Database.EnsureCreated();
-            
+
             _options = new DocumentEmbeddingOptions
             {
                 CollectionName = "test-collection"
@@ -344,7 +344,7 @@ public class DocumentEmbeddingServiceTests
                 .Setup(client => client.GetCollectionInfoAsync(
                     It.IsAny<string>(),
                     It.IsAny<CancellationToken>()))
-                .ReturnsAsync((CollectionInfo?)null);
+                .ReturnsAsync((CollectionInfo?) null);
 
             TestDbContextFactory dbContextFactory = new(dbOptions);
 
@@ -394,7 +394,7 @@ public class DocumentEmbeddingServiceTests
         {
             Embedding<float> embeddingObj = new(embedding);
             GeneratedEmbeddings<Embedding<float>> generatedEmbeddings = new([embeddingObj]);
-            
+
             EmbeddingGeneratorMock
                 .Setup(generator => generator.GenerateAsync(
                     It.IsAny<IEnumerable<string>>(),
@@ -418,7 +418,7 @@ public class DocumentEmbeddingServiceTests
         public void SetupOllamaEmptyEmbedding()
         {
             GeneratedEmbeddings<Embedding<float>> emptyEmbeddings = new(Array.Empty<Embedding<float>>());
-            
+
             EmbeddingGeneratorMock
                 .Setup(generator => generator.GenerateAsync(
                     It.IsAny<IEnumerable<string>>(),
@@ -502,9 +502,7 @@ public class DocumentEmbeddingServiceTests
         {
             CancellationToken ct = TestContext.Current.CancellationToken;
             if (!int.TryParse(documentId, out int docId))
-            {
                 throw new InvalidOperationException($"Invalid document ID: {documentId}");
-            }
             // Clear change tracker to ensure we reload from database
             DbContext.ChangeTracker.Clear();
             CrackedDocument? document = await DbContext.CrackedDocuments
@@ -526,7 +524,7 @@ public class DocumentEmbeddingServiceTests
 
             _capturedPoints.ShouldNotBeNull();
             _capturedPoints!.Length.ShouldBe(1);
-            _capturedPoints[0].Id.ShouldNotBe(default(PointId));
+            _capturedPoints[0].Id.ShouldNotBe(default);
         }
 
         public void VerifyWarningLogged(string message)
@@ -548,20 +546,14 @@ public class DocumentEmbeddingServiceTests
         }
     }
 
-    private sealed class TestDbContextFactory : IDbContextFactory<JaimesDbContext>
+    private sealed class TestDbContextFactory(DbContextOptions<JaimesDbContext> options)
+        : IDbContextFactory<JaimesDbContext>
     {
-        private readonly DbContextOptions<JaimesDbContext> _options;
-
-        public TestDbContextFactory(DbContextOptions<JaimesDbContext> options)
-        {
-            _options = options;
-        }
-
         public JaimesDbContext CreateDbContext()
         {
             // Return a new context that shares the same in-memory database
             // This allows the service to dispose it without affecting the test's context
-            return new JaimesDbContext(_options);
+            return new JaimesDbContext(options);
         }
 
         public async Task<JaimesDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
@@ -569,8 +561,7 @@ public class DocumentEmbeddingServiceTests
             await Task.CompletedTask;
             // Return a new context that shares the same in-memory database
             // This allows the service to dispose it without affecting the test's context
-            return new JaimesDbContext(_options);
+            return new JaimesDbContext(options);
         }
     }
 }
-

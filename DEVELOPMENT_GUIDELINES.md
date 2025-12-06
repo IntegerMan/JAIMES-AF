@@ -2,14 +2,15 @@ Development Guidelines and Best Practices
 
 Purpose
 
-This document captures the conventions, coding styles, testing approach, and general best practices used across the repository. Follow these to keep the codebase consistent and maintainable.
+This document captures the conventions, coding styles, testing approach, and general best practices used across the
+repository. Follow these to keep the codebase consistent and maintainable.
 
 Layered Architecture
 
 - Keep responsibilities separated:
- - `ApiService` for HTTP surface and request/response models only.
- - `Services` for application/business logic.
- - `Repositories` for data access and EF Core entities.
+- `ApiService` for HTTP surface and request/response models only.
+- `Services` for application/business logic.
+- `Repositories` for data access and EF Core entities.
 
 Service Design
 
@@ -54,7 +55,8 @@ Error Handling and Logging
 
 Documentation
 
-- Add or update `TECHNICAL_OVERVIEW.md` and `DEVELOPMENT_GUIDELINES.md` when introducing large features or architecture changes.
+- Add or update `TECHNICAL_OVERVIEW.md` and `DEVELOPMENT_GUIDELINES.md` when introducing large features or architecture
+  changes.
 - Document public APIs and major services with XML comments.
 
 Versioning and Packages
@@ -70,10 +72,13 @@ Commits and PRs
 Onboarding and Orientation Files
 
 To help AI assistants and new contributors quickly orient:
+
 - Keep `TECHNICAL_OVERVIEW.md` and `DEVELOPMENT_GUIDELINES.md` up to date.
 - Add README snippets in project roots if a project has unique conventions.
 
 Handy Commands
 
-dotnet ef migrations has-pending-model-changes --project '.\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj' --startup-project '.\JAIMES AF.ApiService\JAIMES AF.ApiService.csproj'
-dotnet ef migrations add adding-names --project '.\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj' --startup-project '.\JAIMES AF.ApiService\JAIMES AF.ApiService.csproj'
+dotnet ef migrations has-pending-model-changes --project '.\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj'
+--startup-project '.\JAIMES AF.ApiService\JAIMES AF.ApiService.csproj'
+dotnet ef migrations add adding-names --project '.\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj'
+--startup-project '.\JAIMES AF.ApiService\JAIMES AF.ApiService.csproj'

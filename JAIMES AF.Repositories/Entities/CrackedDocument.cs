@@ -1,7 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using MattEland.Jaimes.Domain;
-
 namespace MattEland.Jaimes.Repositories.Entities;
 
 /// <summary>

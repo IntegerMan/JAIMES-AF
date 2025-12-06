@@ -1,12 +1,10 @@
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-
 namespace MattEland.Jaimes.Web.Components.Pages;
 
 public partial class Players
 {
-    private PlayerInfoResponse[]? players;
-    private bool isLoading = true;
-    private string? errorMessage;
+    private PlayerInfoResponse[]? _players;
+    private bool _isLoading = true;
+    private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -15,23 +13,22 @@ public partial class Players
 
     private async Task LoadPlayersAsync()
     {
-        isLoading = true;
-        errorMessage = null;
+        _isLoading = true;
+        _errorMessage = null;
         try
         {
             PlayerListResponse? resp = await Http.GetFromJsonAsync<PlayerListResponse>("/players");
-            players = resp?.Players ?? [];
+            _players = resp?.Players ?? [];
         }
         catch (Exception ex)
         {
             LoggerFactory.CreateLogger("Players").LogError(ex, "Failed to load players from API");
-            errorMessage = "Failed to load players: " + ex.Message;
+            _errorMessage = "Failed to load players: " + ex.Message;
         }
         finally
         {
-            isLoading = false;
+            _isLoading = false;
             StateHasChanged();
         }
     }
 }
-

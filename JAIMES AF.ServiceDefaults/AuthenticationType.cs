@@ -20,4 +20,3 @@ public enum AuthenticationType
     /// </summary>
     Identity
 }
-

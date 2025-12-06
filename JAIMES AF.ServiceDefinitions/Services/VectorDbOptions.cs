@@ -4,4 +4,3 @@ public class VectorDbOptions
 {
     public required string ConnectionString { get; init; }
 }
-

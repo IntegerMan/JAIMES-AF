@@ -1,7 +1,3 @@
-using FastEndpoints;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
 public class ListRulesetsEndpoint : Ep.NoReq.Res<RulesetListResponse>
@@ -13,21 +9,23 @@ public class ListRulesetsEndpoint : Ep.NoReq.Res<RulesetListResponse>
         Get("/rulesets");
         AllowAnonymous();
         Description(b => b
-        .Produces<RulesetListResponse>()
-        .WithTags("Rulesets"));
+            .Produces<RulesetListResponse>()
+            .WithTags("Rulesets"));
     }
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        var rulesets = await RulesetsService.GetRulesetsAsync(ct);
+        RulesetDto[] rulesets = await RulesetsService.GetRulesetsAsync(ct);
 
         await Send.OkAsync(new RulesetListResponse
-        {
-            Rulesets = rulesets.Select(r => new RulesetInfoResponse
             {
-                Id = r.Id,
-                Name = r.Name
-            }).ToArray()
-        }, cancellation: ct);
+                Rulesets = rulesets.Select(r => new RulesetInfoResponse
+                    {
+                        Id = r.Id,
+                        Name = r.Name
+                    })
+                    .ToArray()
+            },
+            ct);
     }
 }

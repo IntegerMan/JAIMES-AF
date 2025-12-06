@@ -1,30 +1,23 @@
-using MattEland.Jaimes.ServiceDefinitions.Requests;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using Microsoft.AspNetCore.Components;
-
 namespace MattEland.Jaimes.Web.Components.Pages;
 
 public partial class NewScenario
 {
-    [Inject]
-    public HttpClient Http { get; set; } = null!;
+    [Inject] public HttpClient Http { get; set; } = null!;
 
-    [Inject]
-    public ILoggerFactory LoggerFactory { get; set; } = null!;
+    [Inject] public ILoggerFactory LoggerFactory { get; set; } = null!;
 
-    [Inject]
-    public NavigationManager Navigation { get; set; } = null!;
+    [Inject] public NavigationManager Navigation { get; set; } = null!;
 
-    private RulesetInfoResponse[] rulesets = [];
-    private string scenarioId = string.Empty;
-    private string? selectedRulesetId;
-    private string name = string.Empty;
-    private string? description;
-    private string systemPrompt = string.Empty;
-    private string newGameInstructions = string.Empty;
-    private bool isLoading = true;
-    private bool isSaving = false;
-    private string? errorMessage;
+    private RulesetInfoResponse[] _rulesets = [];
+    private string _scenarioId = string.Empty;
+    private string? _selectedRulesetId;
+    private string _name = string.Empty;
+    private string? _description;
+    private string _systemPrompt = string.Empty;
+    private string _newGameInstructions = string.Empty;
+    private bool _isLoading = true;
+    private bool _isSaving = false;
+    private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -33,55 +26,55 @@ public partial class NewScenario
 
     private async Task LoadRulesetsAsync()
     {
-        isLoading = true;
-        errorMessage = null;
+        _isLoading = true;
+        _errorMessage = null;
         try
         {
             RulesetListResponse? response = await Http.GetFromJsonAsync<RulesetListResponse>("/rulesets");
-            rulesets = response?.Rulesets ?? [];
+            _rulesets = response?.Rulesets ?? [];
         }
         catch (Exception ex)
         {
             LoggerFactory.CreateLogger("NewScenario").LogError(ex, "Failed to load rulesets from API");
-            errorMessage = "Failed to load rulesets: " + ex.Message;
+            _errorMessage = "Failed to load rulesets: " + ex.Message;
         }
         finally
         {
-            isLoading = false;
+            _isLoading = false;
             StateHasChanged();
         }
     }
 
     private bool IsFormValid()
     {
-        return !string.IsNullOrWhiteSpace(scenarioId) &&
-               !string.IsNullOrWhiteSpace(selectedRulesetId) &&
-               !string.IsNullOrWhiteSpace(name) &&
-               !string.IsNullOrWhiteSpace(systemPrompt) &&
-               !string.IsNullOrWhiteSpace(newGameInstructions);
+        return !string.IsNullOrWhiteSpace(_scenarioId) &&
+               !string.IsNullOrWhiteSpace(_selectedRulesetId) &&
+               !string.IsNullOrWhiteSpace(_name) &&
+               !string.IsNullOrWhiteSpace(_systemPrompt) &&
+               !string.IsNullOrWhiteSpace(_newGameInstructions);
     }
 
     private async Task CreateScenarioAsync()
     {
         if (!IsFormValid())
         {
-            errorMessage = "Please fill in all required fields.";
+            _errorMessage = "Please fill in all required fields.";
             StateHasChanged();
             return;
         }
 
-        isSaving = true;
-        errorMessage = null;
+        _isSaving = true;
+        _errorMessage = null;
         try
         {
             CreateScenarioRequest request = new()
             {
-                Id = scenarioId,
-                RulesetId = selectedRulesetId!,
-                Description = description,
-                Name = name,
-                SystemPrompt = systemPrompt,
-                NewGameInstructions = newGameInstructions
+                Id = _scenarioId,
+                RulesetId = _selectedRulesetId!,
+                Description = _description,
+                Name = _name,
+                SystemPrompt = _systemPrompt,
+                NewGameInstructions = _newGameInstructions
             };
 
             HttpResponseMessage response = await Http.PostAsJsonAsync("/scenarios", request);
@@ -102,19 +95,20 @@ public partial class NewScenario
                     // ignored
                 }
 
-                errorMessage = $"Failed to create scenario: {response.ReasonPhrase}{(string.IsNullOrEmpty(body) ? string.Empty : " - " + body)}";
+                _errorMessage =
+                    $"Failed to create scenario: {response.ReasonPhrase}{(string.IsNullOrEmpty(body) ? string.Empty : " - " + body)}";
                 StateHasChanged();
             }
         }
         catch (Exception ex)
         {
             LoggerFactory.CreateLogger("NewScenario").LogError(ex, "Failed to create scenario");
-            errorMessage = "Failed to create scenario: " + ex.Message;
+            _errorMessage = "Failed to create scenario: " + ex.Message;
             StateHasChanged();
         }
         finally
         {
-            isSaving = false;
+            _isSaving = false;
             StateHasChanged();
         }
     }
@@ -124,4 +118,3 @@ public partial class NewScenario
         Navigation.NavigateTo("/scenarios");
     }
 }
-

@@ -1,31 +1,22 @@
-using MattEland.Jaimes.ServiceDefinitions.Requests;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using Microsoft.AspNetCore.Components;
-using Microsoft.JSInterop;
-
 namespace MattEland.Jaimes.Web.Components.Pages;
 
 public partial class GameDetails
 {
-    [Inject]
-    public HttpClient Http { get; set; } = null!;
+    [Inject] public HttpClient Http { get; set; } = null!;
 
-    [Inject]
-    public ILoggerFactory LoggerFactory { get; set; } = null!;
+    [Inject] public ILoggerFactory LoggerFactory { get; set; } = null!;
 
-    [Inject]
-    public IJSRuntime JSRuntime { get; set; } = null!;
+    [Inject] public IJSRuntime JsRuntime { get; set; } = null!;
 
-    [Parameter]
-    public Guid GameId { get; set; }
+    [Parameter] public Guid GameId { get; set; }
 
-    private List<MessageResponse> messages = [];
+    private List<MessageResponse> _messages = [];
 
-    private GameStateResponse? game;
-    private bool isLoading = true;
-    private string? errorMessage;
+    private GameStateResponse? _game;
+    private bool _isLoading = true;
+    private string? _errorMessage;
 
-    private readonly MessageResponse userMessage = new()
+    private readonly MessageResponse _userMessage = new()
     {
         Participant = ChatParticipant.Player,
         ParticipantName = "Player Character",
@@ -34,8 +25,8 @@ public partial class GameDetails
         CreatedAt = DateTime.UtcNow
     };
 
-    private bool isSending = false;
-    private bool shouldScrollToBottom = false;
+    private bool _isSending = false;
+    private bool _shouldScrollToBottom = false;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -44,9 +35,9 @@ public partial class GameDetails
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (shouldScrollToBottom)
+        if (_shouldScrollToBottom)
         {
-            shouldScrollToBottom = false;
+            _shouldScrollToBottom = false;
             // Use a small delay to ensure DOM is fully updated
             await Task.Delay(50);
             await ScrollToBottomAsync();
@@ -55,62 +46,59 @@ public partial class GameDetails
 
     private async Task LoadGameAsync()
     {
-        isLoading = true;
-        errorMessage = null;
+        _isLoading = true;
+        _errorMessage = null;
         try
         {
-            game = await Http.GetFromJsonAsync<GameStateResponse>($"/games/{GameId}");
-            messages = (game?.Messages.OrderBy(m => m.Id).ToList()) ?? [];
+            _game = await Http.GetFromJsonAsync<GameStateResponse>($"/games/{GameId}");
+            _messages = _game?.Messages.OrderBy(m => m.Id).ToList() ?? [];
         }
         catch (Exception ex)
         {
             LoggerFactory.CreateLogger("GameDetails").LogError(ex, "Failed to load game from API");
-            errorMessage = "Failed to load game: " + ex.Message;
+            _errorMessage = "Failed to load game: " + ex.Message;
         }
         finally
         {
-            isLoading = false;
+            _isLoading = false;
             // Scroll to bottom after initial load
-            if (messages.Count > 0)
-            {
-                shouldScrollToBottom = true;
-            }
+            if (_messages.Count > 0) _shouldScrollToBottom = true;
             StateHasChanged();
         }
     }
 
     private async Task SendMessageAsync()
     {
-        string message = userMessage.Text;
-        userMessage.Text = string.Empty;
+        string message = _userMessage.Text;
+        _userMessage.Text = string.Empty;
         await SendMessagePrivateAsync(message);
     }
 
     private async Task SendMessagePrivateAsync(string messageText)
     {
-        if (string.IsNullOrWhiteSpace(messageText) || isSending) return;
+        if (string.IsNullOrWhiteSpace(messageText) || _isSending) return;
 
-        isSending = true;
-        errorMessage = null;
+        _isSending = true;
+        _errorMessage = null;
         try
         {
             // Indicate message is being sent
             ChatRequest request = new()
             {
-                GameId = GameId, 
+                GameId = GameId,
                 Message = messageText
             };
-            messages.Add(new MessageResponse
+            _messages.Add(new MessageResponse
             {
                 Id = 0, // Temporary ID, will be replaced when we reload or get proper ordering
                 Text = messageText,
                 Participant = ChatParticipant.Player,
-                PlayerId = game!.PlayerId,
-                ParticipantName = game.PlayerName,
+                PlayerId = _game!.PlayerId,
+                ParticipantName = _game.PlayerName,
                 CreatedAt = DateTime.UtcNow
             });
             // Scroll to bottom after adding user message and showing typing indicator
-            shouldScrollToBottom = true;
+            _shouldScrollToBottom = true;
             await InvokeAsync(StateHasChanged);
 
             // Send message to API
@@ -128,9 +116,9 @@ public partial class GameDetails
                 GameStateResponse? updated = await Http.GetFromJsonAsync<GameStateResponse>($"/games/{GameId}");
                 if (updated?.Messages != null)
                 {
-                    messages = updated.Messages.OrderBy(m => m.Id).ToList();
+                    _messages = updated.Messages.OrderBy(m => m.Id).ToList();
                     // Scroll to bottom after receiving reply
-                    shouldScrollToBottom = true;
+                    _shouldScrollToBottom = true;
                     StateHasChanged();
                 }
             }
@@ -138,13 +126,13 @@ public partial class GameDetails
         catch (Exception ex)
         {
             LoggerFactory.CreateLogger("GameDetails").LogError(ex, "Failed to send chat message");
-            errorMessage = $"Failed to send message: {ex.Message}";
+            _errorMessage = $"Failed to send message: {ex.Message}";
         }
         finally
         {
-            isSending = false;
+            _isSending = false;
             // Scroll after typing indicator disappears
-            shouldScrollToBottom = true;
+            _shouldScrollToBottom = true;
             StateHasChanged();
         }
     }
@@ -162,20 +150,18 @@ public partial class GameDetails
             // ignored
         }
 
-        errorMessage = $"Failed to send message: {resp.ReasonPhrase}{(string.IsNullOrEmpty(body) ? string.Empty : " - " + body)}";
+        _errorMessage =
+            $"Failed to send message: {resp.ReasonPhrase}{(string.IsNullOrEmpty(body) ? string.Empty : " - " + body)}";
     }
 
-    private async Task OnKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs args)
+    private async Task OnKeyDown(KeyboardEventArgs args)
     {
-        if (args.Key == "Enter" && !isSending)
-        {
-            await SendMessageAsync();
-        }
+        if (args.Key == "Enter" && !_isSending) await SendMessageAsync();
     }
 
     private string GetGameMasterName()
     {
-        MessageResponse? gameMasterMessage = messages.FirstOrDefault(m => m.Participant == ChatParticipant.GameMaster);
+        MessageResponse? gameMasterMessage = _messages.FirstOrDefault(m => m.Participant == ChatParticipant.GameMaster);
         return gameMasterMessage?.ParticipantName ?? "Game Master";
     }
 
@@ -183,7 +169,7 @@ public partial class GameDetails
     {
         try
         {
-            await JSRuntime.InvokeVoidAsync("scrollToBottom", "chat-scroll-container");
+            await JsRuntime.InvokeVoidAsync("scrollToBottom", "chat-scroll-container");
         }
         catch (Exception)
         {

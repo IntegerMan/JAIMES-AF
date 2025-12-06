@@ -1,8 +1,3 @@
-using FastEndpoints;
-using MattEland.Jaimes.Domain;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
 public class GetScenarioEndpoint : EndpointWithoutRequest<ScenarioResponse>
@@ -21,7 +16,7 @@ public class GetScenarioEndpoint : EndpointWithoutRequest<ScenarioResponse>
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        string? id = Route<string>("id", isRequired: true);
+        string? id = Route<string>("id", true);
         if (string.IsNullOrEmpty(id))
         {
             ThrowError("Scenario ID is required");
@@ -42,7 +37,7 @@ public class GetScenarioEndpoint : EndpointWithoutRequest<ScenarioResponse>
                 NewGameInstructions = scenario.NewGameInstructions
             };
 
-            await Send.OkAsync(response, cancellation: ct);
+            await Send.OkAsync(response, ct);
         }
         catch (ArgumentException ex)
         {
@@ -50,4 +45,3 @@ public class GetScenarioEndpoint : EndpointWithoutRequest<ScenarioResponse>
         }
     }
 }
-

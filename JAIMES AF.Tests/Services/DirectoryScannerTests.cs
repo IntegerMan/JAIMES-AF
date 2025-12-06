@@ -22,7 +22,7 @@ public class DirectoryScannerTests
         // Arrange
         string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(tempDir);
-        
+
         string subDir1 = Path.Combine(tempDir, "subdir1");
         string subDir2 = Path.Combine(tempDir, "subdir2");
         Directory.CreateDirectory(subDir1);
@@ -42,7 +42,7 @@ public class DirectoryScannerTests
         }
         finally
         {
-            Directory.Delete(tempDir, recursive: true);
+            Directory.Delete(tempDir, true);
         }
     }
 
@@ -74,7 +74,7 @@ public class DirectoryScannerTests
         }
         finally
         {
-            Directory.Delete(tempDir, recursive: true);
+            Directory.Delete(tempDir, true);
         }
     }
 
@@ -105,19 +105,15 @@ public class DirectoryScannerTests
             // Assert
             result.ShouldNotBeNull();
             List<string> files = result.ToList();
-            
+
             if (shouldBeIncluded)
-            {
                 files.ShouldContain(testFile);
-            }
             else
-            {
                 files.ShouldNotContain(testFile);
-            }
         }
         finally
         {
-            Directory.Delete(tempDir, recursive: true);
+            Directory.Delete(tempDir, true);
         }
     }
 
@@ -171,8 +167,7 @@ public class DirectoryScannerTests
         }
         finally
         {
-            Directory.Delete(tempDir, recursive: true);
+            Directory.Delete(tempDir, true);
         }
     }
 }
-

@@ -113,13 +113,13 @@ public class DocumentCrackingServiceTests
             LoggerMock = new Mock<ILogger<DocumentCrackingService>>();
             MessagePublisherMock = new Mock<IMessagePublisher>();
             PdfTextExtractorMock = new Mock<IPdfTextExtractor>();
-            
+
             DbContextOptions<JaimesDbContext> dbOptions = new DbContextOptionsBuilder<JaimesDbContext>()
-                .UseInMemoryDatabase(databaseName: $"DocumentCrackerTests-{Guid.NewGuid()}")
+                .UseInMemoryDatabase($"DocumentCrackerTests-{Guid.NewGuid()}")
                 .Options;
             DbContext = new JaimesDbContext(dbOptions);
             DbContext.Database.EnsureCreated();
-            
+
             _activitySource = new ActivitySource($"DocumentCrackerTests-{Guid.NewGuid()}");
 
             TestDbContextFactory dbContextFactory = new(dbOptions);
@@ -139,20 +139,14 @@ public class DocumentCrackingServiceTests
         }
     }
 
-    private sealed class TestDbContextFactory : IDbContextFactory<JaimesDbContext>
+    private sealed class TestDbContextFactory(DbContextOptions<JaimesDbContext> options)
+        : IDbContextFactory<JaimesDbContext>
     {
-        private readonly DbContextOptions<JaimesDbContext> _options;
-
-        public TestDbContextFactory(DbContextOptions<JaimesDbContext> options)
-        {
-            _options = options;
-        }
-
         public JaimesDbContext CreateDbContext()
         {
             // Return a new context that shares the same in-memory database
             // This allows the service to dispose it without affecting the test's context
-            return new JaimesDbContext(_options);
+            return new JaimesDbContext(options);
         }
 
         public async Task<JaimesDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
@@ -160,7 +154,7 @@ public class DocumentCrackingServiceTests
             await Task.CompletedTask;
             // Return a new context that shares the same in-memory database
             // This allows the service to dispose it without affecting the test's context
-            return new JaimesDbContext(_options);
+            return new JaimesDbContext(options);
         }
     }
 }

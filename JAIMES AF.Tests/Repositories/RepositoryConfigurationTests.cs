@@ -48,7 +48,7 @@ public class RepositoryConfigurationTests
         ServiceCollection services = new();
         Dictionary<string, string?> configValues = new()
         {
-            { "ConnectionStrings:postgres-db", "Host=localhost;Database=test;Username=test;Password=test" }
+            {"ConnectionStrings:postgres-db", "Host=localhost;Database=test;Username=test;Password=test"}
         };
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(configValues)
@@ -72,7 +72,7 @@ public class RepositoryConfigurationTests
         ServiceCollection services = new();
         Dictionary<string, string?> configValues = new()
         {
-            { "ConnectionStrings:DefaultConnection", "Host=localhost;Database=test;Username=test;Password=test" }
+            {"ConnectionStrings:DefaultConnection", "Host=localhost;Database=test;Username=test;Password=test"}
         };
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(configValues)
@@ -113,8 +113,14 @@ public class RepositoryConfigurationTests
         ServiceCollection services = new();
         Dictionary<string, string?> configValues = new()
         {
-            { "ConnectionStrings:postgres-db", "Host=postgres-host;Database=postgres;Username=postgres;Password=postgres" },
-            { "ConnectionStrings:DefaultConnection", "Host=default-host;Database=default;Username=default;Password=default" }
+            {
+                "ConnectionStrings:postgres-db",
+                "Host=postgres-host;Database=postgres;Username=postgres;Password=postgres"
+            },
+            {
+                "ConnectionStrings:DefaultConnection",
+                "Host=default-host;Database=default;Username=default;Password=default"
+            }
         };
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(configValues)
@@ -144,7 +150,7 @@ public class RepositoryConfigurationTests
         await context.Database.EnsureCreatedAsync(ct);
 
         // Act
-        context.Rulesets.Add(new Ruleset { Id = "test", Name = "Test Ruleset" });
+        context.Rulesets.Add(new Ruleset {Id = "test", Name = "Test Ruleset"});
         await context.SaveChangesAsync(ct);
 
         // Assert

@@ -1,9 +1,3 @@
-using FastEndpoints;
-using MattEland.Jaimes.Domain;
-using MattEland.Jaimes.ServiceDefinitions.Requests;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
 public class CreatePlayerEndpoint : Endpoint<CreatePlayerRequest, PlayerResponse>
@@ -39,7 +33,7 @@ public class CreatePlayerEndpoint : Endpoint<CreatePlayerRequest, PlayerResponse
                 Name = player.Name
             };
 
-            await Send.CreatedAtAsync<GetPlayerEndpoint>(response, response, verb: Http.GET, cancellation: ct);
+            await Send.CreatedAtAsync<GetPlayerEndpoint>(response, response, Http.GET, cancellation: ct);
         }
         catch (ArgumentException ex)
         {
@@ -47,4 +41,3 @@ public class CreatePlayerEndpoint : Endpoint<CreatePlayerRequest, PlayerResponse
         }
     }
 }
-

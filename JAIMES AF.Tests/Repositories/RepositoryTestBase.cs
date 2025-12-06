@@ -10,19 +10,23 @@ public abstract class RepositoryTestBase : IAsyncLifetime
     public virtual async ValueTask InitializeAsync()
     {
         CancellationToken ct = TestContext.Current.CancellationToken;
-        
+
         // Create an in-memory database for testing
         DbContextOptions<JaimesDbContext> options = new DbContextOptionsBuilder<JaimesDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
         Context = new JaimesDbContext(options);
         await Context.Database.EnsureCreatedAsync(ct);
 
         // Add test data for validation
-        Context.Rulesets.Add(new Ruleset { Id = "test-ruleset", Name = "Test Ruleset" });
-        Context.Players.Add(new Player { Id = "test-player", RulesetId = "test-ruleset", Name = "Unspecified" });
-        Context.Scenarios.Add(new Scenario { Id = "test-scenario", RulesetId = "test-ruleset", Name = "Unspecified", SystemPrompt = "UPDATE ME", NewGameInstructions = "UPDATE ME" });
+        Context.Rulesets.Add(new Ruleset {Id = "test-ruleset", Name = "Test Ruleset"});
+        Context.Players.Add(new Player {Id = "test-player", RulesetId = "test-ruleset", Name = "Unspecified"});
+        Context.Scenarios.Add(new Scenario
+        {
+            Id = "test-scenario", RulesetId = "test-ruleset", Name = "Unspecified", SystemPrompt = "UPDATE ME",
+            NewGameInstructions = "UPDATE ME"
+        });
         await Context.SaveChangesAsync(ct);
         Context.ChangeTracker.Clear();
     }

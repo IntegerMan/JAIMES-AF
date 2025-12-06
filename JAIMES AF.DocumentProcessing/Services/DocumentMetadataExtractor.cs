@@ -1,5 +1,3 @@
-using MattEland.Jaimes.Domain;
-
 namespace MattEland.Jaimes.DocumentProcessing.Services;
 
 /// <summary>
@@ -14,15 +12,12 @@ public static class DocumentMetadataExtractor
     /// </summary>
     public static string ExtractRulesetId(string? relativeDirectory)
     {
-        if (string.IsNullOrWhiteSpace(relativeDirectory))
-        {
-            return "default";
-        }
+        if (string.IsNullOrWhiteSpace(relativeDirectory)) return "default";
 
         string[] parts = relativeDirectory.Split(
             [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
             StringSplitOptions.RemoveEmptyEntries);
-        
+
         return parts.Length > 0 ? parts[0] : "default";
     }
 
@@ -37,4 +32,3 @@ public static class DocumentMetadataExtractor
         return DocumentKinds.Sourcebook;
     }
 }
-

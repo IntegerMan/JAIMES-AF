@@ -1,8 +1,3 @@
-using System.Text;
-using System.Text.Json;
-using Microsoft.Extensions.Logging;
-using RabbitMQ.Client;
-
 namespace MattEland.Jaimes.ServiceDefinitions.Services;
 
 /// <summary>
@@ -29,19 +24,20 @@ public class MessagePublisher : IMessagePublisher, IDisposable
 
     public async Task PublishAsync<T>(T message, CancellationToken cancellationToken = default) where T : class
     {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(MessagePublisher));
-        }
+        if (_disposed) throw new ObjectDisposedException(nameof(MessagePublisher));
 
         try
         {
             // Get the message type name for exchange/queue naming
             string messageTypeName = typeof(T).Name;
-            
+
             // Declare exchange (topic exchange for routing)
             string exchangeName = messageTypeName;
-            await _channel.ExchangeDeclareAsync(exchangeName, ExchangeType.Topic, durable: true, autoDelete: false, cancellationToken: cancellationToken);
+            await _channel.ExchangeDeclareAsync(exchangeName,
+                ExchangeType.Topic,
+                true,
+                false,
+                cancellationToken: cancellationToken);
 
             // Serialize message to JSON
             string jsonMessage = JsonSerializer.Serialize(message, _jsonOptions);
@@ -59,15 +55,16 @@ public class MessagePublisher : IMessagePublisher, IDisposable
             // Publish to exchange with routing key = message type name
             string routingKey = messageTypeName;
             await _channel.BasicPublishAsync(
-                exchange: exchangeName,
-                routingKey: routingKey,
-                mandatory: false,
-                basicProperties: properties,
-                body: body,
-                cancellationToken: cancellationToken);
+                exchangeName,
+                routingKey,
+                false,
+                properties,
+                body,
+                cancellationToken);
 
-            _logger.LogDebug("Published message of type {MessageType} to exchange {Exchange}", 
-                messageTypeName, exchangeName);
+            _logger.LogDebug("Published message of type {MessageType} to exchange {Exchange}",
+                messageTypeName,
+                exchangeName);
         }
         catch (Exception ex)
         {
@@ -78,10 +75,7 @@ public class MessagePublisher : IMessagePublisher, IDisposable
 
     public void Dispose()
     {
-        if (_disposed)
-        {
-            return;
-        }
+        if (_disposed) return;
 
         _channel?.Dispose();
         _connection?.Dispose();

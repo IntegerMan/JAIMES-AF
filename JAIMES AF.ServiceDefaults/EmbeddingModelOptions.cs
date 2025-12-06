@@ -40,4 +40,3 @@ public class EmbeddingModelOptions
     /// </summary>
     public string? Name { get; set; }
 }
-

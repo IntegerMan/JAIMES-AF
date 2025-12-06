@@ -41,15 +41,13 @@ public static class Extensions
         });
 
         // Allow both HTTP and HTTPS schemes for service discovery to support local development
-        builder.Services.Configure<ServiceDiscoveryOptions>(options =>
-        {
-            options.AllowedSchemes = ["http", "https"];
-        });
+        builder.Services.Configure<ServiceDiscoveryOptions>(options => { options.AllowedSchemes = ["http", "https"]; });
 
         return builder;
     }
 
-    public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder)
+        where TBuilder : IHostApplicationBuilder
     {
         builder.Logging.AddOpenTelemetry(logging =>
         {
@@ -95,8 +93,10 @@ public static class Extensions
                     .AddAspNetCoreInstrumentation(options =>
                         // Exclude health check requests from tracing
                         options.Filter = context =>
-                            !context.Request.Path.StartsWithSegments(HealthEndpointPath, StringComparison.OrdinalIgnoreCase)
-                            && !context.Request.Path.StartsWithSegments(AlivenessEndpointPath, StringComparison.OrdinalIgnoreCase)
+                            !context.Request.Path.StartsWithSegments(HealthEndpointPath,
+                                StringComparison.OrdinalIgnoreCase)
+                            && !context.Request.Path.StartsWithSegments(AlivenessEndpointPath,
+                                StringComparison.OrdinalIgnoreCase)
                     )
                     .AddEntityFrameworkCoreInstrumentation(options =>
                     {
@@ -120,18 +120,17 @@ public static class Extensions
         return builder;
     }
 
-    private static TBuilder AddOpenTelemetryExporters<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    private static TBuilder AddOpenTelemetryExporters<TBuilder>(this TBuilder builder)
+        where TBuilder : IHostApplicationBuilder
     {
         // Check both configuration and environment variables for OTLP endpoint
         // Aspire sets this as an environment variable when services are added via AddProject
-        string? otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] 
-            ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
+        string? otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]
+                               ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
 
         if (!string.IsNullOrWhiteSpace(otlpEndpoint))
-        {
             builder.Services.AddOpenTelemetry()
                 .UseOtlpExporter();
-        }
 
         // Uncomment the following lines to enable the Azure Monitor exporter (requires the Azure.Monitor.OpenTelemetry.AspNetCore package)
         //if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
@@ -143,7 +142,8 @@ public static class Extensions
         return builder;
     }
 
-    public static TBuilder AddDefaultHealthChecks<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    public static TBuilder AddDefaultHealthChecks<TBuilder>(this TBuilder builder)
+        where TBuilder : IHostApplicationBuilder
     {
         builder.Services.AddHealthChecks()
             // Add a default liveness check to ensure app is responsive
@@ -162,10 +162,11 @@ public static class Extensions
             app.MapHealthChecks(HealthEndpointPath);
 
             // Only health checks tagged with the "live" tag must pass for app to be considered alive
-            app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions
-            {
-                Predicate = r => r.Tags.Contains("live")
-            });
+            app.MapHealthChecks(AlivenessEndpointPath,
+                new HealthCheckOptions
+                {
+                    Predicate = r => r.Tags.Contains("live")
+                });
         }
 
         return app;
@@ -185,22 +186,19 @@ public static class Extensions
 
         // Ensure the circuit breaker sampling window is at least double the attempt timeout per Polly requirements
         options.CircuitBreaker.SamplingDuration = extendedTimeout + extendedTimeout;
-        
+
         options.Retry.ShouldHandle = args =>
         {
             // Exclude POST requests from retries (only when we have a response)
-            if (args.Outcome.Result?.RequestMessage?.Method == HttpMethod.Post)
-            {
-                return ValueTask.FromResult(false);
-            }
-            
+            if (args.Outcome.Result?.RequestMessage?.Method == HttpMethod.Post) return ValueTask.FromResult(false);
+
             // For non-POST requests or exceptions, use default retry logic
             return ValueTask.FromResult(
                 args.Outcome.Exception is HttpRequestException ||
-                (args.Outcome.Result?.StatusCode == System.Net.HttpStatusCode.RequestTimeout ||
-                 args.Outcome.Result?.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable ||
-                 (args.Outcome.Result?.StatusCode >= System.Net.HttpStatusCode.InternalServerError &&
-                  args.Outcome.Result?.StatusCode <= (System.Net.HttpStatusCode)599)));
+                args.Outcome.Result?.StatusCode == System.Net.HttpStatusCode.RequestTimeout ||
+                args.Outcome.Result?.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable ||
+                (args.Outcome.Result?.StatusCode >= System.Net.HttpStatusCode.InternalServerError &&
+                 args.Outcome.Result?.StatusCode <= (System.Net.HttpStatusCode) 599));
         };
     }
 }

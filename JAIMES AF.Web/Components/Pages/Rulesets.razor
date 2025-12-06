@@ -18,26 +18,28 @@
 	</MudButton>
 
 	<div style="position: relative; min-height: 200px;">
-		@if (isLoading)
+		@if (_isLoading)
 		{
 			<div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
 				<MudProgressCircular Indeterminate="true"/>
 			</div>
 		}
-		
-		@if (!isLoading && !string.IsNullOrEmpty(errorMessage))
+
+		@if (!_isLoading && !string.IsNullOrEmpty(_errorMessage))
 		{
-			<MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
+			<MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
 		}
-		
-		@if (!isLoading && string.IsNullOrEmpty(errorMessage) && (rulesets is null || rulesets.Length == 0))
+
+		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && (_rulesets is null || _rulesets.Length == 0))
 		{
-			<MudText Class="mb-4">No rulesets yet. <MudLink Href="/rulesets/new">Create a new ruleset</MudLink></MudText>
+			<MudText Class="mb-4">No rulesets yet.
+				<MudLink Href="/rulesets/new">Create a new ruleset</MudLink>
+			</MudText>
 		}
-		
-		@if (!isLoading && string.IsNullOrEmpty(errorMessage) && rulesets is not null && rulesets.Length > 0)
+
+		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && _rulesets is not null && _rulesets.Length > 0)
 		{
-			<MudTable Items="rulesets" Dense="true" Hover="true">
+			<MudTable Items="_rulesets" Dense="true" Hover="true">
 				<HeaderContent>
 					<MudTh>ID</MudTh>
 					<MudTh>Name</MudTh>

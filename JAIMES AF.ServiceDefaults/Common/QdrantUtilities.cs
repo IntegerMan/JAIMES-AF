@@ -46,18 +46,16 @@ public static class QdrantUtilities
         }
 
         logger.LogDebug("Inferring embedding dimensions from model by generating a sample embedding");
-        GeneratedEmbeddings<Embedding<float>> sample = await embeddingGenerator.GenerateAsync(["Sample text to determine embedding dimensions"], cancellationToken: cancellationToken);
+        GeneratedEmbeddings<Embedding<float>> sample =
+            await embeddingGenerator.GenerateAsync(["Sample text to determine embedding dimensions"],
+                cancellationToken: cancellationToken);
         if (sample.Count == 0)
-        {
-            throw new InvalidOperationException("Failed to infer embedding dimensions: no embedding returned by generator");
-        }
+            throw new InvalidOperationException(
+                "Failed to infer embedding dimensions: no embedding returned by generator");
 
         Embedding<float> first = sample[0];
         int dims = first.Vector.Length;
-        if (dims <= 0)
-        {
-            throw new InvalidOperationException("Embedding generator returned an invalid vector length");
-        }
+        if (dims <= 0) throw new InvalidOperationException("Embedding generator returned an invalid vector length");
 
         logger.LogInformation("Resolved embedding dimensions from model: {Dimensions}", dims);
         return dims;

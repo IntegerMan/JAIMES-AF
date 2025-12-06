@@ -6,4 +6,3 @@ public record BackfillEmbeddingsResponse
     public required int TotalUnprocessed { get; init; }
     public required string[] DocumentIds { get; init; } = [];
 }
-

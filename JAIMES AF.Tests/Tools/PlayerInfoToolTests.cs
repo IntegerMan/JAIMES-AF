@@ -12,7 +12,10 @@ public class PlayerInfoToolTests
     [InlineData("Test Player", "test-player-id", "A brave warrior", true)]
     [InlineData("Gandalf", "wizard-001", "A powerful wizard", true)]
     [InlineData("Aragorn", "ranger-001", null, false)]
-    public void GetPlayerInfo_ReturnsCorrectInformation(string playerName, string playerId, string? playerDescription, bool shouldContainDescription)
+    public void GetPlayerInfo_ReturnsCorrectInformation(string playerName,
+        string playerId,
+        string? playerDescription,
+        bool shouldContainDescription)
     {
         // Arrange
         GameDto game = CreateGameDto(playerName, playerId, playerDescription);
@@ -24,7 +27,7 @@ public class PlayerInfoToolTests
         // Assert
         result.ShouldContain(playerName);
         result.ShouldContain(playerId);
-        
+
         if (shouldContainDescription && !string.IsNullOrWhiteSpace(playerDescription))
         {
             result.ShouldContain("Player Description");
@@ -72,4 +75,3 @@ public class PlayerInfoToolTests
         };
     }
 }
-

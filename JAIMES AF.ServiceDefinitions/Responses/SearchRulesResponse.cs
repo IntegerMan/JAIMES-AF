@@ -15,4 +15,3 @@ public record SearchRuleResult
     public required string ChunkId { get; init; }
     public required double Relevancy { get; init; }
 }
-

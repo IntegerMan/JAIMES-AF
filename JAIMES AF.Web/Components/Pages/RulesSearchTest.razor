@@ -6,81 +6,102 @@
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
 	<MudPaper Class="pa-8" Elevation="2">
 		<MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">Rules Search Test</MudText>
-		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">Test and debug RAG search capabilities</MudText>
-
-		<MudText Typo="Typo.body1" Class="mb-6" Style="line-height: 1.75;">
-			Use this tool to test the rules search functionality. Enter a query to search across rulesets and view the answer, citations, and matching documents.
+		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">Test and debug RAG search
+			capabilities
 		</MudText>
 
-		<MudDivider Class="my-6" />
+		<MudText Typo="Typo.body1" Class="mb-6" Style="line-height: 1.75;">
+			Use this tool to test the rules search functionality. Enter a query to search across rulesets and view the
+			answer, citations, and matching documents.
+		</MudText>
+
+		<MudDivider Class="my-6"/>
 
 		<MudPaper Class="pa-4" Elevation="1">
 			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-4">Search Query</MudText>
-			
+
 			<MudForm>
-				<MudTextField @bind-Value="searchQuery" 
-				              Label="Search Query" 
-				              Variant="Variant.Outlined" 
+				<MudTextField @bind-Value="_searchQuery"
+				              Label="Search Query"
+				              Variant="Variant.Outlined"
 				              Class="mb-4"
 				              FullWidth="true"
 				              Placeholder="Enter your search query here..."
 				              HelperText="Enter a natural language question about game rules (press Enter to search)"
-				              OnKeyDown="HandleSearchQueryKeyDown" />
+				              OnKeyDown="HandleSearchQueryKeyDown"/>
 
-				<MudSelect @bind-Value="selectedRulesetId" 
-				           Label="Ruleset (Optional)" 
-				           Variant="Variant.Outlined" 
+				<MudSelect @bind-Value="_selectedRulesetId"
+				           Label="Ruleset (Optional)"
+				           Variant="Variant.Outlined"
 				           Class="mb-4"
 				           FullWidth="true"
 				           HelperText="Leave empty to search across all rulesets">
-					<MudSelectItem Value="@((string?)null)">All Rulesets</MudSelectItem>
-					@foreach (var ruleset in rulesets)
+					<MudSelectItem Value="@((string?) null)">All Rulesets</MudSelectItem>
+					@foreach (RulesetInfoResponse ruleset in _rulesets)
 					{
 						<MudSelectItem Value="@ruleset.Id">@ruleset.Name</MudSelectItem>
 					}
 				</MudSelect>
 
-				<MudButton Variant="Variant.Filled" 
-				           Color="Color.Primary" 
-				           OnClick="SearchRulesAsync" 
-				           Disabled="@isSearching"
+				<div class="mb-4">
+					<MudCheckBox @bind-Value="_storeResults"
+					             Label="Store search results for diagnostics"
+					             Class="mb-1"/>
+					<MudText Typo="Typo.caption" Class="ms-4" Color="Color.Info">When enabled, search queries and results will be
+						stored in the database for diagnostic and evaluation purposes
+					</MudText>
+				</div>
+
+				<MudButton Variant="Variant.Filled"
+				           Color="Color.Primary"
+				           OnClick="SearchRulesAsync"
+				           Disabled="@_isSearching"
 				           Class="mb-4">
-					@if (isSearching)
+					@if (_isSearching)
 					{
-						<MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+						<MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2"/>
 					}
 					Search
 				</MudButton>
 			</MudForm>
 		</MudPaper>
 
-		@if (!string.IsNullOrEmpty(errorMessage))
+		@if (!string.IsNullOrEmpty(_errorMessage))
 		{
-			<MudAlert Severity="Severity.Error" Class="mt-4">@errorMessage</MudAlert>
+			<MudAlert Severity="Severity.Error" Class="mt-4">@_errorMessage</MudAlert>
 		}
 
-		@if (searchResult != null)
+		@if (_searchResult != null)
 		{
-			<MudDivider Class="my-6" />
+			<MudDivider Class="my-6"/>
 
-			<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Search Results (@searchResult.Results.Length)</MudText>
+			<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Search Results (@_searchResult.Results.Length)
+			</MudText>
 
-			@if (searchResult.Results.Length > 0)
+			@if (_searchResult.Results.Length > 0)
 			{
-				@foreach (var result in searchResult.Results)
+				@foreach (SearchRuleResult result in _searchResult.Results)
 				{
 					<MudPaper Class="pa-4 mb-4" Elevation="1">
 						<MudExpansionPanels>
-							<MudExpansionPanel Text="@($"{result.DocumentName} ({result.RulesetId}) - Relevancy: {result.Relevancy:P2}")">
+							<MudExpansionPanel
+								Text="@($"{result.DocumentName} ({result.RulesetId}) - Relevancy: {result.Relevancy:P2}")">
 								<MudText Typo="Typo.body2" Class="mb-2"><strong>Text:</strong></MudText>
-								<MudText Typo="Typo.body1" Style="white-space: pre-wrap;" Class="mb-3">@result.Text</MudText>
-								
-								<MudText Typo="Typo.body2" Class="mb-2"><strong>Document Name:</strong> @result.DocumentName</MudText>
-								<MudText Typo="Typo.body2" Class="mb-2"><strong>Ruleset:</strong> @result.RulesetId</MudText>
-								<MudText Typo="Typo.body2" Class="mb-2"><strong>Document ID:</strong> @result.DocumentId</MudText>
-								<MudText Typo="Typo.body2" Class="mb-2"><strong>Embedding ID:</strong> @result.EmbeddingId</MudText>
-								<MudText Typo="Typo.body2" Class="mb-2"><strong>Chunk ID:</strong> @result.ChunkId</MudText>
-								<MudText Typo="Typo.body2" Class="mb-2"><strong>Relevancy:</strong> @result.Relevancy.ToString("P4")</MudText>
+								<MudText Typo="Typo.body1" Style="white-space: pre-wrap;"
+								         Class="mb-3">@result.Text</MudText>
+
+								<MudText Typo="Typo.body2" Class="mb-2"><strong>Document
+										Name:</strong> @result.DocumentName</MudText>
+								<MudText Typo="Typo.body2" Class="mb-2"><strong>Ruleset:</strong> @result.RulesetId
+								</MudText>
+								<MudText Typo="Typo.body2" Class="mb-2"><strong>Document ID:</strong> @result.DocumentId
+								</MudText>
+								<MudText Typo="Typo.body2" Class="mb-2"><strong>Embedding
+										ID:</strong> @result.EmbeddingId</MudText>
+								<MudText Typo="Typo.body2" Class="mb-2"><strong>Chunk ID:</strong> @result.ChunkId
+								</MudText>
+								<MudText Typo="Typo.body2" Class="mb-2">
+									<strong>Relevancy:</strong> @result.Relevancy.ToString("P4")</MudText>
 							</MudExpansionPanel>
 						</MudExpansionPanels>
 					</MudPaper>
