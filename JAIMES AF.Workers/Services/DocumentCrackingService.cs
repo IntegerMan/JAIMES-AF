@@ -44,6 +44,9 @@ public class DocumentCrackingService(
         
         (string contents, int pageCount) = pdfTextExtractor.ExtractText(filePath);
         
+        // Sanitize content to remove null bytes and other problematic characters for PostgreSQL UTF-8 encoding
+        contents = SanitizeContentForPostgreSQL(contents);
+        
         activity?.SetTag("cracker.page_count", pageCount);
 
         await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -178,5 +181,23 @@ public class DocumentCrackingService(
             // Log error but don't fail the document cracking process
             logger.LogError(ex, "Failed to publish document ready for chunking message: {FilePath}", filePath);
         }
+    }
+
+    /// <summary>
+    /// Sanitizes content by removing null bytes and other characters that are invalid for PostgreSQL UTF-8 encoding.
+    /// PostgreSQL does not allow null bytes (0x00) in UTF-8 text fields.
+    /// </summary>
+    private static string SanitizeContentForPostgreSQL(string content)
+    {
+        if (string.IsNullOrEmpty(content))
+        {
+            return content;
+        }
+
+        // Remove null bytes (0x00) which PostgreSQL rejects in UTF-8 text
+        // Also remove other control characters that might cause issues
+        return content
+            .Replace("\0", string.Empty) // Remove null bytes
+            .Replace("\u0000", string.Empty); // Remove null characters (alternative representation)
     }
 }

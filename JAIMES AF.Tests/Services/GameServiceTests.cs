@@ -1,4 +1,5 @@
 using MattEland.Jaimes.Domain;
+using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
@@ -12,6 +13,7 @@ namespace MattEland.Jaimes.Tests.Services;
 public class GameServiceTests : IAsyncLifetime
 {
     private JaimesDbContext _context = null!;
+    private IDbContextFactory<JaimesDbContext> _contextFactory = null!;
     private GameService _gameService = null!;
     private MockChatService _mockChatService = null!;
     private MockChatHistoryService _mockChatHistoryService = null!;
@@ -32,9 +34,11 @@ public class GameServiceTests : IAsyncLifetime
         _context.Scenarios.Add(new Scenario { Id = "test-scenario", RulesetId = "test-ruleset", Name = "Unspecified", SystemPrompt = "Test System Prompt", NewGameInstructions = "Test New Game Instructions" });
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
+        // Create a factory that returns the same context (for testing)
+        _contextFactory = new TestDbContextFactory(options);
         _mockChatService = new MockChatService();
         _mockChatHistoryService = new MockChatHistoryService();
-        _gameService = new GameService(_context, _mockChatService, _mockChatHistoryService);
+        _gameService = new GameService(_contextFactory, _mockChatService, _mockChatHistoryService);
     }
 
     public async ValueTask DisposeAsync()
@@ -314,6 +318,28 @@ public class GameServiceTests : IAsyncLifetime
         // First message should be the player message
         persistedMessages[0].Text.ShouldBe(playerMessage);
         persistedMessages[0].PlayerId.ShouldBe("test-player");
+    }
+
+    // Test factory that returns the same context instance (for testing)
+    private class TestDbContextFactory : IDbContextFactory<JaimesDbContext>
+    {
+        private readonly DbContextOptions<JaimesDbContext> _options;
+
+        public TestDbContextFactory(DbContextOptions<JaimesDbContext> options)
+        {
+            _options = options;
+        }
+
+        public JaimesDbContext CreateDbContext()
+        {
+            return new JaimesDbContext(_options);
+        }
+
+        public async Task<JaimesDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
+        {
+            await Task.CompletedTask;
+            return new JaimesDbContext(_options);
+        }
     }
 
     // Mock implementations for testing

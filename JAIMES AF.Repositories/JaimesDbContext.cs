@@ -1,5 +1,8 @@
 using MattEland.Jaimes.Repositories.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Pgvector;
+using Pgvector.EntityFrameworkCore;
 
 namespace MattEland.Jaimes.Repositories;
 
@@ -20,6 +23,13 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // Enable pgvector extension for PostgreSQL (skip for in-memory database used in tests)
+        // Only call HasPostgresExtension if we're using the Npgsql provider
+        if (string.Equals(Database.ProviderName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
+        {
+            modelBuilder.HasPostgresExtension("vector");
+        }
 
         modelBuilder.Entity<Ruleset>(entity =>
         {
@@ -162,6 +172,28 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.Property(dc => dc.ChunkText).IsRequired();
             entity.Property(dc => dc.CreatedAt).IsRequired();
             
+            // Configure Embedding property for different database providers
+            // For PostgreSQL: pgvector extension handles Vector natively via the [Column(TypeName = "vector")] attribute
+            // For other providers (like in-memory): use a value converter to store as byte array
+            string? providerName = Database.ProviderName;
+            if (!string.Equals(providerName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
+            {
+                // For non-PostgreSQL providers (like in-memory), convert Vector to/from byte array
+                // Override the column type from the attribute to allow in-memory database to work
+                entity.Property(dc => dc.Embedding)
+                    .HasConversion(
+                        v => v == null ? null : ConvertVectorToBytes(v),
+                        b => b == null ? null : ConvertBytesToVector(b))
+                    .HasColumnType("varbinary(max)"); // Use varbinary for in-memory database compatibility
+            }
+            else
+            {
+                // For PostgreSQL, pgvector.EntityFrameworkCore provides the value converter automatically
+                // when UseVector() is called in the Npgsql configuration
+                // The [Column(TypeName = "vector")] attribute ensures the correct database type
+                // No explicit configuration needed - pgvector handles it
+            }
+
             // Create unique index on ChunkId for fast lookups
             entity.HasIndex(dc => dc.ChunkId).IsUnique();
             
@@ -196,5 +228,43 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 NewGameInstructions = "You find yourself washed ashore on a pristine tropical beach. The warm sun beats down on your skin as you take in your surroundings. Crystal-clear turquoise water laps gently at the white sand beach. Behind you, a dense jungle stretches inland, filled with the sounds of exotic birds and rustling leaves. Your gear is scattered nearby, having survived the shipwreck that brought you here. You have no memory of how you arrived, but you know one thing: you must survive and discover the secrets of this mysterious island. What do you do first?"
             }
         );
+    }
+
+    /// <summary>
+    /// Converts a Vector to a byte array for storage in non-PostgreSQL databases.
+    /// </summary>
+    private static byte[]? ConvertVectorToBytes(Vector vector)
+    {
+        if (vector == null)
+        {
+            return null;
+        }
+
+        // Get the float array from the vector
+        float[] values = vector.ToArray();
+
+        // Convert float array to byte array
+        byte[] bytes = new byte[values.Length * sizeof(float)];
+        Buffer.BlockCopy(values, 0, bytes, 0, bytes.Length);
+
+        return bytes;
+    }
+
+    /// <summary>
+    /// Converts a byte array back to a Vector for non-PostgreSQL databases.
+    /// </summary>
+    private static Vector? ConvertBytesToVector(byte[]? bytes)
+    {
+        if (bytes == null || bytes.Length == 0)
+        {
+            return null;
+        }
+
+        // Convert byte array back to float array
+        int floatCount = bytes.Length / sizeof(float);
+        float[] values = new float[floatCount];
+        Buffer.BlockCopy(bytes, 0, values, 0, bytes.Length);
+
+        return new Vector(values);
     }
 }

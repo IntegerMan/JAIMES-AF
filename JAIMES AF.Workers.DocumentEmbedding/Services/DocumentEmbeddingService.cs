@@ -8,6 +8,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.EntityFrameworkCore;
 using Qdrant.Client.Grpc;
 using MattEland.Jaimes.ServiceDefaults; // added for utilities
+using Pgvector;
 
 namespace MattEland.Jaimes.Workers.DocumentEmbedding.Services;
 
@@ -64,6 +65,16 @@ public class DocumentEmbeddingService(
         return parts.Length > 0 ? parts[0] : "default";
     }
 
+    /// <summary>
+    /// Processes a chunk by generating an embedding and storing it in both Qdrant and PostgreSQL.
+    /// 
+    /// IMPORTANT: Embeddings stored in Qdrant and PostgreSQL will NOT match exactly because:
+    /// - Qdrant automatically normalizes vectors when using Cosine distance metric (scales to unit length)
+    /// - PostgreSQL (pgvector) stores vectors as-is without normalization
+    /// 
+    /// This is expected behavior and does not indicate an error. Both stores use the same original embedding,
+    /// but Qdrant applies normalization for efficient cosine similarity calculations.
+    /// </summary>
     public async Task ProcessChunkAsync(ChunkReadyForEmbeddingMessage message, CancellationToken cancellationToken = default)
     {
         using Activity? activity = activitySource.StartActivity("DocumentEmbedding.ProcessChunk");
@@ -136,6 +147,7 @@ public class DocumentEmbeddingService(
             await EnsureCollectionExistsAsync(cancellationToken);
 
             // Store embedding in Qdrant
+            // NOTE: Qdrant will automatically normalize this vector when using Cosine distance metric
             await StoreEmbeddingInQdrantAsync(
                 message.ChunkId,
                 qdrantPointId,
@@ -146,8 +158,10 @@ public class DocumentEmbeddingService(
             logger.LogInformation("Stored embedding for chunk {ChunkId} in Qdrant (point ID: {PointId})",
                 message.ChunkId, qdrantPointId);
 
-            // Update PostgreSQL to mark chunk as processed
-            await UpdateChunkInPostgreSQLAsync(message.ChunkId, qdrantPointId, cancellationToken);
+            // Update PostgreSQL to mark chunk as processed and store embedding vector
+            // NOTE: PostgreSQL (pgvector) stores the vector as-is without normalization
+            // This means the stored values will differ from Qdrant, which is expected behavior
+            await UpdateChunkInPostgreSQLAsync(message.ChunkId, qdrantPointId, embedding, cancellationToken).ConfigureAwait(false);
 
             // Increment ProcessedChunkCount in CrackedDocument
             if (!int.TryParse(message.DocumentId, out int documentId))
@@ -160,12 +174,98 @@ public class DocumentEmbeddingService(
             await IncrementProcessedChunkCountAsync(documentId, cancellationToken);
 
             logger.LogInformation("Marked chunk {ChunkId} as processed in PostgreSQL", message.ChunkId);
+            
             activity?.SetStatus(ActivityStatusCode.Ok);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to process chunk {ChunkId} for embedding", message.ChunkId);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Stores an embedding in Qdrant.
+    /// 
+    /// NOTE: When using Cosine distance metric, Qdrant automatically normalizes vectors upon insertion
+    /// (scales them to unit length). The stored vector will differ from the original embedding.
+    /// </summary>
+    private async Task StoreEmbeddingInQdrantAsync(
+        string pointId,
+        ulong qdrantPointId,
+        float[] embedding,
+        Dictionary<string, string> metadata,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Convert metadata to Qdrant payload
+            Dictionary<string, Value> payload = new();
+            foreach ((string key, string value) in metadata)
+            {
+                payload[key] = new Value { StringValue = value };
+            }
+
+            PointStruct point = new()
+            {
+                Id = qdrantPointId,
+                Vectors = embedding,
+                Payload = { payload }
+            };
+
+            await qdrantClient.UpsertAsync(
+                collectionName: options.CollectionName,
+                points: [point],
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to store embedding in Qdrant for chunk {ChunkId}", pointId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Updates a chunk in PostgreSQL with the Qdrant point ID and embedding vector.
+    /// 
+    /// NOTE: PostgreSQL (pgvector) stores vectors as-is without normalization.
+    /// The stored values will differ from Qdrant (which normalizes for Cosine distance),
+    /// but this is expected behavior and does not indicate an error.
+    /// </summary>
+    private async Task UpdateChunkInPostgreSQLAsync(
+        string chunkId,
+        ulong qdrantPointId,
+        float[] embedding,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            
+            DocumentChunk? chunk = await dbContext.DocumentChunks
+                .FirstOrDefaultAsync(c => c.ChunkId == chunkId, cancellationToken);
+
+            if (chunk == null)
+            {
+                logger.LogWarning("Chunk {ChunkId} not found in PostgreSQL when updating Qdrant point ID and embedding", chunkId);
+            }
+            else
+            {
+                chunk.QdrantPointId = qdrantPointId.ToString();
+                chunk.Embedding = new Pgvector.Vector(embedding);
+                await dbContext.SaveChangesAsync(cancellationToken);
+
+                logger.LogDebug(
+                    "Updated chunk {ChunkId} with Qdrant point ID {PointId} and embedding vector ({Dimensions} dimensions)",
+                    chunkId,
+                    qdrantPointId,
+                    embedding.Length);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to store embedding in PostgreSQL for chunk {ChunkId}", chunkId);
             throw;
         }
     }
@@ -207,56 +307,6 @@ public class DocumentEmbeddingService(
             options.CollectionName, dimensions);
     }
 
-    private async Task StoreEmbeddingInQdrantAsync(
-        string pointId,
-        ulong qdrantPointId,
-        float[] embedding,
-        Dictionary<string, string> metadata,
-        CancellationToken cancellationToken)
-    {
-        // Convert metadata to Qdrant payload
-        Dictionary<string, Value> payload = new();
-        foreach ((string key, string value) in metadata)
-        {
-            payload[key] = new Value { StringValue = value };
-        }
-
-        PointStruct point = new()
-        {
-            Id = qdrantPointId,
-            Vectors = embedding,
-            Payload = { payload }
-        };
-
-        await qdrantClient.UpsertAsync(
-            collectionName: options.CollectionName,
-            points: [point],
-            cancellationToken: cancellationToken);
-    }
-
-    private async Task UpdateChunkInPostgreSQLAsync(
-        string chunkId,
-        ulong qdrantPointId,
-        CancellationToken cancellationToken)
-    {
-        await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-        
-        DocumentChunk? chunk = await dbContext.DocumentChunks
-            .FirstOrDefaultAsync(c => c.ChunkId == chunkId, cancellationToken);
-
-        if (chunk == null)
-        {
-            logger.LogWarning("Chunk {ChunkId} not found in PostgreSQL when updating Qdrant point ID", chunkId);
-        }
-        else
-        {
-            chunk.QdrantPointId = qdrantPointId.ToString();
-            await dbContext.SaveChangesAsync(cancellationToken);
-            
-            logger.LogDebug("Updated chunk {ChunkId} with Qdrant point ID {PointId}",
-                chunkId, qdrantPointId);
-        }
-    }
 
     private async Task IncrementProcessedChunkCountAsync(
         int documentId,

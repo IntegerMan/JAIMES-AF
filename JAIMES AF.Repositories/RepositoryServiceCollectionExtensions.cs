@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Pgvector.EntityFrameworkCore;
 
 namespace MattEland.Jaimes.Repositories;
 
@@ -52,23 +53,14 @@ public static class RepositoryServiceCollectionExtensions
                 "Database connection string is required. Expected 'postgres-db' or 'DefaultConnection' in ConnectionStrings configuration.");
         }
 
-        // Register DbContext for direct injection (used by ApiService endpoints and services)
-        services.AddDbContext<JaimesDbContext>(options =>
-        {
-            options.UseNpgsql(connectionString,
-                dbOpts =>
-                {
-                    dbOpts.MaxBatchSize(500);
-                    dbOpts.EnableRetryOnFailure(maxRetryCount: 3);
-                });
-        });
-
-        // Register DbContextFactory for worker services (more efficient for background services)
+        // Register DbContextFactory for all services (API and worker services)
+        // Using AddPooledDbContextFactory provides efficient connection pooling for all contexts
         services.AddPooledDbContextFactory<JaimesDbContext>(options =>
         {
             options.UseNpgsql(connectionString,
                 dbOpts =>
                 {
+                    dbOpts.UseVector(); // Enable pgvector support
                     dbOpts.MaxBatchSize(500);
                     dbOpts.EnableRetryOnFailure(maxRetryCount: 3);
                 });
@@ -80,7 +72,8 @@ public static class RepositoryServiceCollectionExtensions
     public static async Task InitializeDatabaseAsync(this IServiceProvider serviceProvider)
     {
         using IServiceScope scope = serviceProvider.CreateScope();
-        JaimesDbContext context = scope.ServiceProvider.GetRequiredService<JaimesDbContext>();
+        IDbContextFactory<JaimesDbContext> factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<JaimesDbContext>>();
+        using JaimesDbContext context = await factory.CreateDbContextAsync();
         var loggerFactory = scope.ServiceProvider.GetService<ILoggerFactory>();
         var logger = loggerFactory?.CreateLogger("DatabaseInitialization") ??
                      NullLoggerFactory.Instance.CreateLogger("DatabaseInitialization");
