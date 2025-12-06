@@ -182,21 +182,13 @@ public static class EmbeddingServiceExtensions
     /// <summary>
     /// Wrapper that implements IEmbeddingGenerator for Ollama using HTTP API calls with better error messages.
     /// </summary>
-    private sealed class OllamaEmbeddingGeneratorWrapper : IEmbeddingGenerator<string, Embedding<float>>, IDisposable
+    private sealed class OllamaEmbeddingGeneratorWrapper(
+        HttpClient httpClient,
+        string endpoint,
+        string modelName,
+        ILogger logger)
+        : IEmbeddingGenerator<string, Embedding<float>>, IDisposable
     {
-        private readonly HttpClient _httpClient;
-        private readonly string _endpoint;
-        private readonly string _modelName;
-        private readonly ILogger _logger;
-
-        public OllamaEmbeddingGeneratorWrapper(HttpClient httpClient, string endpoint, string modelName, ILogger logger)
-        {
-            _httpClient = httpClient;
-            _endpoint = endpoint;
-            _modelName = modelName;
-            _logger = logger;
-        }
-
         public async Task<GeneratedEmbeddings<Embedding<float>>> GenerateAsync(IEnumerable<string> inputs,
             EmbeddingGenerationOptions? options = null,
             CancellationToken cancellationToken = default)
@@ -204,28 +196,28 @@ public static class EmbeddingServiceExtensions
             List<string> inputList = inputs.ToList();
             if (inputList.Count == 0) return new GeneratedEmbeddings<Embedding<float>>(Array.Empty<Embedding<float>>());
 
-            _logger.LogDebug("Generating {Count} embedding(s) using Ollama model {Model} at {Endpoint}",
+            logger.LogDebug("Generating {Count} embedding(s) using Ollama model {Model} at {Endpoint}",
                 inputList.Count,
-                _modelName,
-                _endpoint);
+                modelName,
+                endpoint);
 
             List<Embedding<float>> embeddings = [];
 
             // Ollama processes embeddings one at a time
             foreach (string input in inputList)
             {
-                string requestUrl = $"{_endpoint.TrimEnd('/')}/api/embeddings";
+                string requestUrl = $"{endpoint.TrimEnd('/')}/api/embeddings";
 
                 OllamaEmbeddingRequest request = new()
                 {
-                    Model = _modelName,
+                    Model = modelName,
                     Prompt = input
                 };
 
                 try
                 {
                     HttpResponseMessage response =
-                        await _httpClient.PostAsJsonAsync(requestUrl, request, cancellationToken);
+                        await httpClient.PostAsJsonAsync(requestUrl, request, cancellationToken);
 
                     if (!response.IsSuccessStatusCode)
                     {
@@ -233,22 +225,22 @@ public static class EmbeddingServiceExtensions
 
                         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                         {
-                            _logger.LogError(
+                            logger.LogError(
                                 "Ollama returned 404 (Not Found) when generating embeddings. " +
                                 "This usually means the model '{Model}' is not available in Ollama at {Endpoint}. " +
                                 "Response: {Response}. To fix this, run: ollama pull {ModelId}",
-                                _modelName,
-                                _endpoint,
+                                modelName,
+                                endpoint,
                                 errorContent,
-                                _modelName);
+                                modelName);
 
                             throw new InvalidOperationException(
-                                $"Ollama model '{_modelName}' not found at {_endpoint}. " +
-                                $"Ensure the model is available by running: ollama pull {_modelName}. " +
+                                $"Ollama model '{modelName}' not found at {endpoint}. " +
+                                $"Ensure the model is available by running: ollama pull {modelName}. " +
                                 $"Ollama response: {errorContent}");
                         }
 
-                        _logger.LogError("Failed to generate embedding. Status: {StatusCode}, Response: {Response}",
+                        logger.LogError("Failed to generate embedding. Status: {StatusCode}, Response: {Response}",
                             response.StatusCode,
                             errorContent);
                         response.EnsureSuccessStatusCode();
@@ -263,22 +255,22 @@ public static class EmbeddingServiceExtensions
 
                     ReadOnlyMemory<float> embeddingVector = embeddingResponse.Embedding;
                     Embedding<float> embedding = new(embeddingVector);
-                    _logger.LogDebug("Generated embedding with {Dimensions} dimensions", embeddingVector.Length);
+                    logger.LogDebug("Generated embedding with {Dimensions} dimensions", embeddingVector.Length);
                     embeddings.Add(embedding);
                 }
                 catch (HttpRequestException ex) when (ex.Message.Contains("404") || ex.Message.Contains("Not Found"))
                 {
-                    _logger.LogError(ex,
+                    logger.LogError(ex,
                         "Ollama returned 404 (Not Found) when generating embeddings. " +
                         "This usually means the model '{Model}' is not available in Ollama at {Endpoint}. " +
                         "To fix this, run: ollama pull {ModelId}",
-                        _modelName,
-                        _endpoint,
-                        _modelName);
+                        modelName,
+                        endpoint,
+                        modelName);
 
                     throw new InvalidOperationException(
-                        $"Ollama model '{_modelName}' not found at {_endpoint}. " +
-                        $"Ensure the model is available by running: ollama pull {_modelName}. " +
+                        $"Ollama model '{modelName}' not found at {endpoint}. " +
+                        $"Ensure the model is available by running: ollama pull {modelName}. " +
                         $"Original error: {ex.Message}",
                         ex);
                 }

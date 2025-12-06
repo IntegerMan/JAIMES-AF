@@ -271,20 +271,14 @@ public class DocumentChunkingServiceTests
         }
     }
 
-    private sealed class TestDbContextFactory : IDbContextFactory<JaimesDbContext>
+    private sealed class TestDbContextFactory(DbContextOptions<JaimesDbContext> options)
+        : IDbContextFactory<JaimesDbContext>
     {
-        private readonly DbContextOptions<JaimesDbContext> _options;
-
-        public TestDbContextFactory(DbContextOptions<JaimesDbContext> options)
-        {
-            _options = options;
-        }
-
         public JaimesDbContext CreateDbContext()
         {
             // Return a new context that shares the same in-memory database
             // This allows the service to dispose it without affecting the test's context
-            return new JaimesDbContext(_options);
+            return new JaimesDbContext(options);
         }
 
         public async Task<JaimesDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
@@ -292,7 +286,7 @@ public class DocumentChunkingServiceTests
             await Task.CompletedTask;
             // Return a new context that shares the same in-memory database
             // This allows the service to dispose it without affecting the test's context
-            return new JaimesDbContext(_options);
+            return new JaimesDbContext(options);
         }
     }
 }

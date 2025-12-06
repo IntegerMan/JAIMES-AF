@@ -4,19 +4,14 @@ using Microsoft.Extensions.Hosting;
 
 namespace MattEland.Jaimes.Agents.Services;
 
-public class RagSearchStorageService : BackgroundService, IRagSearchStorageService
+public class RagSearchStorageService(
+    IServiceProvider serviceProvider,
+    ILogger<RagSearchStorageService> logger)
+    : BackgroundService, IRagSearchStorageService
 {
     private readonly Channel<SearchStorageItem> _queue = Channel.CreateUnbounded<SearchStorageItem>();
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<RagSearchStorageService> _logger;
-
-    public RagSearchStorageService(
-        IServiceProvider serviceProvider,
-        ILogger<RagSearchStorageService> logger)
-    {
-        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
+    private readonly IServiceProvider _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+    private readonly ILogger<RagSearchStorageService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     public void EnqueueSearchResults(string query,
         string? rulesetId,

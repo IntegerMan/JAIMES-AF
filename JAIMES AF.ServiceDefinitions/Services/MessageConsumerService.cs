@@ -4,32 +4,21 @@ namespace MattEland.Jaimes.ServiceDefinitions.Services;
 /// Background service that consumes messages from RabbitMQ/LavinMQ
 /// </summary>
 /// <typeparam name="T">The message type to consume</typeparam>
-public class MessageConsumerService<T> : BackgroundService where T : class
+public class MessageConsumerService<T>(
+    IConnectionFactory connectionFactory,
+    IMessageConsumer<T> messageHandler,
+    ILogger<MessageConsumerService<T>> logger,
+    ActivitySource? activitySource = null)
+    : BackgroundService
+    where T : class
 {
-    private readonly IConnectionFactory _connectionFactory;
-    private readonly IMessageConsumer<T> _messageHandler;
-    private readonly ILogger<MessageConsumerService<T>> _logger;
-    private readonly ActivitySource? _activitySource;
-    private readonly JsonSerializerOptions _jsonOptions;
+    private readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
     private IConnection? _connection;
     private IChannel? _channel;
     private string? _consumerTag;
-
-    public MessageConsumerService(
-        IConnectionFactory connectionFactory,
-        IMessageConsumer<T> messageHandler,
-        ILogger<MessageConsumerService<T>> logger,
-        ActivitySource? activitySource = null)
-    {
-        _connectionFactory = connectionFactory;
-        _messageHandler = messageHandler;
-        _logger = logger;
-        _activitySource = activitySource;
-        _jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        };
-    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -39,30 +28,30 @@ public class MessageConsumerService<T> : BackgroundService where T : class
 
         try
         {
-            _logger.LogInformation("Creating RabbitMQ connection for message type {MessageType}...", messageTypeName);
-            _connection = await _connectionFactory.CreateConnectionAsync(stoppingToken);
-            _logger.LogInformation("RabbitMQ connection established. Creating channel...");
+            logger.LogInformation("Creating RabbitMQ connection for message type {MessageType}...", messageTypeName);
+            _connection = await connectionFactory.CreateConnectionAsync(stoppingToken);
+            logger.LogInformation("RabbitMQ connection established. Creating channel...");
             _channel = await _connection.CreateChannelAsync();
-            _logger.LogInformation("Channel created successfully.");
+            logger.LogInformation("Channel created successfully.");
 
             // Declare exchange
-            _logger.LogInformation("Declaring exchange {ExchangeName} (type: Topic)...", exchangeName);
+            logger.LogInformation("Declaring exchange {ExchangeName} (type: Topic)...", exchangeName);
             await _channel.ExchangeDeclareAsync(exchangeName,
                 ExchangeType.Topic,
                 true,
                 false,
                 cancellationToken: stoppingToken);
-            _logger.LogInformation("Exchange {ExchangeName} declared successfully.", exchangeName);
+            logger.LogInformation("Exchange {ExchangeName} declared successfully.", exchangeName);
 
             // Declare queue
-            _logger.LogInformation("Declaring queue {QueueName}...", queueName);
+            logger.LogInformation("Declaring queue {QueueName}...", queueName);
             QueueDeclareOk queueDeclareResult = await _channel.QueueDeclareAsync(queueName,
                 true,
                 false,
                 false,
                 null,
                 cancellationToken: stoppingToken);
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Queue {QueueName} declared successfully. Current message count: {MessageCount}, Consumer count: {ConsumerCount}",
                 queueName,
                 queueDeclareResult.MessageCount,
@@ -70,7 +59,7 @@ public class MessageConsumerService<T> : BackgroundService where T : class
 
             // Bind queue to exchange
             string routingKey = messageTypeName;
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Binding queue {QueueName} to exchange {ExchangeName} with routing key {RoutingKey}...",
                 queueName,
                 exchangeName,
@@ -80,7 +69,7 @@ public class MessageConsumerService<T> : BackgroundService where T : class
                 routingKey,
                 null,
                 cancellationToken: stoppingToken);
-            _logger.LogInformation("Queue {QueueName} bound to exchange {ExchangeName} with routing key {RoutingKey}.",
+            logger.LogInformation("Queue {QueueName} bound to exchange {ExchangeName} with routing key {RoutingKey}.",
                 queueName,
                 exchangeName,
                 routingKey);
@@ -93,9 +82,9 @@ public class MessageConsumerService<T> : BackgroundService where T : class
 
             // Create async consumer
             MessageHandlerConsumer consumer = new(_channel,
-                _messageHandler,
-                _logger,
-                _activitySource,
+                messageHandler,
+                logger,
+                activitySource,
                 _jsonOptions,
                 messageTypeName,
                 stoppingToken);
@@ -105,14 +94,14 @@ public class MessageConsumerService<T> : BackgroundService where T : class
                 consumer,
                 stoppingToken);
 
-            _logger.LogInformation("Started consuming messages of type {MessageType} from queue {QueueName}",
+            logger.LogInformation("Started consuming messages of type {MessageType} from queue {QueueName}",
                 messageTypeName,
                 queueName);
 
             // Log queue information for diagnostics
             QueueDeclareOk? queueInfo = await _channel.QueueDeclarePassiveAsync(queueName, stoppingToken);
             if (queueInfo != null)
-                _logger.LogInformation(
+                logger.LogInformation(
                     "Queue {QueueName} exists with {MessageCount} messages ready, {ConsumerCount} consumers",
                     queueName,
                     queueInfo.MessageCount,
@@ -123,7 +112,7 @@ public class MessageConsumerService<T> : BackgroundService where T : class
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in message consumer service for {MessageType}", messageTypeName);
+            logger.LogError(ex, "Error in message consumer service for {MessageType}", messageTypeName);
             throw;
         }
     }
@@ -139,35 +128,17 @@ public class MessageConsumerService<T> : BackgroundService where T : class
         await base.StopAsync(cancellationToken);
     }
 
-    private class MessageHandlerConsumer : IAsyncBasicConsumer
+    private class MessageHandlerConsumer(
+        IChannel channel,
+        IMessageConsumer<T> messageHandler,
+        ILogger<MessageConsumerService<T>> logger,
+        ActivitySource? activitySource,
+        JsonSerializerOptions jsonOptions,
+        string messageTypeName,
+        CancellationToken stoppingToken)
+        : IAsyncBasicConsumer
     {
-        private readonly IChannel _channel;
-        private readonly IMessageConsumer<T> _messageHandler;
-        private readonly ILogger<MessageConsumerService<T>> _logger;
-        private readonly ActivitySource? _activitySource;
-        private readonly JsonSerializerOptions _jsonOptions;
-        private readonly string _messageTypeName;
-        private readonly CancellationToken _stoppingToken;
-
-        public MessageHandlerConsumer(
-            IChannel channel,
-            IMessageConsumer<T> messageHandler,
-            ILogger<MessageConsumerService<T>> logger,
-            ActivitySource? activitySource,
-            JsonSerializerOptions jsonOptions,
-            string messageTypeName,
-            CancellationToken stoppingToken)
-        {
-            _channel = channel;
-            _messageHandler = messageHandler;
-            _logger = logger;
-            _activitySource = activitySource;
-            _jsonOptions = jsonOptions;
-            _messageTypeName = messageTypeName;
-            _stoppingToken = stoppingToken;
-        }
-
-        public IChannel Channel => _channel;
+        public IChannel Channel => channel;
 
         public event Func<object, object, CancellationToken, Task>? ConsumerCancelled
         {
@@ -187,10 +158,10 @@ public class MessageConsumerService<T> : BackgroundService where T : class
 
         public Task HandleBasicConsumeOkAsync(string consumerTag, CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Consumer registration confirmed. ConsumerTag: {ConsumerTag}, MessageType: {MessageType}",
                 consumerTag,
-                _messageTypeName);
+                messageTypeName);
             return Task.CompletedTask;
         }
 
@@ -205,7 +176,7 @@ public class MessageConsumerService<T> : BackgroundService where T : class
             CancellationToken cancellationToken = default)
         {
             string? messageId = properties.MessageId ?? Guid.NewGuid().ToString();
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Received message delivery. ConsumerTag: {ConsumerTag}, DeliveryTag: {DeliveryTag}, Exchange: {Exchange}, RoutingKey: {RoutingKey}, MessageId: {MessageId}",
                 consumerTag,
                 deliveryTag,
@@ -214,51 +185,51 @@ public class MessageConsumerService<T> : BackgroundService where T : class
                 messageId);
 
             using Activity? activity =
-                _activitySource?.StartActivity($"MessageConsumer.Consume.{_messageTypeName}");
+                activitySource?.StartActivity($"MessageConsumer.Consume.{messageTypeName}");
             activity?.SetTag("messaging.message_id", messageId);
-            activity?.SetTag("messaging.message_type", _messageTypeName);
+            activity?.SetTag("messaging.message_type", messageTypeName);
 
             try
             {
                 string messageJson = Encoding.UTF8.GetString(body.Span);
-                _logger.LogDebug(
+                logger.LogDebug(
                     "Deserializing message of type {MessageType}. MessageId: {MessageId}, BodyLength: {BodyLength}",
-                    _messageTypeName,
+                    messageTypeName,
                     messageId,
                     body.Length);
 
-                T? message = JsonSerializer.Deserialize<T>(messageJson, _jsonOptions);
+                T? message = JsonSerializer.Deserialize<T>(messageJson, jsonOptions);
                 if (message == null)
                 {
-                    _logger.LogError("Failed to deserialize message of type {MessageType}. MessageId: {MessageId}",
-                        _messageTypeName,
+                    logger.LogError("Failed to deserialize message of type {MessageType}. MessageId: {MessageId}",
+                        messageTypeName,
                         messageId);
                     activity?.SetStatus(ActivityStatusCode.Error, "Deserialization failed");
-                    await _channel.BasicNackAsync(deliveryTag, false, false);
+                    await channel.BasicNackAsync(deliveryTag, false, false);
                     return;
                 }
 
-                _logger.LogDebug("Received message of type {MessageType}. MessageId: {MessageId}",
-                    _messageTypeName,
+                logger.LogDebug("Received message of type {MessageType}. MessageId: {MessageId}",
+                    messageTypeName,
                     messageId);
 
                 int maxRetries = 5;
                 int retryCount = 0;
                 bool success = false;
 
-                while (retryCount < maxRetries && !_stoppingToken.IsCancellationRequested)
+                while (retryCount < maxRetries && !stoppingToken.IsCancellationRequested)
                     try
                     {
-                        await _messageHandler.HandleAsync(message, _stoppingToken);
+                        await messageHandler.HandleAsync(message, stoppingToken);
                         success = true;
                         break;
                     }
                     catch (Exception ex)
                     {
                         retryCount++;
-                        _logger.LogWarning(ex,
+                        logger.LogWarning(ex,
                             "Error processing message of type {MessageType}. Retry {RetryCount}/{MaxRetries}. MessageId: {MessageId}",
-                            _messageTypeName,
+                            messageTypeName,
                             retryCount,
                             maxRetries,
                             messageId);
@@ -266,44 +237,44 @@ public class MessageConsumerService<T> : BackgroundService where T : class
                         if (retryCount < maxRetries)
                         {
                             int delayMs = (int) Math.Pow(2, retryCount) * 1000;
-                            await Task.Delay(delayMs, _stoppingToken);
+                            await Task.Delay(delayMs, stoppingToken);
                         }
                     }
 
                 if (success)
                 {
-                    await _channel.BasicAckAsync(deliveryTag, false);
+                    await channel.BasicAckAsync(deliveryTag, false);
                     activity?.SetStatus(ActivityStatusCode.Ok);
-                    _logger.LogDebug("Successfully processed message of type {MessageType}. MessageId: {MessageId}",
-                        _messageTypeName,
+                    logger.LogDebug("Successfully processed message of type {MessageType}. MessageId: {MessageId}",
+                        messageTypeName,
                         messageId);
                 }
                 else
                 {
-                    _logger.LogError(
+                    logger.LogError(
                         "Failed to process message of type {MessageType} after {MaxRetries} retries. MessageId: {MessageId}",
-                        _messageTypeName,
+                        messageTypeName,
                         maxRetries,
                         messageId);
                     activity?.SetStatus(ActivityStatusCode.Error, "Max retries exceeded");
-                    await _channel.BasicNackAsync(deliveryTag, false, false);
+                    await channel.BasicNackAsync(deliveryTag, false, false);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex,
+                logger.LogError(ex,
                     "Unexpected error processing message of type {MessageType}. MessageId: {MessageId}",
-                    _messageTypeName,
+                    messageTypeName,
                     messageId);
                 activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-                await _channel.BasicNackAsync(deliveryTag, false, true);
+                await channel.BasicNackAsync(deliveryTag, false, true);
             }
         }
 
         public Task HandleChannelShutdownAsync(object channel, RabbitMQ.Client.Events.ShutdownEventArgs reason)
         {
-            _logger.LogWarning("Channel shutdown detected for consumer {MessageType}. Reason: {Reason}",
-                _messageTypeName,
+            logger.LogWarning("Channel shutdown detected for consumer {MessageType}. Reason: {Reason}",
+                messageTypeName,
                 reason?.ToString() ?? "Unknown");
             return Task.CompletedTask;
         }

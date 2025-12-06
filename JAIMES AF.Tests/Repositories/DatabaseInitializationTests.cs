@@ -104,18 +104,11 @@ public class DatabaseInitializationTests
         logMessages.ShouldContain(msg => msg.Contains("Microsoft.EntityFrameworkCore.InMemory"));
     }
 
-    private class TestLoggerProvider : ILoggerProvider
+    private class TestLoggerProvider(List<string> messages) : ILoggerProvider
     {
-        private readonly List<string> _messages;
-
-        public TestLoggerProvider(List<string> messages)
-        {
-            _messages = messages;
-        }
-
         public ILogger CreateLogger(string categoryName)
         {
-            return new TestLogger(_messages);
+            return new TestLogger(messages);
         }
 
         public void Dispose()
@@ -123,15 +116,8 @@ public class DatabaseInitializationTests
         }
     }
 
-    private class TestLogger : ILogger
+    private class TestLogger(List<string> messages) : ILogger
     {
-        private readonly List<string> _messages;
-
-        public TestLogger(List<string> messages)
-        {
-            _messages = messages;
-        }
-
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull
         {
             return null;
@@ -148,7 +134,7 @@ public class DatabaseInitializationTests
             Exception? exception,
             Func<TState, Exception?, string> formatter)
         {
-            _messages.Add(formatter(state, exception));
+            messages.Add(formatter(state, exception));
         }
     }
 }

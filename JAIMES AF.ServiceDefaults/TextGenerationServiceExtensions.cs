@@ -159,20 +159,10 @@ public static class TextGenerationServiceExtensions
     /// <summary>
     /// Simple wrapper that implements IChatClient for Ollama using HTTP API calls.
     /// </summary>
-    private sealed class OllamaChatClientWrapper : IChatClient, IDisposable
+    private sealed class OllamaChatClientWrapper(HttpClient httpClient, string endpoint, string model, ILogger logger)
+        : IChatClient, IDisposable
     {
-        private readonly HttpClient _httpClient;
-        private readonly string _endpoint;
-        private readonly string _model;
-        private readonly ILogger _logger;
-
-        public OllamaChatClientWrapper(HttpClient httpClient, string endpoint, string model, ILogger logger)
-        {
-            _httpClient = httpClient;
-            _endpoint = endpoint.TrimEnd('/');
-            _model = model;
-            _logger = logger;
-        }
+        private readonly string _endpoint = endpoint.TrimEnd('/');
 
         public void Dispose()
         {
@@ -208,17 +198,17 @@ public static class TextGenerationServiceExtensions
 
             OllamaChatRequest request = new()
             {
-                Model = _model,
+                Model = model,
                 Messages = ollamaMessages,
                 Stream = false
             };
 
-            HttpResponseMessage response = await _httpClient.PostAsJsonAsync(requestUrl, request, cancellationToken);
+            HttpResponseMessage response = await httpClient.PostAsJsonAsync(requestUrl, request, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
                 string errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                _logger.LogError("Failed to generate text. Status: {StatusCode}, Response: {Response}",
+                logger.LogError("Failed to generate text. Status: {StatusCode}, Response: {Response}",
                     response.StatusCode,
                     errorContent);
                 response.EnsureSuccessStatusCode();

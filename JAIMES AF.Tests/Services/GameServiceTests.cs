@@ -329,24 +329,17 @@ public class GameServiceTests : IAsyncLifetime
     }
 
     // Test factory that returns the same context instance (for testing)
-    private class TestDbContextFactory : IDbContextFactory<JaimesDbContext>
+    private class TestDbContextFactory(DbContextOptions<JaimesDbContext> options) : IDbContextFactory<JaimesDbContext>
     {
-        private readonly DbContextOptions<JaimesDbContext> _options;
-
-        public TestDbContextFactory(DbContextOptions<JaimesDbContext> options)
-        {
-            _options = options;
-        }
-
         public JaimesDbContext CreateDbContext()
         {
-            return new JaimesDbContext(_options);
+            return new JaimesDbContext(options);
         }
 
         public async Task<JaimesDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
         {
             await Task.CompletedTask;
-            return new JaimesDbContext(_options);
+            return new JaimesDbContext(options);
         }
     }
 

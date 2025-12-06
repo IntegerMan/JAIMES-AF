@@ -3,14 +3,9 @@ namespace MattEland.Jaimes.Workers.DocumentEmbedding.Services;
 /// <summary>
 /// Wrapper around QdrantClient to enable testability and mocking.
 /// </summary>
-public class QdrantClientWrapper : IQdrantClient
+public class QdrantClientWrapper(QdrantClient client) : IQdrantClient
 {
-    private readonly QdrantClient _client;
-
-    public QdrantClientWrapper(QdrantClient client)
-    {
-        _client = client ?? throw new ArgumentNullException(nameof(client));
-    }
+    private readonly QdrantClient _client = client ?? throw new ArgumentNullException(nameof(client));
 
     public async Task<CollectionInfo?> GetCollectionInfoAsync(string collectionName,
         CancellationToken cancellationToken = default)
