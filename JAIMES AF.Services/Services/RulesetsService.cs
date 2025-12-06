@@ -7,10 +7,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MattEland.Jaimes.ServiceLayer.Services;
 
-public class RulesetsService(JaimesDbContext context) : IRulesetsService
+public class RulesetsService(IDbContextFactory<JaimesDbContext> contextFactory) : IRulesetsService
 {
     public async Task<RulesetDto[]> GetRulesetsAsync(CancellationToken cancellationToken = default)
     {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        
         Ruleset[] rulesets = await context.Rulesets
         .AsNoTracking()
         .ToArrayAsync(cancellationToken);
@@ -20,6 +22,8 @@ public class RulesetsService(JaimesDbContext context) : IRulesetsService
 
     public async Task<RulesetDto> GetRulesetAsync(string id, CancellationToken cancellationToken = default)
     {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        
         Ruleset? ruleset = await context.Rulesets
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
@@ -34,6 +38,8 @@ public class RulesetsService(JaimesDbContext context) : IRulesetsService
 
     public async Task<RulesetDto> CreateRulesetAsync(string id, string name, CancellationToken cancellationToken = default)
     {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        
         // Check if ruleset already exists
         bool exists = await context.Rulesets
             .AnyAsync(r => r.Id == id, cancellationToken);
@@ -57,6 +63,8 @@ public class RulesetsService(JaimesDbContext context) : IRulesetsService
 
     public async Task<RulesetDto> UpdateRulesetAsync(string id, string name, CancellationToken cancellationToken = default)
     {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        
         Ruleset? ruleset = await context.Rulesets
             .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
 

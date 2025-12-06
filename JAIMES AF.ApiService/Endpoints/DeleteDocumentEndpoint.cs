@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
-public class DeleteDocumentEndpoint(JaimesDbContext dbContext) : Endpoint<DeleteDocumentRequest, DocumentOperationResponse>
+public class DeleteDocumentEndpoint(IDbContextFactory<JaimesDbContext> dbContextFactory) : Endpoint<DeleteDocumentRequest, DocumentOperationResponse>
 {
     public override void Configure()
     {
@@ -27,6 +27,8 @@ public class DeleteDocumentEndpoint(JaimesDbContext dbContext) : Endpoint<Delete
             return;
         }
 
+        await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(ct);
+        
         // Find and delete metadata
         DocumentMetadata? metadata = await dbContext.DocumentMetadata
             .FirstOrDefaultAsync(x => x.FilePath == req.FilePath, ct);

@@ -53,9 +53,9 @@ public static class RepositoryServiceCollectionExtensions
                 "Database connection string is required. Expected 'postgres-db' or 'DefaultConnection' in ConnectionStrings configuration.");
         }
 
-        // Register DbContext with pooling for direct injection (used by ApiService endpoints and services)
-        // Note: Worker services that need IDbContextFactory should register AddPooledDbContextFactory separately
-        services.AddDbContextPool<JaimesDbContext>(options =>
+        // Register DbContextFactory for all services (API and worker services)
+        // Using AddPooledDbContextFactory provides efficient connection pooling for all contexts
+        services.AddPooledDbContextFactory<JaimesDbContext>(options =>
         {
             options.UseNpgsql(connectionString,
                 dbOpts =>
@@ -72,7 +72,8 @@ public static class RepositoryServiceCollectionExtensions
     public static async Task InitializeDatabaseAsync(this IServiceProvider serviceProvider)
     {
         using IServiceScope scope = serviceProvider.CreateScope();
-        JaimesDbContext context = scope.ServiceProvider.GetRequiredService<JaimesDbContext>();
+        IDbContextFactory<JaimesDbContext> factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<JaimesDbContext>>();
+        using JaimesDbContext context = await factory.CreateDbContextAsync();
         var loggerFactory = scope.ServiceProvider.GetService<ILoggerFactory>();
         var logger = loggerFactory?.CreateLogger("DatabaseInitialization") ??
                      NullLoggerFactory.Instance.CreateLogger("DatabaseInitialization");

@@ -7,10 +7,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MattEland.Jaimes.ServiceLayer.Services;
 
-public class PlayersService(JaimesDbContext context) : IPlayersService
+public class PlayersService(IDbContextFactory<JaimesDbContext> contextFactory) : IPlayersService
 {
     public async Task<PlayerDto[]> GetPlayersAsync(CancellationToken cancellationToken = default)
     {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        
         Player[] players = await context.Players
         .AsNoTracking()
         .ToArrayAsync(cancellationToken);
@@ -20,6 +22,8 @@ public class PlayersService(JaimesDbContext context) : IPlayersService
 
     public async Task<PlayerDto> GetPlayerAsync(string id, CancellationToken cancellationToken = default)
     {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        
         Player? player = await context.Players
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
@@ -34,6 +38,8 @@ public class PlayersService(JaimesDbContext context) : IPlayersService
 
     public async Task<PlayerDto> CreatePlayerAsync(string id, string rulesetId, string? description, string name, CancellationToken cancellationToken = default)
     {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        
         // Check if player already exists
         bool exists = await context.Players
             .AnyAsync(p => p.Id == id, cancellationToken);
@@ -68,6 +74,8 @@ public class PlayersService(JaimesDbContext context) : IPlayersService
 
     public async Task<PlayerDto> UpdatePlayerAsync(string id, string rulesetId, string? description, string name, CancellationToken cancellationToken = default)
     {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        
         Player? player = await context.Players
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
 

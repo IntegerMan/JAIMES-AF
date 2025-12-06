@@ -6,10 +6,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MattEland.Jaimes.ServiceLayer.Services;
 
-public class ScenariosService(JaimesDbContext context) : IScenariosService
+public class ScenariosService(IDbContextFactory<JaimesDbContext> contextFactory) : IScenariosService
 {
     public async Task<ScenarioDto[]> GetScenariosAsync(CancellationToken cancellationToken = default)
     {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        
         Scenario[] scenarios = await context.Scenarios
         .AsNoTracking()
         .ToArrayAsync(cancellationToken);
@@ -27,6 +29,8 @@ public class ScenariosService(JaimesDbContext context) : IScenariosService
 
     public async Task<ScenarioDto> GetScenarioAsync(string id, CancellationToken cancellationToken = default)
     {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        
         Scenario? scenario = await context.Scenarios
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
@@ -49,6 +53,8 @@ public class ScenariosService(JaimesDbContext context) : IScenariosService
 
     public async Task<ScenarioDto> CreateScenarioAsync(string id, string rulesetId, string? description, string name, string systemPrompt, string newGameInstructions, CancellationToken cancellationToken = default)
     {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        
         // Check if scenario already exists
         bool exists = await context.Scenarios
             .AnyAsync(s => s.Id == id, cancellationToken);
@@ -93,6 +99,8 @@ public class ScenariosService(JaimesDbContext context) : IScenariosService
 
     public async Task<ScenarioDto> UpdateScenarioAsync(string id, string rulesetId, string? description, string name, string systemPrompt, string newGameInstructions, CancellationToken cancellationToken = default)
     {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        
         Scenario? scenario = await context.Scenarios
             .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
 

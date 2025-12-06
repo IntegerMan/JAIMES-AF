@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
-public class ListDocumentsEndpoint(JaimesDbContext dbContext) : Ep.NoReq.Res<DocumentStatusResponse>
+public class ListDocumentsEndpoint(IDbContextFactory<JaimesDbContext> dbContextFactory) : Ep.NoReq.Res<DocumentStatusResponse>
 {
     public override void Configure()
     {
@@ -22,6 +22,8 @@ public class ListDocumentsEndpoint(JaimesDbContext dbContext) : Ep.NoReq.Res<Doc
     {
         Logger.LogInformation("Listing all documents with processing status");
 
+        await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(ct);
+        
         // Get all detected documents
         List<DocumentMetadata> allMetadata = await dbContext.DocumentMetadata.ToListAsync(ct);
         Logger.LogInformation("Found {Count} detected documents in DocumentMetadata table", allMetadata.Count);

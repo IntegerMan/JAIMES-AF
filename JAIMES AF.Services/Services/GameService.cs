@@ -9,10 +9,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MattEland.Jaimes.ServiceLayer.Services;
 
-public class GameService(JaimesDbContext context, IChatService chatService, IChatHistoryService chatHistoryService) : IGameService
+public class GameService(IDbContextFactory<JaimesDbContext> contextFactory, IChatService chatService, IChatHistoryService chatHistoryService) : IGameService
 {
     public async Task<GameDto> CreateGameAsync(string scenarioId, string playerId, CancellationToken cancellationToken = default)
     {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        
         // Validate that the player exists
         var player = await context.Players.FindAsync([playerId], cancellationToken);
         if (player == null)
@@ -90,6 +92,8 @@ public class GameService(JaimesDbContext context, IChatService chatService, ICha
 
     public async Task<GameDto?> GetGameAsync(Guid gameId, CancellationToken cancellationToken = default)
     {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        
         Game? game = await context.Games
             .AsNoTracking()
             .Include(g => g.Messages).ThenInclude(message => message.Player)
@@ -108,6 +112,8 @@ public class GameService(JaimesDbContext context, IChatService chatService, ICha
 
     public async Task<GameDto[]> GetGamesAsync(CancellationToken cancellationToken = default)
     {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        
         Game[] games = await context.Games
             .AsNoTracking()
             .Include(g => g.Scenario)
@@ -120,12 +126,23 @@ public class GameService(JaimesDbContext context, IChatService chatService, ICha
 
     public async Task<JaimesChatResponse> ProcessChatMessageAsync(Guid gameId, string message, CancellationToken cancellationToken = default)
     {
-        // Get the game
-        GameDto? gameDto = await GetGameAsync(gameId, cancellationToken);
-        if (gameDto == null)
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        
+        // Get the game (need to query directly since we're in a different context)
+        Game? game = await context.Games
+            .AsNoTracking()
+            .Include(g => g.Messages).ThenInclude(message => message.Player)
+            .Include(g => g.Scenario)
+            .Include(g => g.Player)
+            .Include(g => g.Ruleset)
+            .FirstOrDefaultAsync(g => g.Id == gameId, cancellationToken);
+        
+        if (game == null)
         {
             throw new ArgumentException($"Game '{gameId}' does not exist.", nameof(gameId));
         }
+
+        GameDto gameDto = game.ToDto();
 
         // Get AI response from chat service
         JaimesChatResponse chatResponse = await chatService.ProcessChatMessageAsync(gameDto, message, cancellationToken);
@@ -179,6 +196,8 @@ public class GameService(JaimesDbContext context, IChatService chatService, ICha
 
     public async Task DeleteGameAsync(Guid gameId, CancellationToken cancellationToken = default)
     {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        
         Game? game = await context.Games.FindAsync([gameId], cancellationToken);
         if (game == null)
         {

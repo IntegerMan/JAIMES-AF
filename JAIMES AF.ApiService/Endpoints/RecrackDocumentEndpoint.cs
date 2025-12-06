@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
-public class RecrackDocumentEndpoint(IMessagePublisher messagePublisher, JaimesDbContext dbContext) : Endpoint<RecrackDocumentRequest, DocumentOperationResponse>
+public class RecrackDocumentEndpoint(IMessagePublisher messagePublisher, IDbContextFactory<JaimesDbContext> dbContextFactory) : Endpoint<RecrackDocumentRequest, DocumentOperationResponse>
 {
     public override void Configure()
     {
@@ -34,6 +34,7 @@ public class RecrackDocumentEndpoint(IMessagePublisher messagePublisher, JaimesD
         string rulesetId = "default";
         string documentKind = DocumentKinds.Sourcebook;
         
+        await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(ct);
         DocumentMetadata? metadata = await dbContext.DocumentMetadata
             .FirstOrDefaultAsync(x => x.FilePath == req.FilePath, ct);
         
