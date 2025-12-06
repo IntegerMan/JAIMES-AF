@@ -293,7 +293,7 @@ public class DocumentEmbeddingServiceTests
     private sealed class DocumentEmbeddingServiceTestContext : IDisposable
     {
         public Mock<IEmbeddingGenerator<string, Embedding<float>>> EmbeddingGeneratorMock { get; }
-        public Mock<IQdrantClient> QdrantClientMock { get; }
+        public Mock<IJaimesEmbeddingClient> QdrantClientMock { get; }
         public Mock<ILogger<DocumentEmbeddingService>> LoggerMock { get; }
         public DocumentEmbeddingService Service { get; }
         public JaimesDbContext DbContext { get; }
@@ -306,7 +306,7 @@ public class DocumentEmbeddingServiceTests
         public DocumentEmbeddingServiceTestContext()
         {
             EmbeddingGeneratorMock = new Mock<IEmbeddingGenerator<string, Embedding<float>>>();
-            QdrantClientMock = new Mock<IQdrantClient>();
+            QdrantClientMock = new Mock<IJaimesEmbeddingClient>();
             LoggerMock = new Mock<ILogger<DocumentEmbeddingService>>();
             _activitySource = new ActivitySource($"DocumentEmbeddingTests-{Guid.NewGuid()}");
 

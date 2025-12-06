@@ -78,7 +78,7 @@ builder.Services.AddEmbeddingGenerator(
     ollamaModel);
 
 // Register QdrantClient wrapper
-builder.Services.AddSingleton<IQdrantClient>(sp =>
+builder.Services.AddSingleton<IJaimesEmbeddingClient>(sp =>
 {
     QdrantClient qdrantClient = sp.GetRequiredService<QdrantClient>();
     return new QdrantClientWrapper(qdrantClient);
@@ -90,7 +90,7 @@ builder.Services.AddSingleton<IDocumentEmbeddingService>(sp =>
     IDbContextFactory<JaimesDbContext> dbContextFactory = sp.GetRequiredService<IDbContextFactory<JaimesDbContext>>();
     IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator =
         sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
-    IQdrantClient qdrantClient = sp.GetRequiredService<IQdrantClient>();
+    IJaimesEmbeddingClient qdrantClient = sp.GetRequiredService<IJaimesEmbeddingClient>();
     ILogger<DocumentEmbeddingService> logger = sp.GetRequiredService<ILogger<DocumentEmbeddingService>>();
     ActivitySource activitySource = sp.GetRequiredService<ActivitySource>();
 

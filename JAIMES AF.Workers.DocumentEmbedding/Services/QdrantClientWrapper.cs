@@ -3,7 +3,7 @@ namespace MattEland.Jaimes.Workers.DocumentEmbedding.Services;
 /// <summary>
 /// Wrapper around QdrantClient to enable testability and mocking.
 /// </summary>
-public class QdrantClientWrapper(QdrantClient client) : IQdrantClient
+public class QdrantClientWrapper(QdrantClient client) : IJaimesEmbeddingClient
 {
     private readonly QdrantClient _client = client ?? throw new ArgumentNullException(nameof(client));
 

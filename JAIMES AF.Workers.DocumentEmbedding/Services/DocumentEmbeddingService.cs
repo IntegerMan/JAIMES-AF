@@ -6,7 +6,7 @@ public class DocumentEmbeddingService(
     IDbContextFactory<JaimesDbContext> dbContextFactory,
     IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator,
     DocumentEmbeddingOptions options,
-    IQdrantClient qdrantClient,
+    IJaimesEmbeddingClient qdrantClient,
     ILogger<DocumentEmbeddingService> logger,
     ActivitySource activitySource) : IDocumentEmbeddingService
 {
