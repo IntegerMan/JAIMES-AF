@@ -77,6 +77,42 @@ public class RulesSearchService : IRulesSearchService
                 query,
                 rulesetId);
 
+            // Store search results asynchronously if requested
+            if (storeResults && _storageService != null)
+            {
+                string? filterJson = null;
+                if (!string.IsNullOrWhiteSpace(rulesetId))
+                {
+                    Dictionary<string, string> filter = new()
+                    {
+                        {"rulesetId", rulesetId}
+                    };
+                    filterJson = JsonSerializer.Serialize(filter);
+                }
+
+                // Convert RuleSearchResult to SearchRuleResult for storage
+                SearchRuleResult[] searchResults = results.Select(r => new SearchRuleResult
+                    {
+                        Text = string.IsNullOrWhiteSpace(r.Title)
+                            ? r.Content
+                            : $"{r.Title}\n\n{r.Content}",
+                        DocumentId = r.RuleId, // Use RuleId as DocumentId since we don't have document info
+                        DocumentName = string.IsNullOrWhiteSpace(r.Title) ? "Rule" : r.Title,
+                        RulesetId = r.RulesetId,
+                        EmbeddingId = r.RuleId, // Use RuleId as EmbeddingId since we don't have the actual embedding ID
+                        ChunkId = r.RuleId, // Use RuleId as ChunkId
+                        Relevancy = r.Score // Convert float to double
+                    })
+                    .ToArray();
+
+                _storageService.EnqueueSearchResults(
+                    query,
+                    rulesetId,
+                    "rulesets", // Collection name for rules search
+                    filterJson,
+                    searchResults);
+            }
+
             // Combine results into a single answer
             List<string> resultTexts = results.Select(r =>
                     string.IsNullOrWhiteSpace(r.Title)
