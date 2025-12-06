@@ -101,7 +101,7 @@ public class RulesSearchService : IRulesSearchService
         }
     }
 
-    public async Task<SearchRulesResponse> SearchRulesDetailedAsync(string? rulesetId, string query, CancellationToken cancellationToken = default)
+    public async Task<SearchRulesResponse> SearchRulesDetailedAsync(string? rulesetId, string query, bool storeResults = true, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(query))
         {

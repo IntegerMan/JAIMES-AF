@@ -41,7 +41,7 @@ public class QdrantRulesStore(
                                        ex.StatusCode == StatusCode.Internal)
         {
             // Collection doesn't exist (NotFound) or server error (might be not ready)
-            if (ex.StatusCode == Grpc.Core.StatusCode.NotFound)
+            if (ex.StatusCode == StatusCode.NotFound)
             {
                 logger.LogInformation("Collection {CollectionName} does not exist, creating it", CollectionName);
             }
