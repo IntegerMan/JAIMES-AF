@@ -171,7 +171,18 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             // Configure Embedding property for different database providers
             // For PostgreSQL: pgvector extension handles Vector natively via the [Column(TypeName = "vector")] attribute
             // For other providers (like in-memory): use a value converter to store as byte array
-            string? providerName = Database.ProviderName;
+            // Check if database is available (may not be at design-time)
+            string providerName;
+            try
+            {
+                providerName = Database.ProviderName ?? "Npgsql.EntityFrameworkCore.PostgreSQL";
+            }
+            catch
+            {
+                // At design-time or when database is not initialized, assume PostgreSQL
+                providerName = "Npgsql.EntityFrameworkCore.PostgreSQL";
+            }
+
             if (!string.Equals(providerName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
             {
                 // For non-PostgreSQL providers (like in-memory), convert Vector to/from byte array
@@ -272,9 +283,11 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
     /// <summary>
     /// Converts a Vector to a byte array for storage in non-PostgreSQL databases.
     /// </summary>
-    private static byte[]? ConvertVectorToBytes(Vector vector)
+    private static byte[]? ConvertVectorToBytes(Vector? vector)
     {
+#pragma warning disable CS8604 // Possible null reference argument - Vector? is a nullable struct, null check is valid
         if (vector == null) return null;
+#pragma warning restore CS8604
 
         // Get the float array from the vector
         float[] values = vector.ToArray();

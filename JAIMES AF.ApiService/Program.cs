@@ -5,6 +5,7 @@ using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.Services;
 using MattEland.Jaimes.ServiceDefinitions.Configuration;
 using MattEland.Jaimes.Workers.Services;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using RabbitMQ.Client;
 
 namespace MattEland.Jaimes.ApiService;
@@ -68,15 +69,6 @@ public class Program
         // Register QdrantRulesStore
         builder.Services.AddSingleton<IQdrantRulesStore, QdrantRulesStore>();
 
-        // Register RAG search storage service (BackgroundService with async queue)
-        // Register as both the interface and as a hosted service (singleton)
-        // BackgroundService implements IHostedService and must be registered as singleton
-        // AddHostedService<T> automatically registers T as a singleton, so we register it first
-        // Then register the interface to resolve to the same instance
-        builder.Services.AddHostedService<RagSearchStorageService>();
-        builder.Services.AddSingleton<IRagSearchStorageService>(provider =>
-            provider.GetRequiredService<RagSearchStorageService>());
-
         // Register embedding generator for rules (supports Ollama, Azure OpenAI, and OpenAI)
         // Get Ollama endpoint and model from Aspire connection strings (for default Ollama provider)
         // Get the embedding model connection string provided by Aspire via .WithReference(embedModel)
@@ -93,6 +85,32 @@ public class Program
         // Add Jaimes repositories and services
         builder.Services.AddJaimesRepositories(builder.Configuration);
         builder.Services.AddJaimesServices();
+
+        // CRITICAL: Remove any scoped IHostedService registrations that might have been added by service scanning
+        // This must happen AFTER AddJaimesServices() in case it scans and registers something as scoped
+        List<ServiceDescriptor> scopedHostedServices = builder.Services
+            .Where(d => d.ServiceType == typeof(IHostedService) && d.Lifetime == ServiceLifetime.Scoped)
+            .ToList();
+        foreach (ServiceDescriptor descriptor in scopedHostedServices)
+        {
+            builder.Services.Remove(descriptor);
+        }
+
+        // CRITICAL: Ensure RagSearchStorageService is registered as singleton (remove any scoped registrations)
+        // Remove ALL registrations of RagSearchStorageService (in case it was registered as scoped by scanning)
+        builder.Services.RemoveAll(typeof(RagSearchStorageService));
+        builder.Services.AddSingleton<RagSearchStorageService>();
+        
+        // Register as IHostedService - must be singleton for host to resolve from root provider
+        builder.Services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<RagSearchStorageService>());
+        
+        // Register the interface to resolve to the same instance
+        builder.Services.RemoveAll(typeof(IRagSearchStorageService));
+        builder.Services.AddSingleton<IRagSearchStorageService>(provider =>
+            provider.GetRequiredService<RagSearchStorageService>());
+
+        // Register Agents services explicitly (not auto-registered)
+        builder.Services.AddScoped<IRulesSearchService, RulesSearchService>();
 
         // Register DatabaseInitializer for DI
         builder.Services.AddSingleton<DatabaseInitializer>();

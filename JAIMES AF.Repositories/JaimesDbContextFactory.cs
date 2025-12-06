@@ -11,7 +11,8 @@ public class JaimesDbContextFactory : IDesignTimeDbContextFactory<JaimesDbContex
         // For design-time, use a default PostgreSQL connection string
         // This will be overridden at runtime by the actual configuration
         DbContextOptionsBuilder<JaimesDbContext> optionsBuilder = new();
-        optionsBuilder.UseNpgsql("Host=localhost;Database=postgres;Username=postgres;Password=postgres");
+        optionsBuilder.UseNpgsql("Host=localhost;Database=postgres;Username=postgres;Password=postgres",
+            dbOpts => dbOpts.UseVector()); // Enable pgvector support for design-time
 
         return new JaimesDbContext(optionsBuilder.Options);
     }
