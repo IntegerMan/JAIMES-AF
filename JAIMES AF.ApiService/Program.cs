@@ -74,8 +74,12 @@ public class Program
         builder.Services.AddSingleton<IQdrantRulesStore, QdrantRulesStore>();
         
         // Register RAG search storage service (BackgroundService with async queue)
-        builder.Services.AddSingleton<IRagSearchStorageService, RagSearchStorageService>();
-        builder.Services.AddHostedService(provider => (RagSearchStorageService)provider.GetRequiredService<IRagSearchStorageService>());
+        // Register as both the interface and as a hosted service (singleton)
+        // BackgroundService implements IHostedService and must be registered as singleton
+        // AddHostedService<T> automatically registers T as a singleton, so we register it first
+        // Then register the interface to resolve to the same instance
+        builder.Services.AddHostedService<RagSearchStorageService>();
+        builder.Services.AddSingleton<IRagSearchStorageService>(provider => provider.GetRequiredService<RagSearchStorageService>());
         
         // Register embedding generator for rules (supports Ollama, Azure OpenAI, and OpenAI)
         // Get Ollama endpoint and model from Aspire connection strings (for default Ollama provider)

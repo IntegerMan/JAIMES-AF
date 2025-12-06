@@ -1,9 +1,11 @@
+using MattEland.Jaimes.Agents.Services;
 using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Moq;
 using RabbitMQ.Client;
 using ApiServiceProgram = MattEland.Jaimes.ApiService.Program;
@@ -151,6 +153,40 @@ public abstract class EndpointTestBase : IAsyncLifetime
                     
                     Mock<IChatHistoryService> mockChatHistoryService = new();
                     services.AddSingleton(mockChatHistoryService.Object);
+                    
+                    // Remove ALL hosted services to avoid scoped resolution issues in tests
+                    // Hosted services are background workers that aren't needed for endpoint testing
+                    // Remove all IHostedService registrations (including factory-based ones)
+                    // Also remove RagSearchStorageService registration if it exists, to prevent conflicts
+                    // Use a while loop to ensure we remove all instances, as services.Remove() only removes the first match
+                    while (true)
+                    {
+                        ServiceDescriptor? hostedService = services.FirstOrDefault(d => d.ServiceType == typeof(IHostedService));
+                        if (hostedService == null)
+                        {
+                            break;
+                        }
+                        services.Remove(hostedService);
+                    }
+                    
+                    // Also remove RagSearchStorageService as a concrete type if registered separately
+                    // This prevents it from being registered as a hosted service
+                    ServiceDescriptor? ragService = services.FirstOrDefault(d => 
+                        d.ImplementationType == typeof(RagSearchStorageService) && 
+                        d.ServiceType == typeof(RagSearchStorageService));
+                    if (ragService != null)
+                    {
+                        services.Remove(ragService);
+                    }
+                    
+                    // Ensure IRagSearchStorageService has a mock implementation for tests
+                    ServiceDescriptor? ragInterface = services.FirstOrDefault(d => d.ServiceType == typeof(IRagSearchStorageService));
+                    if (ragInterface != null)
+                    {
+                        services.Remove(ragInterface);
+                    }
+                    Mock<IRagSearchStorageService> mockRagStorage = new();
+                    services.AddSingleton(mockRagStorage.Object);
                 });
             });
 
