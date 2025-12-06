@@ -1,19 +1,3 @@
-using System.Diagnostics;
-using MattEland.Jaimes.ServiceDefaults;
-using MattEland.Jaimes.ServiceDefinitions.Configuration;
-using MattEland.Jaimes.ServiceDefinitions.Messages;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.Workers.DocumentChunking.Consumers;
-using MattEland.Jaimes.Workers.Services;
-using MattEland.Jaimes.Repositories;
-using Microsoft.Extensions.AI;
-using OllamaSharp;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
-using RabbitMQ.Client;
-using SemanticChunkerNET;
-
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
 // Configure OpenTelemetry for Aspire telemetry
@@ -35,16 +19,17 @@ builder.Logging.AddFilter("System.Net.Http.HttpClient.Default.ClientHandler", Lo
 
 // Load configuration
 builder.Configuration
- .SetBasePath(Directory.GetCurrentDirectory())
- .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
- .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: false)
- .AddUserSecrets(typeof(Program).Assembly)
- .AddEnvironmentVariables()
- .AddCommandLine(args);
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", false, false)
+    .AddJsonFile("appsettings.Development.json", true, false)
+    .AddUserSecrets(typeof(Program).Assembly)
+    .AddEnvironmentVariables()
+    .AddCommandLine(args);
 
 // Bind configuration
 DocumentChunkingOptions options = builder.Configuration.GetSection("DocumentChunking").Get<DocumentChunkingOptions>()
- ?? throw new InvalidOperationException("DocumentChunking configuration section is required");
+                                  ?? throw new InvalidOperationException(
+                                      "DocumentChunking configuration section is required");
 
 builder.Services.AddSingleton(options);
 
@@ -52,13 +37,15 @@ builder.Services.AddSingleton(options);
 builder.Services.AddJaimesRepositories(builder.Configuration);
 
 // Configure Qdrant client using centralized extension method
-builder.Services.AddQdrantClient(builder.Configuration, new QdrantExtensions.QdrantConfigurationOptions
-{
-    SectionPrefix = "DocumentChunking",
-    ConnectionStringName = "qdrant-embeddings",
-    RequireConfiguration = true,
-    DefaultApiKey = null // Don't default to "qdrant"
-}, out QdrantExtensions.QdrantConnectionConfig qdrantConfig);
+builder.Services.AddQdrantClient(builder.Configuration,
+    new QdrantExtensions.QdrantConfigurationOptions
+    {
+        SectionPrefix = "DocumentChunking",
+        ConnectionStringName = "qdrant-embeddings",
+        RequireConfiguration = true,
+        DefaultApiKey = null // Don't default to "qdrant"
+    },
+    out QdrantExtensions.QdrantConnectionConfig qdrantConfig);
 
 // Register IMessagePublisher for queuing chunks without embeddings
 builder.Services.AddSingleton<IMessagePublisher, MessagePublisher>();
@@ -77,15 +64,14 @@ if (useSemanticChunker)
     // Configure embedding service inputs
     string? explicitEndpoint = builder.Configuration["DocumentChunking:OllamaEndpoint"]?.TrimEnd('/');
     string? ollamaConnectionString = builder.Configuration.GetConnectionString("embedModel");
-    (string? ollamaEndpoint, string? ollamaModel) = EmbeddingServiceExtensions.ParseOllamaConnectionString(ollamaConnectionString);
+    (string? ollamaEndpoint, string? ollamaModel) =
+        EmbeddingServiceExtensions.ParseOllamaConnectionString(ollamaConnectionString);
     ollamaEndpoint = explicitEndpoint ?? ollamaEndpoint;
 
     if (string.IsNullOrWhiteSpace(ollamaEndpoint))
-    {
         throw new InvalidOperationException(
-        "Ollama endpoint is not configured. " +
-        "Expected 'DocumentChunking:OllamaEndpoint' from AppHost or connection string from model reference.");
-    }
+            "Ollama endpoint is not configured. " +
+            "Expected 'DocumentChunking:OllamaEndpoint' from AppHost or connection string from model reference.");
 
     // Use model from connection string, otherwise fall back to config
     ollamaModel ??= options.OllamaModel;
@@ -98,12 +84,10 @@ if (useSemanticChunker)
 
         // Use model name from config or Aspire if available
         if (string.IsNullOrWhiteSpace(ollamaModel))
-        {
             throw new InvalidOperationException(
-         "Ollama model name is not configured. " +
-         "Ensure the model is specified in EmbeddingModel:Name, DocumentChunking:OllamaModel, " +
-         "or provided via Aspire connection string.");
-        }
+                "Ollama model name is not configured. " +
+                "Ensure the model is specified in EmbeddingModel:Name, DocumentChunking:OllamaModel, " +
+                "or provided via Aspire connection string.");
 
         OllamaApiClient client = new(ollamaUri, ollamaModel);
         return client;
@@ -113,61 +97,63 @@ if (useSemanticChunker)
     builder.Services.AddSingleton<SemanticChunker>(sp =>
     {
         IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator =
-     sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>(
-     );
+            sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>(
+            );
 
-        BreakpointThresholdType thresholdType = Enum.Parse<BreakpointThresholdType>(options.ThresholdType, ignoreCase: true);
+        BreakpointThresholdType thresholdType = Enum.Parse<BreakpointThresholdType>(options.ThresholdType, true);
 
         // Create SemanticChunker with all available configuration options
         // Note: SemanticChunker.NET may not support all parameters - adjust based on actual API
         SemanticChunker chunker = new(
-     embeddingGenerator,
-     tokenLimit: options.TokenLimit,
-     thresholdType: thresholdType,
-     bufferSize: options.BufferSize,
-     thresholdAmount: options.ThresholdAmount,
-     targetChunkCount: options.TargetChunkCount);
+            embeddingGenerator,
+            options.TokenLimit,
+            thresholdType: thresholdType,
+            bufferSize: options.BufferSize,
+            thresholdAmount: options.ThresholdAmount,
+            targetChunkCount: options.TargetChunkCount);
 
         return chunker;
     });
-    builder.Services.AddSingleton<ITextChunkingStrategy, MattEland.Jaimes.Workers.Services.SemanticChunkerStrategy>();
+    builder.Services.AddSingleton<ITextChunkingStrategy, SemanticChunkerStrategy>();
 
     // Capture for logging
     logOllamaEndpoint = ollamaEndpoint;
     logOllamaModel = ollamaModel;
-} else if (useSemanticSlicer)
+}
+else if (useSemanticSlicer)
 {
     // Register SemanticSlicer strategy (does not require embedding model)
-    builder.Services.AddSingleton<ITextChunkingStrategy, MattEland.Jaimes.Workers.Services.SemanticSlicerStrategy>();
-} else
+    builder.Services.AddSingleton<ITextChunkingStrategy, SemanticSlicerStrategy>();
+}
+else
 {
     throw new InvalidOperationException(
-    $"Invalid chunking strategy '{chunkingStrategy}'. " +
-    "Valid options are 'SemanticChunker' or 'SemanticSlicer'.");
+        $"Invalid chunking strategy '{chunkingStrategy}'. " +
+        "Valid options are 'SemanticChunker' or 'SemanticSlicer'.");
 }
 
 // Register services
-builder.Services.AddSingleton<IQdrantEmbeddingStore, MattEland.Jaimes.Workers.Services.QdrantEmbeddingStore>();
-builder.Services.AddSingleton<IDocumentChunkingService, MattEland.Jaimes.Workers.Services.DocumentChunkingService>();
+builder.Services.AddSingleton<IQdrantEmbeddingStore, QdrantEmbeddingStore>();
+builder.Services.AddSingleton<IDocumentChunkingService, DocumentChunkingService>();
 
 // Configure OpenTelemetry ActivitySource (register before MessageConsumerService to ensure it's available for injection)
 const string activitySourceName = "Jaimes.Workers.DocumentChunking";
 ActivitySource activitySource = new(activitySourceName);
 
 builder.Services.AddOpenTelemetry()
- .ConfigureResource(resource => resource
- .AddService(activitySourceName))
- .WithMetrics(metrics =>
- {
-     metrics.AddRuntimeInstrumentation()
-     .AddHttpClientInstrumentation()
-     .AddMeter(activitySourceName);
- })
- .WithTracing(tracing =>
- {
-     tracing.AddSource(activitySourceName)
-     .AddHttpClientInstrumentation();
- });
+    .ConfigureResource(resource => resource
+        .AddService(activitySourceName))
+    .WithMetrics(metrics =>
+    {
+        metrics.AddRuntimeInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddMeter(activitySourceName);
+    })
+    .WithTracing(tracing =>
+    {
+        tracing.AddSource(activitySourceName)
+            .AddHttpClientInstrumentation();
+    });
 
 // Register ActivitySource for dependency injection (before MessageConsumerService)
 builder.Services.AddSingleton(activitySource);
@@ -195,12 +181,13 @@ logger.LogInformation("Chunking Strategy: {Strategy}", chunkingStrategy);
 if (useSemanticChunker)
 {
     logger.LogInformation("Ollama Endpoint: {Endpoint}", logOllamaEndpoint);
-    if (!string.IsNullOrWhiteSpace(logOllamaModel))
-    {
-        logger.LogInformation("Ollama Model: {Model}", logOllamaModel);
-    }
+    if (!string.IsNullOrWhiteSpace(logOllamaModel)) logger.LogInformation("Ollama Model: {Model}", logOllamaModel);
 }
-logger.LogInformation("Qdrant: {Host}:{Port} (HTTPS: {UseHttps})", qdrantConfig.Host, qdrantConfig.Port, qdrantConfig.UseHttps);
+
+logger.LogInformation("Qdrant: {Host}:{Port} (HTTPS: {UseHttps})",
+    qdrantConfig.Host,
+    qdrantConfig.Port,
+    qdrantConfig.UseHttps);
 logger.LogInformation("Worker ready and listening for DocumentReadyForChunkingMessage on queue");
 
 // Ensure Qdrant collection exists on startup
@@ -211,17 +198,18 @@ try
     {
         await qdrantStore.EnsureCollectionExistsAsync();
         logger.LogInformation("Qdrant collection verified/created successfully");
-    } else
+    }
+    else
     {
-        logger.LogInformation("Skipping Qdrant collection creation on startup: no embedding generator is registered. It will be created when embeddings are generated.");
+        logger.LogInformation(
+            "Skipping Qdrant collection creation on startup: no embedding generator is registered. It will be created when embeddings are generated.");
     }
 }
 catch (Exception ex)
 {
     logger.LogWarning(ex,
-    "Failed to ensure Qdrant collection exists on startup (gRPC might not be fully ready yet). " +
-    "Collection will be created when processing the first document.");
+        "Failed to ensure Qdrant collection exists on startup (gRPC might not be fully ready yet). " +
+        "Collection will be created when processing the first document.");
 }
 
 await host.RunAsync();
-

@@ -1,12 +1,3 @@
-using System.Diagnostics;
-using MattEland.Jaimes.DocumentProcessing.Services;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.ServiceDefinitions.Messages;
-using MattEland.Jaimes.Workers.DocumentChangeDetector.Configuration;
-using MattEland.Jaimes.Repositories;
-using MattEland.Jaimes.Repositories.Entities;
-using Microsoft.EntityFrameworkCore;
-
 namespace MattEland.Jaimes.Workers.DocumentChangeDetector.Services;
 
 public class DocumentChangeDetectorService(
@@ -18,14 +9,13 @@ public class DocumentChangeDetectorService(
     ActivitySource activitySource,
     DocumentChangeDetectorOptions options) : IDocumentChangeDetectorService
 {
-    public async Task<DocumentScanSummary> ScanAndEnqueueAsync(string contentDirectory, CancellationToken cancellationToken = default)
+    public async Task<DocumentScanSummary> ScanAndEnqueueAsync(string contentDirectory,
+        CancellationToken cancellationToken = default)
     {
         DocumentScanSummary summary = new();
-        
+
         if (string.IsNullOrWhiteSpace(contentDirectory))
-        {
             throw new InvalidOperationException("ContentDirectory is required for document scanning.");
-        }
 
         if (!Directory.Exists(contentDirectory))
         {
@@ -63,7 +53,10 @@ public class DocumentChangeDetectorService(
 
         logger.LogInformation(
             "Document scan completed. Scanned: {FilesScanned}, Enqueued: {FilesEnqueued}, Unchanged: {FilesUnchanged}, Errors: {Errors}",
-            summary.FilesScanned, summary.FilesEnqueued, summary.FilesUnchanged, summary.Errors);
+            summary.FilesScanned,
+            summary.FilesEnqueued,
+            summary.FilesUnchanged,
+            summary.Errors);
 
         return summary;
     }
@@ -78,10 +71,7 @@ public class DocumentChangeDetectorService(
 
         foreach (string filePath in files)
         {
-            if (cancellationToken.IsCancellationRequested)
-            {
-                break;
-            }
+            if (cancellationToken.IsCancellationRequested) break;
 
             summary.FilesScanned++;
 
@@ -102,7 +92,7 @@ public class DocumentChangeDetectorService(
                 {
                     // File hash matches - check if document was successfully cracked
                     bool isCracked = await IsDocumentCrackedAsync(filePath, cancellationToken);
-                    
+
                     if (isCracked)
                     {
                         // File unchanged and successfully cracked, update last scanned time
@@ -120,7 +110,10 @@ public class DocumentChangeDetectorService(
                         await EnqueueDocumentAsync(filePath, relativeDirectory, cancellationToken);
                         await UpdateMetadataAsync(filePath, currentHash, relativeDirectory, cancellationToken);
                         summary.FilesEnqueued++;
-                        logger.LogInformation("File hash unchanged but not cracked, enqueuing for retry: {FilePath} (Hash: {Hash})", filePath, currentHash);
+                        logger.LogInformation(
+                            "File hash unchanged but not cracked, enqueuing for retry: {FilePath} (Hash: {Hash})",
+                            filePath,
+                            currentHash);
                         fileActivity?.SetTag("scanner.status", "retry_uncracked");
                     }
                 }
@@ -131,7 +124,9 @@ public class DocumentChangeDetectorService(
                     await EnqueueDocumentAsync(filePath, relativeDirectory, cancellationToken);
                     await UpdateMetadataAsync(filePath, currentHash, relativeDirectory, cancellationToken);
                     summary.FilesEnqueued++;
-                    logger.LogInformation("File enqueued for processing: {FilePath} (Hash: {Hash})", filePath, currentHash);
+                    logger.LogInformation("File enqueued for processing: {FilePath} (Hash: {Hash})",
+                        filePath,
+                        currentHash);
                     fileActivity?.SetTag("scanner.status", storedMetadata == null ? "new" : "changed");
                 }
 
@@ -151,7 +146,7 @@ public class DocumentChangeDetectorService(
         CancellationToken cancellationToken)
     {
         await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-        
+
         return await dbContext.DocumentMetadata
             .FirstOrDefaultAsync(x => x.FilePath == filePath, cancellationToken);
     }
@@ -161,7 +156,7 @@ public class DocumentChangeDetectorService(
         CancellationToken cancellationToken)
     {
         await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-        
+
         CrackedDocument? crackedDocument = await dbContext.CrackedDocuments
             .FirstOrDefaultAsync(x => x.FilePath == filePath, cancellationToken);
         return crackedDocument != null && !string.IsNullOrWhiteSpace(crackedDocument.Content);
@@ -174,7 +169,7 @@ public class DocumentChangeDetectorService(
         CancellationToken cancellationToken)
     {
         await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-        
+
         string rulesetId = DocumentMetadataExtractor.ExtractRulesetId(relativeDirectory);
         string documentKind = DocumentMetadataExtractor.DetermineDocumentKind(relativeDirectory);
 
@@ -226,16 +221,10 @@ public class DocumentChangeDetectorService(
 
     private static string? GetRelativeDirectory(string filePath, string rootDirectory)
     {
-        if (!Path.IsPathRooted(filePath) || !Path.IsPathRooted(rootDirectory))
-        {
-            return null;
-        }
+        if (!Path.IsPathRooted(filePath) || !Path.IsPathRooted(rootDirectory)) return null;
 
         string? directory = Path.GetDirectoryName(filePath);
-        if (string.IsNullOrEmpty(directory))
-        {
-            return null;
-        }
+        if (string.IsNullOrEmpty(directory)) return null;
 
         if (directory.StartsWith(rootDirectory, StringComparison.OrdinalIgnoreCase))
         {
@@ -245,5 +234,4 @@ public class DocumentChangeDetectorService(
 
         return null;
     }
-
 }

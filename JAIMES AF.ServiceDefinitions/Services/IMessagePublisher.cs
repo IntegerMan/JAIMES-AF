@@ -13,4 +13,3 @@ public interface IMessagePublisher
     /// <param name="cancellationToken">Cancellation token</param>
     Task PublishAsync<T>(T message, CancellationToken cancellationToken = default) where T : class;
 }
-

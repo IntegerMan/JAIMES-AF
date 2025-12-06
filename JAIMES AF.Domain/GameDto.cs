@@ -4,7 +4,7 @@ public class GameDto
 {
     public required Guid GameId { get; init; }
     public MessageDto[]? Messages { get; init; }
-    
+
     // Composed DTOs
     public required RulesetDto Ruleset { get; init; }
     public required ScenarioDto Scenario { get; init; }

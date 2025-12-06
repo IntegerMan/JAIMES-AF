@@ -1,7 +1,3 @@
-using FastEndpoints;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
 public class ListPlayersEndpoint : Ep.NoReq.Res<PlayerListResponse>
@@ -13,22 +9,24 @@ public class ListPlayersEndpoint : Ep.NoReq.Res<PlayerListResponse>
         Get("/players");
         AllowAnonymous();
         Description(b => b
-        .Produces<PlayerListResponse>()
-        .WithTags("Players"));
+            .Produces<PlayerListResponse>()
+            .WithTags("Players"));
     }
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        var players = await PlayersService.GetPlayersAsync(ct);
+        PlayerDto[] players = await PlayersService.GetPlayersAsync(ct);
         await Send.OkAsync(new PlayerListResponse
-        {
-            Players = players.Select(p => new PlayerInfoResponse
             {
-                Id = p.Id,
-                RulesetId = p.RulesetId,
-                Description = p.Description,
-                Name = p.Name
-            }).ToArray()
-        }, cancellation: ct);
+                Players = players.Select(p => new PlayerInfoResponse
+                    {
+                        Id = p.Id,
+                        RulesetId = p.RulesetId,
+                        Description = p.Description,
+                        Name = p.Name
+                    })
+                    .ToArray()
+            },
+            ct);
     }
 }

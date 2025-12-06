@@ -9,4 +9,3 @@ public record ScenarioResponse
     public required string SystemPrompt { get; init; }
     public required string NewGameInstructions { get; init; }
 }
-

@@ -5,7 +5,7 @@ namespace MattEland.Jaimes.Tests.TestUtilities;
 
 public sealed class MongoTestRunner : IDisposable
 {
-    private readonly MongoDbRunner runner;
+    private readonly MongoDbRunner _runner;
 
     static MongoTestRunner()
     {
@@ -14,8 +14,8 @@ public sealed class MongoTestRunner : IDisposable
 
     public MongoTestRunner()
     {
-        runner = MongoDbRunner.Start(singleNodeReplSet: true);
-        Client = new MongoClient(runner.ConnectionString);
+        _runner = MongoDbRunner.Start(singleNodeReplSet: true);
+        Client = new MongoClient(_runner.ConnectionString);
     }
 
     public IMongoClient Client { get; }
@@ -36,30 +36,21 @@ public sealed class MongoTestRunner : IDisposable
 
     public void Dispose()
     {
-        runner.Dispose();
+        _runner.Dispose();
     }
 
     private static void EnsureLegacyOpenSslLibraries()
     {
-        if (!OperatingSystem.IsLinux())
-        {
-            return;
-        }
+        if (!OperatingSystem.IsLinux()) return;
 
         string libDirectory = Path.Combine(AppContext.BaseDirectory, "mongo-libs");
-        if (!Directory.Exists(libDirectory))
-        {
-            return;
-        }
+        if (!Directory.Exists(libDirectory)) return;
 
         string? ldLibraryPath = Environment.GetEnvironmentVariable("LD_LIBRARY_PATH");
         if (!string.IsNullOrEmpty(ldLibraryPath))
         {
             string[] segments = ldLibraryPath.Split(':', StringSplitOptions.RemoveEmptyEntries);
-            if (segments.Contains(libDirectory, StringComparer.Ordinal))
-            {
-                return;
-            }
+            if (segments.Contains(libDirectory, StringComparer.Ordinal)) return;
         }
 
         string newValue = string.IsNullOrEmpty(ldLibraryPath)

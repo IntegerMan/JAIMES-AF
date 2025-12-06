@@ -13,11 +13,10 @@ public enum ProviderType
     /// <summary>
     /// OpenAI provider (OpenAI API).
     /// </summary>
-    OpenAI,
+    OpenAi,
 
     /// <summary>
     /// Azure OpenAI provider (Azure OpenAI service).
     /// </summary>
-    AzureOpenAI
+    AzureOpenAi
 }
-

@@ -13,13 +13,13 @@ public class GameStateEndpointTests : EndpointTestBase
         // Arrange - Create a game first
         CancellationToken ct = TestContext.Current.CancellationToken;
 
-        NewGameRequest createRequest = new NewGameRequest
+        NewGameRequest createRequest = new()
         {
             ScenarioId = "test-scenario",
             PlayerId = "test-player"
         };
         HttpResponseMessage createResponse = await Client.PostAsJsonAsync("/games/", createRequest, ct);
-        NewGameResponse? createdGame = await createResponse.Content.ReadFromJsonAsync<NewGameResponse>(cancellationToken: ct);
+        NewGameResponse? createdGame = await createResponse.Content.ReadFromJsonAsync<NewGameResponse>(ct);
         createdGame.ShouldNotBeNull();
 
         // Act - Retrieve the game
@@ -28,7 +28,7 @@ public class GameStateEndpointTests : EndpointTestBase
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
 
-        GameStateResponse? game = await response.Content.ReadFromJsonAsync<GameStateResponse>(cancellationToken: ct);
+        GameStateResponse? game = await response.Content.ReadFromJsonAsync<GameStateResponse>(ct);
         game.ShouldNotBeNull();
         game.GameId.ShouldBe(createdGame.GameId);
         game.Messages.ShouldNotBeNull();
@@ -72,21 +72,21 @@ public class GameStateEndpointTests : EndpointTestBase
         // Arrange & Act - Create multiple games using the default test data
         CancellationToken ct = TestContext.Current.CancellationToken;
 
-        NewGameRequest game1Request = new NewGameRequest
+        NewGameRequest game1Request = new()
         {
             ScenarioId = "test-scenario",
             PlayerId = "test-player"
         };
         HttpResponseMessage game1Response = await Client.PostAsJsonAsync("/games/", game1Request, ct);
-        NewGameResponse? game1 = await game1Response.Content.ReadFromJsonAsync<NewGameResponse>(cancellationToken: ct);
+        NewGameResponse? game1 = await game1Response.Content.ReadFromJsonAsync<NewGameResponse>(ct);
 
-        NewGameRequest game2Request = new NewGameRequest
+        NewGameRequest game2Request = new()
         {
             ScenarioId = "test-scenario",
             PlayerId = "test-player"
         };
         HttpResponseMessage game2Response = await Client.PostAsJsonAsync("/games/", game2Request, ct);
-        NewGameResponse? game2 = await game2Response.Content.ReadFromJsonAsync<NewGameResponse>(cancellationToken: ct);
+        NewGameResponse? game2 = await game2Response.Content.ReadFromJsonAsync<NewGameResponse>(ct);
 
         game1.ShouldNotBeNull();
         game2.ShouldNotBeNull();
@@ -94,12 +94,14 @@ public class GameStateEndpointTests : EndpointTestBase
 
         // Assert - Both games can be retrieved independently
         HttpResponseMessage retrieveGame1Response = await Client.GetAsync($"/games/{game1.GameId}", ct);
-        GameStateResponse? retrievedGame1 = await retrieveGame1Response.Content.ReadFromJsonAsync<GameStateResponse>(cancellationToken: ct);
+        GameStateResponse? retrievedGame1 =
+            await retrieveGame1Response.Content.ReadFromJsonAsync<GameStateResponse>(ct);
         retrievedGame1.ShouldNotBeNull();
         retrievedGame1.GameId.ShouldBe(game1.GameId);
 
         HttpResponseMessage retrieveGame2Response = await Client.GetAsync($"/games/{game2.GameId}", ct);
-        GameStateResponse? retrievedGame2 = await retrieveGame2Response.Content.ReadFromJsonAsync<GameStateResponse>(cancellationToken: ct);
+        GameStateResponse? retrievedGame2 =
+            await retrieveGame2Response.Content.ReadFromJsonAsync<GameStateResponse>(ct);
         retrievedGame2.ShouldNotBeNull();
         retrievedGame2.GameId.ShouldBe(game2.GameId);
     }

@@ -1,9 +1,3 @@
-using FastEndpoints;
-using MattEland.Jaimes.Domain;
-using MattEland.Jaimes.ServiceDefinitions.Requests;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
 public class UpdateScenarioEndpoint : Endpoint<UpdateScenarioRequest, ScenarioResponse>
@@ -23,7 +17,7 @@ public class UpdateScenarioEndpoint : Endpoint<UpdateScenarioRequest, ScenarioRe
 
     public override async Task HandleAsync(UpdateScenarioRequest req, CancellationToken ct)
     {
-        string? id = Route<string>("id", isRequired: true);
+        string? id = Route<string>("id", true);
         if (string.IsNullOrEmpty(id))
         {
             ThrowError("Scenario ID is required");
@@ -51,7 +45,7 @@ public class UpdateScenarioEndpoint : Endpoint<UpdateScenarioRequest, ScenarioRe
                 NewGameInstructions = scenario.NewGameInstructions
             };
 
-            await Send.OkAsync(response, cancellation: ct);
+            await Send.OkAsync(response, ct);
         }
         catch (ArgumentException ex)
         {
@@ -59,4 +53,3 @@ public class UpdateScenarioEndpoint : Endpoint<UpdateScenarioRequest, ScenarioRe
         }
     }
 }
-

@@ -1,16 +1,10 @@
-using FastEndpoints;
-using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
-using MattEland.Jaimes.ServiceDefinitions.Requests;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.Repositories;
-using MattEland.Jaimes.Repositories.Entities;
-using Microsoft.EntityFrameworkCore;
 
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
-public class RecrackDocumentEndpoint(IMessagePublisher messagePublisher, IDbContextFactory<JaimesDbContext> dbContextFactory) : Endpoint<RecrackDocumentRequest, DocumentOperationResponse>
+public class RecrackDocumentEndpoint(
+    IMessagePublisher messagePublisher,
+    IDbContextFactory<JaimesDbContext> dbContextFactory) : Endpoint<RecrackDocumentRequest, DocumentOperationResponse>
 {
     public override void Configure()
     {
@@ -33,11 +27,11 @@ public class RecrackDocumentEndpoint(IMessagePublisher messagePublisher, IDbCont
         // Get rulesetId and documentKind from DocumentMetadata if available, otherwise use defaults
         string rulesetId = "default";
         string documentKind = DocumentKinds.Sourcebook;
-        
+
         await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(ct);
         DocumentMetadata? metadata = await dbContext.DocumentMetadata
             .FirstOrDefaultAsync(x => x.FilePath == req.FilePath, ct);
-        
+
         if (metadata != null && !string.IsNullOrWhiteSpace(metadata.RulesetId))
         {
             rulesetId = metadata.RulesetId;
@@ -61,6 +55,6 @@ public class RecrackDocumentEndpoint(IMessagePublisher messagePublisher, IDbCont
             Message = $"Re-crack requested for {req.FilePath}."
         };
 
-        await Send.OkAsync(response, cancellation: ct);
+        await Send.OkAsync(response, ct);
     }
 }

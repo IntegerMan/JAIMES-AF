@@ -1,19 +1,3 @@
-using System.Diagnostics;
-using MattEland.Jaimes.ServiceDefaults;
-using MattEland.Jaimes.ServiceDefinitions.Messages;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.Workers.DocumentEmbedding.Configuration;
-using MattEland.Jaimes.Workers.DocumentEmbedding.Consumers;
-using MattEland.Jaimes.Workers.DocumentEmbedding.Services;
-using MattEland.Jaimes.Repositories;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.AI;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
-using Qdrant.Client;
-using RabbitMQ.Client;
-
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
 // Configure OpenTelemetry for Aspire telemetry
@@ -36,15 +20,16 @@ builder.Logging.AddFilter("System.Net.Http.HttpClient.Default.ClientHandler", Lo
 // Load configuration
 builder.Configuration
     .SetBasePath(Directory.GetCurrentDirectory())
-    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
-    .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: false)
+    .AddJsonFile("appsettings.json", false, false)
+    .AddJsonFile("appsettings.Development.json", true, false)
     .AddUserSecrets(typeof(Program).Assembly)
     .AddEnvironmentVariables()
     .AddCommandLine(args);
 
 // Bind configuration
 DocumentEmbeddingOptions options = builder.Configuration.GetSection("DocumentEmbedding").Get<DocumentEmbeddingOptions>()
-    ?? throw new InvalidOperationException("DocumentEmbedding configuration section is required");
+                                   ?? throw new InvalidOperationException(
+                                       "DocumentEmbedding configuration section is required");
 
 builder.Services.AddSingleton(options);
 
@@ -54,20 +39,22 @@ builder.Services.AddJaimesRepositories(builder.Configuration);
 // Configure Qdrant client using centralized extension method
 // DocumentEmbedding worker uses "qdrant" as default API key (matching ApiService configuration)
 // to ensure authentication works with Qdrant instances that require it.
-builder.Services.AddQdrantClient(builder.Configuration, new QdrantExtensions.QdrantConfigurationOptions
-{
-    SectionPrefix = "DocumentEmbedding",
-    ConnectionStringName = "qdrant-embeddings",
-    RequireConfiguration = true,
-    DefaultApiKey = "qdrant", // Default to "qdrant" API key for authentication
-    AdditionalApiKeyKeys = new[]
+builder.Services.AddQdrantClient(builder.Configuration,
+    new QdrantExtensions.QdrantConfigurationOptions
     {
-        "DocumentEmbedding:QdrantApiKey",
-        "DocumentEmbedding__QdrantApiKey",
-        "DocumentChunking:QdrantApiKey",
-        "DocumentChunking__QdrantApiKey"
-    }
-}, out QdrantExtensions.QdrantConnectionConfig qdrantConfig);
+        SectionPrefix = "DocumentEmbedding",
+        ConnectionStringName = "qdrant-embeddings",
+        RequireConfiguration = true,
+        DefaultApiKey = "qdrant", // Default to "qdrant" API key for authentication
+        AdditionalApiKeyKeys = new[]
+        {
+            "DocumentEmbedding:QdrantApiKey",
+            "DocumentEmbedding__QdrantApiKey",
+            "DocumentChunking:QdrantApiKey",
+            "DocumentChunking__QdrantApiKey"
+        }
+    },
+    out QdrantExtensions.QdrantConnectionConfig qdrantConfig);
 
 // Configure embedding service
 // Get Ollama endpoint and model from Aspire connection strings (for default Ollama provider)
@@ -76,7 +63,8 @@ string? explicitEndpoint = builder.Configuration["DocumentEmbedding:OllamaEndpoi
 string? ollamaConnectionString = builder.Configuration.GetConnectionString("embedModel");
 
 // Parse connection string and use explicit endpoint if configured
-(string? ollamaEndpoint, string? ollamaModel) = EmbeddingServiceExtensions.ParseOllamaConnectionString(ollamaConnectionString);
+(string? ollamaEndpoint, string? ollamaModel) =
+    EmbeddingServiceExtensions.ParseOllamaConnectionString(ollamaConnectionString);
 ollamaEndpoint = explicitEndpoint ?? ollamaEndpoint;
 
 // Register embedding generator (supports Ollama, Azure OpenAI, and OpenAI)
@@ -85,9 +73,9 @@ ollamaEndpoint = explicitEndpoint ?? ollamaEndpoint;
 
 builder.Services.AddEmbeddingGenerator(
     builder.Configuration,
-    sectionName: "EmbeddingModel",
-    defaultOllamaEndpoint: ollamaEndpoint,
-    defaultOllamaModel: ollamaModel);
+    "EmbeddingModel",
+    ollamaEndpoint,
+    ollamaModel);
 
 // Register QdrantClient wrapper
 builder.Services.AddSingleton<IQdrantClient>(sp =>
@@ -100,11 +88,12 @@ builder.Services.AddSingleton<IQdrantClient>(sp =>
 builder.Services.AddSingleton<IDocumentEmbeddingService>(sp =>
 {
     IDbContextFactory<JaimesDbContext> dbContextFactory = sp.GetRequiredService<IDbContextFactory<JaimesDbContext>>();
-    IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator = sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
+    IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator =
+        sp.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
     IQdrantClient qdrantClient = sp.GetRequiredService<IQdrantClient>();
     ILogger<DocumentEmbeddingService> logger = sp.GetRequiredService<ILogger<DocumentEmbeddingService>>();
     ActivitySource activitySource = sp.GetRequiredService<ActivitySource>();
-    
+
     return new DocumentEmbeddingService(
         dbContextFactory,
         embeddingGenerator,
@@ -156,11 +145,11 @@ EmbeddingModelOptions embeddingOptions = host.Services.GetRequiredService<Embedd
 logger.LogInformation("Embedding Provider: {Provider}", embeddingOptions.Provider);
 logger.LogInformation("Embedding Model/Deployment: {Name}", embeddingOptions.Name);
 if (!string.IsNullOrWhiteSpace(embeddingOptions.Endpoint))
-{
     logger.LogInformation("Embedding Endpoint: {Endpoint}", embeddingOptions.Endpoint);
-}
-logger.LogInformation("Qdrant: {Host}:{Port} (HTTPS: {UseHttps})", qdrantConfig.Host, qdrantConfig.Port, qdrantConfig.UseHttps);
+logger.LogInformation("Qdrant: {Host}:{Port} (HTTPS: {UseHttps})",
+    qdrantConfig.Host,
+    qdrantConfig.Port,
+    qdrantConfig.UseHttps);
 logger.LogInformation("Worker ready and listening for ChunkReadyForEmbeddingMessage on queue");
 
 await host.RunAsync();
-

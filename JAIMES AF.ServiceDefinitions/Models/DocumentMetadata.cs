@@ -1,5 +1,3 @@
-using MattEland.Jaimes.Domain;
-
 namespace MattEland.Jaimes.ServiceDefinitions.Models;
 
 /// <summary>
@@ -16,10 +14,3 @@ public class DocumentMetadata
     public string DocumentKind { get; set; } = DocumentKinds.Sourcebook;
     public string RulesetId { get; set; } = string.Empty;
 }
-
-
-
-
-
-
-

@@ -1,6 +1,3 @@
-using MattEland.Jaimes.Repositories;
-using Microsoft.EntityFrameworkCore;
-
 namespace MattEland.Jaimes.DocumentCracker.Services;
 
 /// <summary>

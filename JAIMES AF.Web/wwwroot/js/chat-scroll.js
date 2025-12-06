@@ -5,13 +5,13 @@ window.scrollToBottom = (elementId) => {
         const scroll = () => {
             element.scrollTop = element.scrollHeight;
         };
-        
+
         // Try immediately
         scroll();
-        
+
         // Try after a short delay
         setTimeout(scroll, 10);
-        
+
         // Try after requestAnimationFrame
         requestAnimationFrame(() => {
             scroll();

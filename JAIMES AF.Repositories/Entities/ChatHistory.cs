@@ -13,8 +13,3 @@ public class ChatHistory
     public ChatHistory? PreviousHistory { get; set; }
     public Message? Message { get; set; }
 }
-
-
-
-
-

@@ -7,4 +7,3 @@ public record PlayerResponse
     public string? Description { get; init; }
     public required string Name { get; init; }
 }
-

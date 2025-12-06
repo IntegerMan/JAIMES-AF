@@ -7,7 +7,3 @@ public record RecrackDocumentRequest
     public string? DocumentKind { get; init; }
     public string? RulesetId { get; init; }
 }
-
-
-
-

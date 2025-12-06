@@ -23,7 +23,7 @@ public class DatabaseInitializationTests
         // Assert
         using IServiceScope scope = provider.CreateScope();
         JaimesDbContext context = scope.ServiceProvider.GetRequiredService<JaimesDbContext>();
-        
+
         // Verify seed data was created
         Ruleset? ruleset = await context.Rulesets.FindAsync(["dnd5e"], ct);
         ruleset.ShouldNotBeNull();
@@ -60,7 +60,7 @@ public class DatabaseInitializationTests
         // Assert - should not throw and database should still be valid
         using IServiceScope scope = provider.CreateScope();
         JaimesDbContext context = scope.ServiceProvider.GetRequiredService<JaimesDbContext>();
-        
+
         int rulesetCount = await context.Rulesets.CountAsync(ct);
         rulesetCount.ShouldBe(1); // Should still only have one ruleset
     }
@@ -90,13 +90,10 @@ public class DatabaseInitializationTests
         // Arrange
         ServiceCollection services = new();
         services.AddJaimesRepositoriesInMemory(Guid.NewGuid().ToString());
-        
+
         List<string> logMessages = new();
-        services.AddLogging(builder =>
-        {
-            builder.AddProvider(new TestLoggerProvider(logMessages));
-        });
-        
+        services.AddLogging(builder => { builder.AddProvider(new TestLoggerProvider(logMessages)); });
+
         ServiceProvider provider = services.BuildServiceProvider();
 
         // Act
@@ -145,7 +142,11 @@ public class DatabaseInitializationTests
             return true;
         }
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        public void Log<TState>(LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
         {
             _messages.Add(formatter(state, exception));
         }

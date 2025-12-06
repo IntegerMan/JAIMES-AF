@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace MattEland.Jaimes.DocumentProcessing.Services;
 
 public class DirectoryScanner(ILogger<DirectoryScanner> logger) : IDirectoryScanner
@@ -29,5 +27,3 @@ public class DirectoryScanner(ILogger<DirectoryScanner> logger) : IDirectoryScan
             .Where(file => extensions.Contains(Path.GetExtension(file)));
     }
 }
-
-

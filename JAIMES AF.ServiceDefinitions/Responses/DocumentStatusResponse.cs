@@ -19,4 +19,3 @@ public record DocumentStatusInfo
     public string? DocumentKind { get; init; }
     public string? RulesetId { get; init; }
 }
-

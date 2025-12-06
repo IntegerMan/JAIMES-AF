@@ -18,26 +18,28 @@
 	</MudButton>
 
 	<div style="position: relative; min-height: 200px;">
-		@if (isLoading)
+		@if (_isLoading)
 		{
 			<div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
 				<MudProgressCircular Indeterminate="true"/>
 			</div>
 		}
-		
-		@if (!isLoading && !string.IsNullOrEmpty(errorMessage))
+
+		@if (!_isLoading && !string.IsNullOrEmpty(_errorMessage))
 		{
-			<MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
+			<MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
 		}
-		
-		@if (!isLoading && string.IsNullOrEmpty(errorMessage) && (scenarios is null || scenarios.Length == 0))
+
+		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && (_scenarios is null || _scenarios.Length == 0))
 		{
-			<MudText Class="mb-4">No scenarios yet. <MudLink Href="/scenarios/new">Create a new scenario</MudLink></MudText>
+			<MudText Class="mb-4">No scenarios yet.
+				<MudLink Href="/scenarios/new">Create a new scenario</MudLink>
+			</MudText>
 		}
-		
-		@if (!isLoading && string.IsNullOrEmpty(errorMessage) && scenarios is not null && scenarios.Length > 0)
+
+		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && _scenarios is not null && _scenarios.Length > 0)
 		{
-			<MudTable Items="scenarios" Dense="true" Hover="true">
+			<MudTable Items="_scenarios" Dense="true" Hover="true">
 				<HeaderContent>
 					<MudTh>Name</MudTh>
 					<MudTh>Description</MudTh>

@@ -14,7 +14,7 @@ window.initializeMermaid = async (elementId, mermaidDefinition) => {
 
     // Initialize Mermaid with default config (only once)
     if (!window.mermaidInitialized) {
-        mermaid.initialize({ 
+        mermaid.initialize({
             startOnLoad: false,
             theme: 'default',
             flowchart: {
@@ -31,7 +31,7 @@ window.initializeMermaid = async (elementId, mermaidDefinition) => {
 
     // Create a unique ID for this diagram
     const diagramId = `mermaid-${elementId}-${Date.now()}`;
-    
+
     // Set up the element for Mermaid rendering
     element.className = 'mermaid';
     element.id = diagramId;
@@ -50,7 +50,7 @@ window.initializeMermaid = async (elementId, mermaidDefinition) => {
             mermaid.contentLoaded();
         } else {
             // Fallback: try to render directly
-            const { svg } = await mermaid.render(diagramId, mermaidDefinition);
+            const {svg} = await mermaid.render(diagramId, mermaidDefinition);
             element.innerHTML = svg;
             element.className = '';
         }

@@ -17,4 +17,3 @@ public static class EmbeddingConfigHelper
     /// </summary>
     public const int MaxTokenTotal = 8191;
 }
-

@@ -1,10 +1,4 @@
-﻿using FastEndpoints;
-using MattEland.Jaimes.Domain;
-using MattEland.Jaimes.ServiceDefinitions.Requests;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-
-namespace MattEland.Jaimes.ApiService.Endpoints;
+﻿namespace MattEland.Jaimes.ApiService.Endpoints;
 
 public class ChatEndpoint : Ep.Req<ChatRequest>.Res<GameStateResponse>
 {
@@ -22,11 +16,8 @@ public class ChatEndpoint : Ep.Req<ChatRequest>.Res<GameStateResponse>
 
     public override async Task HandleAsync(ChatRequest req, CancellationToken ct)
     {
-        string? gameIdStr = Route<string>("gameId", isRequired: true);
-        if (!Guid.TryParse(gameIdStr, out Guid gameId))
-        {
-            ThrowError("Invalid game ID format");
-        }
+        string? gameIdStr = Route<string>("gameId", true);
+        if (!Guid.TryParse(gameIdStr, out Guid gameId)) ThrowError("Invalid game ID format");
         // ProcessChatMessageAsync will throw if game doesn't exist, so we can get the game after
         JaimesChatResponse chatResponse = await GameService.ProcessChatMessageAsync(gameId, req.Message, ct);
 
@@ -51,10 +42,9 @@ public class ChatEndpoint : Ep.Req<ChatRequest>.Res<GameStateResponse>
             ScenarioId = gameDto.Scenario.Id,
             ScenarioName = gameDto.Scenario.Name,
             PlayerId = gameDto.Player.Id,
-            PlayerName = gameDto.Player.Name,
+            PlayerName = gameDto.Player.Name
         };
 
-        await Send.OkAsync(gameState, cancellation: ct);
-
+        await Send.OkAsync(gameState, ct);
     }
 }

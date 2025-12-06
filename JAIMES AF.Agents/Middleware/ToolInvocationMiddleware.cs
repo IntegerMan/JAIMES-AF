@@ -1,8 +1,3 @@
-using System.Diagnostics;
-using Microsoft.Agents.AI;
-using Microsoft.Extensions.AI;
-using Microsoft.Extensions.Logging;
-
 namespace MattEland.Jaimes.Agents.Middleware;
 
 /// <summary>
@@ -18,51 +13,51 @@ public static class ToolInvocationMiddleware
     /// </summary>
     /// <param name="logger">The logger to use for logging tool invocations.</param>
     /// <returns>A middleware function that can be used with the agent builder.</returns>
-    public static Func<AIAgent, FunctionInvocationContext, Func<FunctionInvocationContext, CancellationToken, ValueTask<object?>>, CancellationToken, ValueTask<object?>> Create(ILogger logger)
+    public static
+        Func<AIAgent, FunctionInvocationContext, Func<FunctionInvocationContext, CancellationToken, ValueTask<object?>>,
+            CancellationToken, ValueTask<object?>> Create(ILogger logger)
     {
         // Log that middleware is being created/registered
         logger.LogInformation("ToolInvocationMiddleware created and registered");
-        
+
         return async (agent, context, next, cancellationToken) =>
         {
             string functionName = context.Function?.Name ?? "unknown";
             string? functionDescription = context.Function?.Description;
-            
+
             // Log that a tool is being invoked - this confirms the middleware is working
             logger.LogInformation(
                 "🔧 Tool invocation started: {FunctionName} (Description: {FunctionDescription})",
                 functionName,
                 functionDescription);
-            
+
             // Also log context details for debugging
             logger.LogDebug(
                 "Tool invocation context - Function: {FunctionName}, Arguments: {Arguments}",
                 functionName,
-                context.Arguments != null ? System.Text.Json.JsonSerializer.Serialize(context.Arguments) : "null");
+                context.Arguments != null ? JsonSerializer.Serialize(context.Arguments) : "null");
 
             // Create an OpenTelemetry activity for the tool invocation
             using Activity? activity = ActivitySource.StartActivity($"Tool.Invoke.{functionName}");
-            
+
             if (activity != null)
             {
                 activity.SetTag("tool.name", functionName);
                 activity.SetTag("tool.description", functionDescription ?? string.Empty);
-                
+
                 // Log function arguments if available
                 if (context.Arguments != null)
-                {
-                    activity.SetTag("tool.arguments", System.Text.Json.JsonSerializer.Serialize(context.Arguments));
-                }
+                    activity.SetTag("tool.arguments", JsonSerializer.Serialize(context.Arguments));
             }
 
             object? result = null;
             Exception? exception = null;
-            
+
             try
             {
                 // Execute the actual function call
                 result = await next(context, cancellationToken);
-                
+
                 // Log successful invocation
                 logger.LogInformation(
                     "Tool invocation completed: {FunctionName} (Result: {ResultType})",
@@ -88,29 +83,23 @@ public static class ToolInvocationMiddleware
                     activity.SetTag("tool.error", ex.Message);
                     activity.SetStatus(ActivityStatusCode.Error, ex.Message);
                 }
-                
+
                 throw;
             }
             finally
             {
                 if (activity != null && exception == null)
-                {
                     // Log result summary if available
                     if (result != null)
                     {
                         string resultSummary = result.ToString() ?? "null";
                         // Truncate long results for logging
-                        if (resultSummary.Length > 500)
-                        {
-                            resultSummary = resultSummary[..500] + "... (truncated)";
-                        }
+                        if (resultSummary.Length > 500) resultSummary = resultSummary[..500] + "... (truncated)";
                         activity.SetTag("tool.result_summary", resultSummary);
                     }
-                }
             }
 
             return result;
         };
     }
 }
-

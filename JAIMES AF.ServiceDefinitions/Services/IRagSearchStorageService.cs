@@ -1,5 +1,3 @@
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-
 namespace MattEland.Jaimes.ServiceDefinitions.Services;
 
 /// <summary>
@@ -17,5 +15,9 @@ public interface IRagSearchStorageService
     /// <param name="indexName">The name of the index/collection searched</param>
     /// <param name="filterJson">JSON representation of any filters applied</param>
     /// <param name="results">The search results to store</param>
-    void EnqueueSearchResults(string query, string? rulesetId, string indexName, string? filterJson, SearchRuleResult[] results);
+    void EnqueueSearchResults(string query,
+        string? rulesetId,
+        string indexName,
+        string? filterJson,
+        SearchRuleResult[] results);
 }

@@ -2,7 +2,11 @@ namespace MattEland.Jaimes.ServiceDefinitions.Services;
 
 public interface IQdrantEmbeddingStore
 {
-    Task StoreEmbeddingAsync(string pointId, float[] embedding, Dictionary<string, string> metadata, CancellationToken cancellationToken = default);
+    Task StoreEmbeddingAsync(string pointId,
+        float[] embedding,
+        Dictionary<string, string> metadata,
+        CancellationToken cancellationToken = default);
+
     Task EnsureCollectionExistsAsync(CancellationToken cancellationToken = default);
     Task<List<EmbeddingInfo>> ListEmbeddingsAsync(CancellationToken cancellationToken = default);
     Task DeleteEmbeddingAsync(string pointId, CancellationToken cancellationToken = default);

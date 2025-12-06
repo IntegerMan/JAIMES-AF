@@ -8,94 +8,96 @@
 <PageTitle>Game Details</PageTitle>
 
 <div class="game-details-page-wrapper">
-<MudContainer MaxWidth="MaxWidth.Large" Class="game-details-wrapper">
-	@if (isLoading)
-	{
-		<MudProgressCircular Indeterminate="true" Class="my-4" />
-	}
-	else if (!string.IsNullOrEmpty(errorMessage))
-	{
-		<MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
-	}
-	else if (game is null)
-	{
-		<MudText>(No game loaded)</MudText>
-	}
-	else
-	{
-		<div class="game-header">
-			<MudText Typo="Typo.h5" Class="mb-0">Game details</MudText>
-			<MudText Typo="Typo.body2" Class="text-muted">
-				<strong>@game.PlayerName</strong> playing <strong>@game.ScenarioName</strong> (@game.RulesetId) 
-			</MudText>
-			<MudText Typo="Typo.body2" Class="text-muted">Game @game.GameId</MudText>
-		</div>
+	<MudContainer MaxWidth="MaxWidth.Large" Class="game-details-wrapper">
+		@if (_isLoading)
+		{
+			<MudProgressCircular Indeterminate="true" Class="my-4"/>
+		}
+		else if (!string.IsNullOrEmpty(_errorMessage))
+		{
+			<MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
+		}
+		else if (_game is null)
+		{
+			<MudText>(No game loaded)</MudText>
+		}
+		else
+		{
+			<div class="game-header">
+				<MudText Typo="Typo.h5" Class="mb-0">Game details</MudText>
+				<MudText Typo="Typo.body2" Class="text-muted">
+					<strong>@_game.PlayerName</strong> playing <strong>@_game.ScenarioName</strong> (@_game.RulesetId)
+				</MudText>
+				<MudText Typo="Typo.body2" Class="text-muted">Game @_game.GameId</MudText>
+			</div>
 
-		<div id="chat-scroll-container" class="chat-scroll">
-			@foreach (var m in messages ?? [])
-			{
-				var paragraphs = ChatHelpers.SplitIntoParagraphs(m.Text).ToList();
-				@foreach (var (paragraph, index) in paragraphs.Select((p, i) => (p, i)))
+			<div id="chat-scroll-container" class="chat-scroll">
+				@foreach (MessageResponse m in _messages ?? [])
 				{
-					var isFirstParagraph = index == 0;
-					@if (m.Participant == ChatParticipant.Player)
+					List<string> paragraphs = ChatHelpers.SplitIntoParagraphs(m.Text).ToList();
+					@foreach ((string paragraph, int index) in paragraphs.Select((p, i) => (p, i)))
 					{
-						<MudChat ChatPosition="ChatBubblePosition.End"
-								 Variant="Variant.Filled"
-								 Color="Color.Primary">
-							@if (isFirstParagraph)
-							{
-								<MudChatHeader Name="@m.ParticipantName" />
-							}
-							<MudChatBubble>
-								@paragraph
-							</MudChatBubble>
-						</MudChat>
-					}
-					else
-					{
-						<MudChat ChatPosition="ChatBubblePosition.Start"
-								 Variant="Variant.Filled"
-								 Color="Color.Default">
-							@if (isFirstParagraph)
-							{
-								<MudChatHeader Name="@m.ParticipantName" />
-							}
-							<MudChatBubble>
-								@((MarkupString)ChatHelpers.RenderMarkdown(paragraph))
-							</MudChatBubble>
-						</MudChat>
+						bool isFirstParagraph = index == 0;
+						@if (m.Participant == ChatParticipant.Player)
+						{
+							<MudChat ChatPosition="ChatBubblePosition.End"
+							         Variant="Variant.Filled"
+							         Color="Color.Primary">
+								@if (isFirstParagraph)
+								{
+									<MudChatHeader Name="@m.ParticipantName"/>
+								}
+								<MudChatBubble>
+									@paragraph
+								</MudChatBubble>
+							</MudChat>
+						}
+						else
+						{
+							<MudChat ChatPosition="ChatBubblePosition.Start"
+							         Variant="Variant.Filled"
+							         Color="Color.Default">
+								@if (isFirstParagraph)
+								{
+									<MudChatHeader Name="@m.ParticipantName"/>
+								}
+								<MudChatBubble>
+									@((MarkupString) ChatHelpers.RenderMarkdown(paragraph))
+								</MudChatBubble>
+							</MudChat>
+						}
 					}
 				}
-			}
-			
-			@if (isSending)
-			{
-				<MudChat ChatPosition="ChatBubblePosition.Start"
-						 Variant="Variant.Filled"
-						 Color="Color.Default">
-					<MudChatHeader Name="@GetGameMasterName()" />
-					<MudChatBubble>
-						<div class="typing-indicator">
-							<span></span>
-							<span></span>
-							<span></span>
-						</div>
-					</MudChatBubble>
-				</MudChat>
-			}
-		</div>
 
-		<div class="message-bar">
-			<MudGrid Class="align-items-center">
-				<MudItem xs="10" sm="11">
-					<MudTextField @bind-Value="userMessage.Text" Label="Message" Placeholder="Type a message..." FullWidth="true" Immediate="true" OnKeyDown="OnKeyDown" />
-				</MudItem>
-				<MudItem xs="2" sm="1" Class="d-flex justify-end">
-					<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SendMessageAsync">Send</MudButton>
-				</MudItem>
-			</MudGrid>
-		</div>
-	}
-</MudContainer>
+				@if (_isSending)
+				{
+					<MudChat ChatPosition="ChatBubblePosition.Start"
+					         Variant="Variant.Filled"
+					         Color="Color.Default">
+						<MudChatHeader Name="@GetGameMasterName()"/>
+						<MudChatBubble>
+							<div class="typing-indicator">
+								<span></span>
+								<span></span>
+								<span></span>
+							</div>
+						</MudChatBubble>
+					</MudChat>
+				}
+			</div>
+
+			<div class="message-bar">
+				<MudGrid Class="align-items-center">
+					<MudItem xs="10" sm="11">
+						<MudTextField @bind-Value="_userMessage.Text" Label="Message" Placeholder="Type a message..."
+						              FullWidth="true" Immediate="true" OnKeyDown="OnKeyDown"/>
+					</MudItem>
+					<MudItem xs="2" sm="1" Class="d-flex justify-end">
+						<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SendMessageAsync">Send
+						</MudButton>
+					</MudItem>
+				</MudGrid>
+			</div>
+		}
+	</MudContainer>
 </div>

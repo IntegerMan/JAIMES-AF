@@ -1,9 +1,3 @@
-using FastEndpoints;
-using MattEland.Jaimes.Domain;
-using MattEland.Jaimes.ServiceDefinitions.Requests;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
 public class CreateScenarioEndpoint : Endpoint<CreateScenarioRequest, ScenarioResponse>
@@ -43,7 +37,7 @@ public class CreateScenarioEndpoint : Endpoint<CreateScenarioRequest, ScenarioRe
                 NewGameInstructions = scenario.NewGameInstructions
             };
 
-            await Send.CreatedAtAsync<GetScenarioEndpoint>(response, response, verb: Http.GET, cancellation: ct);
+            await Send.CreatedAtAsync<GetScenarioEndpoint>(response, response, Http.GET, cancellation: ct);
         }
         catch (ArgumentException ex)
         {
@@ -51,4 +45,3 @@ public class CreateScenarioEndpoint : Endpoint<CreateScenarioRequest, ScenarioRe
         }
     }
 }
-

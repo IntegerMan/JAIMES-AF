@@ -10,7 +10,7 @@ public class MessageRepositoryTests : RepositoryTestBase
     public async Task CanCreateAndRetrieveMessage()
     {
         // Arrange
-        Game game = new Game
+        Game game = new()
         {
             Id = Guid.NewGuid(),
             RulesetId = "test-ruleset",
@@ -21,7 +21,7 @@ public class MessageRepositoryTests : RepositoryTestBase
         Context.Games.Add(game);
         await Context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        Message message = new Message
+        Message message = new()
         {
             GameId = game.Id,
             Text = "Test message",
@@ -32,7 +32,8 @@ public class MessageRepositoryTests : RepositoryTestBase
         Context.Messages.Add(message);
         await Context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        Message? retrievedMessage = await Context.Messages.FindAsync([message.Id], TestContext.Current.CancellationToken);
+        Message? retrievedMessage =
+            await Context.Messages.FindAsync([message.Id], TestContext.Current.CancellationToken);
 
         // Assert
         retrievedMessage.ShouldNotBeNull();
@@ -44,7 +45,7 @@ public class MessageRepositoryTests : RepositoryTestBase
     public async Task GameIncludesMessages()
     {
         // Arrange
-        Game game = new Game
+        Game game = new()
         {
             Id = Guid.NewGuid(),
             RulesetId = "test-ruleset",
@@ -54,13 +55,13 @@ public class MessageRepositoryTests : RepositoryTestBase
         };
         Context.Games.Add(game);
 
-        Message message1 = new Message
+        Message message1 = new()
         {
             GameId = game.Id,
             Text = "First message",
             CreatedAt = DateTime.UtcNow
         };
-        Message message2 = new Message
+        Message message2 = new()
         {
             GameId = game.Id,
             Text = "Second message",

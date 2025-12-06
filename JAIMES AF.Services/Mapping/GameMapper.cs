@@ -1,7 +1,3 @@
-using MattEland.Jaimes.Domain;
-using MattEland.Jaimes.Repositories.Entities;
-using Riok.Mapperly.Abstractions;
-
 namespace MattEland.Jaimes.ServiceLayer.Mapping;
 
 [Mapper]

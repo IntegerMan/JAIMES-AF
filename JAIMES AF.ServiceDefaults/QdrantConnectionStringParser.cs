@@ -22,18 +22,12 @@ public static class QdrantConnectionStringParser
         ref string? port,
         ref string? apiKey)
     {
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            return;
-        }
+        if (string.IsNullOrWhiteSpace(connectionString)) return;
 
         if (Uri.TryCreate(connectionString, UriKind.Absolute, out Uri? uri))
         {
             host ??= uri.Host;
-            if (uri.Port > 0)
-            {
-                port ??= uri.Port.ToString(CultureInfo.InvariantCulture);
-            }
+            if (uri.Port > 0) port ??= uri.Port.ToString(CultureInfo.InvariantCulture);
 
             ExtractApiKeyFromQuery(uri.Query, ref apiKey);
             return;
@@ -42,20 +36,14 @@ public static class QdrantConnectionStringParser
         if (TryParseHostAndPort(connectionString, out string? parsedHost, out string? parsedPort))
         {
             host ??= parsedHost;
-            if (string.IsNullOrWhiteSpace(port) && !string.IsNullOrWhiteSpace(parsedPort))
-            {
-                port = parsedPort;
-            }
+            if (string.IsNullOrWhiteSpace(port) && !string.IsNullOrWhiteSpace(parsedPort)) port = parsedPort;
         }
 
         string[] segments = connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries);
         foreach (string segment in segments)
         {
             string[] keyValue = segment.Split('=', 2, StringSplitOptions.TrimEntries);
-            if (keyValue.Length != 2)
-            {
-                continue;
-            }
+            if (keyValue.Length != 2) continue;
 
             string key = keyValue[0];
             string value = keyValue[1];
@@ -85,9 +73,7 @@ public static class QdrantConnectionStringParser
             if (string.Equals(key, "ApiKey", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(key, "Api-Key", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(key, "Api_Key", StringComparison.OrdinalIgnoreCase))
-            {
                 apiKey ??= value;
-            }
         }
     }
 
@@ -96,10 +82,7 @@ public static class QdrantConnectionStringParser
         host = null;
         port = null;
 
-        if (string.IsNullOrWhiteSpace(value) || value.Contains('=') || value.Contains(';'))
-        {
-            return false;
-        }
+        if (string.IsNullOrWhiteSpace(value) || value.Contains('=') || value.Contains(';')) return false;
 
         // Handle IPv6 addresses in brackets: [::1]:6334 or [2001:db8::1]:6334
         if (value.StartsWith('['))
@@ -109,13 +92,11 @@ public static class QdrantConnectionStringParser
             {
                 // Extract host (everything between [ and ])
                 host = value.Substring(1, closingBracketIndex - 1);
-                
+
                 // Check if there's a port after the closing bracket
                 if (closingBracketIndex < value.Length - 1 && value[closingBracketIndex + 1] == ':')
-                {
                     port = value.Substring(closingBracketIndex + 2);
-                }
-                
+
                 return !string.IsNullOrWhiteSpace(host);
             }
         }
@@ -124,7 +105,7 @@ public static class QdrantConnectionStringParser
         // For IPv6 without brackets, the last colon separates the port
         // Count colons to detect IPv6 (IPv6 has multiple colons, IPv4 has only one)
         int colonCount = value.Count(c => c == ':');
-        
+
         if (colonCount == 1)
         {
             // IPv4 address: host:port
@@ -140,13 +121,10 @@ public static class QdrantConnectionStringParser
             int lastColonIndex = value.LastIndexOf(':');
             host = value.Substring(0, lastColonIndex);
             port = value.Substring(lastColonIndex + 1);
-            
+
             // Validate that the port segment is numeric
-            if (int.TryParse(port, out _))
-            {
-                return !string.IsNullOrWhiteSpace(host);
-            }
-            
+            if (int.TryParse(port, out _)) return !string.IsNullOrWhiteSpace(host);
+
             // If port is not numeric, treat the whole value as host (no port)
             host = value;
             port = null;
@@ -160,10 +138,7 @@ public static class QdrantConnectionStringParser
 
     private static void ExtractApiKeyFromQuery(string query, ref string? apiKey)
     {
-        if (string.IsNullOrWhiteSpace(query) || !string.IsNullOrWhiteSpace(apiKey))
-        {
-            return;
-        }
+        if (string.IsNullOrWhiteSpace(query) || !string.IsNullOrWhiteSpace(apiKey)) return;
 
         string trimmedQuery = query.TrimStart('?');
         string[] pairs = trimmedQuery.Split('&', StringSplitOptions.RemoveEmptyEntries);
@@ -171,10 +146,7 @@ public static class QdrantConnectionStringParser
         foreach (string pair in pairs)
         {
             string[] keyValue = pair.Split('=', 2);
-            if (keyValue.Length != 2)
-            {
-                continue;
-            }
+            if (keyValue.Length != 2) continue;
 
             string key = keyValue[0];
             if (string.Equals(key, "api-key", StringComparison.OrdinalIgnoreCase) ||
@@ -187,4 +159,3 @@ public static class QdrantConnectionStringParser
         }
     }
 }
-

@@ -1,11 +1,3 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
-using Pgvector.EntityFrameworkCore;
-
 namespace MattEland.Jaimes.Repositories;
 
 public static class RepositoryServiceCollectionExtensions
@@ -48,10 +40,8 @@ public static class RepositoryServiceCollectionExtensions
                                    ?? configuration.GetConnectionString("DefaultConnection");
 
         if (string.IsNullOrWhiteSpace(connectionString))
-        {
             throw new InvalidOperationException(
                 "Database connection string is required. Expected 'postgres-db' or 'DefaultConnection' in ConnectionStrings configuration.");
-        }
 
         // Register DbContextFactory for all services (API and worker services)
         // Using AddPooledDbContextFactory provides efficient connection pooling for all contexts
@@ -62,7 +52,7 @@ public static class RepositoryServiceCollectionExtensions
                 {
                     dbOpts.UseVector(); // Enable pgvector support
                     dbOpts.MaxBatchSize(500);
-                    dbOpts.EnableRetryOnFailure(maxRetryCount: 3);
+                    dbOpts.EnableRetryOnFailure(3);
                 });
         });
 
@@ -72,11 +62,12 @@ public static class RepositoryServiceCollectionExtensions
     public static async Task InitializeDatabaseAsync(this IServiceProvider serviceProvider)
     {
         using IServiceScope scope = serviceProvider.CreateScope();
-        IDbContextFactory<JaimesDbContext> factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<JaimesDbContext>>();
+        IDbContextFactory<JaimesDbContext> factory =
+            scope.ServiceProvider.GetRequiredService<IDbContextFactory<JaimesDbContext>>();
         using JaimesDbContext context = await factory.CreateDbContextAsync();
-        var loggerFactory = scope.ServiceProvider.GetService<ILoggerFactory>();
-        var logger = loggerFactory?.CreateLogger("DatabaseInitialization") ??
-                     NullLoggerFactory.Instance.CreateLogger("DatabaseInitialization");
+        ILoggerFactory? loggerFactory = scope.ServiceProvider.GetService<ILoggerFactory>();
+        ILogger logger = loggerFactory?.CreateLogger("DatabaseInitialization") ??
+                         NullLoggerFactory.Instance.CreateLogger("DatabaseInitialization");
 
         string providerName = context.Database.ProviderName ?? "unknown";
         logger.LogInformation("Starting database initialization. EF provider: {Provider}", providerName);
@@ -91,10 +82,7 @@ public static class RepositoryServiceCollectionExtensions
             logger.LogInformation("Applied migrations count: {AppliedCount}", appliedMigrations.Count());
             logger.LogInformation("Pending migrations count: {PendingCount}", pendingMigrations.Count());
 
-            foreach (var m in pendingMigrations)
-            {
-                logger.LogInformation("Pending migration: {Migration}", m);
-            }
+            foreach (string m in pendingMigrations) logger.LogInformation("Pending migration: {Migration}", m);
         }
         catch (Exception ex)
         {
@@ -108,7 +96,7 @@ public static class RepositoryServiceCollectionExtensions
 
             try
             {
-                var appliedAfter = context.Database.GetAppliedMigrations().ToArray();
+                string[] appliedAfter = context.Database.GetAppliedMigrations().ToArray();
                 logger.LogInformation("Applied migrations after migrate: {Count}", appliedAfter.Length);
             }
             catch (Exception ex)
@@ -121,7 +109,7 @@ public static class RepositoryServiceCollectionExtensions
             // If the exception indicates pending model changes relative to migrations, surface a clear error
             // so the developer knows to add a migration. For other InvalidOperationException cases (e.g., provider
             // doesn't support Migrate), fall back to EnsureCreated.
-            var message = ex.Message;
+            string message = ex.Message;
             if (message.Contains("PendingModelChangesWarning", StringComparison.OrdinalIgnoreCase) ||
                 message.Contains("pending changes", StringComparison.OrdinalIgnoreCase) ||
                 message.Contains("has pending changes", StringComparison.OrdinalIgnoreCase))

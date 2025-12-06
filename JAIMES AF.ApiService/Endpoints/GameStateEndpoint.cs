@@ -1,10 +1,4 @@
-﻿using FastEndpoints;
-using MattEland.Jaimes.Domain;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.ServiceLayer.Mapping;
-
-namespace MattEland.Jaimes.ApiService.Endpoints;
+﻿namespace MattEland.Jaimes.ApiService.Endpoints;
 
 public class GameStateEndpoint : EndpointWithoutRequest<GameStateResponse>
 {
@@ -22,11 +16,8 @@ public class GameStateEndpoint : EndpointWithoutRequest<GameStateResponse>
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        string? gameIdStr = Route<string>("gameId", isRequired: true);
-        if (!Guid.TryParse(gameIdStr, out Guid gameId))
-        {
-            ThrowError("Invalid game ID format");
-        }
+        string? gameIdStr = Route<string>("gameId", true);
+        if (!Guid.TryParse(gameIdStr, out Guid gameId)) ThrowError("Invalid game ID format");
         GameDto? gameDto = await GameService.GetGameAsync(gameId, ct);
 
         if (gameDto == null)
@@ -44,8 +35,8 @@ public class GameStateEndpoint : EndpointWithoutRequest<GameStateResponse>
             ScenarioId = gameDto.Scenario.Id,
             ScenarioName = gameDto.Scenario.Name,
             PlayerId = gameDto.Player.Id,
-            PlayerName = gameDto.Player.Name,
+            PlayerName = gameDto.Player.Name
         };
-        await Send.OkAsync(gameState, cancellation: ct);
+        await Send.OkAsync(gameState, ct);
     }
 }

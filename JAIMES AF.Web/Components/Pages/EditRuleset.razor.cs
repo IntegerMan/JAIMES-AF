@@ -1,27 +1,19 @@
-using MattEland.Jaimes.ServiceDefinitions.Requests;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using Microsoft.AspNetCore.Components;
-
 namespace MattEland.Jaimes.Web.Components.Pages;
 
 public partial class EditRuleset
 {
-    [Parameter]
-    public string RulesetId { get; set; } = string.Empty;
+    [Parameter] public string RulesetId { get; set; } = string.Empty;
 
-    [Inject]
-    public HttpClient Http { get; set; } = null!;
+    [Inject] public HttpClient Http { get; set; } = null!;
 
-    [Inject]
-    public ILoggerFactory LoggerFactory { get; set; } = null!;
+    [Inject] public ILoggerFactory LoggerFactory { get; set; } = null!;
 
-    [Inject]
-    public NavigationManager Navigation { get; set; } = null!;
+    [Inject] public NavigationManager Navigation { get; set; } = null!;
 
-    private string name = string.Empty;
-    private bool isLoading = true;
-    private bool isSaving = false;
-    private string? errorMessage;
+    private string _name = string.Empty;
+    private bool _isLoading = true;
+    private bool _isSaving = false;
+    private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -30,55 +22,55 @@ public partial class EditRuleset
 
     private async Task LoadDataAsync()
     {
-        isLoading = true;
-        errorMessage = null;
+        _isLoading = true;
+        _errorMessage = null;
         try
         {
             RulesetResponse? rulesetResponse = await Http.GetFromJsonAsync<RulesetResponse>($"/rulesets/{RulesetId}");
 
             if (rulesetResponse == null)
             {
-                errorMessage = $"Ruleset with ID '{RulesetId}' not found.";
-                isLoading = false;
+                _errorMessage = $"Ruleset with ID '{RulesetId}' not found.";
+                _isLoading = false;
                 StateHasChanged();
                 return;
             }
 
-            name = rulesetResponse.Name;
+            _name = rulesetResponse.Name;
         }
         catch (Exception ex)
         {
             LoggerFactory.CreateLogger("EditRuleset").LogError(ex, "Failed to load ruleset from API");
-            errorMessage = "Failed to load ruleset: " + ex.Message;
+            _errorMessage = "Failed to load ruleset: " + ex.Message;
         }
         finally
         {
-            isLoading = false;
+            _isLoading = false;
             StateHasChanged();
         }
     }
 
     private bool IsFormValid()
     {
-        return !string.IsNullOrWhiteSpace(name);
+        return !string.IsNullOrWhiteSpace(_name);
     }
 
     private async Task UpdateRulesetAsync()
     {
         if (!IsFormValid())
         {
-            errorMessage = "Please fill in all required fields.";
+            _errorMessage = "Please fill in all required fields.";
             StateHasChanged();
             return;
         }
 
-        isSaving = true;
-        errorMessage = null;
+        _isSaving = true;
+        _errorMessage = null;
         try
         {
             UpdateRulesetRequest request = new()
             {
-                Name = name
+                Name = _name
             };
 
             HttpResponseMessage response = await Http.PutAsJsonAsync($"/rulesets/{RulesetId}", request);
@@ -99,19 +91,20 @@ public partial class EditRuleset
                     // ignored
                 }
 
-                errorMessage = $"Failed to update ruleset: {response.ReasonPhrase}{(string.IsNullOrEmpty(body) ? string.Empty : " - " + body)}";
+                _errorMessage =
+                    $"Failed to update ruleset: {response.ReasonPhrase}{(string.IsNullOrEmpty(body) ? string.Empty : " - " + body)}";
                 StateHasChanged();
             }
         }
         catch (Exception ex)
         {
             LoggerFactory.CreateLogger("EditRuleset").LogError(ex, "Failed to update ruleset");
-            errorMessage = "Failed to update ruleset: " + ex.Message;
+            _errorMessage = "Failed to update ruleset: " + ex.Message;
             StateHasChanged();
         }
         finally
         {
-            isSaving = false;
+            _isSaving = false;
             StateHasChanged();
         }
     }
@@ -121,4 +114,3 @@ public partial class EditRuleset
         Navigation.NavigateTo("/rulesets");
     }
 }
-

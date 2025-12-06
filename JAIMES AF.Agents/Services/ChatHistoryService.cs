@@ -1,8 +1,3 @@
-using MattEland.Jaimes.Repositories;
-using MattEland.Jaimes.Repositories.Entities;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-using Microsoft.EntityFrameworkCore;
-
 namespace MattEland.Jaimes.Agents.Services;
 
 public class ChatHistoryService(JaimesDbContext context) : IChatHistoryService
@@ -16,16 +11,16 @@ public class ChatHistoryService(JaimesDbContext context) : IChatHistoryService
         return game?.MostRecentHistory?.ThreadJson;
     }
 
-    public async Task<Guid> SaveThreadJsonAsync(Guid gameId, string threadJson, int? messageId = null, CancellationToken cancellationToken = default)
+    public async Task<Guid> SaveThreadJsonAsync(Guid gameId,
+        string threadJson,
+        int? messageId = null,
+        CancellationToken cancellationToken = default)
     {
         Game? game = await context.Games
             .Include(g => g.MostRecentHistory)
             .FirstOrDefaultAsync(g => g.Id == gameId, cancellationToken);
 
-        if (game == null)
-        {
-            throw new ArgumentException($"Game '{gameId}' does not exist.", nameof(gameId));
-        }
+        if (game == null) throw new ArgumentException($"Game '{gameId}' does not exist.", nameof(gameId));
 
         ChatHistory newHistory = new()
         {
@@ -44,4 +39,3 @@ public class ChatHistoryService(JaimesDbContext context) : IChatHistoryService
         return newHistory.Id;
     }
 }
-

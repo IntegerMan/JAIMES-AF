@@ -1,5 +1,3 @@
-using MattEland.Jaimes.Domain;
-
 namespace MattEland.Jaimes.ServiceDefinitions.Messages;
 
 public class ChunkReadyForEmbeddingMessage
@@ -19,6 +17,3 @@ public class ChunkReadyForEmbeddingMessage
     public string DocumentKind { get; set; } = DocumentKinds.Sourcebook;
     public string RulesetId { get; set; } = string.Empty;
 }
-
-
-

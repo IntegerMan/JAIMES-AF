@@ -1,11 +1,4 @@
-﻿using FastEndpoints;
-using MattEland.Jaimes.Domain;
-using MattEland.Jaimes.ServiceDefinitions.Requests;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.ServiceLayer.Mapping;
-
-namespace MattEland.Jaimes.ApiService.Endpoints;
+﻿namespace MattEland.Jaimes.ApiService.Endpoints;
 
 public class NewGameEndpoint : Endpoint<NewGameRequest, NewGameResponse>
 {
@@ -32,7 +25,7 @@ public class NewGameEndpoint : Endpoint<NewGameRequest, NewGameResponse>
                 GameId = gameDto.GameId,
                 Messages = (gameDto.Messages ?? []).Select(m => m.ToResponse()).ToArray()
             };
-            await Send.CreatedAtAsync<GameStateEndpoint>(game, responseBody: game, verb: Http.GET, cancellation: ct);
+            await Send.CreatedAtAsync<GameStateEndpoint>(game, game, Http.GET, cancellation: ct);
         }
         catch (ArgumentException ex)
         {

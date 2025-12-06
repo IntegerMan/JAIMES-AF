@@ -6,54 +6,54 @@
 	<MudPaper Class="pa-4">
 		<MudText Typo="Typo.h4" Class="mb-4">Create New Game</MudText>
 
-		@if (isLoading)
+		@if (_isLoading)
 		{
-			<MudProgressCircular Indeterminate="true" Class="my-4" />
+			<MudProgressCircular Indeterminate="true" Class="my-4"/>
 		}
-		else if (!string.IsNullOrEmpty(errorMessage))
+		else if (!string.IsNullOrEmpty(_errorMessage))
 		{
-			<MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
+			<MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
 		}
 
-		@if (!isLoading)
+		@if (!_isLoading)
 		{
 			<MudForm>
 				<MudSelect T="string"
-				           @bind-Value="selectedScenarioId"
+				           @bind-Value="_selectedScenarioId"
 				           Label="Scenario"
 				           Variant="Variant.Outlined"
 				           Class="mb-4"
-				           Disabled="isCreating"
+				           Disabled="_isCreating"
 				           Required="true"
 				           RequiredError="Please select a scenario">
-				@foreach (var scenario in scenarios)
-				{
-					<MudSelectItem Value="@scenario.Id">@GetScenarioDisplayName(scenario)</MudSelectItem>
-				}
+					@foreach (ScenarioInfoResponse scenario in _scenarios)
+					{
+						<MudSelectItem Value="@scenario.Id">@GetScenarioDisplayName(scenario)</MudSelectItem>
+					}
 				</MudSelect>
 
 				<MudSelect T="string"
-				           @bind-Value="selectedPlayerId"
+				           @bind-Value="_selectedPlayerId"
 				           Label="Player"
 				           Variant="Variant.Outlined"
 				           Class="mb-4"
-				           Disabled="isCreating"
+				           Disabled="_isCreating"
 				           Required="true"
 				           RequiredError="Please select a player">
-					@foreach (var player in players)
+					@foreach (PlayerInfoResponse player in _players)
 					{
 						<MudSelectItem Value="@player.Id">@player.Name</MudSelectItem>
 					}
 				</MudSelect>
 
-				<MudButton Variant="Variant.Filled" 
-				           Color="Color.Primary" 
-				           OnClick="CreateGameAsync" 
-				           Disabled="isCreating || string.IsNullOrEmpty(selectedScenarioId) || string.IsNullOrEmpty(selectedPlayerId)"
+				<MudButton Variant="Variant.Filled"
+				           Color="Color.Primary"
+				           OnClick="CreateGameAsync"
+				           Disabled="_isCreating || string.IsNullOrEmpty(_selectedScenarioId) || string.IsNullOrEmpty(_selectedPlayerId)"
 				           Class="mt-2">
-					@if (isCreating)
+					@if (_isCreating)
 					{
-						<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+						<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
 						<span class="ms-2">Creating...</span>
 					}
 					else

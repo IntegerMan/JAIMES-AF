@@ -120,7 +120,10 @@ public class ChatHelpersTests
     [Theory]
     [InlineData("First paragraph.\n\nSecond paragraph.", 2, "First paragraph.", "Second paragraph.")]
     [InlineData("First paragraph.\r\n\r\nSecond paragraph.", 2, "First paragraph.", "Second paragraph.")]
-    public void SplitIntoParagraphs_SplitsByDoubleNewlines(string text, int expectedCount, string firstParagraph, string secondParagraph)
+    public void SplitIntoParagraphs_SplitsByDoubleNewlines(string text,
+        int expectedCount,
+        string firstParagraph,
+        string secondParagraph)
     {
         // Act
         List<string> result = ChatHelpers.SplitIntoParagraphs(text).ToList();
@@ -134,7 +137,11 @@ public class ChatHelpersTests
     [Theory]
     [InlineData("First line\nSecond line\nThird line", 3, "First line", "Second line", "Third line")]
     [InlineData("First line\r\nSecond line\r\nThird line", 3, "First line", "Second line", "Third line")]
-    public void SplitIntoParagraphs_SplitsBySingleNewlines_WhenNoDoubleNewlines(string text, int expectedCount, string firstLine, string secondLine, string thirdLine)
+    public void SplitIntoParagraphs_SplitsBySingleNewlines_WhenNoDoubleNewlines(string text,
+        int expectedCount,
+        string firstLine,
+        string secondLine,
+        string thirdLine)
     {
         // Act
         List<string> result = ChatHelpers.SplitIntoParagraphs(text).ToList();
@@ -207,7 +214,10 @@ public class ChatHelpersTests
     [Theory]
     [InlineData("First paragraph\n\nSecond paragraph\n\n", 2, "First paragraph", "Second paragraph")]
     [InlineData("\n\nFirst paragraph\n\nSecond paragraph", 2, "First paragraph", "Second paragraph")]
-    public void SplitIntoParagraphs_HandlesLeadingAndTrailingNewlines(string text, int expectedCount, string firstParagraph, string secondParagraph)
+    public void SplitIntoParagraphs_HandlesLeadingAndTrailingNewlines(string text,
+        int expectedCount,
+        string firstParagraph,
+        string secondParagraph)
     {
         // Act
         List<string> result = ChatHelpers.SplitIntoParagraphs(text).ToList();

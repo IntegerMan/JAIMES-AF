@@ -6,4 +6,3 @@ public record SearchRulesRequest
     public string? RulesetId { get; init; }
     public bool StoreResults { get; init; } = true;
 }
-

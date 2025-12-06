@@ -13,4 +13,3 @@ public interface IMessageConsumer<in T> where T : class
     /// <param name="cancellationToken">Cancellation token</param>
     Task HandleAsync(T message, CancellationToken cancellationToken = default);
 }
-

@@ -13,7 +13,3 @@ public record EmbeddingListItem
     public required string ChunkId { get; init; }
     public required string PreviewText { get; init; }
 }
-
-
-
-

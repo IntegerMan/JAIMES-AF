@@ -1,7 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using Pgvector;
-
 namespace MattEland.Jaimes.Repositories.Entities;
 
 /// <summary>

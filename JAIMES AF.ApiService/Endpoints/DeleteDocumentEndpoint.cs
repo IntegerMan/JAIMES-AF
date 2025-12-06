@@ -1,13 +1,7 @@
-using FastEndpoints;
-using MattEland.Jaimes.ServiceDefinitions.Requests;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MattEland.Jaimes.Repositories;
-using MattEland.Jaimes.Repositories.Entities;
-using Microsoft.EntityFrameworkCore;
-
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
-public class DeleteDocumentEndpoint(IDbContextFactory<JaimesDbContext> dbContextFactory) : Endpoint<DeleteDocumentRequest, DocumentOperationResponse>
+public class DeleteDocumentEndpoint(IDbContextFactory<JaimesDbContext> dbContextFactory)
+    : Endpoint<DeleteDocumentRequest, DocumentOperationResponse>
 {
     public override void Configure()
     {
@@ -28,11 +22,11 @@ public class DeleteDocumentEndpoint(IDbContextFactory<JaimesDbContext> dbContext
         }
 
         await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(ct);
-        
+
         // Find and delete metadata
         DocumentMetadata? metadata = await dbContext.DocumentMetadata
             .FirstOrDefaultAsync(x => x.FilePath == req.FilePath, ct);
-        
+
         int metadataDeletedCount = 0;
         if (metadata != null)
         {
@@ -43,7 +37,7 @@ public class DeleteDocumentEndpoint(IDbContextFactory<JaimesDbContext> dbContext
         // Find and delete cracked document (this will cascade delete chunks due to FK relationship)
         CrackedDocument? crackedDocument = await dbContext.CrackedDocuments
             .FirstOrDefaultAsync(x => x.FilePath == req.FilePath, ct);
-        
+
         int crackedDeletedCount = 0;
         if (crackedDocument != null)
         {
@@ -65,6 +59,6 @@ public class DeleteDocumentEndpoint(IDbContextFactory<JaimesDbContext> dbContext
             Message = $"Deleted document at {req.FilePath}."
         };
 
-        await Send.OkAsync(response, cancellation: ct);
+        await Send.OkAsync(response, ct);
     }
 }

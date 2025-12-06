@@ -15,12 +15,12 @@ public static class ApplicationLifetimeExtensions
             {
                 try
                 {
-                    var dbInit = app.Services.GetRequiredService<DatabaseInitializer>();
+                    DatabaseInitializer dbInit = app.Services.GetRequiredService<DatabaseInitializer>();
                     await dbInit.InitializeAsync(app);
                 }
                 catch (Exception ex)
                 {
-                    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+                    ILogger<Program> logger = app.Services.GetRequiredService<ILogger<Program>>();
                     logger.LogError(ex, "Database initialization failed during ApplicationStarted.");
 
                     throw;

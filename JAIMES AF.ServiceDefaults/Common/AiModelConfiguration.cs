@@ -18,13 +18,8 @@ internal static class AiModelConfiguration
         if (!string.IsNullOrWhiteSpace(providerConfigValue))
         {
             if (string.Equals(providerConfigValue, "Azure", StringComparison.OrdinalIgnoreCase))
-            {
-                provider = ProviderType.AzureOpenAI;
-            }
-            else if (Enum.TryParse(providerConfigValue, ignoreCase: true, out ProviderType providerType))
-            {
-                provider = providerType;
-            }
+                provider = ProviderType.AzureOpenAi;
+            else if (Enum.TryParse(providerConfigValue, true, out ProviderType providerType)) provider = providerType;
         }
 
         return provider;
@@ -39,10 +34,8 @@ internal static class AiModelConfiguration
 
         string? authConfigValue = configuration[$"{sectionName}:Auth"];
         if (!string.IsNullOrWhiteSpace(authConfigValue) &&
-            Enum.TryParse(authConfigValue, ignoreCase: true, out AuthenticationType authType))
-        {
+            Enum.TryParse(authConfigValue, true, out AuthenticationType authType))
             auth = authType;
-        }
 
         return auth;
     }
@@ -59,17 +52,17 @@ internal static class AiModelConfiguration
         AuthenticationType resolvedAuth = auth == default ? AuthenticationType.None : auth;
 
         string resolvedEndpoint = string.IsNullOrWhiteSpace(endpoint)
-            ? (!string.IsNullOrWhiteSpace(defaultOllamaEndpoint) ? defaultOllamaEndpoint! : fallbackEndpoint)
+            ? !string.IsNullOrWhiteSpace(defaultOllamaEndpoint) ? defaultOllamaEndpoint! : fallbackEndpoint
             : endpoint!.TrimEnd('/');
 
         string resolvedName = string.IsNullOrWhiteSpace(name)
-            ? (!string.IsNullOrWhiteSpace(defaultOllamaModel) ? defaultOllamaModel! : fallbackModel)
+            ? !string.IsNullOrWhiteSpace(defaultOllamaModel) ? defaultOllamaModel! : fallbackModel
             : name!;
 
         return (resolvedAuth, resolvedEndpoint, resolvedName);
     }
 
-    public static AzureOpenAIClient CreateAzureOpenAIClient(
+    public static AzureOpenAIClient CreateAzureOpenAiClient(
         string endpoint,
         AuthenticationType auth,
         string? key)
@@ -77,9 +70,7 @@ internal static class AiModelConfiguration
         if (auth == AuthenticationType.ApiKey)
         {
             if (string.IsNullOrWhiteSpace(key))
-            {
                 throw new InvalidOperationException("API key is required for ApiKey authentication.");
-            }
 
             return new AzureOpenAIClient(new Uri(endpoint), new ApiKeyCredential(key));
         }
@@ -93,21 +84,21 @@ internal static class AiModelConfiguration
         throw new InvalidOperationException($"Authentication type '{auth}' is not supported. Use ApiKey or Identity.");
     }
 
-    public static AzureOpenAIClient CreateOpenAICompatibleClient(
+    public static AzureOpenAIClient CreateOpenAiCompatibleClient(
         string? endpoint,
         string apiKey)
     {
-        const string DefaultOpenAIEndpoint = "https://api.openai.com/v1";
-        string resolved = string.IsNullOrWhiteSpace(endpoint) ? DefaultOpenAIEndpoint : endpoint!;
+        const string defaultOpenAiEndpoint = "https://api.openai.com/v1";
+        string resolved = string.IsNullOrWhiteSpace(endpoint) ? defaultOpenAiEndpoint : endpoint!;
         return new AzureOpenAIClient(new Uri(resolved), new ApiKeyCredential(apiKey));
     }
 
-    public static OpenAIClient CreateOpenAIClient(
+    public static OpenAIClient CreateOpenAiClient(
         string? endpoint,
         string apiKey)
     {
         // If a custom endpoint is provided, use it, otherwise fall back to api.openai.com
         Uri baseUri = new(string.IsNullOrWhiteSpace(endpoint) ? "https://api.openai.com/v1" : endpoint);
-        return new OpenAIClient(new ApiKeyCredential(apiKey), new OpenAIClientOptions { Endpoint = baseUri });
+        return new OpenAIClient(new ApiKeyCredential(apiKey), new OpenAIClientOptions {Endpoint = baseUri});
     }
 }

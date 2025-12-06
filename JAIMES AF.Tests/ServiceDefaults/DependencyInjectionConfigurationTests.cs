@@ -19,7 +19,7 @@ public class DependencyInjectionConfigurationTests
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                { "TextGenerationModel:Provider", "Ollama" }
+                {"TextGenerationModel:Provider", "Ollama"}
             })
             .Build();
 
@@ -30,8 +30,8 @@ public class DependencyInjectionConfigurationTests
         services.AddChatClient(
             configuration,
             "TextGenerationModel",
-            defaultOllamaEndpoint: null, // Simulate missing connection string
-            defaultOllamaModel: null);
+            null, // Simulate missing connection string
+            null);
 
         // Build service provider to validate configuration
         ServiceProvider serviceProvider = services.BuildServiceProvider();
@@ -49,7 +49,7 @@ public class DependencyInjectionConfigurationTests
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                { "TextGenerationModel:Provider", "Ollama" }
+                {"TextGenerationModel:Provider", "Ollama"}
             })
             .Build();
 
@@ -60,8 +60,8 @@ public class DependencyInjectionConfigurationTests
         services.AddChatClient(
             configuration,
             "TextGenerationModel",
-            defaultOllamaEndpoint: "http://test-ollama:11434",
-            defaultOllamaModel: "test-model");
+            "http://test-ollama:11434",
+            "test-model");
 
         // Build service provider to validate configuration
         ServiceProvider serviceProvider = services.BuildServiceProvider();
@@ -79,7 +79,7 @@ public class DependencyInjectionConfigurationTests
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                { "TextGenerationModel:Provider", "AzureOpenAI" }
+                {"TextGenerationModel:Provider", "AzureOpenAI"}
             })
             .Build();
 
@@ -106,10 +106,10 @@ public class DependencyInjectionConfigurationTests
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                { "TextGenerationModel:Provider", "AzureOpenAI" },
-                { "TextGenerationModel:Endpoint", "https://test.openai.azure.com" },
-                { "TextGenerationModel:Name", "test-deployment" },
-                { "TextGenerationModel:Key", "test-key" }
+                {"TextGenerationModel:Provider", "AzureOpenAI"},
+                {"TextGenerationModel:Endpoint", "https://test.openai.azure.com"},
+                {"TextGenerationModel:Name", "test-deployment"},
+                {"TextGenerationModel:Key", "test-key"}
             })
             .Build();
 
@@ -136,7 +136,7 @@ public class DependencyInjectionConfigurationTests
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                { "EmbeddingModel:Provider", "Ollama" }
+                {"EmbeddingModel:Provider", "Ollama"}
             })
             .Build();
 
@@ -146,14 +146,14 @@ public class DependencyInjectionConfigurationTests
         services.AddEmbeddingGenerator(
             configuration,
             "EmbeddingModel",
-            defaultOllamaEndpoint: null, // Simulate missing connection string
-            defaultOllamaModel: null);
+            null, // Simulate missing connection string
+            null);
 
         // Build service provider to validate configuration
         ServiceProvider serviceProvider = services.BuildServiceProvider();
 
         // Should be able to resolve IEmbeddingGenerator
-        IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator = 
+        IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator =
             serviceProvider.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
         embeddingGenerator.ShouldNotBeNull();
     }
@@ -166,7 +166,7 @@ public class DependencyInjectionConfigurationTests
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                { "EmbeddingModel:Provider", "AzureOpenAI" }
+                {"EmbeddingModel:Provider", "AzureOpenAI"}
             })
             .Build();
 
@@ -181,8 +181,8 @@ public class DependencyInjectionConfigurationTests
         ServiceProvider serviceProvider = services.BuildServiceProvider();
 
         // Assert - should throw when trying to resolve
-        Should.Throw<InvalidOperationException>(() => 
-            serviceProvider.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>())
+        Should.Throw<InvalidOperationException>(() =>
+                serviceProvider.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>())
             .Message.ShouldContain("endpoint is not configured");
     }
 
@@ -194,10 +194,10 @@ public class DependencyInjectionConfigurationTests
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                { "EmbeddingModel:Provider", "AzureOpenAI" },
-                { "EmbeddingModel:Endpoint", "https://test.openai.azure.com" },
-                { "EmbeddingModel:Name", "test-deployment" },
-                { "EmbeddingModel:Key", "test-key" }
+                {"EmbeddingModel:Provider", "AzureOpenAI"},
+                {"EmbeddingModel:Endpoint", "https://test.openai.azure.com"},
+                {"EmbeddingModel:Name", "test-deployment"},
+                {"EmbeddingModel:Key", "test-key"}
             })
             .Build();
 
@@ -212,9 +212,8 @@ public class DependencyInjectionConfigurationTests
         ServiceProvider serviceProvider = services.BuildServiceProvider();
 
         // Should be able to resolve IEmbeddingGenerator
-        IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator = 
+        IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator =
             serviceProvider.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
         embeddingGenerator.ShouldNotBeNull();
     }
 }
-

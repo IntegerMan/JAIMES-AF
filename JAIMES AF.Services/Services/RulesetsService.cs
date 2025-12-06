@@ -1,10 +1,3 @@
-using MattEland.Jaimes.Domain;
-using MattEland.Jaimes.Repositories;
-using MattEland.Jaimes.Repositories.Entities;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.ServiceLayer.Mapping;
-using Microsoft.EntityFrameworkCore;
-
 namespace MattEland.Jaimes.ServiceLayer.Services;
 
 public class RulesetsService(IDbContextFactory<JaimesDbContext> contextFactory) : IRulesetsService
@@ -12,10 +5,10 @@ public class RulesetsService(IDbContextFactory<JaimesDbContext> contextFactory) 
     public async Task<RulesetDto[]> GetRulesetsAsync(CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        
+
         Ruleset[] rulesets = await context.Rulesets
-        .AsNoTracking()
-        .ToArrayAsync(cancellationToken);
+            .AsNoTracking()
+            .ToArrayAsync(cancellationToken);
 
         return rulesets.ToDto();
     }
@@ -23,31 +16,27 @@ public class RulesetsService(IDbContextFactory<JaimesDbContext> contextFactory) 
     public async Task<RulesetDto> GetRulesetAsync(string id, CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        
+
         Ruleset? ruleset = await context.Rulesets
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
 
-        if (ruleset == null)
-        {
-            throw new ArgumentException($"Ruleset with id '{id}' not found.", nameof(id));
-        }
+        if (ruleset == null) throw new ArgumentException($"Ruleset with id '{id}' not found.", nameof(id));
 
         return ruleset.ToDto();
     }
 
-    public async Task<RulesetDto> CreateRulesetAsync(string id, string name, CancellationToken cancellationToken = default)
+    public async Task<RulesetDto> CreateRulesetAsync(string id,
+        string name,
+        CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        
+
         // Check if ruleset already exists
         bool exists = await context.Rulesets
             .AnyAsync(r => r.Id == id, cancellationToken);
 
-        if (exists)
-        {
-            throw new ArgumentException($"Ruleset with id '{id}' already exists.", nameof(id));
-        }
+        if (exists) throw new ArgumentException($"Ruleset with id '{id}' already exists.", nameof(id));
 
         Ruleset newRuleset = new()
         {
@@ -61,17 +50,16 @@ public class RulesetsService(IDbContextFactory<JaimesDbContext> contextFactory) 
         return newRuleset.ToDto();
     }
 
-    public async Task<RulesetDto> UpdateRulesetAsync(string id, string name, CancellationToken cancellationToken = default)
+    public async Task<RulesetDto> UpdateRulesetAsync(string id,
+        string name,
+        CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        
+
         Ruleset? ruleset = await context.Rulesets
             .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
 
-        if (ruleset == null)
-        {
-            throw new ArgumentException($"Ruleset with id '{id}' not found.", nameof(id));
-        }
+        if (ruleset == null) throw new ArgumentException($"Ruleset with id '{id}' not found.", nameof(id));
 
         ruleset.Name = name;
 

@@ -1,15 +1,3 @@
-using System.Diagnostics;
-using MattEland.Jaimes.DocumentProcessing.Services;
-using MattEland.Jaimes.ServiceDefaults;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.Workers.DocumentChangeDetector.Configuration;
-using MattEland.Jaimes.Workers.DocumentChangeDetector.Services;
-using MattEland.Jaimes.Repositories;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
-using RabbitMQ.Client;
-
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
 // Configure OpenTelemetry for Aspire telemetry
@@ -27,20 +15,19 @@ builder.Logging.AddOpenTelemetry(logging =>
 // Load configuration
 builder.Configuration
     .SetBasePath(Directory.GetCurrentDirectory())
-    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
-    .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: false)
+    .AddJsonFile("appsettings.json", false, false)
+    .AddJsonFile("appsettings.Development.json", true, false)
     .AddUserSecrets(typeof(Program).Assembly)
     .AddEnvironmentVariables()
     .AddCommandLine(args);
 
 // Bind configuration
-DocumentChangeDetectorOptions options = builder.Configuration.GetSection("DocumentChangeDetector").Get<DocumentChangeDetectorOptions>()
+DocumentChangeDetectorOptions options =
+    builder.Configuration.GetSection("DocumentChangeDetector").Get<DocumentChangeDetectorOptions>()
     ?? throw new InvalidOperationException("DocumentChangeDetector configuration section is required");
 
 if (string.IsNullOrWhiteSpace(options.ContentDirectory))
-{
     throw new InvalidOperationException("DocumentChangeDetector:ContentDirectory configuration is required");
-}
 
 builder.Services.AddSingleton(options);
 
@@ -66,7 +53,7 @@ ActivitySource activitySource = new(activitySourceName);
 
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(resource => resource
-        .AddService(serviceName: activitySourceName, serviceVersion: "1.0.0"))
+        .AddService(activitySourceName, serviceVersion: "1.0.0"))
     .WithMetrics(metrics =>
     {
         metrics.AddRuntimeInstrumentation()
@@ -99,7 +86,3 @@ logger.LogInformation("Application exiting with code: {ExitCode}", exitCode);
 
 // Explicitly exit with the code (though Environment.ExitCode would be used automatically)
 Environment.Exit(exitCode);
-
-
-
-

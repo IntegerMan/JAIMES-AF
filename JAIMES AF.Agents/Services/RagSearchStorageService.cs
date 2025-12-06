@@ -1,12 +1,6 @@
 using System.Threading.Channels;
-using MattEland.Jaimes.Repositories;
-using MattEland.Jaimes.Repositories.Entities;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
 namespace MattEland.Jaimes.Agents.Services;
 
@@ -24,7 +18,11 @@ public class RagSearchStorageService : BackgroundService, IRagSearchStorageServi
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public void EnqueueSearchResults(string query, string? rulesetId, string indexName, string? filterJson, SearchRuleResult[] results)
+    public void EnqueueSearchResults(string query,
+        string? rulesetId,
+        string indexName,
+        string? filterJson,
+        SearchRuleResult[] results)
     {
         SearchStorageItem item = new()
         {
@@ -36,9 +34,7 @@ public class RagSearchStorageService : BackgroundService, IRagSearchStorageServi
         };
 
         if (!_queue.Writer.TryWrite(item))
-        {
             _logger.LogWarning("Failed to enqueue search results for storage. Queue may be closed.");
-        }
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -46,7 +42,6 @@ public class RagSearchStorageService : BackgroundService, IRagSearchStorageServi
         _logger.LogInformation("RagSearchStorageService background worker started");
 
         await foreach (SearchStorageItem item in _queue.Reader.ReadAllAsync(stoppingToken))
-        {
             try
             {
                 await StoreSearchResultsAsync(item, stoppingToken);
@@ -55,7 +50,6 @@ public class RagSearchStorageService : BackgroundService, IRagSearchStorageServi
             {
                 _logger.LogError(ex, "Error storing search results for query: {Query}", item.Query);
             }
-        }
 
         _logger.LogInformation("RagSearchStorageService background worker stopped");
     }
@@ -95,7 +89,9 @@ public class RagSearchStorageService : BackgroundService, IRagSearchStorageServi
         }
 
         await context.SaveChangesAsync(cancellationToken);
-        _logger.LogDebug("Stored search query {QueryId} with {ChunkCount} result chunks", searchQuery.Id, item.Results.Length);
+        _logger.LogDebug("Stored search query {QueryId} with {ChunkCount} result chunks",
+            searchQuery.Id,
+            item.Results.Length);
     }
 
     private sealed class SearchStorageItem

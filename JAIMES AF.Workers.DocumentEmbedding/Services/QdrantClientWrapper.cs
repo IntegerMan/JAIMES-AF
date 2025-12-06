@@ -1,7 +1,3 @@
-using MattEland.Jaimes.ServiceDefinitions.Services;
-using Qdrant.Client;
-using Qdrant.Client.Grpc;
-
 namespace MattEland.Jaimes.Workers.DocumentEmbedding.Services;
 
 /// <summary>
@@ -16,9 +12,10 @@ public class QdrantClientWrapper : IQdrantClient
         _client = client ?? throw new ArgumentNullException(nameof(client));
     }
 
-    public async Task<CollectionInfo?> GetCollectionInfoAsync(string collectionName, CancellationToken cancellationToken = default)
+    public async Task<CollectionInfo?> GetCollectionInfoAsync(string collectionName,
+        CancellationToken cancellationToken = default)
     {
-        CollectionInfo? result = await _client.GetCollectionInfoAsync(collectionName, cancellationToken: cancellationToken);
+        CollectionInfo? result = await _client.GetCollectionInfoAsync(collectionName, cancellationToken);
         return result;
     }
 
@@ -44,4 +41,3 @@ public class QdrantClientWrapper : IQdrantClient
             cancellationToken: cancellationToken);
     }
 }
-

@@ -1,8 +1,3 @@
-using System.Diagnostics;
-using MattEland.Jaimes.DocumentProcessing.Options;
-using MattEland.Jaimes.DocumentProcessing.Services;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-
 namespace MattEland.Jaimes.DocumentCracker.Services;
 
 public class DocumentCrackingOrchestrator(
@@ -15,9 +10,7 @@ public class DocumentCrackingOrchestrator(
     public async Task<DocumentCrackingSummary> CrackAllAsync(CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(options.SourceDirectory))
-        {
             throw new InvalidOperationException("SourceDirectory configuration is required for document cracking.");
-        }
 
         DocumentCrackingSummary summary = new();
 
@@ -28,16 +21,10 @@ public class DocumentCrackingOrchestrator(
 
         foreach (string directory in directories)
         {
-            if (cancellationToken.IsCancellationRequested)
-            {
-                break;
-            }
+            if (cancellationToken.IsCancellationRequested) break;
 
             string relativeDirectory = Path.GetRelativePath(options.SourceDirectory, directory);
-            if (relativeDirectory == ".")
-            {
-                relativeDirectory = string.Empty;
-            }
+            if (relativeDirectory == ".") relativeDirectory = string.Empty;
 
             using Activity? directoryActivity = activitySource.StartActivity("DocumentCracking.ProcessDirectory");
             directoryActivity?.SetTag("cracker.directory", directory);
@@ -46,13 +33,10 @@ public class DocumentCrackingOrchestrator(
             IEnumerable<string> files = directoryScanner.GetFiles(directory, options.SupportedExtensions);
             int directoryCracked = 0;
             int directoryFailures = 0;
-            
+
             foreach (string filePath in files)
             {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    break;
-                }
+                if (cancellationToken.IsCancellationRequested) break;
 
                 summary.TotalDiscovered++;
 
@@ -67,7 +51,11 @@ public class DocumentCrackingOrchestrator(
                 {
                     string rulesetId = DocumentMetadataExtractor.ExtractRulesetId(relativeDirectory);
                     string documentKind = DocumentMetadataExtractor.DetermineDocumentKind(relativeDirectory);
-                    await documentCrackingService.ProcessDocumentAsync(filePath, relativeDirectory, rulesetId, documentKind, cancellationToken);
+                    await documentCrackingService.ProcessDocumentAsync(filePath,
+                        relativeDirectory,
+                        rulesetId,
+                        documentKind,
+                        cancellationToken);
                     summary.TotalCracked++;
                     directoryCracked++;
                 }
@@ -78,7 +66,7 @@ public class DocumentCrackingOrchestrator(
                     logger.LogError(ex, "Failed to crack document: {FilePath}", filePath);
                 }
             }
-            
+
             if (directoryActivity != null)
             {
                 directoryActivity.SetTag("cracker.directory_cracked", directoryCracked);
@@ -99,5 +87,3 @@ public class DocumentCrackingOrchestrator(
         public int SkippedUnsupported { get; set; }
     }
 }
-
-

@@ -1,9 +1,3 @@
-using FastEndpoints;
-using MattEland.Jaimes.Domain;
-using MattEland.Jaimes.ServiceDefinitions.Requests;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
 public class CreateRulesetEndpoint : Endpoint<CreateRulesetRequest, RulesetResponse>
@@ -35,7 +29,7 @@ public class CreateRulesetEndpoint : Endpoint<CreateRulesetRequest, RulesetRespo
                 Name = ruleset.Name
             };
 
-            await Send.CreatedAtAsync<GetRulesetEndpoint>(response, response, verb: Http.GET, cancellation: ct);
+            await Send.CreatedAtAsync<GetRulesetEndpoint>(response, response, Http.GET, cancellation: ct);
         }
         catch (ArgumentException ex)
         {
@@ -43,4 +37,3 @@ public class CreateRulesetEndpoint : Endpoint<CreateRulesetRequest, RulesetRespo
         }
     }
 }
-

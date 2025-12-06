@@ -1,10 +1,3 @@
-using System.Diagnostics;
-using Grpc.Core;
-using Microsoft.Extensions.Logging;
-using Qdrant.Client;
-using Qdrant.Client.Grpc;
-using MattEland.Jaimes.ServiceDefaults;
-
 namespace MattEland.Jaimes.Agents.Services;
 
 public class QdrantRulesStore(
@@ -13,7 +6,9 @@ public class QdrantRulesStore(
     ActivitySource activitySource) : IQdrantRulesStore
 {
     private const string CollectionName = "rulesets";
+
     private const string DocumentEmbeddingsCollectionName = "document-embeddings";
+
     // Standard embedding dimensions for text-embedding-3-small model
     // This must match between indexing and searching for vectors to be compatible
     private const int EmbeddingDimensions = 1536;
@@ -27,8 +22,8 @@ public class QdrantRulesStore(
         {
             // Check if collection exists
             CollectionInfo? collectionInfo = await qdrantClient.GetCollectionInfoAsync(
-                CollectionName, 
-                cancellationToken: cancellationToken);
+                CollectionName,
+                cancellationToken);
 
             if (collectionInfo != null)
             {
@@ -37,8 +32,8 @@ public class QdrantRulesStore(
                 return;
             }
         }
-        catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound || 
-                                       ex.StatusCode == StatusCode.Internal)
+        catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound ||
+                                      ex.StatusCode == StatusCode.Internal)
         {
             // Collection doesn't exist (NotFound) or server error (might be not ready)
             if (ex.StatusCode == StatusCode.NotFound)
@@ -52,10 +47,10 @@ public class QdrantRulesStore(
                 throw; // Re-throw to allow retry
             }
         }
-        catch (Exception ex) when (ex.Message.Contains("doesn't exist") || 
-                                    ex.Message.Contains("not found") ||
-                                    ex.Message.Contains("PROTOCOL_ERROR") ||
-                                    ex.Message.Contains("HTTP/2"))
+        catch (Exception ex) when (ex.Message.Contains("doesn't exist") ||
+                                   ex.Message.Contains("not found") ||
+                                   ex.Message.Contains("PROTOCOL_ERROR") ||
+                                   ex.Message.Contains("HTTP/2"))
         {
             // Collection doesn't exist or connection issue
             if (ex.Message.Contains("PROTOCOL_ERROR") || ex.Message.Contains("HTTP/2"))
@@ -63,6 +58,7 @@ public class QdrantRulesStore(
                 logger.LogWarning("Qdrant connection error (might not be ready): {Message}", ex.Message);
                 throw; // Re-throw to allow retry
             }
+
             logger.LogInformation("Collection {CollectionName} does not exist, creating it", CollectionName);
         }
 
@@ -71,7 +67,7 @@ public class QdrantRulesStore(
         {
             VectorParams vectorParams = new()
             {
-                Size = (ulong)EmbeddingDimensions,
+                Size = (ulong) EmbeddingDimensions,
                 Distance = Distance.Cosine
             };
 
@@ -79,21 +75,22 @@ public class QdrantRulesStore(
                 CollectionName,
                 vectorParams,
                 cancellationToken: cancellationToken);
-            
-            logger.LogInformation("Created Qdrant collection {CollectionName} with {Dimensions} dimensions", 
-                CollectionName, EmbeddingDimensions);
+
+            logger.LogInformation("Created Qdrant collection {CollectionName} with {Dimensions} dimensions",
+                CollectionName,
+                EmbeddingDimensions);
         }
         catch (Exception ex) when (ex.Message.Contains("already exists") || ex.Message.Contains("duplicate"))
         {
             logger.LogDebug("Collection {CollectionName} already exists", CollectionName);
         }
-        
+
         activity?.SetStatus(ActivityStatusCode.Ok);
     }
 
     public async Task StoreRuleAsync(
-        string ruleId, 
-        float[] embedding, 
+        string ruleId,
+        float[] embedding,
         Dictionary<string, string> metadata,
         CancellationToken cancellationToken = default)
     {
@@ -109,34 +106,30 @@ public class QdrantRulesStore(
 
             // Convert metadata to Qdrant payload
             Dictionary<string, Value> payload = new();
-            foreach ((string key, string value) in metadata)
-            {
-                payload[key] = new Value { StringValue = value };
-            }
+            foreach ((string key, string value) in metadata) payload[key] = new Value {StringValue = value};
 
             // Generate a point ID from the rule ID string
-            ulong qdrantPointId = (ulong)Math.Abs(ruleId.GetHashCode());
+            ulong qdrantPointId = (ulong) Math.Abs(ruleId.GetHashCode());
             if (qdrantPointId == 0)
-            {
                 // Avoid zero ID (Qdrant doesn't allow it)
                 qdrantPointId = 1;
-            }
 
             PointStruct point = new()
             {
                 Id = qdrantPointId,
                 Vectors = embedding,
-                Payload = { payload }
+                Payload = {payload}
             };
 
             await qdrantClient.UpsertAsync(
-                collectionName: CollectionName,
-                points: new[] { point },
+                CollectionName,
+                new[] {point},
                 cancellationToken: cancellationToken);
 
-            logger.LogInformation("Stored rule {RuleId} in collection {CollectionName}", 
-                ruleId, CollectionName);
-            
+            logger.LogInformation("Stored rule {RuleId} in collection {CollectionName}",
+                ruleId,
+                CollectionName);
+
             activity?.SetStatus(ActivityStatusCode.Ok);
         }
         catch (Exception ex)
@@ -148,9 +141,9 @@ public class QdrantRulesStore(
     }
 
     public async Task<List<RuleSearchResult>> SearchRulesAsync(
-        float[] queryEmbedding, 
-        string? rulesetId, 
-        int limit, 
+        float[] queryEmbedding,
+        string? rulesetId,
+        int limit,
         CancellationToken cancellationToken = default)
     {
         using Activity? activity = activitySource.StartActivity("QdrantRules.Search");
@@ -161,15 +154,12 @@ public class QdrantRulesStore(
         try
         {
             if (queryEmbedding.Length != EmbeddingDimensions)
-            {
                 throw new ArgumentException(
                     $"Query embedding has {queryEmbedding.Length} dimensions, expected {EmbeddingDimensions}");
-            }
 
             // Build filter if searching within a specific ruleset
             Filter? filter = null;
             if (!string.IsNullOrWhiteSpace(rulesetId))
-            {
                 filter = new Filter
                 {
                     Must =
@@ -179,25 +169,23 @@ public class QdrantRulesStore(
                             Field = new FieldCondition
                             {
                                 Key = "rulesetId",
-                                Match = new Match { Text = rulesetId }
+                                Match = new Match {Text = rulesetId}
                             }
                         }
                     }
                 };
-            }
 
             // Search for similar vectors using Qdrant client
             // The Qdrant.Client SearchAsync returns Task<IReadOnlyList<ScoredPoint>>
             IReadOnlyList<ScoredPoint> searchResults = await qdrantClient.SearchAsync(
-                collectionName: CollectionName,
-                vector: queryEmbedding,
-                filter: filter,
-                limit: (ulong)limit,
+                CollectionName,
+                queryEmbedding,
+                filter,
+                limit: (ulong) limit,
                 cancellationToken: cancellationToken);
 
             List<RuleSearchResult> results = new();
             foreach (ScoredPoint point in searchResults)
-            {
                 try
                 {
                     string ruleId = point.Payload.GetValueOrDefault("ruleId")?.StringValue ?? string.Empty;
@@ -206,7 +194,6 @@ public class QdrantRulesStore(
                     string pointRulesetId = point.Payload.GetValueOrDefault("rulesetId")?.StringValue ?? string.Empty;
 
                     if (!string.IsNullOrWhiteSpace(ruleId) && !string.IsNullOrWhiteSpace(content))
-                    {
                         results.Add(new RuleSearchResult
                         {
                             RuleId = ruleId,
@@ -215,13 +202,11 @@ public class QdrantRulesStore(
                             RulesetId = pointRulesetId,
                             Score = point.Score
                         });
-                    }
                 }
                 catch (Exception ex)
                 {
                     logger.LogWarning(ex, "Failed to parse rule search result, skipping");
                 }
-            }
 
             logger.LogInformation("Found {Count} rules matching query", results.Count);
             activity?.SetStatus(ActivityStatusCode.Ok);
@@ -251,7 +236,6 @@ public class QdrantRulesStore(
             // Build filter if searching within a specific ruleset
             Filter? filter = null;
             if (!string.IsNullOrWhiteSpace(rulesetId))
-            {
                 filter = new Filter
                 {
                     Must =
@@ -261,24 +245,22 @@ public class QdrantRulesStore(
                             Field = new FieldCondition
                             {
                                 Key = "rulesetId",
-                                Match = new Match { Text = rulesetId }
+                                Match = new Match {Text = rulesetId}
                             }
                         }
                     }
                 };
-            }
 
             // Search for similar vectors using Qdrant client
             IReadOnlyList<ScoredPoint> searchResults = await qdrantClient.SearchAsync(
-                collectionName: DocumentEmbeddingsCollectionName,
-                vector: queryEmbedding,
-                filter: filter,
-                limit: (ulong)limit,
+                DocumentEmbeddingsCollectionName,
+                queryEmbedding,
+                filter,
+                limit: (ulong) limit,
                 cancellationToken: cancellationToken);
 
             List<DocumentRuleSearchResult> results = new();
             foreach (ScoredPoint point in searchResults)
-            {
                 try
                 {
                     string chunkText = point.Payload.GetValueOrDefault("chunkText")?.StringValue ?? string.Empty;
@@ -287,7 +269,8 @@ public class QdrantRulesStore(
                     string fileName = point.Payload.GetValueOrDefault("fileName")?.StringValue ?? string.Empty;
                     string pointRulesetId = point.Payload.GetValueOrDefault("rulesetId")?.StringValue ?? string.Empty;
 
-                    if (!string.IsNullOrWhiteSpace(chunkText) && !string.IsNullOrWhiteSpace(documentId) && !string.IsNullOrWhiteSpace(chunkId))
+                    if (!string.IsNullOrWhiteSpace(chunkText) && !string.IsNullOrWhiteSpace(documentId) &&
+                        !string.IsNullOrWhiteSpace(chunkId))
                     {
                         // EmbeddingId is the Qdrant point ID - reconstruct from chunkId using the same logic as when storing
                         // This matches the approach used in QdrantEmbeddingStore since we can't directly access NumId from PointId
@@ -310,7 +293,6 @@ public class QdrantRulesStore(
                 {
                     logger.LogWarning(ex, "Failed to parse document rule search result, skipping");
                 }
-            }
 
             // Sort by relevancy descending (Qdrant should already return sorted, but ensure it)
             results = results.OrderByDescending(r => r.Relevancy).ToList();
@@ -327,4 +309,3 @@ public class QdrantRulesStore(
         }
     }
 }
-

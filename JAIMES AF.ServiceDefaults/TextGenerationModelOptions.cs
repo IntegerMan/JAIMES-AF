@@ -40,4 +40,3 @@ public class TextGenerationModelOptions
     /// </summary>
     public string? Name { get; set; }
 }
-

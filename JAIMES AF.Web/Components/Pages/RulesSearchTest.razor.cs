@@ -1,25 +1,18 @@
-using MattEland.Jaimes.ServiceDefinitions.Requests;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
-
 namespace MattEland.Jaimes.Web.Components.Pages;
 
 public partial class RulesSearchTest
 {
-    [Inject]
-    public HttpClient Http { get; set; } = null!;
+    [Inject] public HttpClient Http { get; set; } = null!;
 
-    [Inject]
-    public ILoggerFactory LoggerFactory { get; set; } = null!;
+    [Inject] public ILoggerFactory LoggerFactory { get; set; } = null!;
 
-    private RulesetInfoResponse[] rulesets = [];
-    private string searchQuery = string.Empty;
-    private string? selectedRulesetId;
-    private bool storeResults = true;
-    private bool isSearching = false;
-    private string? errorMessage;
-    private SearchRulesResponse? searchResult;
+    private RulesetInfoResponse[] _rulesets = [];
+    private string _searchQuery = string.Empty;
+    private string? _selectedRulesetId;
+    private bool _storeResults = true;
+    private bool _isSearching = false;
+    private string? _errorMessage;
+    private SearchRulesResponse? _searchResult;
 
     protected override async Task OnInitializedAsync()
     {
@@ -31,66 +24,62 @@ public partial class RulesSearchTest
         try
         {
             RulesetListResponse? response = await Http.GetFromJsonAsync<RulesetListResponse>("/rulesets");
-            rulesets = response?.Rulesets ?? [];
+            _rulesets = response?.Rulesets ?? [];
         }
         catch (Exception ex)
         {
             LoggerFactory.CreateLogger("RulesSearchTest").LogError(ex, "Failed to load rulesets from API");
-            errorMessage = "Failed to load rulesets: " + ex.Message;
+            _errorMessage = "Failed to load rulesets: " + ex.Message;
         }
     }
 
     private async Task HandleSearchQueryKeyDown(KeyboardEventArgs e)
     {
-        if (e.Key == "Enter" && !isSearching && !string.IsNullOrWhiteSpace(searchQuery))
-        {
-            await SearchRulesAsync();
-        }
+        if (e.Key == "Enter" && !_isSearching && !string.IsNullOrWhiteSpace(_searchQuery)) await SearchRulesAsync();
     }
 
     private async Task SearchRulesAsync()
     {
-        if (string.IsNullOrWhiteSpace(searchQuery))
+        if (string.IsNullOrWhiteSpace(_searchQuery))
         {
-            errorMessage = "Please enter a search query.";
+            _errorMessage = "Please enter a search query.";
             return;
         }
 
-        isSearching = true;
-        errorMessage = null;
-        searchResult = null;
+        _isSearching = true;
+        _errorMessage = null;
+        _searchResult = null;
 
         try
         {
             SearchRulesRequest request = new()
             {
-                Query = searchQuery,
-                RulesetId = selectedRulesetId,
-                StoreResults = storeResults
+                Query = _searchQuery,
+                RulesetId = _selectedRulesetId,
+                StoreResults = _storeResults
             };
 
             HttpResponseMessage response = await Http.PostAsJsonAsync("/rules/search", request);
-            
+
             if (response.IsSuccessStatusCode)
             {
-                searchResult = await response.Content.ReadFromJsonAsync<SearchRulesResponse>();
+                _searchResult = await response.Content.ReadFromJsonAsync<SearchRulesResponse>();
             }
             else
             {
                 string errorText = await response.Content.ReadAsStringAsync();
-                errorMessage = $"Search failed: {response.StatusCode} - {errorText}";
+                _errorMessage = $"Search failed: {response.StatusCode} - {errorText}";
             }
         }
         catch (Exception ex)
         {
             LoggerFactory.CreateLogger("RulesSearchTest").LogError(ex, "Failed to search rules");
-            errorMessage = "Failed to search rules: " + ex.Message;
+            _errorMessage = "Failed to search rules: " + ex.Message;
         }
         finally
         {
-            isSearching = false;
+            _isSearching = false;
             StateHasChanged();
         }
     }
 }
-

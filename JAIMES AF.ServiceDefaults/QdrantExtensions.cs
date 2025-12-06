@@ -98,7 +98,7 @@ public static class QdrantExtensions
 
         // Get connection string
         string? qdrantConnectionString = configuration.GetConnectionString(options.ConnectionStringName);
-        
+
         // Get host and port from configuration section
         string? qdrantHost = configuration[$"{options.SectionPrefix}:QdrantHost"];
         string? qdrantPortStr = configuration[$"{options.SectionPrefix}:QdrantPort"];
@@ -106,47 +106,38 @@ public static class QdrantExtensions
 
         // Extract from connection string if provided (takes precedence)
         if (!string.IsNullOrWhiteSpace(qdrantConnectionString))
-        {
             QdrantConnectionStringParser.ApplyQdrantConnectionString(
-                qdrantConnectionString, 
-                ref qdrantHost, 
-                ref qdrantPortStr, 
+                qdrantConnectionString,
+                ref qdrantHost,
+                ref qdrantPortStr,
                 ref qdrantApiKey);
-        }
 
         // Try to get API key from additional configuration sources if not found in connection string
-        if (string.IsNullOrWhiteSpace(qdrantApiKey))
-        {
-            qdrantApiKey = GetApiKeyFromConfiguration(configuration, options);
-        }
+        if (string.IsNullOrWhiteSpace(qdrantApiKey)) qdrantApiKey = GetApiKeyFromConfiguration(configuration, options);
 
         // Validate and set defaults
         if (string.IsNullOrWhiteSpace(qdrantHost) || string.IsNullOrWhiteSpace(qdrantPortStr))
         {
             if (options.RequireConfiguration)
-            {
                 throw new InvalidOperationException(
                     $"Qdrant host and port are not configured. " +
                     $"Expected '{options.SectionPrefix}:QdrantHost' and '{options.SectionPrefix}:QdrantPort' from Aspire.");
-            }
-            
+
             // Use defaults if not required
             qdrantHost ??= "localhost";
             qdrantPortStr ??= "6334";
         }
 
         if (!int.TryParse(qdrantPortStr, out int qdrantPort))
-        {
             throw new InvalidOperationException(
                 $"Invalid Qdrant port: '{qdrantPortStr}'. Expected a valid integer.");
-        }
 
-        bool useHttps = configuration.GetValue<bool>($"{options.SectionPrefix}:QdrantUseHttps", defaultValue: false);
+        bool useHttps = configuration.GetValue<bool>($"{options.SectionPrefix}:QdrantUseHttps", false);
 
         // Create and register Qdrant client
         QdrantClient qdrantClient = string.IsNullOrWhiteSpace(qdrantApiKey)
-            ? new QdrantClient(qdrantHost, port: qdrantPort, https: useHttps)
-            : new QdrantClient(qdrantHost, port: qdrantPort, https: useHttps, apiKey: qdrantApiKey);
+            ? new QdrantClient(qdrantHost, qdrantPort, useHttps)
+            : new QdrantClient(qdrantHost, qdrantPort, useHttps, qdrantApiKey);
 
         services.AddSingleton(qdrantClient);
 
@@ -165,53 +156,40 @@ public static class QdrantExtensions
     {
         // Standard API key lookup locations
         string? apiKey = configuration["Qdrant__ApiKey"]
-            ?? configuration["Qdrant:ApiKey"]
-            ?? configuration["QDRANT_EMBEDDINGS_APIKEY"]
-            ?? configuration["QdrantEmbeddings__ApiKey"]
-            ?? configuration["QDRANT_EMBEDDINGS_API_KEY"]
-            ?? configuration["Aspire:Resources:qdrant-embeddings:ApiKey"]
-            ?? Environment.GetEnvironmentVariable("Qdrant__ApiKey")
-            ?? Environment.GetEnvironmentVariable("QDRANT_EMBEDDINGS_APIKEY")
-            ?? Environment.GetEnvironmentVariable("QdrantEmbeddings__ApiKey")
-            ?? Environment.GetEnvironmentVariable("QDRANT_EMBEDDINGS_API_KEY")
-            ?? Environment.GetEnvironmentVariable("qdrant-api-key");
+                         ?? configuration["Qdrant:ApiKey"]
+                         ?? configuration["QDRANT_EMBEDDINGS_APIKEY"]
+                         ?? configuration["QdrantEmbeddings__ApiKey"]
+                         ?? configuration["QDRANT_EMBEDDINGS_API_KEY"]
+                         ?? configuration["Aspire:Resources:qdrant-embeddings:ApiKey"]
+                         ?? Environment.GetEnvironmentVariable("Qdrant__ApiKey")
+                         ?? Environment.GetEnvironmentVariable("QDRANT_EMBEDDINGS_APIKEY")
+                         ?? Environment.GetEnvironmentVariable("QdrantEmbeddings__ApiKey")
+                         ?? Environment.GetEnvironmentVariable("QDRANT_EMBEDDINGS_API_KEY")
+                         ?? Environment.GetEnvironmentVariable("qdrant-api-key");
 
         // Check additional keys if provided
         if (string.IsNullOrWhiteSpace(apiKey) && options.AdditionalApiKeyKeys != null)
-        {
             foreach (string key in options.AdditionalApiKeyKeys)
             {
                 apiKey = configuration[key] ?? Environment.GetEnvironmentVariable(key);
-                if (!string.IsNullOrWhiteSpace(apiKey))
-                {
-                    break;
-                }
+                if (!string.IsNullOrWhiteSpace(apiKey)) break;
             }
-        }
 
         // Handle unresolved Aspire expressions (containing {})
         if (!string.IsNullOrWhiteSpace(apiKey) && apiKey.Contains('{') && apiKey.Contains('}'))
         {
             string? resolvedApiKey = Environment.GetEnvironmentVariable("qdrant-api-key")
-                ?? Environment.GetEnvironmentVariable("QDRANT_API_KEY")
-                ?? Environment.GetEnvironmentVariable("Qdrant__ApiKey")
-                ?? Environment.GetEnvironmentVariable("QDRANT_EMBEDDINGS_APIKEY");
+                                     ?? Environment.GetEnvironmentVariable("QDRANT_API_KEY")
+                                     ?? Environment.GetEnvironmentVariable("Qdrant__ApiKey")
+                                     ?? Environment.GetEnvironmentVariable("QDRANT_EMBEDDINGS_APIKEY");
 
             if (!string.IsNullOrWhiteSpace(resolvedApiKey) && !resolvedApiKey.Contains('{'))
-            {
                 apiKey = resolvedApiKey;
-            }
-            else if (options.DefaultApiKey != null)
-            {
-                apiKey = options.DefaultApiKey;
-            }
+            else if (options.DefaultApiKey != null) apiKey = options.DefaultApiKey;
         }
 
         // Use default if still not found
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            apiKey = options.DefaultApiKey;
-        }
+        if (string.IsNullOrWhiteSpace(apiKey)) apiKey = options.DefaultApiKey;
 
         return apiKey;
     }
@@ -229,7 +207,7 @@ public static class QdrantExtensions
     {
         // Get connection string
         string? qdrantConnectionString = configuration.GetConnectionString(options.ConnectionStringName);
-        
+
         // Get host and port from configuration section
         string? qdrantHost = configuration[$"{options.SectionPrefix}:QdrantHost"];
         string? qdrantPortStr = configuration[$"{options.SectionPrefix}:QdrantPort"];
@@ -237,24 +215,19 @@ public static class QdrantExtensions
 
         // Extract from connection string if provided (takes precedence)
         if (!string.IsNullOrWhiteSpace(qdrantConnectionString))
-        {
             QdrantConnectionStringParser.ApplyQdrantConnectionString(
-                qdrantConnectionString, 
-                ref qdrantHost, 
-                ref qdrantPortStr, 
+                qdrantConnectionString,
+                ref qdrantHost,
+                ref qdrantPortStr,
                 ref dummyApiKey);
-        }
 
         // Set defaults
         qdrantHost ??= "localhost";
         qdrantPortStr ??= "6334";
-        
-        if (!int.TryParse(qdrantPortStr, out int qdrantPort))
-        {
-            qdrantPort = 6334; // Fallback to default port
-        }
 
-        bool useHttps = configuration.GetValue<bool>($"{options.SectionPrefix}:QdrantUseHttps", defaultValue: false);
+        if (!int.TryParse(qdrantPortStr, out int qdrantPort)) qdrantPort = 6334; // Fallback to default port
+
+        bool useHttps = configuration.GetValue<bool>($"{options.SectionPrefix}:QdrantUseHttps", false);
 
         return new QdrantConnectionConfig
         {
@@ -264,4 +237,3 @@ public static class QdrantExtensions
         };
     }
 }
-

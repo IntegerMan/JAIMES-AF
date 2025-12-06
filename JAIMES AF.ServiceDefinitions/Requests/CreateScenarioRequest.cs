@@ -9,4 +9,3 @@ public class CreateScenarioRequest
     public required string SystemPrompt { get; set; }
     public required string NewGameInstructions { get; set; }
 }
-

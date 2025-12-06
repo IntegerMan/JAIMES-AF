@@ -16,26 +16,28 @@
 	</MudButton>
 
 	<div style="position: relative; min-height: 200px;">
-		@if (isLoading)
+		@if (_isLoading)
 		{
 			<div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
 				<MudProgressCircular Indeterminate="true"/>
 			</div>
 		}
-		
-		@if (!isLoading && !string.IsNullOrEmpty(errorMessage))
+
+		@if (!_isLoading && !string.IsNullOrEmpty(_errorMessage))
 		{
-			<MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
+			<MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
 		}
-		
-		@if (!isLoading && string.IsNullOrEmpty(errorMessage) && (games is null || games.Length == 0))
+
+		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && (_games is null || _games.Length == 0))
 		{
-			<MudText Class="mb-4">No games yet. <MudLink Href="/games/new">Create a new game</MudLink></MudText>
+			<MudText Class="mb-4">No games yet.
+				<MudLink Href="/games/new">Create a new game</MudLink>
+			</MudText>
 		}
-		
-		@if (!isLoading && string.IsNullOrEmpty(errorMessage) && games is not null && games.Length > 0)
+
+		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && _games is not null && _games.Length > 0)
 		{
-			<MudTable Items="games" Dense="true" Hover="true">
+			<MudTable Items="_games" Dense="true" Hover="true">
 				<HeaderContent>
 					<MudTh></MudTh>
 					<MudTh>Scenario</MudTh>
@@ -55,7 +57,7 @@
 					<MudTd>@context.PlayerName</MudTd>
 					<MudTd align="Align.Right">
 						<MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
-						               OnClick="@(() => DeleteGameAsync(context.GameId))" />
+						               OnClick="@(() => DeleteGameAsync(context.GameId))"/>
 					</MudTd>
 				</RowTemplate>
 			</MudTable>

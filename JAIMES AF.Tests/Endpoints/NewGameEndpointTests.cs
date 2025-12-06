@@ -11,7 +11,7 @@ public class NewGameEndpointTests : EndpointTestBase
     public async Task NewGameEndpoint_CreatesGame_ReturnsCreated()
     {
         // Arrange
-        NewGameRequest request = new NewGameRequest
+        NewGameRequest request = new()
         {
             ScenarioId = "test-scenario",
             PlayerId = "test-player"
@@ -24,7 +24,7 @@ public class NewGameEndpointTests : EndpointTestBase
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
 
-        NewGameResponse? game = await response.Content.ReadFromJsonAsync<NewGameResponse>(cancellationToken: ct);
+        NewGameResponse? game = await response.Content.ReadFromJsonAsync<NewGameResponse>(ct);
         game.ShouldNotBeNull();
         game.GameId.ShouldNotBe(Guid.Empty);
         game.Messages.ShouldNotBeNull();
@@ -51,7 +51,7 @@ public class NewGameEndpointTests : EndpointTestBase
     public async Task NewGameEndpoint_WithNonexistentPlayer_ReturnsBadRequest()
     {
         // Arrange
-        NewGameRequest request = new NewGameRequest
+        NewGameRequest request = new()
         {
             ScenarioId = "test-scenario",
             PlayerId = "nonexistent-player"
@@ -69,7 +69,7 @@ public class NewGameEndpointTests : EndpointTestBase
     public async Task NewGameEndpoint_WithNonexistentScenario_ReturnsBadRequest()
     {
         // Arrange
-        NewGameRequest request = new NewGameRequest
+        NewGameRequest request = new()
         {
             ScenarioId = "nonexistent-scenario",
             PlayerId = "test-player"

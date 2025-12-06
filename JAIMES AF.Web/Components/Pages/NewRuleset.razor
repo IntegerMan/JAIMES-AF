@@ -7,39 +7,39 @@
 	<MudPaper Class="pa-4">
 		<MudText Typo="Typo.h4" Class="mb-4">Create New Ruleset</MudText>
 
-		@if (!string.IsNullOrEmpty(errorMessage))
+		@if (!string.IsNullOrEmpty(_errorMessage))
 		{
-			<MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
+			<MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
 		}
 
 		<MudForm>
-			<MudTextField @bind-Value="rulesetId"
+			<MudTextField @bind-Value="_rulesetId"
 			              Label="Ruleset ID"
 			              Variant="Variant.Outlined"
 			              Class="mb-4"
-			              Disabled="isSaving"
+			              Disabled="_isSaving"
 			              Required="true"
 			              RequiredError="Ruleset ID is required"
-			              HelperText="A unique identifier for this ruleset (e.g., 'dnd5e', 'pathfinder')" />
+			              HelperText="A unique identifier for this ruleset (e.g., 'dnd5e', 'pathfinder')"/>
 
-			<MudTextField @bind-Value="name"
+			<MudTextField @bind-Value="_name"
 			              Label="Name"
 			              Variant="Variant.Outlined"
 			              Class="mb-4"
-			              Disabled="isSaving"
+			              Disabled="_isSaving"
 			              Required="true"
 			              RequiredError="Name is required"
-			              HelperText="The display name for this ruleset (e.g., 'D&D 5th Edition')" />
+			              HelperText="The display name for this ruleset (e.g., 'D&D 5th Edition')"/>
 
 			<div class="d-flex gap-2">
-				<MudButton Variant="Variant.Filled" 
-				           Color="Color.Primary" 
-				           OnClick="CreateRulesetAsync" 
-				           Disabled="isSaving || !IsFormValid()"
+				<MudButton Variant="Variant.Filled"
+				           Color="Color.Primary"
+				           OnClick="CreateRulesetAsync"
+				           Disabled="_isSaving || !IsFormValid()"
 				           Class="mt-2">
-					@if (isSaving)
+					@if (_isSaving)
 					{
-						<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+						<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
 						<span class="ms-2">Creating...</span>
 					}
 					else
@@ -48,10 +48,10 @@
 					}
 				</MudButton>
 
-				<MudButton Variant="Variant.Text" 
-				           Color="Color.Default" 
-				           OnClick="Cancel" 
-				           Disabled="isSaving"
+				<MudButton Variant="Variant.Text"
+				           Color="Color.Default"
+				           OnClick="Cancel"
+				           Disabled="_isSaving"
 				           Class="mt-2">
 					Cancel
 				</MudButton>

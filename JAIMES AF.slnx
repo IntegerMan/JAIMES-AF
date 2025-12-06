@@ -1,32 +1,33 @@
 <Solution>
-  <Folder Name="/Back End/">
-    <Project Path="JAIMES AF.Agents/JAIMES AF.Agents.csproj" Id="f08964d1-edd3-4c1d-aef2-d5e6129e364e" />
-    <Project Path="JAIMES AF.Domain/JAIMES AF.Domain.csproj" Id="c46266ca-38a9-4209-b17e-e04b4870908a" />
-    <Project Path="JAIMES AF.Repositories/JAIMES AF.Repositories.csproj" />
-    <Project Path="JAIMES AF.ServiceDefinitions/JAIMES AF.ServiceDefinitions.csproj" Id="efec61d0-f157-46c2-b12a-5af870465231" />
-    <Project Path="JAIMES AF.Services/JAIMES AF.ServiceLayer.csproj" />
-    <Project Path="JAIMES AF.DocumentProcessing/JAIMES AF.DocumentProcessing.csproj" />
-    <Project Path="JAIMES AF.Tools/JAIMES AF.Tools.csproj" Id="b5d7902e-ca11-4306-92ac-adeeeae7674c" />
-  </Folder>
-  <Folder Name="/Docs/">
-    <File Path="DEVELOPMENT_GUIDELINES.md" />
-    <File Path="LICENSE.txt" />
-    <File Path="README.md" />
-    <File Path="ROADMAP.md" />
-    <File Path="TECHNICAL_OVERVIEW.md" />
-  </Folder>
-  <Folder Name="/Front End/">
-    <Project Path="JAIMES AF.ApiService/JAIMES AF.ApiService.csproj" />
-    <Project Path="JAIMES AF.AppHost/JAIMES AF.AppHost.csproj" />
-    <Project Path="JAIMES AF.Web/JAIMES AF.Web.csproj" />
-  </Folder>
-  <Folder Name="/Support/">
-    <Project Path="JAIMES AF.ServiceDefaults/JAIMES AF.ServiceDefaults.csproj" />
-    <Project Path="JAIMES AF.Tests/JAIMES AF.Tests.csproj" />
-  </Folder>
-  <Project Path="JAIMES AF.DocumentCracker/JAIMES AF.DocumentCracker.csproj" />
-  <Project Path="JAIMES AF.Workers.DocumentChangeDetector/JAIMES AF.Workers.DocumentChangeDetector.csproj" />
-  <Project Path="JAIMES AF.Workers.DocumentChunking/JAIMES AF.Workers.DocumentChunking.csproj" />
-  <Project Path="JAIMES AF.Workers.DocumentCrackerWorker/JAIMES AF.Workers.DocumentCrackerWorker.csproj" />
-  <Project Path="JAIMES AF.Workers.DocumentEmbedding/JAIMES AF.Workers.DocumentEmbedding.csproj" />
+    <Folder Name="/Back End/">
+        <Project Path="JAIMES AF.Agents/JAIMES AF.Agents.csproj" Id="f08964d1-edd3-4c1d-aef2-d5e6129e364e"/>
+        <Project Path="JAIMES AF.Domain/JAIMES AF.Domain.csproj" Id="c46266ca-38a9-4209-b17e-e04b4870908a"/>
+        <Project Path="JAIMES AF.Repositories/JAIMES AF.Repositories.csproj"/>
+        <Project Path="JAIMES AF.ServiceDefinitions/JAIMES AF.ServiceDefinitions.csproj"
+                 Id="efec61d0-f157-46c2-b12a-5af870465231"/>
+        <Project Path="JAIMES AF.Services/JAIMES AF.ServiceLayer.csproj"/>
+        <Project Path="JAIMES AF.DocumentProcessing/JAIMES AF.DocumentProcessing.csproj"/>
+        <Project Path="JAIMES AF.Tools/JAIMES AF.Tools.csproj" Id="b5d7902e-ca11-4306-92ac-adeeeae7674c"/>
+    </Folder>
+    <Folder Name="/Docs/">
+        <File Path="DEVELOPMENT_GUIDELINES.md"/>
+        <File Path="LICENSE.txt"/>
+        <File Path="README.md"/>
+        <File Path="ROADMAP.md"/>
+        <File Path="TECHNICAL_OVERVIEW.md"/>
+    </Folder>
+    <Folder Name="/Front End/">
+        <Project Path="JAIMES AF.ApiService/JAIMES AF.ApiService.csproj"/>
+        <Project Path="JAIMES AF.AppHost/JAIMES AF.AppHost.csproj"/>
+        <Project Path="JAIMES AF.Web/JAIMES AF.Web.csproj"/>
+    </Folder>
+    <Folder Name="/Support/">
+        <Project Path="JAIMES AF.ServiceDefaults/JAIMES AF.ServiceDefaults.csproj"/>
+        <Project Path="JAIMES AF.Tests/JAIMES AF.Tests.csproj"/>
+    </Folder>
+    <Project Path="JAIMES AF.DocumentCracker/JAIMES AF.DocumentCracker.csproj"/>
+    <Project Path="JAIMES AF.Workers.DocumentChangeDetector/JAIMES AF.Workers.DocumentChangeDetector.csproj"/>
+    <Project Path="JAIMES AF.Workers.DocumentChunking/JAIMES AF.Workers.DocumentChunking.csproj"/>
+    <Project Path="JAIMES AF.Workers.DocumentCrackerWorker/JAIMES AF.Workers.DocumentCrackerWorker.csproj"/>
+    <Project Path="JAIMES AF.Workers.DocumentEmbedding/JAIMES AF.Workers.DocumentEmbedding.csproj"/>
 </Solution>

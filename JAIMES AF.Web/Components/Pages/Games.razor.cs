@@ -1,12 +1,10 @@
-﻿using MattEland.Jaimes.ServiceDefinitions.Responses;
-
-namespace MattEland.Jaimes.Web.Components.Pages;
+﻿namespace MattEland.Jaimes.Web.Components.Pages;
 
 public partial class Games
 {
-    private GameInfoResponse[]? games;
-    private bool isLoading = true;
-    private string? errorMessage;
+    private GameInfoResponse[]? _games;
+    private bool _isLoading = true;
+    private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -15,21 +13,21 @@ public partial class Games
 
     private async Task LoadGamesAsync()
     {
-        isLoading = true;
-        errorMessage = null;
+        _isLoading = true;
+        _errorMessage = null;
         try
         {
-            var resp = await Http.GetFromJsonAsync<ListGamesResponse>("/games");
-            games = resp?.Games ?? [];
+            ListGamesResponse? resp = await Http.GetFromJsonAsync<ListGamesResponse>("/games");
+            _games = resp?.Games ?? [];
         }
         catch (Exception ex)
         {
             LoggerFactory.CreateLogger("Games").LogError(ex, "Failed to load games from API");
-            errorMessage = "Failed to load games: " + ex.Message;
+            _errorMessage = "Failed to load games: " + ex.Message;
         }
         finally
         {
-            isLoading = false;
+            _isLoading = false;
             StateHasChanged();
         }
     }
@@ -39,11 +37,10 @@ public partial class Games
         bool? result = await DialogService.ShowMessageBox(
             "Delete Game",
             "Are you sure you want to delete this game? This action cannot be undone.",
-            yesText: "Delete",
+            "Delete",
             cancelText: "Cancel");
 
         if (result == true)
-        {
             try
             {
                 HttpResponseMessage response = await Http.DeleteAsync($"/games/{gameId}");
@@ -53,17 +50,17 @@ public partial class Games
                 }
                 else
                 {
-                    LoggerFactory.CreateLogger("Games").LogError("Failed to delete game: {StatusCode}", response.StatusCode);
-                    errorMessage = "Failed to delete game. Please try again.";
+                    LoggerFactory.CreateLogger("Games")
+                        .LogError("Failed to delete game: {StatusCode}", response.StatusCode);
+                    _errorMessage = "Failed to delete game. Please try again.";
                     StateHasChanged();
                 }
             }
             catch (Exception ex)
             {
                 LoggerFactory.CreateLogger("Games").LogError(ex, "Failed to delete game from API");
-                errorMessage = "Failed to delete game: " + ex.Message;
+                _errorMessage = "Failed to delete game: " + ex.Message;
                 StateHasChanged();
             }
-        }
     }
 }

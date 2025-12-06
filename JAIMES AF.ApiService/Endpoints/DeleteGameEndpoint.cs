@@ -1,6 +1,3 @@
-using FastEndpoints;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
 public class DeleteGameEndpoint : Ep.NoReq.NoRes
@@ -19,7 +16,7 @@ public class DeleteGameEndpoint : Ep.NoReq.NoRes
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        string? gameIdStr = Route<string>("gameId", isRequired: true);
+        string? gameIdStr = Route<string>("gameId", true);
         if (!Guid.TryParse(gameIdStr, out Guid gameId))
         {
             ThrowError("Invalid game ID format");
@@ -37,4 +34,3 @@ public class DeleteGameEndpoint : Ep.NoReq.NoRes
         }
     }
 }
-

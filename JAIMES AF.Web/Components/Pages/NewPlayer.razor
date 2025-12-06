@@ -7,65 +7,65 @@
 	<MudPaper Class="pa-4">
 		<MudText Typo="Typo.h4" Class="mb-4">Create New Player</MudText>
 
-		@if (isLoading)
+		@if (_isLoading)
 		{
-			<MudProgressCircular Indeterminate="true" Class="my-4" />
+			<MudProgressCircular Indeterminate="true" Class="my-4"/>
 		}
-		else if (!string.IsNullOrEmpty(errorMessage))
+		else if (!string.IsNullOrEmpty(_errorMessage))
 		{
-			<MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
+			<MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
 		}
 
-		@if (!isLoading)
+		@if (!_isLoading)
 		{
 			<MudForm>
-				<MudTextField @bind-Value="playerId"
+				<MudTextField @bind-Value="_playerId"
 				              Label="Player ID"
 				              Variant="Variant.Outlined"
 				              Class="mb-4"
-				              Disabled="isSaving"
+				              Disabled="_isSaving"
 				              Required="true"
 				              RequiredError="Player ID is required"
-				              HelperText="A unique identifier for this player (e.g., 'myPlayer')" />
+				              HelperText="A unique identifier for this player (e.g., 'myPlayer')"/>
 
 				<MudSelect T="string"
-				           @bind-Value="selectedRulesetId"
+				           @bind-Value="_selectedRulesetId"
 				           Label="Ruleset"
 				           Variant="Variant.Outlined"
 				           Class="mb-4"
-				           Disabled="isSaving"
+				           Disabled="_isSaving"
 				           Required="true"
 				           RequiredError="Please select a ruleset">
-					@foreach (var ruleset in rulesets)
+					@foreach (RulesetInfoResponse ruleset in _rulesets)
 					{
 						<MudSelectItem Value="@ruleset.Id">@ruleset.Name</MudSelectItem>
 					}
 				</MudSelect>
 
-				<MudTextField @bind-Value="name"
+				<MudTextField @bind-Value="_name"
 				              Label="Name"
 				              Variant="Variant.Outlined"
 				              Class="mb-4"
-				              Disabled="isSaving"
+				              Disabled="_isSaving"
 				              Required="true"
-				              RequiredError="Name is required" />
+				              RequiredError="Name is required"/>
 
-				<MudTextField @bind-Value="description"
+				<MudTextField @bind-Value="_description"
 				              Label="Description"
 				              Variant="Variant.Outlined"
 				              Class="mb-4"
-				              Disabled="isSaving"
-				              Lines="2" />
+				              Disabled="_isSaving"
+				              Lines="2"/>
 
 				<div class="d-flex gap-2">
-					<MudButton Variant="Variant.Filled" 
-					           Color="Color.Primary" 
-					           OnClick="CreatePlayerAsync" 
-					           Disabled="isSaving || !IsFormValid()"
+					<MudButton Variant="Variant.Filled"
+					           Color="Color.Primary"
+					           OnClick="CreatePlayerAsync"
+					           Disabled="_isSaving || !IsFormValid()"
 					           Class="mt-2">
-						@if (isSaving)
+						@if (_isSaving)
 						{
-							<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+							<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
 							<span class="ms-2">Creating...</span>
 						}
 						else
@@ -74,10 +74,10 @@
 						}
 					</MudButton>
 
-					<MudButton Variant="Variant.Text" 
-					           Color="Color.Default" 
-					           OnClick="Cancel" 
-					           Disabled="isSaving"
+					<MudButton Variant="Variant.Text"
+					           Color="Color.Default"
+					           OnClick="Cancel"
+					           Disabled="_isSaving"
 					           Class="mt-2">
 						Cancel
 					</MudButton>

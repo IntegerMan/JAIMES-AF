@@ -113,13 +113,13 @@ public class DocumentCrackingServiceTests
             LoggerMock = new Mock<ILogger<DocumentCrackingService>>();
             MessagePublisherMock = new Mock<IMessagePublisher>();
             PdfTextExtractorMock = new Mock<IPdfTextExtractor>();
-            
+
             DbContextOptions<JaimesDbContext> dbOptions = new DbContextOptionsBuilder<JaimesDbContext>()
-                .UseInMemoryDatabase(databaseName: $"DocumentCrackerTests-{Guid.NewGuid()}")
+                .UseInMemoryDatabase($"DocumentCrackerTests-{Guid.NewGuid()}")
                 .Options;
             DbContext = new JaimesDbContext(dbOptions);
             DbContext.Database.EnsureCreated();
-            
+
             _activitySource = new ActivitySource($"DocumentCrackerTests-{Guid.NewGuid()}");
 
             TestDbContextFactory dbContextFactory = new(dbOptions);

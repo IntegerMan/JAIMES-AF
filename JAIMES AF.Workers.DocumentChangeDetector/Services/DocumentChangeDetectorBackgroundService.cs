@@ -1,5 +1,3 @@
-using MattEland.Jaimes.Workers.DocumentChangeDetector.Configuration;
-
 namespace MattEland.Jaimes.Workers.DocumentChangeDetector.Services;
 
 public class DocumentChangeDetectorBackgroundService(
@@ -40,13 +38,9 @@ public class DocumentChangeDetectorBackgroundService(
                 summary.Errors);
 
             if (success)
-            {
                 logger.LogInformation("Document scan completed successfully with no errors.");
-            }
             else
-            {
                 logger.LogWarning("Document scan completed with {ErrorCount} error(s).", summary.Errors);
-            }
         }
         catch (Exception ex)
         {
@@ -57,14 +51,13 @@ public class DocumentChangeDetectorBackgroundService(
         {
             // Set exit code: 0 for success, 1 for failure
             Environment.ExitCode = success ? 0 : 1;
-            
+
             logger.LogInformation(
                 "Document Change Detector Background Service completed. Exit code: {ExitCode} ({Status})",
                 Environment.ExitCode,
                 success ? "Success" : "Failure");
-            
+
             hostApplicationLifetime.StopApplication();
         }
     }
 }
-

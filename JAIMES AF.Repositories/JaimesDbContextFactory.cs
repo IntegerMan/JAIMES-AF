@@ -1,6 +1,3 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Design;
-
 namespace MattEland.Jaimes.Repositories;
 
 /// <summary>
@@ -19,6 +16,3 @@ public class JaimesDbContextFactory : IDesignTimeDbContextFactory<JaimesDbContex
         return new JaimesDbContext(optionsBuilder.Options);
     }
 }
-
-
-

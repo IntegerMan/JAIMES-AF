@@ -22,16 +22,20 @@ public class GameServiceTests : IAsyncLifetime
     {
         // Create an in-memory database for testing
         DbContextOptions<JaimesDbContext> options = new DbContextOptionsBuilder<JaimesDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
         _context = new JaimesDbContext(options);
         await _context.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
 
         // Add test data for validation
-        _context.Rulesets.Add(new Ruleset { Id = "test-ruleset", Name = "Test Ruleset" });
-        _context.Players.Add(new Player { Id = "test-player", RulesetId = "test-ruleset", Name = "Unspecified" });
-        _context.Scenarios.Add(new Scenario { Id = "test-scenario", RulesetId = "test-ruleset", Name = "Unspecified", SystemPrompt = "Test System Prompt", NewGameInstructions = "Test New Game Instructions" });
+        _context.Rulesets.Add(new Ruleset {Id = "test-ruleset", Name = "Test Ruleset"});
+        _context.Players.Add(new Player {Id = "test-player", RulesetId = "test-ruleset", Name = "Unspecified"});
+        _context.Scenarios.Add(new Scenario
+        {
+            Id = "test-scenario", RulesetId = "test-ruleset", Name = "Unspecified", SystemPrompt = "Test System Prompt",
+            NewGameInstructions = "Test New Game Instructions"
+        });
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Create a factory that returns the same context (for testing)
@@ -54,7 +58,8 @@ public class GameServiceTests : IAsyncLifetime
         string playerId = "test-player";
 
         // Act
-        GameDto gameDto = await _gameService.CreateGameAsync(scenarioId, playerId, TestContext.Current.CancellationToken);
+        GameDto gameDto =
+            await _gameService.CreateGameAsync(scenarioId, playerId, TestContext.Current.CancellationToken);
 
         // Assert
         gameDto.GameId.ShouldNotBe(Guid.Empty);
@@ -72,7 +77,8 @@ public class GameServiceTests : IAsyncLifetime
         gameInDb.RulesetId.ShouldBe("test-ruleset");
 
         // Verify message is in database
-        Message? messageInDb = await _context.Messages.FirstOrDefaultAsync(m => m.GameId == gameDto.GameId, TestContext.Current.CancellationToken);
+        Message? messageInDb = await _context.Messages.FirstOrDefaultAsync(m => m.GameId == gameDto.GameId,
+            TestContext.Current.CancellationToken);
         messageInDb.ShouldNotBeNull();
         messageInDb.Text.ShouldBe(MockChatService.TestInitialMessage);
         messageInDb.PlayerId.ShouldBeNull(); // AI-generated message
@@ -95,7 +101,7 @@ public class GameServiceTests : IAsyncLifetime
     public async Task GetGameAsync_ReturnsGame_WhenGameExists()
     {
         // Arrange
-        Game game = new Game
+        Game game = new()
         {
             Id = Guid.NewGuid(),
             RulesetId = "test-ruleset",
@@ -105,7 +111,7 @@ public class GameServiceTests : IAsyncLifetime
         };
         _context.Games.Add(game);
 
-        Message message = new Message
+        Message message = new()
         {
             GameId = game.Id,
             Text = "Test message",
@@ -133,7 +139,7 @@ public class GameServiceTests : IAsyncLifetime
     public async Task GetGameAsync_ReturnsMessagesInOrder()
     {
         // Arrange
-        Game game = new Game
+        Game game = new()
         {
             Id = Guid.NewGuid(),
             RulesetId = "test-ruleset",
@@ -143,19 +149,19 @@ public class GameServiceTests : IAsyncLifetime
         };
         _context.Games.Add(game);
 
-        Message message1 = new Message
+        Message message1 = new()
         {
             GameId = game.Id,
             Text = "First message",
             CreatedAt = DateTime.UtcNow
         };
-        Message message2 = new Message
+        Message message2 = new()
         {
             GameId = game.Id,
             Text = "Second message",
             CreatedAt = DateTime.UtcNow.AddSeconds(1)
         };
-        Message message3 = new Message
+        Message message3 = new()
         {
             GameId = game.Id,
             Text = "Third message",
@@ -184,7 +190,7 @@ public class GameServiceTests : IAsyncLifetime
     public async Task GetGameAsync_ReturnsMessagesOrderedById_WhenCreatedAtIsSame()
     {
         // Arrange - This test verifies that Id ordering works even when CreatedAt timestamps are identical
-        Game game = new Game
+        Game game = new()
         {
             Id = Guid.NewGuid(),
             RulesetId = "test-ruleset",
@@ -195,19 +201,19 @@ public class GameServiceTests : IAsyncLifetime
         _context.Games.Add(game);
 
         DateTime sameTime = DateTime.UtcNow;
-        Message message1 = new Message
+        Message message1 = new()
         {
             GameId = game.Id,
             Text = "First message",
             CreatedAt = sameTime
         };
-        Message message2 = new Message
+        Message message2 = new()
         {
             GameId = game.Id,
             Text = "Second message",
             CreatedAt = sameTime
         };
-        Message message3 = new Message
+        Message message3 = new()
         {
             GameId = game.Id,
             Text = "Third message",
@@ -239,8 +245,8 @@ public class GameServiceTests : IAsyncLifetime
         string playerId = "nonexistent-player";
 
         // Act & Assert
-        var exception = await Should.ThrowAsync<ArgumentException>(
-            async () => await _gameService.CreateGameAsync(scenarioId, playerId, TestContext.Current.CancellationToken)
+        ArgumentException exception = await Should.ThrowAsync<ArgumentException>(async () =>
+            await _gameService.CreateGameAsync(scenarioId, playerId, TestContext.Current.CancellationToken)
         );
         exception.Message.ShouldContain("Player 'nonexistent-player' does not exist");
     }
@@ -253,8 +259,8 @@ public class GameServiceTests : IAsyncLifetime
         string playerId = "test-player";
 
         // Act & Assert
-        var exception = await Should.ThrowAsync<ArgumentException>(
-            async () => await _gameService.CreateGameAsync(scenarioId, playerId, TestContext.Current.CancellationToken)
+        ArgumentException exception = await Should.ThrowAsync<ArgumentException>(async () =>
+            await _gameService.CreateGameAsync(scenarioId, playerId, TestContext.Current.CancellationToken)
         );
         exception.Message.ShouldContain("Scenario 'nonexistent-scenario' does not exist");
     }
@@ -263,16 +269,17 @@ public class GameServiceTests : IAsyncLifetime
     public async Task CreateGameAsync_ThrowsException_WhenPlayerAndScenarioRulesetMismatch()
     {
         // Arrange
-        _context.Rulesets.Add(new Ruleset { Id = "different-ruleset", Name = "Different Ruleset" });
-        _context.Players.Add(new Player { Id = "player-different-ruleset", RulesetId = "different-ruleset", Name = "Unspecified" });
+        _context.Rulesets.Add(new Ruleset {Id = "different-ruleset", Name = "Different Ruleset"});
+        _context.Players.Add(new Player
+            {Id = "player-different-ruleset", RulesetId = "different-ruleset", Name = "Unspecified"});
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         string scenarioId = "test-scenario";
         string playerId = "player-different-ruleset";
 
         // Act & Assert
-        var exception = await Should.ThrowAsync<ArgumentException>(
-            async () => await _gameService.CreateGameAsync(scenarioId, playerId, TestContext.Current.CancellationToken)
+        ArgumentException exception = await Should.ThrowAsync<ArgumentException>(async () =>
+            await _gameService.CreateGameAsync(scenarioId, playerId, TestContext.Current.CancellationToken)
         );
         exception.Message.ShouldContain("uses ruleset 'different-ruleset'");
         exception.Message.ShouldContain("uses ruleset 'test-ruleset'");
@@ -282,7 +289,7 @@ public class GameServiceTests : IAsyncLifetime
     public async Task ProcessChatMessageAsync_ReturnsMessagesWithIds()
     {
         // Arrange
-        Game game = new Game
+        Game game = new()
         {
             Id = Guid.NewGuid(),
             RulesetId = "test-ruleset",
@@ -297,7 +304,8 @@ public class GameServiceTests : IAsyncLifetime
         string playerMessage = "Hello, game master!";
 
         // Act
-        JaimesChatResponse response = await _gameService.ProcessChatMessageAsync(game.Id, playerMessage, TestContext.Current.CancellationToken);
+        JaimesChatResponse response =
+            await _gameService.ProcessChatMessageAsync(game.Id, playerMessage, TestContext.Current.CancellationToken);
 
         // Assert
         response.Messages.ShouldNotBeNull();
@@ -347,24 +355,30 @@ public class GameServiceTests : IAsyncLifetime
     {
         public const string TestInitialMessage = "Welcome to the test adventure!";
 
-        public Task<JaimesChatResponse> ProcessChatMessageAsync(GameDto game, string message, CancellationToken cancellationToken = default)
+        public Task<JaimesChatResponse> ProcessChatMessageAsync(GameDto game,
+            string message,
+            CancellationToken cancellationToken = default)
         {
             return Task.FromResult(new JaimesChatResponse
             {
-                Messages = [new MessageResponse
-                {
-                    Id = 0, // Will be set by GameService after persistence
-                    Text = "Test response",
-                    Participant = ChatParticipant.GameMaster,
-                    PlayerId = null,
-                    ParticipantName = "Game Master",
-                    CreatedAt = DateTime.UtcNow
-                }],
+                Messages =
+                [
+                    new MessageResponse
+                    {
+                        Id = 0, // Will be set by GameService after persistence
+                        Text = "Test response",
+                        Participant = ChatParticipant.GameMaster,
+                        PlayerId = null,
+                        ParticipantName = "Game Master",
+                        CreatedAt = DateTime.UtcNow
+                    }
+                ],
                 ThreadJson = "{}"
             });
         }
 
-        public Task<InitialMessageResponse> GenerateInitialMessageAsync(GenerateInitialMessageRequest request, CancellationToken cancellationToken = default)
+        public Task<InitialMessageResponse> GenerateInitialMessageAsync(GenerateInitialMessageRequest request,
+            CancellationToken cancellationToken = default)
         {
             return Task.FromResult(new InitialMessageResponse
             {
@@ -383,7 +397,10 @@ public class GameServiceTests : IAsyncLifetime
             return Task.FromResult(_threads.TryGetValue(gameId, out string? value) ? value : null);
         }
 
-        public Task<Guid> SaveThreadJsonAsync(Guid gameId, string threadJson, int? messageId = null, CancellationToken cancellationToken = default)
+        public Task<Guid> SaveThreadJsonAsync(Guid gameId,
+            string threadJson,
+            int? messageId = null,
+            CancellationToken cancellationToken = default)
         {
             _threads[gameId] = threadJson;
             return Task.FromResult(Guid.NewGuid());

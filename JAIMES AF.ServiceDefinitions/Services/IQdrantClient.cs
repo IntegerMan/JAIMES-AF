@@ -1,5 +1,3 @@
-using Qdrant.Client.Grpc;
-
 namespace MattEland.Jaimes.ServiceDefinitions.Services;
 
 /// <summary>
@@ -28,4 +26,3 @@ public interface IQdrantClient
         PointStruct[] points,
         CancellationToken cancellationToken = default);
 }
-
