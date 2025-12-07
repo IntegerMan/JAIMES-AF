@@ -133,8 +133,8 @@ public class Program
         builder.Services.AddSingleton<AIAgent>(s =>
         {
             IChatClient chat = s.GetRequiredService<IChatClient>();
-            // TODO: Get system prompt from somewhere else
-            // TODO: Link up tools
+            // Get system prompt from somewhere else
+            // Link up tools
             return chat.CreateAIAgent("You are a helpful assistant.", "JAIMES-AF", "An AI assistant for JAIMES AF.");
         });
 

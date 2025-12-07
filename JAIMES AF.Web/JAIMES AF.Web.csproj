@@ -9,6 +9,7 @@
 
     <ItemGroup>
         <PackageReference Include="Markdig"/>
+        <PackageReference Include="Microsoft.Agents.AI.Hosting.AGUI.AspNetCore" />
         <PackageReference Include="MudBlazor"/>
     </ItemGroup>
 
