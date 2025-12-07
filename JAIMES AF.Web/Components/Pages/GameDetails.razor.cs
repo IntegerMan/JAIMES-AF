@@ -56,7 +56,9 @@ public partial class GameDetails
         try
         {
             _game = await Http.GetFromJsonAsync<GameStateResponse>($"/games/{GameId}");
-            _messages = [];// _game?.Messages.OrderBy(m => m.Id).ToList() ?? [];
+            _messages = _game?.Messages.OrderBy(m => m.Id)
+                .Select(m => new ChatMessage(m.Participant == ChatParticipant.Player ? ChatRole.User : ChatRole.Assistant, m.Text))
+                .ToList() ?? [];
         }
         catch (Exception ex)
         {
@@ -114,7 +116,9 @@ public partial class GameDetails
                 GameStateResponse? updated = await Http.GetFromJsonAsync<GameStateResponse>($"/games/{GameId}");
                 if (updated?.Messages != null)
                 {
-                    _messages = [];// updated.Messages.OrderBy(m => m.Id).ToList();
+                    _messages = updated.Messages.OrderBy(m => m.Id)
+                        .Select(m => new ChatMessage(m.Participant == ChatParticipant.Player ? ChatRole.User : ChatRole.Assistant, m.Text))
+                        .ToList();
                     // Scroll to bottom after receiving reply
                     _shouldScrollToBottom = true;
                     StateHasChanged();
