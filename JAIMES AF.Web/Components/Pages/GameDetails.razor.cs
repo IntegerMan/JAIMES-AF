@@ -127,15 +127,6 @@ public partial class GameDetails
         if (args.Key == "Enter" && !_isSending) await SendMessageAsync();
     }
 
-    private string GetGameMasterName()
-    {
-        return "Game Master";
-        /*
-        MessageResponse? gameMasterMessage = _messages.FirstOrDefault(m => m.Participant == ChatParticipant.GameMaster);
-        return gameMasterMessage?.ParticipantName ?? "Game Master";
-        */
-    }
-
     private async Task ScrollToBottomAsync()
     {
         try

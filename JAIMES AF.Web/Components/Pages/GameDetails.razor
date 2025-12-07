@@ -46,7 +46,7 @@
 							         Color="Color.Primary">
 								@if (isFirstParagraph)
 								{
-									<MudChatHeader Name="@m.AuthorName"/>
+									<MudChatHeader Name="Player"/>
 								}
 								<MudChatBubble>
 									@paragraph
@@ -60,7 +60,7 @@
 							         Color="Color.Default">
 								@if (isFirstParagraph)
 								{
-									<MudChatHeader Name="@m.AuthorName"/>
+									<MudChatHeader Name="Game Master"/>
 								}
 								<MudChatBubble>
 									@((MarkupString) ChatHelpers.RenderMarkdown(paragraph))
@@ -75,7 +75,7 @@
 					<MudChat ChatPosition="ChatBubblePosition.Start"
 					         Variant="Variant.Filled"
 					         Color="Color.Default">
-						<MudChatHeader Name="@GetGameMasterName()"/>
+						<MudChatHeader Name="Game Master"/>
 						<MudChatBubble>
 							<div class="typing-indicator">
 								<span></span>
