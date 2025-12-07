@@ -1,4 +1,6 @@
+using Microsoft.Agents.AI;
 using MudBlazor.Services;
+using Microsoft.Agents.AI.Hosting.AGUI.AspNetCore;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -39,6 +41,27 @@ builder.Services.AddHttpClient("Api",
 
 // Make the named client the default HttpClient that's injected with `@inject HttpClient Http`
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api"));
+
+// Configure AG UI integration
+builder.Services.AddScoped<AGUIChatClient>(sp =>
+{
+    HttpClient httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient("AGUI");
+    Uri serverUrl = new((builder.Configuration["ApiService:BaseAddress"] ?? "http://apiservice/") + "/agui");
+    AGUIChatClient chatClient = new(httpClient, serverUrl);
+    return chatClient;
+});
+builder.Services.AddScoped<AIAgent>(sp =>
+{
+    AGUIChatClient chatClient = sp.GetRequiredService<AGUIChatClient>();
+    return chatClient.CreateAIAgent(
+        name: "agui-client",
+        description: "AG-UI Client Agent");
+});
+builder.Services.AddScoped<AgentThread>(sp =>
+{
+    AIAgent agent = sp.GetRequiredService<AIAgent>();
+    return agent.GetNewThread();
+});
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

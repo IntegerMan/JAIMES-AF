@@ -1,9 +1,12 @@
+using Microsoft.Agents.AI;
+
 namespace MattEland.Jaimes.Web.Components.Pages;
 
 public partial class GameDetails
 {
     [Inject] public HttpClient Http { get; set; } = null!;
-
+    [Inject] public AgentThread Thread { get; set; } = null!;
+    
     [Inject] public ILoggerFactory LoggerFactory { get; set; } = null!;
 
     [Inject] public IJSRuntime JsRuntime { get; set; } = null!;
