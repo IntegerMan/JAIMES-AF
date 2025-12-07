@@ -1,6 +1,7 @@
 using Microsoft.Agents.AI;
 using MudBlazor.Services;
-using Microsoft.Agents.AI.Hosting.AGUI.AspNetCore;
+using Microsoft.Agents.AI.AGUI;
+using Microsoft.Extensions.AI;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -46,7 +47,7 @@ builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().Cre
 builder.Services.AddScoped<AGUIChatClient>(sp =>
 {
     HttpClient httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient("AGUI");
-    Uri serverUrl = new((builder.Configuration["ApiService:BaseAddress"] ?? "http://apiservice/") + "/agui");
+    string serverUrl = (builder.Configuration["ApiService:BaseAddress"] ?? "http://apiservice/") + "/agui";
     AGUIChatClient chatClient = new(httpClient, serverUrl);
     return chatClient;
 });

@@ -1,4 +1,5 @@
 using Microsoft.Agents.AI;
+using Microsoft.Extensions.AI;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 
@@ -6,6 +7,7 @@ public partial class GameDetails
 {
     [Inject] public HttpClient Http { get; set; } = null!;
     [Inject] public AgentThread Thread { get; set; } = null!;
+    [Inject] public AIAgent Agent { get; set; } = null!;
     
     [Inject] public ILoggerFactory LoggerFactory { get; set; } = null!;
 
@@ -13,7 +15,7 @@ public partial class GameDetails
 
     [Parameter] public Guid GameId { get; set; }
 
-    private List<MessageResponse> _messages = [];
+    private List<ChatMessage> _messages = [];
 
     private GameStateResponse? _game;
     private bool _isLoading = true;
@@ -54,7 +56,7 @@ public partial class GameDetails
         try
         {
             _game = await Http.GetFromJsonAsync<GameStateResponse>($"/games/{GameId}");
-            _messages = _game?.Messages.OrderBy(m => m.Id).ToList() ?? [];
+            _messages = [];// _game?.Messages.OrderBy(m => m.Id).ToList() ?? [];
         }
         catch (Exception ex)
         {
@@ -91,20 +93,13 @@ public partial class GameDetails
                 GameId = GameId,
                 Message = messageText
             };
-            _messages.Add(new MessageResponse
-            {
-                Id = 0, // Temporary ID, will be replaced when we reload or get proper ordering
-                Text = messageText,
-                Participant = ChatParticipant.Player,
-                PlayerId = _game!.PlayerId,
-                ParticipantName = _game.PlayerName,
-                CreatedAt = DateTime.UtcNow
-            });
+            _messages.Add(new(ChatRole.User, messageText));
             // Scroll to bottom after adding user message and showing typing indicator
             _shouldScrollToBottom = true;
             await InvokeAsync(StateHasChanged);
 
             // Send message to API
+            AgentRunResponse response = await Agent.RunAsync(_messages, Thread);
             HttpResponseMessage resp = await Http.PostAsJsonAsync($"/games/{GameId}", request);
 
             // Handle the response
@@ -119,7 +114,7 @@ public partial class GameDetails
                 GameStateResponse? updated = await Http.GetFromJsonAsync<GameStateResponse>($"/games/{GameId}");
                 if (updated?.Messages != null)
                 {
-                    _messages = updated.Messages.OrderBy(m => m.Id).ToList();
+                    _messages = [];// updated.Messages.OrderBy(m => m.Id).ToList();
                     // Scroll to bottom after receiving reply
                     _shouldScrollToBottom = true;
                     StateHasChanged();
@@ -164,8 +159,11 @@ public partial class GameDetails
 
     private string GetGameMasterName()
     {
+        return "Game Master";
+        /*
         MessageResponse? gameMasterMessage = _messages.FirstOrDefault(m => m.Participant == ChatParticipant.GameMaster);
         return gameMasterMessage?.ParticipantName ?? "Game Master";
+        */
     }
 
     private async Task ScrollToBottomAsync()
