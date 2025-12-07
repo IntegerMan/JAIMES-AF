@@ -47,7 +47,7 @@ builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().Cre
 builder.Services.AddScoped<AGUIChatClient>(sp =>
 {
     HttpClient httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient("AGUI");
-    string serverUrl = (builder.Configuration["ApiService:BaseAddress"] ?? "http://apiservice/") + "/agui";
+    string serverUrl = (builder.Configuration["ApiService:BaseAddress"] ?? "http://apiservice/") + "agui";
     AGUIChatClient chatClient = new(httpClient, serverUrl);
     return chatClient;
 });
