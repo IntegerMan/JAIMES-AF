@@ -1,4 +1,5 @@
 using MattEland.Jaimes.Workers.Services;
+using Microsoft.Extensions.AI;
 
 namespace MattEland.Jaimes.ApiService;
 
@@ -127,6 +128,15 @@ public class Program
                     "DocumentEmbedding__QdrantApiKey"
                 }
             });
+        
+        // Configure our AI Agent
+        builder.Services.AddSingleton<AIAgent>(s =>
+        {
+            IChatClient chat = s.GetRequiredService<IChatClient>();
+            // TODO: Get system prompt from somewhere else
+            // TODO: Link up tools
+            return chat.CreateAIAgent("You are a helpful assistant.", "JAIMES-AF", "An AI assistant for JAIMES AF.");
+        });
 
         // Configure DocumentChunkingOptions (which includes Qdrant configuration)
         DocumentChunkingOptions chunkingOptions =
