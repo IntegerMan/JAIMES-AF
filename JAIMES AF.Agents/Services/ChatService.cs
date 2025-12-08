@@ -1,4 +1,6 @@
-﻿namespace MattEland.Jaimes.Agents.Services;
+﻿using MattEland.Jaimes.Agents.Helpers;
+
+namespace MattEland.Jaimes.Agents.Services;
 
 public class ChatService(
     IChatClient chatClient,
@@ -12,9 +14,6 @@ public class ChatService(
 
     private readonly IChatHistoryService _chatHistoryService =
         chatHistoryService ?? throw new ArgumentNullException(nameof(chatHistoryService));
-
-    // Use consistent source name with OpenTelemetry configuration
-    private const string DefaultActivitySourceName = "Jaimes.ApiService";
 
     private AIAgent CreateAgent(string systemPrompt, GameDto? game = null)
     {
@@ -74,42 +73,17 @@ public class ChatService(
             _logger.LogWarning("Agent created with no tools available");
         }
 
-        // Per Microsoft docs: https://learn.microsoft.com/en-us/agent-framework/user-guide/agents/agent-observability?pivots=programming-language-csharp
-        // First instrument the chat client, then use it to create the agent
-        // Per Microsoft docs: https://learn.microsoft.com/en-us/agent-framework/user-guide/agents/agent-middleware?pivots=programming-language-csharp
-        // Register IChatClient middleware on the chat client before creating the agent
-
-        // Use the injected chat client and instrument it
-        IChatClient instrumentedChatClient = _chatClient
-            .AsBuilder()
-            .UseOpenTelemetry(
-                sourceName: DefaultActivitySourceName,
-                configure: cfg => cfg.EnableSensitiveData = true)
-            .Use(
-                ChatClientMiddleware.Create(_logger),
-                null)
-            .Build();
+        IChatClient instrumentedChatClient = _chatClient.WrapWithInstrumentation(_logger);
 
         _logger.LogInformation(
             "Chat client instrumented with OpenTelemetry and chat client middleware (source: {SourceName})",
-            DefaultActivitySourceName);
+            AgentExtensions.DefaultActivitySourceName);
 
         // Create the agent with the instrumented chat client and enable observability
         // Per Microsoft docs, use WithOpenTelemetry on the agent (not UseOpenTelemetry on builder)
         // Per Microsoft docs: https://learn.microsoft.com/en-us/agent-framework/user-guide/agents/agent-middleware?pivots=programming-language-csharp
         // Register agent run middleware on the agent builder
-        AIAgent agent = new ChatClientAgent(
-                instrumentedChatClient,
-                name: $"JaimesAgent-{game!.GameId}",
-                instructions: systemPrompt,
-                tools: tools)
-            .AsBuilder()
-            .UseOpenTelemetry(
-                DefaultActivitySourceName,
-                cfg => cfg.EnableSensitiveData = true)
-            .Use(AgentRunMiddleware.CreateRunFunc(_logger), null)
-            .Use(ToolInvocationMiddleware.Create(_logger))
-            .Build();
+        AIAgent agent = instrumentedChatClient.CreateJaimesAgent(_logger, $"JaimesAgent-{game!.GameId}", systemPrompt, tools);
 
         _logger.LogInformation(
             "Agent created with OpenTelemetry, agent run middleware, and tool invocation middleware");

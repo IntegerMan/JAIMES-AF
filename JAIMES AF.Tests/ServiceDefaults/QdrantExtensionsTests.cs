@@ -1,7 +1,4 @@
-using MattEland.Jaimes.ServiceDefaults;
-using Microsoft.Extensions.Configuration;
 using Qdrant.Client;
-using Shouldly;
 
 namespace MattEland.Jaimes.Tests.ServiceDefaults;
 

@@ -1,6 +1,3 @@
-using MattEland.Jaimes.Repositories.Entities;
-using Shouldly;
-
 namespace MattEland.Jaimes.Tests.Repositories;
 
 public class GameRepositoryTests : RepositoryTestBase

@@ -1,17 +1,8 @@
-using System.Diagnostics;
 using Grpc.Core;
-using MattEland.Jaimes.Domain;
-using MattEland.Jaimes.Repositories.Entities;
-using MattEland.Jaimes.ServiceDefinitions.Messages;
-using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Workers.DocumentEmbedding.Configuration;
 using MattEland.Jaimes.Workers.DocumentEmbedding.Services;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
-using Microsoft.Extensions.Logging;
-using Moq;
 using Qdrant.Client.Grpc;
-using Shouldly;
 using CollectionInfo = Qdrant.Client.Grpc.CollectionInfo;
 using UpdateResult = Qdrant.Client.Grpc.UpdateResult;
 using VectorParams = Qdrant.Client.Grpc.VectorParams;

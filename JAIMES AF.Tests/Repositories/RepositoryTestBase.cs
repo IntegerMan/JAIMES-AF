@@ -1,6 +1,3 @@
-using MattEland.Jaimes.Repositories.Entities;
-using Microsoft.EntityFrameworkCore;
-
 namespace MattEland.Jaimes.Tests.Repositories;
 
 public abstract class RepositoryTestBase : IAsyncLifetime

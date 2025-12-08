@@ -1,7 +1,3 @@
-using MattEland.Jaimes.Repositories.Entities;
-using Microsoft.EntityFrameworkCore;
-using Shouldly;
-
 namespace MattEland.Jaimes.Tests.Repositories;
 
 public class MessageRepositoryTests : RepositoryTestBase

@@ -1,18 +1,5 @@
-using System.Diagnostics;
-using MattEland.Jaimes.Agents.Services;
-using MattEland.Jaimes.ApiService;
-using MattEland.Jaimes.ApiService.Helpers;
-using MattEland.Jaimes.ServiceDefaults;
-using MattEland.Jaimes.Services;
 using MattEland.Jaimes.ServiceDefinitions.Configuration;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.Workers.Services;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
-using RabbitMQ.Client;
-using Shouldly;
+using MattEland.Jaimes.ServiceLayer;
 
 namespace MattEland.Jaimes.Tests.ServiceDefaults;
 

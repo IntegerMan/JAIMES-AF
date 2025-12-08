@@ -8,17 +8,17 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Azure.AI.OpenAI"/>
-        <PackageReference Include="Microsoft.Agents.AI"/>
-        <PackageReference Include="Microsoft.Agents.AI.OpenAI"/>
-        <PackageReference Include="Qdrant.Client"/>
+        <PackageReference Include="Azure.AI.OpenAI" />
+        <PackageReference Include="Microsoft.Agents.AI" />
+        <PackageReference Include="Microsoft.Agents.AI.OpenAI" />
+        <PackageReference Include="Qdrant.Client" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\JAIMES AF.ServiceDefinitions\JAIMES AF.ServiceDefinitions.csproj"/>
-        <ProjectReference Include="..\JAIMES AF.Tools\JAIMES AF.Tools.csproj"/>
-        <ProjectReference Include="..\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj"/>
-        <ProjectReference Include="..\JAIMES AF.ServiceDefaults\JAIMES AF.ServiceDefaults.csproj"/>
+        <ProjectReference Include="..\JAIMES AF.ServiceDefinitions\JAIMES AF.ServiceDefinitions.csproj" />
+        <ProjectReference Include="..\JAIMES AF.Tools\JAIMES AF.Tools.csproj" />
+        <ProjectReference Include="..\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj" />
+        <ProjectReference Include="..\JAIMES AF.ServiceDefaults\JAIMES AF.ServiceDefaults.csproj" />
     </ItemGroup>
 
 </Project>

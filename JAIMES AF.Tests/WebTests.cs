@@ -1,5 +1,4 @@
 using Aspire.Hosting;
-using Microsoft.Extensions.Logging;
 
 namespace MattEland.Jaimes.Tests;
 

@@ -1,4 +1,9 @@
-namespace MattEland.Jaimes.Services;
+using MattEland.Jaimes.Agents.Helpers;
+using Microsoft.Agents.AI;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
+
+namespace MattEland.Jaimes.ServiceLayer;
 
 public static class ServiceCollectionExtensions
 {
@@ -15,6 +20,20 @@ public static class ServiceCollectionExtensions
             .AddClasses(classes => classes.InNamespaceOf<ChatService>())
             .AsSelfWithInterfaces()
             .WithScopedLifetime());
+
+
+        // Configure our AI Agent
+        services.AddSingleton<AIAgent>(s =>
+        {
+            IChatClient chat = s.GetRequiredService<IChatClient>();
+
+            var logs = s.GetRequiredService<ILoggerFactory>();
+            ILogger logger = logs.CreateLogger("JaimesChatClient");
+            chat = chat.WrapWithInstrumentation(logger);
+            // Get system prompt from somewhere else
+            // Link up tools
+            return chat.CreateJaimesAgent(logger, "JAIMES-AF", "You are an AI game master running a role playing game with the player as the sole human player.");
+        });
 
         return services;
     }

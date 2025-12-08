@@ -1,5 +1,7 @@
 // added for utilities
 
+using MattEland.Jaimes.ServiceDefaults.Common;
+
 namespace MattEland.Jaimes.Workers.DocumentEmbedding.Services;
 
 public class DocumentEmbeddingService(
