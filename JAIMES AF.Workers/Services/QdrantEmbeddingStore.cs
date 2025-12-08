@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
 using MattEland.Jaimes.ServiceDefaults;
+using MattEland.Jaimes.ServiceDefaults.Common;
 
 namespace MattEland.Jaimes.Workers.Services;
 
