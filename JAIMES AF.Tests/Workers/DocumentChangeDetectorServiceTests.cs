@@ -1,16 +1,6 @@
-using System.Diagnostics;
-using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.DocumentProcessing.Services;
-using MattEland.Jaimes.Repositories;
-using MattEland.Jaimes.Repositories.Entities;
-using MattEland.Jaimes.ServiceDefinitions.Messages;
-using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Workers.DocumentChangeDetector.Configuration;
 using MattEland.Jaimes.Workers.DocumentChangeDetector.Services;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using Moq;
-using Shouldly;
 
 namespace MattEland.Jaimes.Tests.Workers;
 

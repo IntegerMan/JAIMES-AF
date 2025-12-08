@@ -45,11 +45,24 @@ public static class ChatClientMiddleware
                 "💬 Chat client invocation started: {MessageCount} message(s)",
                 messageCount);
 
-            // Log message details for debugging
-            logger.LogDebug(
-                "Chat client context - MessageCount: {MessageCount}, Options: {Options}",
-                messageCount,
-                options != null ? JsonSerializer.Serialize(options) : "null");
+            // Log message details for debugging (guard expensive serialization)
+            if (logger.IsEnabled(LogLevel.Debug))
+            {
+                string optionsText;
+                try
+                {
+                    optionsText = options != null ? JsonSerializer.Serialize(options) : "null";
+                }
+                catch (Exception ex)
+                {
+                    optionsText = $"<options serialization failed: {ex.Message}>";
+                }
+
+                logger.LogDebug(
+                    "Chat client context - MessageCount: {MessageCount}, Options: {Options}",
+                    messageCount,
+                    optionsText);
+            }
 
             // Create an OpenTelemetry activity for the chat client invocation
             using Activity? activity = ActivitySource.StartActivity("ChatClient.Invoke");
@@ -57,7 +70,15 @@ public static class ChatClientMiddleware
             if (activity != null)
             {
                 activity.SetTag("chat.message_count", messageCount);
-                activity.SetTag("chat.options", options != null ? JsonSerializer.Serialize(options) : "null");
+
+                try
+                {
+                    activity.SetTag("chat.options", options != null ? JsonSerializer.Serialize(options) : "null");
+                }
+                catch (Exception ex)
+                {
+                    activity.SetTag("chat.options", $"<options serialization failed: {ex.Message}>");
+                }
             }
 
             ChatResponse? response = null;

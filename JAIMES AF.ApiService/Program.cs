@@ -1,12 +1,5 @@
-using FastEndpoints.Swagger;
-using MattEland.Jaimes.Agents.Services;
-using MattEland.Jaimes.ApiService.Helpers;
-using MattEland.Jaimes.ServiceDefaults;
-using MattEland.Jaimes.Services;
-using MattEland.Jaimes.ServiceDefinitions.Configuration;
+using MattEland.Jaimes.ServiceLayer;
 using MattEland.Jaimes.Workers.Services;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using RabbitMQ.Client;
 
 namespace MattEland.Jaimes.ApiService;
 
@@ -30,6 +23,9 @@ public class Program
         // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
         builder.Services.AddOpenApi();
 
+        // Add AG-UI Backend
+        builder.Services.AddAGUI();
+        
         // Add Swagger services
         builder.Services.AddEndpointsApiExplorer();
 
@@ -156,6 +152,7 @@ public class Program
         if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
         app.MapDefaultEndpoints();
+        app.MapAGUI("/agui", app.Services.GetRequiredService<AIAgent>());
         app.UseFastEndpoints().UseSwaggerGen();
 
         await app.RunAsync();

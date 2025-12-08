@@ -32,14 +32,27 @@ public static class AgentRunMiddleware
                 agentName,
                 messageCount);
 
-            // Log run details for debugging
-            string threadStatus = thread != null ? "existing" : "new";
-            logger.LogDebug(
-                "Agent run context - AgentName: {AgentName}, MessageCount: {MessageCount}, ThreadStatus: {ThreadStatus}, Options: {Options}",
-                agentName,
-                messageCount,
-                threadStatus,
-                options != null ? JsonSerializer.Serialize(options) : "null");
+            // Log run details for debugging (guard expensive serialization)
+            if (logger.IsEnabled(LogLevel.Debug))
+            {
+                string optionsText;
+                try
+                {
+                    optionsText = options != null ? JsonSerializer.Serialize(options) : "null";
+                }
+                catch (Exception ex)
+                {
+                    optionsText = $"<options serialization failed: {ex.Message}>";
+                }
+
+                string threadStatus = thread != null ? "existing" : "new";
+                logger.LogDebug(
+                    "Agent run context - AgentName: {AgentName}, MessageCount: {MessageCount}, ThreadStatus: {ThreadStatus}, Options: {Options}",
+                    agentName,
+                    messageCount,
+                    threadStatus,
+                    optionsText);
+            }
 
             // Create an OpenTelemetry activity for the agent run
             using Activity? activity = ActivitySource.StartActivity($"Agent.Run.{agentName}");
@@ -48,8 +61,16 @@ public static class AgentRunMiddleware
             {
                 activity.SetTag("agent.name", agentName);
                 activity.SetTag("agent.message_count", messageCount);
-                activity.SetTag("agent.thread_status", threadStatus);
-                activity.SetTag("agent.options", options != null ? JsonSerializer.Serialize(options) : "null");
+                activity.SetTag("agent.thread_status", thread != null ? "existing" : "new");
+
+                try
+                {
+                    activity.SetTag("agent.options", options != null ? JsonSerializer.Serialize(options) : "null");
+                }
+                catch (Exception ex)
+                {
+                    activity.SetTag("agent.options", $"<options serialization failed: {ex.Message}>");
+                }
             }
 
             AgentRunResponse? response = null;

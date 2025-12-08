@@ -1,3 +1,5 @@
+using MattEland.Jaimes.ServiceDefaults.Common;
+
 namespace MattEland.Jaimes.Agents.Services;
 
 public class QdrantRulesStore(

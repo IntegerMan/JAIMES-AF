@@ -1,5 +1,3 @@
-using MattEland.Jaimes.ServiceDefinitions.Messages;
-
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
 public class RecrackDocumentEndpoint(

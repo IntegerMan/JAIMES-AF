@@ -1,7 +1,4 @@
-using MattEland.Jaimes.ServiceDefaults;
 using Microsoft.Extensions.AI;
-using Microsoft.Extensions.Configuration;
-using Shouldly;
 
 namespace MattEland.Jaimes.Tests.ServiceDefaults;
 

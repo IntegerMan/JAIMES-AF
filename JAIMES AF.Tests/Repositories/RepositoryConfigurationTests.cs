@@ -1,8 +1,3 @@
-using MattEland.Jaimes.Repositories.Entities;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Shouldly;
-
 namespace MattEland.Jaimes.Tests.Repositories;
 
 public class RepositoryConfigurationTests

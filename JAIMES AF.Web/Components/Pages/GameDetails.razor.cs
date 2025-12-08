@@ -1,16 +1,21 @@
+using Microsoft.Agents.AI;
+using Microsoft.Extensions.AI;
+
 namespace MattEland.Jaimes.Web.Components.Pages;
 
 public partial class GameDetails
 {
     [Inject] public HttpClient Http { get; set; } = null!;
-
+    [Inject] public AgentThread Thread { get; set; } = null!;
+    [Inject] public AIAgent Agent { get; set; } = null!;
+    
     [Inject] public ILoggerFactory LoggerFactory { get; set; } = null!;
 
     [Inject] public IJSRuntime JsRuntime { get; set; } = null!;
 
     [Parameter] public Guid GameId { get; set; }
 
-    private List<MessageResponse> _messages = [];
+    private List<ChatMessage> _messages = [];
 
     private GameStateResponse? _game;
     private bool _isLoading = true;
@@ -27,10 +32,12 @@ public partial class GameDetails
 
     private bool _isSending = false;
     private bool _shouldScrollToBottom = false;
+    private ILogger? _logger;
 
     protected override async Task OnParametersSetAsync()
     {
         await LoadGameAsync();
+        _logger = LoggerFactory.CreateLogger("GameDetails");
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -51,11 +58,13 @@ public partial class GameDetails
         try
         {
             _game = await Http.GetFromJsonAsync<GameStateResponse>($"/games/{GameId}");
-            _messages = _game?.Messages.OrderBy(m => m.Id).ToList() ?? [];
+            _messages = _game?.Messages.OrderBy(m => m.Id)
+                .Select(m => new ChatMessage(m.Participant == ChatParticipant.Player ? ChatRole.User : ChatRole.Assistant, m.Text))
+                .ToList() ?? [];
         }
         catch (Exception ex)
         {
-            LoggerFactory.CreateLogger("GameDetails").LogError(ex, "Failed to load game from API");
+            _logger?.LogError(ex, "Failed to load game from API");
             _errorMessage = "Failed to load game: " + ex.Message;
         }
         finally
@@ -83,86 +92,39 @@ public partial class GameDetails
         try
         {
             // Indicate message is being sent
-            ChatRequest request = new()
-            {
-                GameId = GameId,
-                Message = messageText
-            };
-            _messages.Add(new MessageResponse
-            {
-                Id = 0, // Temporary ID, will be replaced when we reload or get proper ordering
-                Text = messageText,
-                Participant = ChatParticipant.Player,
-                PlayerId = _game!.PlayerId,
-                ParticipantName = _game.PlayerName,
-                CreatedAt = DateTime.UtcNow
-            });
+            _messages.Add(new(ChatRole.User, messageText));
+            _logger?.LogInformation("Sending message {Text} from User", messageText);
+
             // Scroll to bottom after adding user message and showing typing indicator
             _shouldScrollToBottom = true;
             await InvokeAsync(StateHasChanged);
 
             // Send message to API
-            HttpResponseMessage resp = await Http.PostAsJsonAsync($"/games/{GameId}", request);
-
-            // Handle the response
-            if (!resp.IsSuccessStatusCode)
+            AgentRunResponse resp = await Agent.RunAsync(_messages, Thread);
+            foreach (var message in resp.Messages)
             {
-                await HandleErrorResponseAsync(resp);
-            }
-            else
-            {
-                // Reload all messages from the server to get correct Ids for all messages
-                // This ensures the player message we added locally gets its proper Id from the database
-                GameStateResponse? updated = await Http.GetFromJsonAsync<GameStateResponse>($"/games/{GameId}");
-                if (updated?.Messages != null)
-                {
-                    _messages = updated.Messages.OrderBy(m => m.Id).ToList();
-                    // Scroll to bottom after receiving reply
-                    _shouldScrollToBottom = true;
-                    StateHasChanged();
-                }
+                _logger?.LogInformation("Received message {Text} from {Role}", message.Text, message.AuthorName ?? message.Role.ToString());
+                _messages.Add(message);
             }
         }
         catch (Exception ex)
         {
-            LoggerFactory.CreateLogger("GameDetails").LogError(ex, "Failed to send chat message");
+            _logger?.LogError(ex, "Failed to send chat message");
             _errorMessage = $"Failed to send message: {ex.Message}";
         }
         finally
         {
             _isSending = false;
+
             // Scroll after typing indicator disappears
             _shouldScrollToBottom = true;
-            StateHasChanged();
+            await InvokeAsync(StateHasChanged);
         }
-    }
-
-    private async Task HandleErrorResponseAsync(HttpResponseMessage resp)
-    {
-        // Try to read response body for more details
-        string? body = null;
-        try
-        {
-            body = await resp.Content.ReadAsStringAsync();
-        }
-        catch
-        {
-            // ignored
-        }
-
-        _errorMessage =
-            $"Failed to send message: {resp.ReasonPhrase}{(string.IsNullOrEmpty(body) ? string.Empty : " - " + body)}";
     }
 
     private async Task OnKeyDown(KeyboardEventArgs args)
     {
         if (args.Key == "Enter" && !_isSending) await SendMessageAsync();
-    }
-
-    private string GetGameMasterName()
-    {
-        MessageResponse? gameMasterMessage = _messages.FirstOrDefault(m => m.Participant == ChatParticipant.GameMaster);
-        return gameMasterMessage?.ParticipantName ?? "Game Master";
     }
 
     private async Task ScrollToBottomAsync()

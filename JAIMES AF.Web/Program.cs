@@ -1,4 +1,8 @@
+using Microsoft.Agents.AI;
 using MudBlazor.Services;
+using Microsoft.Agents.AI.AGUI;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Http.Resilience;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -13,32 +17,35 @@ if (builder.Configuration["ApiService:TimeoutMinutes"] != null
     && int.TryParse(builder.Configuration["ApiService:TimeoutMinutes"], out int timeoutMinutes))
     httpClientTimeout = TimeSpan.FromMinutes(timeoutMinutes);
 
-builder.Services.AddHttpClient("Api",
-        client =>
-        {
-            // Allow configuring an override in configuration if needed; otherwise use the Aspire project reference name
-            client.BaseAddress = new Uri(builder.Configuration["ApiService:BaseAddress"] ?? "http://apiservice/");
-            // Set longer timeout for AI chat requests which can take significant time to process
-            client.Timeout = httpClientTimeout;
-        })
 // Ensure service discovery is added on IHttpClientBuilder, then add resilience pipeline
+builder.Services.AddHttpClient("Api", ConfigureHttpClient)
     .AddServiceDiscovery()
-    .AddStandardResilienceHandler(options =>
-    {
-        // Use the same retry logic as the default configuration
-        Extensions.ConfigureResilienceHandlerExcludingPost(options);
-
-        // Override attempt and total timeouts so the resilience pipeline allows long-running requests
-        TimeSpan attemptTimeout = httpClientTimeout;
-        options.AttemptTimeout.Timeout = attemptTimeout;
-        options.TotalRequestTimeout.Timeout = attemptTimeout.Add(TimeSpan.FromMinutes(1));
-
-        // Match circuit breaker sampling duration requirements (must be at least double attempt timeout)
-        options.CircuitBreaker.SamplingDuration = attemptTimeout + attemptTimeout;
-    });
+    .AddStandardResilienceHandler(options => { ConfigureGetOnlyResiliency(options, httpClientTimeout); });
+builder.Services.AddHttpClient("AGUI", ConfigureHttpClient)
+    .AddServiceDiscovery()
+    .AddStandardResilienceHandler(options => { ConfigureGetOnlyResiliency(options, httpClientTimeout); });
 
 // Make the named client the default HttpClient that's injected with `@inject HttpClient Http`
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api"));
+
+// Configure AG UI integration
+builder.Services.AddScoped<AGUIChatClient>(sp =>
+{
+    HttpClient httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient("AGUI");
+    string serverUrl = httpClient.BaseAddress + "agui";
+    AGUIChatClient chatClient = new(httpClient, serverUrl);
+    return chatClient;
+});
+builder.Services.AddScoped<AIAgent>(sp =>
+{
+    AGUIChatClient chatClient = sp.GetRequiredService<AGUIChatClient>();
+    return chatClient.CreateAIAgent(name: "agui-client", description: "AG-UI Client Agent");
+});
+builder.Services.AddScoped<AgentThread>(sp =>
+{
+    AIAgent agent = sp.GetRequiredService<AIAgent>();
+    return agent.GetNewThread();
+});
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -95,3 +102,26 @@ app.MapRazorComponents<App>()
 app.MapDefaultEndpoints();
 
 app.Run();
+return;
+
+void ConfigureHttpClient(HttpClient client)
+{
+    // Allow configuring an override in configuration if needed; otherwise use the Aspire project reference name
+    client.BaseAddress = new Uri(builder.Configuration["ApiService:BaseAddress"] ?? "http://apiservice/");
+    // Set longer timeout for AI chat requests which can take significant time to process
+    client.Timeout = httpClientTimeout;
+}
+
+void ConfigureGetOnlyResiliency(HttpStandardResilienceOptions httpStandardResilienceOptions, TimeSpan timeSpan)
+{
+    // Use the same retry logic as the default configuration
+    Extensions.ConfigureResilienceHandlerExcludingPost(httpStandardResilienceOptions);
+
+    // Override attempt and total timeouts so the resilience pipeline allows long-running requests
+    TimeSpan attemptTimeout = timeSpan;
+    httpStandardResilienceOptions.AttemptTimeout.Timeout = attemptTimeout;
+    httpStandardResilienceOptions.TotalRequestTimeout.Timeout = attemptTimeout.Add(TimeSpan.FromMinutes(1));
+
+    // Match circuit breaker sampling duration requirements (must be at least double attempt timeout)
+    httpStandardResilienceOptions.CircuitBreaker.SamplingDuration = attemptTimeout + attemptTimeout;
+}

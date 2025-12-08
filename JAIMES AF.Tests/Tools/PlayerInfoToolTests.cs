@@ -1,6 +1,4 @@
-using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.Tools;
-using Shouldly;
 
 namespace MattEland.Jaimes.Tests.Tools;
 

@@ -1,7 +1,6 @@
 @page "/games/{GameId:guid}"
-
-@using MattEland.Jaimes.ServiceDefinitions.Responses
 @using MattEland.Jaimes.Web.Components.Helpers
+@using Microsoft.Extensions.AI
 
 @rendermode InteractiveServer
 
@@ -32,20 +31,20 @@
 			</div>
 
 			<div id="chat-scroll-container" class="chat-scroll">
-				@foreach (MessageResponse m in _messages ?? [])
+				@foreach (var m in _messages ?? [])
 				{
 					List<string> paragraphs = ChatHelpers.SplitIntoParagraphs(m.Text).ToList();
 					@foreach ((string paragraph, int index) in paragraphs.Select((p, i) => (p, i)))
 					{
 						bool isFirstParagraph = index == 0;
-						@if (m.Participant == ChatParticipant.Player)
+						@if (m.Role == ChatRole.User)
 						{
 							<MudChat ChatPosition="ChatBubblePosition.End"
 							         Variant="Variant.Filled"
 							         Color="Color.Primary">
 								@if (isFirstParagraph)
 								{
-									<MudChatHeader Name="@m.ParticipantName"/>
+									<MudChatHeader Name="Player"/>
 								}
 								<MudChatBubble>
 									@paragraph
@@ -59,7 +58,7 @@
 							         Color="Color.Default">
 								@if (isFirstParagraph)
 								{
-									<MudChatHeader Name="@m.ParticipantName"/>
+									<MudChatHeader Name="Game Master"/>
 								}
 								<MudChatBubble>
 									@((MarkupString) ChatHelpers.RenderMarkdown(paragraph))
@@ -74,7 +73,7 @@
 					<MudChat ChatPosition="ChatBubblePosition.Start"
 					         Variant="Variant.Filled"
 					         Color="Color.Default">
-						<MudChatHeader Name="@GetGameMasterName()"/>
+						<MudChatHeader Name="Game Master"/>
 						<MudChatBubble>
 							<div class="typing-indicator">
 								<span></span>

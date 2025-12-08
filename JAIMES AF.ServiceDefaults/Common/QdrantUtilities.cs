@@ -3,7 +3,7 @@ using System.Text;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 
-namespace MattEland.Jaimes.ServiceDefaults;
+namespace MattEland.Jaimes.ServiceDefaults.Common;
 
 /// <summary>
 /// Shared Qdrant / Embedding related helper methods to reduce duplication.

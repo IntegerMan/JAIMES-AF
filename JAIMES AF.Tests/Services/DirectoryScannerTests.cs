@@ -1,7 +1,4 @@
 using MattEland.Jaimes.DocumentProcessing.Services;
-using Microsoft.Extensions.Logging;
-using Moq;
-using Shouldly;
 
 namespace MattEland.Jaimes.Tests.Services;
 

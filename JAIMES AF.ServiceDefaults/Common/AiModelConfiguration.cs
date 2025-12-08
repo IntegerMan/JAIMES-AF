@@ -3,7 +3,7 @@ using Azure.AI.OpenAI;
 using Azure.Identity;
 using OpenAI;
 
-namespace MattEland.Jaimes.ServiceDefaults;
+namespace MattEland.Jaimes.ServiceDefaults.Common;
 
 internal static class AiModelConfiguration
 {
