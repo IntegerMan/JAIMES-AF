@@ -20,6 +20,7 @@
         <PackageReference Include="FastEndpoints.Swagger"/>
         <PackageReference Include="FluentValidation.AspNetCore"/>
         <PackageReference Include="Microsoft.Agents.AI.Hosting.AGUI.AspNetCore" />
+        <PackageReference Include="Microsoft.Agents.AI.AGUI" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi"/>
         <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore"/>
         <PackageReference Include="Serilog.AspNetCore"/>

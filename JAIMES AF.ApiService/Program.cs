@@ -1,3 +1,4 @@
+using MattEland.Jaimes.ApiService.Agents;
 using MattEland.Jaimes.ServiceLayer;
 using MattEland.Jaimes.Workers.Services;
 
@@ -107,6 +108,13 @@ public class Program
 
         // Register Agents services explicitly (not auto-registered)
         builder.Services.AddScoped<IRulesSearchService, RulesSearchService>();
+        
+        // Register HttpContextAccessor for GameAwareAgent
+        builder.Services.AddHttpContextAccessor();
+        
+        // Register GameAwareAgent as singleton for use with MapAGUI
+        // It's safe to be singleton because it uses IHttpContextAccessor for per-request context
+        builder.Services.AddSingleton<GameAwareAgent>();
 
         // Register DatabaseInitializer for DI
         builder.Services.AddSingleton<DatabaseInitializer>();
@@ -153,6 +161,10 @@ public class Program
 
         app.MapDefaultEndpoints();
         app.UseFastEndpoints().UseSwaggerGen();
+
+        // Map AG-UI endpoint for game-specific chat
+        // Use GameAwareAgent which creates game-specific agents based on route
+        app.MapAGUI("/games/{gameId:guid}/chat", app.Services.GetRequiredService<GameAwareAgent>());
 
         await app.RunAsync();
     }
