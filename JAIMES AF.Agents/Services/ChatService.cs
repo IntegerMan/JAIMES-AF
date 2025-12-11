@@ -91,54 +91,6 @@ public class ChatService(
         return agent;
     }
 
-    public async Task<JaimesChatResponse> ProcessChatMessageAsync(GameDto game,
-        string message,
-        CancellationToken cancellationToken = default)
-    {
-        // Build the Azure OpenAI client from options with tools
-        AIAgent agent = CreateAgent(game.Scenario.SystemPrompt, game);
-
-        AgentThread? thread = null;
-
-        // Get the thread from the database
-        string? existingThreadJson =
-            await _chatHistoryService.GetMostRecentThreadJsonAsync(game.GameId, cancellationToken);
-        if (!string.IsNullOrEmpty(existingThreadJson))
-        {
-            JsonElement jsonElement =
-                JsonSerializer.Deserialize<JsonElement>(existingThreadJson, JsonSerializerOptions.Web);
-            thread = agent.DeserializeThread(jsonElement, JsonSerializerOptions.Web);
-        }
-
-        thread ??= agent.GetNewThread();
-
-        // Log the thread before the chat for diagnostics
-        string json = thread.Serialize(JsonSerializerOptions.Web).GetRawText();
-        _logger.LogInformation("Thread before Chat: {Thread}", json);
-
-        AgentRunResponse response = await agent.RunAsync(message, thread, cancellationToken: cancellationToken);
-
-        // Serialize the thread after the chat
-        json = thread.Serialize(JsonSerializerOptions.Web).GetRawText();
-        _logger.LogInformation("Thread after Chat: {Thread}", json);
-
-        // Create MessageResponse array for AI responses
-        MessageResponse[] responseMessages = response.Messages.Select(m => new MessageResponse
-            {
-                Text = m.Text,
-                Participant = ChatParticipant.GameMaster,
-                PlayerId = null,
-                ParticipantName = "Game Master",
-                CreatedAt = DateTime.UtcNow
-            })
-            .ToArray();
-
-        return new JaimesChatResponse
-        {
-            Messages = responseMessages,
-            ThreadJson = json
-        };
-    }
 
     public async Task<InitialMessageResponse> GenerateInitialMessageAsync(GenerateInitialMessageRequest request,
         CancellationToken cancellationToken = default)

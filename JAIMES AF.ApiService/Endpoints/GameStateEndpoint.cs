@@ -3,6 +3,7 @@
 public class GameStateEndpoint : EndpointWithoutRequest<GameStateResponse>
 {
     public required IGameService GameService { get; set; }
+    public required IChatHistoryService ChatHistoryService { get; set; }
 
     public override void Configure()
     {
@@ -26,6 +27,9 @@ public class GameStateEndpoint : EndpointWithoutRequest<GameStateResponse>
             return;
         }
 
+        // Get thread JSON from chat history
+        string? threadJson = await ChatHistoryService.GetMostRecentThreadJsonAsync(gameId, ct);
+
         GameStateResponse gameState = new()
         {
             GameId = gameDto.GameId,
@@ -35,7 +39,8 @@ public class GameStateEndpoint : EndpointWithoutRequest<GameStateResponse>
             ScenarioId = gameDto.Scenario.Id,
             ScenarioName = gameDto.Scenario.Name,
             PlayerId = gameDto.Player.Id,
-            PlayerName = gameDto.Player.Name
+            PlayerName = gameDto.Player.Name,
+            ThreadJson = threadJson
         };
         await Send.OkAsync(gameState, ct);
     }

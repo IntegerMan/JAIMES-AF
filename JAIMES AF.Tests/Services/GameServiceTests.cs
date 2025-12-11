@@ -277,48 +277,6 @@ public class GameServiceTests : IAsyncLifetime
         exception.Message.ShouldContain("uses ruleset 'test-ruleset'");
     }
 
-    [Fact]
-    public async Task ProcessChatMessageAsync_ReturnsMessagesWithIds()
-    {
-        // Arrange
-        Game game = new()
-        {
-            Id = Guid.NewGuid(),
-            RulesetId = "test-ruleset",
-            ScenarioId = "test-scenario",
-            PlayerId = "test-player",
-            CreatedAt = DateTime.UtcNow
-        };
-        _context.Games.Add(game);
-        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
-        _context.ChangeTracker.Clear();
-
-        string playerMessage = "Hello, game master!";
-
-        // Act
-        JaimesChatResponse response =
-            await _gameService.ProcessChatMessageAsync(game.Id, playerMessage, TestContext.Current.CancellationToken);
-
-        // Assert
-        response.Messages.ShouldNotBeNull();
-        response.Messages.Length.ShouldBeGreaterThan(0);
-        // Verify all returned messages have valid Ids (set after persistence)
-        foreach (MessageResponse message in response.Messages)
-        {
-            message.Id.ShouldBeGreaterThan(0);
-            message.Text.ShouldNotBeNullOrEmpty();
-        }
-
-        // Verify messages were persisted to database
-        Message[] persistedMessages = await _context.Messages
-            .Where(m => m.GameId == game.Id)
-            .OrderBy(m => m.Id)
-            .ToArrayAsync(TestContext.Current.CancellationToken);
-        persistedMessages.Length.ShouldBeGreaterThan(0);
-        // First message should be the player message
-        persistedMessages[0].Text.ShouldBe(playerMessage);
-        persistedMessages[0].PlayerId.ShouldBe("test-player");
-    }
 
     // Test factory that returns the same context instance (for testing)
     private class TestDbContextFactory(DbContextOptions<JaimesDbContext> options) : IDbContextFactory<JaimesDbContext>
@@ -339,28 +297,6 @@ public class GameServiceTests : IAsyncLifetime
     private class MockChatService : IChatService
     {
         public const string TestInitialMessage = "Welcome to the test adventure!";
-
-        public Task<JaimesChatResponse> ProcessChatMessageAsync(GameDto game,
-            string message,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(new JaimesChatResponse
-            {
-                Messages =
-                [
-                    new MessageResponse
-                    {
-                        Id = 0, // Will be set by GameService after persistence
-                        Text = "Test response",
-                        Participant = ChatParticipant.GameMaster,
-                        PlayerId = null,
-                        ParticipantName = "Game Master",
-                        CreatedAt = DateTime.UtcNow
-                    }
-                ],
-                ThreadJson = "{}"
-            });
-        }
 
         public Task<InitialMessageResponse> GenerateInitialMessageAsync(GenerateInitialMessageRequest request,
             CancellationToken cancellationToken = default)

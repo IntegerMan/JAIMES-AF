@@ -152,7 +152,6 @@ public class Program
         if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
         app.MapDefaultEndpoints();
-        app.MapAGUI("/agui", app.Services.GetRequiredService<AIAgent>());
         app.UseFastEndpoints().UseSwaggerGen();
 
         await app.RunAsync();

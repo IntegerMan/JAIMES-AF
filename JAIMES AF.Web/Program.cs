@@ -28,24 +28,7 @@ builder.Services.AddHttpClient("AGUI", ConfigureHttpClient)
 // Make the named client the default HttpClient that's injected with `@inject HttpClient Http`
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api"));
 
-// Configure AG UI integration
-builder.Services.AddScoped<AGUIChatClient>(sp =>
-{
-    HttpClient httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient("AGUI");
-    string serverUrl = httpClient.BaseAddress + "agui";
-    AGUIChatClient chatClient = new(httpClient, serverUrl);
-    return chatClient;
-});
-builder.Services.AddScoped<AIAgent>(sp =>
-{
-    AGUIChatClient chatClient = sp.GetRequiredService<AGUIChatClient>();
-    return chatClient.CreateAIAgent(name: "agui-client", description: "AG-UI Client Agent");
-});
-builder.Services.AddScoped<AgentThread>(sp =>
-{
-    AIAgent agent = sp.GetRequiredService<AIAgent>();
-    return agent.GetNewThread();
-});
+// AG-UI clients are now created per-game in GameDetails component
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

@@ -1,21 +1,21 @@
+using System.Text.Json;
 using Microsoft.Agents.AI;
+using Microsoft.Agents.AI.AGUI;
 using Microsoft.Extensions.AI;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 
 public partial class GameDetails
 {
-    [Inject] public HttpClient Http { get; set; } = null!;
-    [Inject] public AgentThread Thread { get; set; } = null!;
-    [Inject] public AIAgent Agent { get; set; } = null!;
-    
+    [Inject] public IHttpClientFactory HttpClientFactory { get; set; } = null!;
     [Inject] public ILoggerFactory LoggerFactory { get; set; } = null!;
-
     [Inject] public IJSRuntime JsRuntime { get; set; } = null!;
 
     [Parameter] public Guid GameId { get; set; }
 
     private List<ChatMessage> _messages = [];
+    private AgentThread? _thread;
+    private AIAgent? _agent;
 
     private GameStateResponse? _game;
     private bool _isLoading = true;
@@ -57,10 +57,28 @@ public partial class GameDetails
         _errorMessage = null;
         try
         {
-            _game = await Http.GetFromJsonAsync<GameStateResponse>($"/games/{GameId}");
+            HttpClient httpClient = HttpClientFactory.CreateClient("Api");
+            _game = await httpClient.GetFromJsonAsync<GameStateResponse>($"/games/{GameId}");
             _messages = _game?.Messages.OrderBy(m => m.Id)
                 .Select(m => new ChatMessage(m.Participant == ChatParticipant.Player ? ChatRole.User : ChatRole.Assistant, m.Text))
                 .ToList() ?? [];
+
+            // Create AG-UI client for this game
+            HttpClient aguiHttpClient = HttpClientFactory.CreateClient("AGUI");
+            string serverUrl = $"{aguiHttpClient.BaseAddress}games/{GameId}/chat";
+            AGUIChatClient chatClient = new(aguiHttpClient, serverUrl);
+            _agent = chatClient.CreateAIAgent(name: $"game-{GameId}", description: "Game Chat Agent");
+
+            // Restore thread from threadJson if available
+            if (!string.IsNullOrEmpty(_game?.ThreadJson))
+            {
+                JsonElement jsonElement = JsonSerializer.Deserialize<JsonElement>(_game.ThreadJson, JsonSerializerOptions.Web);
+                _thread = _agent.DeserializeThread(jsonElement, JsonSerializerOptions.Web);
+            }
+            else
+            {
+                _thread = _agent.GetNewThread();
+            }
         }
         catch (Exception ex)
         {
@@ -100,7 +118,13 @@ public partial class GameDetails
             await InvokeAsync(StateHasChanged);
 
             // Send message to API
-            AgentRunResponse resp = await Agent.RunAsync(_messages, Thread);
+            if (_agent == null || _thread == null)
+            {
+                _errorMessage = "Agent or thread not initialized";
+                return;
+            }
+
+            AgentRunResponse resp = await _agent.RunAsync(_messages, _thread);
             foreach (var message in resp.Messages)
             {
                 _logger?.LogInformation("Received message {Text} from {Role}", message.Text, message.AuthorName ?? message.Role.ToString());
