@@ -14,7 +14,6 @@ public partial class GameDetails
     [Parameter] public Guid GameId { get; set; }
 
     private List<ChatMessage> _messages = [];
-    private AgentThread? _thread;
     private AIAgent? _agent;
 
     private GameStateResponse? _game;
@@ -69,16 +68,9 @@ public partial class GameDetails
             AGUIChatClient chatClient = new(aguiHttpClient, serverUrl);
             _agent = chatClient.CreateAIAgent(name: $"game-{GameId}", description: "Game Chat Agent");
 
-            // Restore thread from threadJson if available
-            if (!string.IsNullOrEmpty(_game?.ThreadJson))
-            {
-                JsonElement jsonElement = JsonSerializer.Deserialize<JsonElement>(_game.ThreadJson, JsonSerializerOptions.Web);
-                _thread = _agent.DeserializeThread(jsonElement, JsonSerializerOptions.Web);
-            }
-            else
-            {
-                _thread = _agent.GetNewThread();
-            }
+            // AGUI manages threads via ConversationId automatically
+            // Don't deserialize server-side threads as they use MessageStore which conflicts with AGUI's ConversationId
+            // Don't create a thread here - let AGUI manage it completely via ConversationId
         }
         catch (Exception ex)
         {
@@ -118,13 +110,15 @@ public partial class GameDetails
             await InvokeAsync(StateHasChanged);
 
             // Send message to API
-            if (_agent == null || _thread == null)
+            if (_agent == null)
             {
-                _errorMessage = "Agent or thread not initialized";
+                _errorMessage = "Agent not initialized";
                 return;
             }
 
-            AgentRunResponse resp = await _agent.RunAsync(_messages, _thread);
+            // AGUI manages threads automatically via ConversationId
+            // Don't pass a thread - AGUI will create/manage it via ConversationId to avoid MessageStore conflicts
+            AgentRunResponse resp = await _agent.RunAsync(_messages, thread: null);
             foreach (var message in resp.Messages)
             {
                 _logger?.LogInformation("Received message {Text} from {Role}", message.Text, message.AuthorName ?? message.Role.ToString());
