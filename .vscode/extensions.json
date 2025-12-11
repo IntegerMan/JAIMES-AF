@@ -12,6 +12,7 @@
         "mtxr.sqltools",
         "mtxr.sqltools-driver-sqlite",
         "github.vscode-pull-request-github",
-        "sonarsource.sonarlint-vscode"
+        "sonarsource.sonarlint-vscode",
+        "mermaidchart.vscode-mermaid-chart"
     ]
 }
