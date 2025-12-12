@@ -33,14 +33,47 @@ public class GameAwareAgent : AIAgent
         AgentRunOptions? options = null,
         CancellationToken cancellationToken = default)
     {
+        HttpContext? context = _httpContextAccessor.HttpContext;
+        string? gameIdStr = context?.Request.RouteValues["gameId"]?.ToString();
+        Guid.TryParse(gameIdStr, out Guid gameId);
+        
+        _logger.LogInformation("GameAwareAgent.RunAsync called for game {GameId} with {MessageCount} message(s)", gameId, messages?.Count() ?? 0);
+        
+        if (messages != null)
+        {
+            foreach (var msg in messages)
+            {
+                _logger.LogDebug("Incoming message - Role: {Role}, Text: {Text}, AuthorName: {AuthorName}", 
+                    msg.Role, msg.Text?.Substring(0, Math.Min(100, msg.Text?.Length ?? 0)) ?? "(null)", msg.AuthorName);
+            }
+        }
+        
         AIAgent gameAgent = await GetOrCreateGameAgentAsync(cancellationToken);
         AgentThread? gameThread = await GetOrCreateGameThreadAsync(gameAgent, cancellationToken);
         
+        _logger.LogInformation("Running agent for game {GameId} with thread {ThreadStatus}", gameId, gameThread != null ? "loaded" : "null");
+        
         // Run with the game-specific agent and thread
-        AgentRunResponse response = await gameAgent.RunAsync(messages, gameThread ?? thread, options, cancellationToken);
+        // Handle null messages case
+        IEnumerable<ChatMessage> messagesToSend = messages ?? [];
+        AgentRunResponse response = await gameAgent.RunAsync(messagesToSend, gameThread ?? thread, options, cancellationToken);
+        
+        _logger.LogInformation("Agent run completed for game {GameId}. Response contains {MessageCount} message(s)", 
+            gameId, response.Messages?.Count() ?? 0);
+        
+        if (response.Messages != null)
+        {
+            foreach (var msg in response.Messages)
+            {
+                _logger.LogDebug("Response message - Role: {Role}, Text: {Text}, AuthorName: {AuthorName}", 
+                    msg.Role, msg.Text?.Substring(0, Math.Min(100, msg.Text?.Length ?? 0)) ?? "(null)", msg.AuthorName);
+            }
+        }
         
         // Persist messages and thread after completion
         await PersistGameStateAsync(response, cancellationToken);
+        
+        _logger.LogInformation("Game state persisted for game {GameId}", gameId);
         
         return response;
     }
@@ -72,6 +105,7 @@ public class GameAwareAgent : AIAgent
         HttpContext? context = _httpContextAccessor.HttpContext;
         if (context == null)
         {
+            _logger.LogError("HttpContext is not available in GetOrCreateGameAgentAsync");
             throw new InvalidOperationException("HttpContext is not available");
         }
 
@@ -79,6 +113,7 @@ public class GameAwareAgent : AIAgent
         string? gameIdStr = context.Request.RouteValues["gameId"]?.ToString();
         if (!Guid.TryParse(gameIdStr, out Guid gameId))
         {
+            _logger.LogError("Invalid game ID in route: {GameIdStr}", gameIdStr);
             throw new ArgumentException("Invalid game ID in route");
         }
 
@@ -86,8 +121,11 @@ public class GameAwareAgent : AIAgent
         string cacheKey = $"GameAgent_{gameId}";
         if (context.Items.TryGetValue(cacheKey, out object? cachedAgent) && cachedAgent is AIAgent agent)
         {
+            _logger.LogDebug("Using cached agent for game {GameId}", gameId);
             return agent;
         }
+
+        _logger.LogInformation("Creating new agent for game {GameId}", gameId);
 
         // Get scoped services
         using IServiceScope scope = _serviceProvider.CreateScope();
@@ -97,19 +135,36 @@ public class GameAwareAgent : AIAgent
         ILogger logger = scope.ServiceProvider.GetRequiredService<ILogger<GameAwareAgent>>();
 
         // Get the game
+        _logger.LogDebug("Fetching game data for game {GameId}", gameId);
         GameDto? gameDto = await gameService.GetGameAsync(gameId, cancellationToken);
         if (gameDto == null)
         {
+            _logger.LogError("Game '{GameId}' does not exist", gameId);
             throw new ArgumentException($"Game '{gameId}' does not exist.");
         }
 
+        _logger.LogInformation("Game found: {GameId}, Scenario: {ScenarioName}, Player: {PlayerName}", 
+            gameId, gameDto.Scenario.Name, gameDto.Player.Name);
+        _logger.LogDebug("System prompt length: {Length} characters", gameDto.Scenario.SystemPrompt?.Length ?? 0);
+
         // Create agent with game context
+        // Handle null SystemPrompt
+        string systemPrompt = gameDto.Scenario.SystemPrompt ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(systemPrompt))
+        {
+            _logger.LogWarning("Game {GameId} has empty SystemPrompt, using default", gameId);
+            systemPrompt = "You are a helpful game master assistant.";
+        }
+
         IChatClient instrumentedChatClient = chatClient.WrapWithInstrumentation(logger);
         AIAgent gameAgent = instrumentedChatClient.CreateJaimesAgent(
             logger,
             $"JaimesAgent-{gameId}",
-            gameDto.Scenario.SystemPrompt,
+            systemPrompt,
             CreateTools(gameDto, rulesSearchService));
+
+        _logger.LogInformation("Agent created for game {GameId} with {ToolCount} tool(s)", 
+            gameId, CreateTools(gameDto, rulesSearchService)?.Count ?? 0);
 
         // Cache it for this request
         context.Items[cacheKey] = gameAgent;
@@ -165,16 +220,19 @@ public class GameAwareAgent : AIAgent
         HttpContext? context = _httpContextAccessor.HttpContext;
         if (context == null || !context.Items.TryGetValue("GameId", out object? gameIdObj) || gameIdObj is not Guid gameId)
         {
+            _logger.LogWarning("Cannot persist game state - HttpContext or GameId not available");
             return;
         }
 
         if (!context.Items.TryGetValue("GameDto", out object? gameDtoObj) || gameDtoObj is not GameDto gameDto)
         {
+            _logger.LogWarning("Cannot persist game state for game {GameId} - GameDto not available", gameId);
             return;
         }
 
         if (!context.Items.TryGetValue($"GameThread_{gameId}", out object? threadObj) || threadObj is not AgentThread thread)
         {
+            _logger.LogWarning("Cannot persist game state for game {GameId} - Thread not available", gameId);
             return;
         }
 
@@ -182,8 +240,12 @@ public class GameAwareAgent : AIAgent
         ChatMessage? newUserMessage = response.Messages?.LastOrDefault(m => m.Role == ChatRole.User);
         if (newUserMessage == null)
         {
+            _logger.LogDebug("No user message found in response for game {GameId}, skipping persistence", gameId);
             return;
         }
+
+        _logger.LogInformation("Persisting game state for game {GameId} - User message: {Text}", 
+            gameId, newUserMessage.Text?.Substring(0, Math.Min(100, newUserMessage.Text?.Length ?? 0)) ?? "(null)");
 
         // Get scoped services
         using IServiceScope scope = _serviceProvider.CreateScope();
@@ -202,6 +264,7 @@ public class GameAwareAgent : AIAgent
             CreatedAt = DateTime.UtcNow
         };
         dbContext.Messages.Add(userMessageEntity);
+        _logger.LogDebug("Added user message entity for game {GameId}", gameId);
 
         // Save AI messages
         List<Message> aiMessageEntities = (response.Messages ?? [])
@@ -215,15 +278,20 @@ public class GameAwareAgent : AIAgent
             })
             .ToList();
         dbContext.Messages.AddRange(aiMessageEntities);
+        _logger.LogDebug("Added {Count} AI message entity/entities for game {GameId}", aiMessageEntities.Count, gameId);
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Saved {TotalMessageCount} message(s) to database for game {GameId}", 
+            1 + aiMessageEntities.Count, gameId);
 
         // Get the last AI message ID for thread association
         int? lastAiMessageId = aiMessageEntities.LastOrDefault()?.Id;
 
         // Serialize and save thread after completion
         string threadJson = thread.Serialize(JsonSerializerOptions.Web).GetRawText();
+        _logger.LogDebug("Serialized thread for game {GameId}, length: {Length} characters", gameId, threadJson.Length);
         await chatHistoryService.SaveThreadJsonAsync(gameId, threadJson, lastAiMessageId, cancellationToken);
+        _logger.LogInformation("Saved thread JSON for game {GameId}", gameId);
     }
 
     private IList<AITool>? CreateTools(GameDto game, IRulesSearchService? rulesSearchService)

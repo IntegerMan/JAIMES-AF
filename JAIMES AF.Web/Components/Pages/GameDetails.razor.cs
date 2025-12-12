@@ -118,11 +118,70 @@ public partial class GameDetails
 
             // AGUI manages threads automatically via ConversationId
             // Don't pass a thread - AGUI will create/manage it via ConversationId to avoid MessageStore conflicts
-            AgentRunResponse resp = await _agent.RunAsync(_messages, thread: null);
-            foreach (var message in resp.Messages)
+            // AGUI manages conversation history, so we only need to send the NEW message, not all messages
+            // Sending all messages causes exponential growth because the server thread already contains history
+            ChatMessage newUserMessage = new(ChatRole.User, messageText);
+            
+            _logger?.LogDebug("Sending single new message to AGUI (AGUI manages conversation history via ConversationId)");
+            AgentRunResponse resp = await _agent.RunAsync([newUserMessage], thread: null);
+            
+            // Only add valid messages with proper roles to the collection
+            foreach (var message in resp.Messages ?? [])
             {
-                _logger?.LogInformation("Received message {Text} from {Role}", message.Text, message.AuthorName ?? message.Role.ToString());
-                _messages.Add(message);
+                // Skip null messages
+                if (message == null)
+                {
+                    _logger?.LogWarning("Skipping null message in response");
+                    continue;
+                }
+                
+                // Skip messages with empty text
+                if (string.IsNullOrWhiteSpace(message.Text))
+                {
+                    _logger?.LogDebug("Skipping message with empty text, Role: {Role}", message.Role);
+                    continue;
+                }
+                
+                // Normalize and validate the role
+                // AGUI may return roles as strings or with different casing
+                // Handle potential issues with Role enum
+                ChatRole messageRole = message.Role;
+                string roleString = messageRole.ToString()?.Trim() ?? string.Empty;
+                
+                // Handle case-insensitive role matching and empty/invalid roles
+                ChatRole normalizedRole;
+                if (string.IsNullOrEmpty(roleString) || 
+                    (!roleString.Equals("User", StringComparison.OrdinalIgnoreCase) && 
+                     !roleString.Equals("Assistant", StringComparison.OrdinalIgnoreCase)))
+                {
+                    // Try to infer role from AuthorName or default to Assistant for non-User messages
+                    if (!string.IsNullOrWhiteSpace(message.AuthorName))
+                    {
+                        _logger?.LogDebug("Message has invalid role '{Role}' but AuthorName '{AuthorName}', inferring Assistant role", roleString, message.AuthorName);
+                        normalizedRole = ChatRole.Assistant;
+                    }
+                    else
+                    {
+                        _logger?.LogWarning("Skipping message with invalid role: '{Role}', Text: '{Text}'", roleString, message.Text);
+                        continue;
+                    }
+                }
+                else
+                {
+                    // Normalize the role to proper enum value
+                    normalizedRole = roleString.Equals("User", StringComparison.OrdinalIgnoreCase) 
+                        ? ChatRole.User 
+                        : ChatRole.Assistant;
+                }
+                
+                // Create a new message with normalized role to ensure consistency
+                ChatMessage normalizedMessage = new(normalizedRole, message.Text)
+                {
+                    AuthorName = message.AuthorName
+                };
+                
+                _logger?.LogInformation("Received message '{Text}' from {Role}", message.Text, normalizedRole);
+                _messages.Add(normalizedMessage);
             }
         }
         catch (Exception ex)
