@@ -151,8 +151,14 @@ public static class ChatClientMiddleware
                     if (!string.IsNullOrEmpty(responseSummary))
                     {
                         // Truncate long responses for logging
+                        string fullResponseText = responseSummary;
                         if (responseSummary.Length > 500) responseSummary = responseSummary[..500] + "... (truncated)";
                         activity.SetTag("chat.response_summary", responseSummary);
+                        
+                        // Log the response text prominently
+                        logger.LogInformation(
+                            "📤 Chat client response text: {ResponseText}",
+                            fullResponseText.Length > 500 ? fullResponseText.Substring(0, 500) + "..." : fullResponseText);
                     }
                 }
             }

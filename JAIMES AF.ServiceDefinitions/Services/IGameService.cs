@@ -5,10 +5,5 @@ public interface IGameService
     Task<GameDto> CreateGameAsync(string scenarioId, string playerId, CancellationToken cancellationToken = default);
     Task<GameDto?> GetGameAsync(Guid gameId, CancellationToken cancellationToken = default);
     Task<GameDto[]> GetGamesAsync(CancellationToken cancellationToken = default);
-
-    Task<JaimesChatResponse> ProcessChatMessageAsync(Guid gameId,
-        string message,
-        CancellationToken cancellationToken = default);
-
     Task DeleteGameAsync(Guid gameId, CancellationToken cancellationToken = default);
 }

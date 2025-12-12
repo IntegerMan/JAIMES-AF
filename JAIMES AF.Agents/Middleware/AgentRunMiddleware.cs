@@ -26,6 +26,18 @@ public static class AgentRunMiddleware
             int messageCount = messages.Count();
             string agentName = innerAgent.Name ?? "unknown";
 
+            // Log incoming message text at the beginning
+            ChatMessage? lastUserMessage = messages.LastOrDefault(m => m.Role == ChatRole.User);
+            if (lastUserMessage != null && !string.IsNullOrEmpty(lastUserMessage.Text))
+            {
+                string messagePreview = lastUserMessage.Text.Length > 500 
+                    ? lastUserMessage.Text.Substring(0, 500) + "..." 
+                    : lastUserMessage.Text;
+                logger.LogInformation(
+                    "📥 Incoming message text: {MessageText}",
+                    messagePreview);
+            }
+
             // Log that an agent run is starting
             logger.LogInformation(
                 "🤖 Agent run started: {AgentName} with {MessageCount} message(s)",
@@ -122,6 +134,11 @@ public static class AgentRunMiddleware
                         // Truncate long responses for logging
                         if (responseSummary.Length > 500) responseSummary = responseSummary[..500] + "... (truncated)";
                         activity.SetTag("agent.response_summary", responseSummary);
+                        
+                        // Log the response text prominently
+                        logger.LogInformation(
+                            "📤 Response message text: {ResponseText}",
+                            responseSummary);
                     }
                 }
             }

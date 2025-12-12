@@ -1,4 +1,5 @@
 ﻿using MattEland.Jaimes.Agents.Helpers;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MattEland.Jaimes.Agents.Services;
 
@@ -6,7 +7,7 @@ public class ChatService(
     IChatClient chatClient,
     ILogger<ChatService> logger,
     IChatHistoryService chatHistoryService,
-    IRulesSearchService? rulesSearchService = null)
+    IServiceProvider serviceProvider)
     : IChatService
 {
     private readonly IChatClient _chatClient = chatClient ?? throw new ArgumentNullException(nameof(chatClient));
@@ -14,6 +15,9 @@ public class ChatService(
 
     private readonly IChatHistoryService _chatHistoryService =
         chatHistoryService ?? throw new ArgumentNullException(nameof(chatHistoryService));
+
+    private readonly IServiceProvider _serviceProvider =
+        serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
 
     private AIAgent CreateAgent(string systemPrompt, GameDto? game = null)
     {
@@ -36,9 +40,14 @@ public class ChatService(
             toolList.Add(playerInfoFunction);
 
             // Add rules search tool if the service is available
+            // Check if IRulesSearchService is available in the service provider
+            // We pass the service provider to RulesSearchTool so it can resolve the service on each call
+            // This avoids ObjectDisposedException when the tool outlives the scope that created it
+            using IServiceScope scope = _serviceProvider.CreateScope();
+            IRulesSearchService? rulesSearchService = scope.ServiceProvider.GetService<IRulesSearchService>();
             if (rulesSearchService != null)
             {
-                RulesSearchTool rulesSearchTool = new(game, rulesSearchService);
+                RulesSearchTool rulesSearchTool = new(game, _serviceProvider);
 
                 AIFunction rulesSearchFunction = AIFunctionFactory.Create(
                     (string query) => rulesSearchTool.SearchRulesAsync(query),
@@ -91,54 +100,6 @@ public class ChatService(
         return agent;
     }
 
-    public async Task<JaimesChatResponse> ProcessChatMessageAsync(GameDto game,
-        string message,
-        CancellationToken cancellationToken = default)
-    {
-        // Build the Azure OpenAI client from options with tools
-        AIAgent agent = CreateAgent(game.Scenario.SystemPrompt, game);
-
-        AgentThread? thread = null;
-
-        // Get the thread from the database
-        string? existingThreadJson =
-            await _chatHistoryService.GetMostRecentThreadJsonAsync(game.GameId, cancellationToken);
-        if (!string.IsNullOrEmpty(existingThreadJson))
-        {
-            JsonElement jsonElement =
-                JsonSerializer.Deserialize<JsonElement>(existingThreadJson, JsonSerializerOptions.Web);
-            thread = agent.DeserializeThread(jsonElement, JsonSerializerOptions.Web);
-        }
-
-        thread ??= agent.GetNewThread();
-
-        // Log the thread before the chat for diagnostics
-        string json = thread.Serialize(JsonSerializerOptions.Web).GetRawText();
-        _logger.LogInformation("Thread before Chat: {Thread}", json);
-
-        AgentRunResponse response = await agent.RunAsync(message, thread, cancellationToken: cancellationToken);
-
-        // Serialize the thread after the chat
-        json = thread.Serialize(JsonSerializerOptions.Web).GetRawText();
-        _logger.LogInformation("Thread after Chat: {Thread}", json);
-
-        // Create MessageResponse array for AI responses
-        MessageResponse[] responseMessages = response.Messages.Select(m => new MessageResponse
-            {
-                Text = m.Text,
-                Participant = ChatParticipant.GameMaster,
-                PlayerId = null,
-                ParticipantName = "Game Master",
-                CreatedAt = DateTime.UtcNow
-            })
-            .ToArray();
-
-        return new JaimesChatResponse
-        {
-            Messages = responseMessages,
-            ThreadJson = json
-        };
-    }
 
     public async Task<InitialMessageResponse> GenerateInitialMessageAsync(GenerateInitialMessageRequest request,
         CancellationToken cancellationToken = default)

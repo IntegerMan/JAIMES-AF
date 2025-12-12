@@ -1,21 +1,20 @@
+using System.Text.Json;
 using Microsoft.Agents.AI;
+using Microsoft.Agents.AI.AGUI;
 using Microsoft.Extensions.AI;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 
 public partial class GameDetails
 {
-    [Inject] public HttpClient Http { get; set; } = null!;
-    [Inject] public AgentThread Thread { get; set; } = null!;
-    [Inject] public AIAgent Agent { get; set; } = null!;
-    
+    [Inject] public IHttpClientFactory HttpClientFactory { get; set; } = null!;
     [Inject] public ILoggerFactory LoggerFactory { get; set; } = null!;
-
     [Inject] public IJSRuntime JsRuntime { get; set; } = null!;
 
     [Parameter] public Guid GameId { get; set; }
 
     private List<ChatMessage> _messages = [];
+    private AIAgent? _agent;
 
     private GameStateResponse? _game;
     private bool _isLoading = true;
@@ -57,10 +56,21 @@ public partial class GameDetails
         _errorMessage = null;
         try
         {
-            _game = await Http.GetFromJsonAsync<GameStateResponse>($"/games/{GameId}");
+            HttpClient httpClient = HttpClientFactory.CreateClient("Api");
+            _game = await httpClient.GetFromJsonAsync<GameStateResponse>($"/games/{GameId}");
             _messages = _game?.Messages.OrderBy(m => m.Id)
                 .Select(m => new ChatMessage(m.Participant == ChatParticipant.Player ? ChatRole.User : ChatRole.Assistant, m.Text))
                 .ToList() ?? [];
+
+            // Create AG-UI client for this game
+            HttpClient aguiHttpClient = HttpClientFactory.CreateClient("AGUI");
+            string serverUrl = $"{aguiHttpClient.BaseAddress}games/{GameId}/chat";
+            AGUIChatClient chatClient = new(aguiHttpClient, serverUrl);
+            _agent = chatClient.CreateAIAgent(name: $"game-{GameId}", description: "Game Chat Agent");
+
+            // AGUI manages threads via ConversationId automatically
+            // Don't deserialize server-side threads as they use MessageStore which conflicts with AGUI's ConversationId
+            // Don't create a thread here - let AGUI manage it completely via ConversationId
         }
         catch (Exception ex)
         {
@@ -100,11 +110,78 @@ public partial class GameDetails
             await InvokeAsync(StateHasChanged);
 
             // Send message to API
-            AgentRunResponse resp = await Agent.RunAsync(_messages, Thread);
-            foreach (var message in resp.Messages)
+            if (_agent == null)
             {
-                _logger?.LogInformation("Received message {Text} from {Role}", message.Text, message.AuthorName ?? message.Role.ToString());
-                _messages.Add(message);
+                _errorMessage = "Agent not initialized";
+                return;
+            }
+
+            // AGUI manages threads automatically via ConversationId
+            // Don't pass a thread - AGUI will create/manage it via ConversationId to avoid MessageStore conflicts
+            // AGUI manages conversation history, so we only need to send the NEW message, not all messages
+            // Sending all messages causes exponential growth because the server thread already contains history
+            ChatMessage newUserMessage = new(ChatRole.User, messageText);
+            
+            _logger?.LogDebug("Sending single new message to AGUI (AGUI manages conversation history via ConversationId)");
+            AgentRunResponse resp = await _agent.RunAsync([newUserMessage], thread: null);
+            
+            // Only add valid messages with proper roles to the collection
+            foreach (var message in resp.Messages ?? [])
+            {
+                // Skip null messages
+                if (message == null)
+                {
+                    _logger?.LogWarning("Skipping null message in response");
+                    continue;
+                }
+                
+                // Skip messages with empty text
+                if (string.IsNullOrWhiteSpace(message.Text))
+                {
+                    _logger?.LogDebug("Skipping message with empty text, Role: {Role}", message.Role);
+                    continue;
+                }
+                
+                // Normalize and validate the role
+                // AGUI may return roles as strings or with different casing
+                // Handle potential issues with Role enum
+                ChatRole messageRole = message.Role;
+                string roleString = messageRole.ToString()?.Trim() ?? string.Empty;
+                
+                // Handle case-insensitive role matching and empty/invalid roles
+                ChatRole normalizedRole;
+                if (string.IsNullOrEmpty(roleString) || 
+                    (!roleString.Equals("User", StringComparison.OrdinalIgnoreCase) && 
+                     !roleString.Equals("Assistant", StringComparison.OrdinalIgnoreCase)))
+                {
+                    // Try to infer role from AuthorName or default to Assistant for non-User messages
+                    if (!string.IsNullOrWhiteSpace(message.AuthorName))
+                    {
+                        _logger?.LogDebug("Message has invalid role '{Role}' but AuthorName '{AuthorName}', inferring Assistant role", roleString, message.AuthorName);
+                        normalizedRole = ChatRole.Assistant;
+                    }
+                    else
+                    {
+                        _logger?.LogWarning("Skipping message with invalid role: '{Role}', Text: '{Text}'", roleString, message.Text);
+                        continue;
+                    }
+                }
+                else
+                {
+                    // Normalize the role to proper enum value
+                    normalizedRole = roleString.Equals("User", StringComparison.OrdinalIgnoreCase) 
+                        ? ChatRole.User 
+                        : ChatRole.Assistant;
+                }
+                
+                // Create a new message with normalized role to ensure consistency
+                ChatMessage normalizedMessage = new(normalizedRole, message.Text)
+                {
+                    AuthorName = message.AuthorName
+                };
+                
+                _logger?.LogInformation("Received message '{Text}' from {Role}", message.Text, normalizedRole);
+                _messages.Add(normalizedMessage);
             }
         }
         catch (Exception ex)
