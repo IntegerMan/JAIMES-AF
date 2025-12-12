@@ -411,9 +411,13 @@ public class GameAwareAgent : AIAgent
         // This is called by MapAGUI, but we'll handle thread creation in GetOrCreateGameThreadAsync
         // For now, return a basic thread - MapAGUI will handle it
         HttpContext? context = _httpContextAccessor.HttpContext;
-        if (context != null && context.Items.TryGetValue($"GameThread_{context.Items["GameId"]}", out object? thread) && thread is AgentThread gameThread)
+        if (context != null && context.Items.TryGetValue("GameId", out object? gameIdObj) && gameIdObj is Guid gameId)
         {
-            return gameThread;
+            string cacheKey = $"GameThread_{gameId}";
+            if (context.Items.TryGetValue(cacheKey, out object? thread) && thread is AgentThread gameThread)
+            {
+                return gameThread;
+            }
         }
         
         // Fallback - create a basic thread
@@ -425,9 +429,13 @@ public class GameAwareAgent : AIAgent
     {
         // Delegate to the game-specific agent if available
         HttpContext? context = _httpContextAccessor.HttpContext;
-        if (context != null && context.Items.TryGetValue($"GameAgent_{context.Items["GameId"]}", out object? agent) && agent is AIAgent gameAgent)
+        if (context != null && context.Items.TryGetValue("GameId", out object? gameIdObj) && gameIdObj is Guid gameId)
         {
-            return gameAgent.DeserializeThread(jsonElement, options);
+            string cacheKey = $"GameAgent_{gameId}";
+            if (context.Items.TryGetValue(cacheKey, out object? agent) && agent is AIAgent gameAgent)
+            {
+                return gameAgent.DeserializeThread(jsonElement, options);
+            }
         }
         
         // Fallback - this shouldn't normally be called
