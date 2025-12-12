@@ -39,10 +39,16 @@ public class GameAwareAgent : AIAgent
         
         _logger.LogInformation("GameAwareAgent.RunAsync called for game {GameId} with {MessageCount} message(s)", gameId, messages?.Count() ?? 0);
         
-        if (messages != null)
+        // Enumerate messages once for logging and processing
+        List<ChatMessage> messagesList = (messages ?? []).ToList();
+        
+        // Log incoming messages - ensure we enumerate and log each one
+        if (messagesList.Count > 0)
         {
+            _logger.LogInformation("Processing {Count} incoming message(s) for game {GameId}", messagesList.Count, gameId);
+            
             int messageIndex = 0;
-            foreach (var msg in messages)
+            foreach (var msg in messagesList)
             {
                 string textPreview = msg.Text?.Length > 200 
                     ? msg.Text.Substring(0, 200) + "..." 
@@ -51,25 +57,36 @@ public class GameAwareAgent : AIAgent
                     messageIndex++, msg.Role, msg.AuthorName ?? "(none)", textPreview);
             }
         }
+        else
+        {
+            _logger.LogWarning("No messages provided for game {GameId}", gameId);
+        }
         
         AIAgent gameAgent = await GetOrCreateGameAgentAsync(cancellationToken);
+        
+        // For AGUI, we don't use the server-side thread because AGUI manages conversation via ConversationId
+        // The thread is only needed for persistence after the run
+        // Passing the thread would cause message accumulation (thread has MessageStore with 1000+ messages)
+        _logger.LogInformation("Running agent for game {GameId} - NOT using server-side thread (AGUI manages conversation via ConversationId)", gameId);
+        
+        // Run with the game-specific agent but WITHOUT the thread
+        // AGUI will manage conversation state via ConversationId
+        AgentRunResponse response = await gameAgent.RunAsync(messagesList, thread: null, options, cancellationToken);
+        
+        // After the run, load the thread for persistence (but don't use it for the run itself)
         AgentThread? gameThread = await GetOrCreateGameThreadAsync(gameAgent, cancellationToken);
-        
-        _logger.LogInformation("Running agent for game {GameId} with thread {ThreadStatus}", gameId, gameThread != null ? "loaded" : "null");
-        
-        // Run with the game-specific agent and thread
-        // Handle null messages case
-        IEnumerable<ChatMessage> messagesToSend = messages ?? [];
-        List<ChatMessage> messagesList = messagesToSend.ToList();
-        AgentRunResponse response = await gameAgent.RunAsync(messagesList, gameThread ?? thread, options, cancellationToken);
         
         _logger.LogInformation("Agent run completed for game {GameId}. Response contains {MessageCount} message(s)", 
             gameId, response.Messages?.Count() ?? 0);
         
+        // Log outgoing messages - ensure we enumerate and log each one
         if (response.Messages != null)
         {
+            List<ChatMessage> responseMessagesList = response.Messages.ToList();
+            _logger.LogInformation("Processing {Count} outgoing message(s) for game {GameId}", responseMessagesList.Count, gameId);
+            
             int messageIndex = 0;
-            foreach (var msg in response.Messages)
+            foreach (var msg in responseMessagesList)
             {
                 string textPreview = msg.Text?.Length > 200 
                     ? msg.Text.Substring(0, 200) + "..." 
@@ -78,10 +95,15 @@ public class GameAwareAgent : AIAgent
                     messageIndex++, msg.Role, msg.AuthorName ?? "(none)", textPreview);
             }
         }
+        else
+        {
+            _logger.LogWarning("Response messages collection is null for game {GameId}", gameId);
+        }
         
         // Persist messages and thread after completion
         // Pass both incoming messages (for user message) and response (for assistant messages)
-        await PersistGameStateAsync(messagesList, response, cancellationToken);
+        // Also pass the thread so we can update it with the new conversation state
+        await PersistGameStateAsync(messagesList, response, gameThread, cancellationToken);
         
         _logger.LogInformation("Game state persisted for game {GameId}", gameId);
         
@@ -107,8 +129,10 @@ public class GameAwareAgent : AIAgent
         // Note: We'll need to run again to get the full response for persistence
         // This is a limitation - ideally we'd collect during streaming
         List<ChatMessage> messagesList = (messages ?? []).ToList();
-        AgentRunResponse finalResponse = await gameAgent.RunAsync(messagesList, gameThread ?? thread, options, cancellationToken);
-        await PersistGameStateAsync(messagesList, finalResponse, cancellationToken);
+        AgentRunResponse finalResponse = await gameAgent.RunAsync(messagesList, thread: null, options, cancellationToken);
+        // Load thread for persistence (but don't use it for the run)
+        AgentThread? persistenceThread = await GetOrCreateGameThreadAsync(gameAgent, cancellationToken);
+        await PersistGameStateAsync(messagesList, finalResponse, persistenceThread, cancellationToken);
     }
 
     private async Task<AIAgent> GetOrCreateGameAgentAsync(CancellationToken cancellationToken)
@@ -226,7 +250,7 @@ public class GameAwareAgent : AIAgent
         return gameThread;
     }
 
-    private async Task PersistGameStateAsync(IEnumerable<ChatMessage> incomingMessages, AgentRunResponse response, CancellationToken cancellationToken)
+    private async Task PersistGameStateAsync(IEnumerable<ChatMessage> incomingMessages, AgentRunResponse response, AgentThread? thread, CancellationToken cancellationToken)
     {
         HttpContext? context = _httpContextAccessor.HttpContext;
         if (context == null || !context.Items.TryGetValue("GameId", out object? gameIdObj) || gameIdObj is not Guid gameId)
@@ -241,10 +265,21 @@ public class GameAwareAgent : AIAgent
             return;
         }
 
-        if (!context.Items.TryGetValue($"GameThread_{gameId}", out object? threadObj) || threadObj is not AgentThread thread)
+        // Thread is optional - if not provided, we'll create a new one for persistence
+        if (thread == null)
         {
-            _logger.LogWarning("Cannot persist game state for game {GameId} - Thread not available", gameId);
-            return;
+            _logger.LogDebug("No thread provided for persistence, will create new thread for game {GameId}", gameId);
+            // Get the agent to create a new thread
+            AIAgent? gameAgent = context.Items.TryGetValue($"GameAgent_{gameId}", out object? agentObj) && agentObj is AIAgent agent ? agent : null;
+            if (gameAgent != null)
+            {
+                thread = gameAgent.GetNewThread();
+            }
+            else
+            {
+                _logger.LogWarning("Cannot create thread for persistence - agent not available for game {GameId}", gameId);
+                return;
+            }
         }
 
         // Extract the new user message from incoming messages (not response)
