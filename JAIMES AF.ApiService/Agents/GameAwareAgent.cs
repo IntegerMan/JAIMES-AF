@@ -117,19 +117,54 @@ public class GameAwareAgent : AIAgent
         AIAgent gameAgent = await GetOrCreateGameAgentAsync(cancellationToken);
         AgentThread? gameThread = await GetOrCreateGameThreadAsync(gameAgent, cancellationToken);
         
+        List<ChatMessage> messagesList = (messages ?? []).ToList();
+        
+        // Collect assistant messages from streaming updates for persistence
+        // Group updates by MessageId to handle multiple distinct assistant messages
+        // The Text property on AgentRunResponseUpdate is cumulative per message
+        Dictionary<string, AgentRunResponseUpdate> assistantUpdatesByMessageId = new();
+        AgentRunResponseUpdate? lastUpdate = null;
+        
         // Stream with the game-specific agent and thread
-        await foreach (AgentRunResponseUpdate update in gameAgent.RunStreamingAsync(messages, gameThread ?? thread, options, cancellationToken))
+        await foreach (AgentRunResponseUpdate update in gameAgent.RunStreamingAsync(messagesList, gameThread ?? thread, options, cancellationToken))
         {
+            // Track the last update for ResponseId
+            lastUpdate = update;
+            
+            // Collect assistant updates, grouping by MessageId to handle multiple messages
+            if (update.Role == ChatRole.Assistant && !string.IsNullOrEmpty(update.Text))
+            {
+                string messageKey = update.MessageId ?? "default";
+                // Keep the latest update for each message (it has the complete cumulative text)
+                assistantUpdatesByMessageId[messageKey] = update;
+            }
+            
             yield return update;
         }
         
-        // After streaming completes, the thread has been updated with the new messages
-        // Get the final response from the thread for persistence
-        // Note: We'll need to run again to get the full response for persistence
-        // This is a limitation - ideally we'd collect during streaming
-        List<ChatMessage> messagesList = (messages ?? []).ToList();
-        // Use the same thread that was used during streaming (it's already updated)
-        AgentRunResponse finalResponse = await gameAgent.RunAsync(messagesList, gameThread ?? thread, options, cancellationToken);
+        // After streaming completes, build the final response from collected assistant updates
+        // This ensures we persist the exact same response that was streamed to the client
+        List<ChatMessage> assistantMessages = assistantUpdatesByMessageId.Values
+            .Select(update => new ChatMessage(ChatRole.Assistant, update.Text)
+            {
+                AuthorName = update.AuthorName
+            })
+            .ToList();
+        
+        AgentRunResponse finalResponse = new()
+        {
+            Messages = assistantMessages,
+            ResponseId = lastUpdate?.ResponseId
+        };
+        
+        HttpContext? context = _httpContextAccessor.HttpContext;
+        Guid.TryParse(context?.Request.RouteValues["gameId"]?.ToString(), out Guid gameId);
+        
+        _logger.LogInformation(
+            "Streaming completed for game {GameId}. Built {MessageCount} assistant message(s) from streamed updates for persistence",
+            gameId,
+            assistantMessages.Count);
+        
         await PersistGameStateAsync(messagesList, finalResponse, gameThread ?? thread, cancellationToken);
     }
 
