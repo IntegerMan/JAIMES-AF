@@ -41,10 +41,14 @@ public class GameAwareAgent : AIAgent
         
         if (messages != null)
         {
+            int messageIndex = 0;
             foreach (var msg in messages)
             {
-                _logger.LogDebug("Incoming message - Role: {Role}, Text: {Text}, AuthorName: {AuthorName}", 
-                    msg.Role, msg.Text?.Substring(0, Math.Min(100, msg.Text?.Length ?? 0)) ?? "(null)", msg.AuthorName);
+                string textPreview = msg.Text?.Length > 200 
+                    ? msg.Text.Substring(0, 200) + "..." 
+                    : msg.Text ?? "(null)";
+                _logger.LogInformation("📥 Incoming message [{Index}] - Role: {Role}, AuthorName: {AuthorName}, Text: {Text}", 
+                    messageIndex++, msg.Role, msg.AuthorName ?? "(none)", textPreview);
             }
         }
         
@@ -56,22 +60,28 @@ public class GameAwareAgent : AIAgent
         // Run with the game-specific agent and thread
         // Handle null messages case
         IEnumerable<ChatMessage> messagesToSend = messages ?? [];
-        AgentRunResponse response = await gameAgent.RunAsync(messagesToSend, gameThread ?? thread, options, cancellationToken);
+        List<ChatMessage> messagesList = messagesToSend.ToList();
+        AgentRunResponse response = await gameAgent.RunAsync(messagesList, gameThread ?? thread, options, cancellationToken);
         
         _logger.LogInformation("Agent run completed for game {GameId}. Response contains {MessageCount} message(s)", 
             gameId, response.Messages?.Count() ?? 0);
         
         if (response.Messages != null)
         {
+            int messageIndex = 0;
             foreach (var msg in response.Messages)
             {
-                _logger.LogDebug("Response message - Role: {Role}, Text: {Text}, AuthorName: {AuthorName}", 
-                    msg.Role, msg.Text?.Substring(0, Math.Min(100, msg.Text?.Length ?? 0)) ?? "(null)", msg.AuthorName);
+                string textPreview = msg.Text?.Length > 200 
+                    ? msg.Text.Substring(0, 200) + "..." 
+                    : msg.Text ?? "(null)";
+                _logger.LogInformation("📤 Outgoing message [{Index}] - Role: {Role}, AuthorName: {AuthorName}, Text: {Text}", 
+                    messageIndex++, msg.Role, msg.AuthorName ?? "(none)", textPreview);
             }
         }
         
         // Persist messages and thread after completion
-        await PersistGameStateAsync(response, cancellationToken);
+        // Pass both incoming messages (for user message) and response (for assistant messages)
+        await PersistGameStateAsync(messagesList, response, cancellationToken);
         
         _logger.LogInformation("Game state persisted for game {GameId}", gameId);
         
@@ -96,8 +106,9 @@ public class GameAwareAgent : AIAgent
         // After streaming completes, get the final response to persist
         // Note: We'll need to run again to get the full response for persistence
         // This is a limitation - ideally we'd collect during streaming
-        AgentRunResponse finalResponse = await gameAgent.RunAsync(messages, gameThread ?? thread, options, cancellationToken);
-        await PersistGameStateAsync(finalResponse, cancellationToken);
+        List<ChatMessage> messagesList = (messages ?? []).ToList();
+        AgentRunResponse finalResponse = await gameAgent.RunAsync(messagesList, gameThread ?? thread, options, cancellationToken);
+        await PersistGameStateAsync(messagesList, finalResponse, cancellationToken);
     }
 
     private async Task<AIAgent> GetOrCreateGameAgentAsync(CancellationToken cancellationToken)
@@ -215,7 +226,7 @@ public class GameAwareAgent : AIAgent
         return gameThread;
     }
 
-    private async Task PersistGameStateAsync(AgentRunResponse response, CancellationToken cancellationToken)
+    private async Task PersistGameStateAsync(IEnumerable<ChatMessage> incomingMessages, AgentRunResponse response, CancellationToken cancellationToken)
     {
         HttpContext? context = _httpContextAccessor.HttpContext;
         if (context == null || !context.Items.TryGetValue("GameId", out object? gameIdObj) || gameIdObj is not Guid gameId)
@@ -236,11 +247,12 @@ public class GameAwareAgent : AIAgent
             return;
         }
 
-        // Extract the new user message for persistence
-        ChatMessage? newUserMessage = response.Messages?.LastOrDefault(m => m.Role == ChatRole.User);
+        // Extract the new user message from incoming messages (not response)
+        // The response typically only contains assistant messages
+        ChatMessage? newUserMessage = incomingMessages?.LastOrDefault(m => m.Role == ChatRole.User);
         if (newUserMessage == null)
         {
-            _logger.LogDebug("No user message found in response for game {GameId}, skipping persistence", gameId);
+            _logger.LogDebug("No user message found in incoming messages for game {GameId}, skipping persistence", gameId);
             return;
         }
 
