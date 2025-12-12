@@ -1,5 +1,6 @@
 using System.Text.Json;
 using MattEland.Jaimes.Agents.Helpers;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Tools;
 using Microsoft.Agents.AI;
 using Microsoft.AspNetCore.Http;
@@ -264,20 +265,12 @@ public class GameAwareAgent : AIAgent
             return thread;
         }
 
-        // Get scoped service
+        // Get scoped MemoryProvider
         using IServiceScope scope = _serviceProvider.CreateScope();
-        IChatHistoryService chatHistoryService = scope.ServiceProvider.GetRequiredService<IChatHistoryService>();
+        IMemoryProvider memoryProvider = scope.ServiceProvider.GetRequiredService<IMemoryProvider>();
 
-        // Load or create thread
-        AgentThread? gameThread = null;
-        string? existingThreadJson = await chatHistoryService.GetMostRecentThreadJsonAsync(gameId, cancellationToken);
-        if (!string.IsNullOrEmpty(existingThreadJson))
-        {
-            JsonElement jsonElement = JsonSerializer.Deserialize<JsonElement>(existingThreadJson, JsonSerializerOptions.Web);
-            gameThread = agent.DeserializeThread(jsonElement, JsonSerializerOptions.Web);
-        }
-
-        gameThread ??= agent.GetNewThread();
+        // Use MemoryProvider to load or create thread
+        AgentThread gameThread = await memoryProvider.LoadThreadAsync(gameId, agent, cancellationToken);
 
         // Cache it for this request
         context.Items[cacheKey] = gameThread;
@@ -329,51 +322,24 @@ public class GameAwareAgent : AIAgent
         _logger.LogInformation("Persisting game state for game {GameId} - User message: {Text}", 
             gameId, newUserMessage.Text?.Substring(0, Math.Min(100, newUserMessage.Text?.Length ?? 0)) ?? "(null)");
 
-        // Get scoped services
+        // Extract assistant messages from response
+        IEnumerable<ChatMessage> assistantMessages = (response.Messages ?? [])
+            .Where(m => m.Role == ChatRole.Assistant);
+
+        // Get scoped MemoryProvider
         using IServiceScope scope = _serviceProvider.CreateScope();
-        IDbContextFactory<JaimesDbContext> contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<JaimesDbContext>>();
-        IChatHistoryService chatHistoryService = scope.ServiceProvider.GetRequiredService<IChatHistoryService>();
+        IMemoryProvider memoryProvider = scope.ServiceProvider.GetRequiredService<IMemoryProvider>();
 
-        // Persist messages to database
-        await using JaimesDbContext dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
+        // Use MemoryProvider to save conversation and thread state
+        await memoryProvider.SaveConversationAsync(
+            gameId,
+            gameDto.Player.Id,
+            newUserMessage,
+            assistantMessages,
+            thread,
+            cancellationToken);
 
-        // Save user message
-        Message userMessageEntity = new()
-        {
-            GameId = gameId,
-            Text = newUserMessage.Text ?? string.Empty,
-            PlayerId = gameDto.Player.Id,
-            CreatedAt = DateTime.UtcNow
-        };
-        dbContext.Messages.Add(userMessageEntity);
-        _logger.LogDebug("Added user message entity for game {GameId}", gameId);
-
-        // Save AI messages
-        List<Message> aiMessageEntities = (response.Messages ?? [])
-            .Where(m => m.Role == ChatRole.Assistant)
-            .Select(m => new Message
-            {
-                GameId = gameId,
-                Text = m.Text ?? string.Empty,
-                PlayerId = null,
-                CreatedAt = DateTime.UtcNow
-            })
-            .ToList();
-        dbContext.Messages.AddRange(aiMessageEntities);
-        _logger.LogDebug("Added {Count} AI message entity/entities for game {GameId}", aiMessageEntities.Count, gameId);
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-        _logger.LogInformation("Saved {TotalMessageCount} message(s) to database for game {GameId}", 
-            1 + aiMessageEntities.Count, gameId);
-
-        // Get the last AI message ID for thread association
-        int? lastAiMessageId = aiMessageEntities.LastOrDefault()?.Id;
-
-        // Serialize and save thread after completion
-        string threadJson = thread.Serialize(JsonSerializerOptions.Web).GetRawText();
-        _logger.LogDebug("Serialized thread for game {GameId}, length: {Length} characters", gameId, threadJson.Length);
-        await chatHistoryService.SaveThreadJsonAsync(gameId, threadJson, lastAiMessageId, cancellationToken);
-        _logger.LogInformation("Saved thread JSON for game {GameId}", gameId);
+        _logger.LogInformation("Game state persisted for game {GameId} using MemoryProvider", gameId);
     }
 
     private IList<AITool>? CreateTools(GameDto game)

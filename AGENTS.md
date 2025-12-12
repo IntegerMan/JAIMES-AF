@@ -12,6 +12,8 @@ Key service interfaces and locations
 - `ChatService` -> `JAIMES AF.Agents/Services/ChatService.cs`
 - `IRulesSearchService` -> `JAIMES AF.ServiceDefinitions/Services/IRulesSearchService.cs`
 - `RulesSearchService` -> `JAIMES AF.Agents/Services/RulesSearchService.cs`
+- `IMemoryProvider` -> `JAIMES AF.ServiceDefinitions/Services/IMemoryProvider.cs`
+- `EntityFrameworkMemoryProvider` -> `JAIMES AF.Agents/Services/EntityFrameworkMemoryProvider.cs`
 
 Common DTOs and Mappers
 
@@ -57,6 +59,20 @@ Rules Search
 - **Tool**: `RulesSearchTool` is registered with AI agents to allow them to search rules using natural language queries
 - **Configuration**: Uses Qdrant for vector storage, automatically managed by Aspire when you run the AppHost project
 - **Implementation**: The service generates embeddings using Azure OpenAI and stores/searches them in Qdrant
+
+Memory Provider (Agent Framework Integration)
+
+- **IMemoryProvider**: Interface following Agent Framework's MemoryProvider pattern for managing conversation memory
+- **EntityFrameworkMemoryProvider**: Implementation that integrates with PostgreSQL via Entity Framework Core
+- **Purpose**: Provides abstraction for persisting and retrieving agent conversation state (AgentThread) and messages
+- **Storage**: Uses existing `Message` and `ChatHistory` entities in PostgreSQL
+- **Features**:
+  - `LoadThreadAsync`: Loads the most recent conversation thread for a game
+  - `SaveConversationAsync`: Persists user/assistant messages and thread state
+  - `GetConversationHistoryAsync`: Retrieves full conversation history
+- **Usage**: GameAwareAgent uses IMemoryProvider to manage conversation state across requests
+- **Documentation**: See `docs/MemoryProvider.md` for detailed architecture and usage examples
+- **Registration**: Registered as scoped service in DI container
 
 Database migrations and seed data
 
