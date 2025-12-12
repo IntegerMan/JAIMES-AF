@@ -199,7 +199,6 @@ public class GameAwareAgent : AIAgent
         using IServiceScope scope = _serviceProvider.CreateScope();
         IGameService gameService = scope.ServiceProvider.GetRequiredService<IGameService>();
         IChatClient chatClient = scope.ServiceProvider.GetRequiredService<IChatClient>();
-        IRulesSearchService? rulesSearchService = scope.ServiceProvider.GetService<IRulesSearchService>();
         ILogger logger = scope.ServiceProvider.GetRequiredService<ILogger<GameAwareAgent>>();
 
         // Get the game
@@ -229,10 +228,10 @@ public class GameAwareAgent : AIAgent
             logger,
             $"JaimesAgent-{gameId}",
             systemPrompt,
-            CreateTools(gameDto, rulesSearchService));
+            CreateTools(gameDto));
 
         _logger.LogInformation("Agent created for game {GameId} with {ToolCount} tool(s)", 
-            gameId, CreateTools(gameDto, rulesSearchService)?.Count ?? 0);
+            gameId, CreateTools(gameDto)?.Count ?? 0);
 
         // Cache it for this request
         context.Items[cacheKey] = gameAgent;
@@ -374,7 +373,7 @@ public class GameAwareAgent : AIAgent
         _logger.LogInformation("Saved thread JSON for game {GameId}", gameId);
     }
 
-    private IList<AITool>? CreateTools(GameDto game, IRulesSearchService? rulesSearchService)
+    private IList<AITool>? CreateTools(GameDto game)
     {
         List<AITool> toolList = [];
 
@@ -385,9 +384,14 @@ public class GameAwareAgent : AIAgent
             "Retrieves detailed information about the current player character in the game, including their name, unique identifier, and character description. Use this tool whenever you need to reference or describe the player character, their background, or their current state in the game world.");
         toolList.Add(playerInfoFunction);
 
+        // Check if IRulesSearchService is available in the service provider
+        // We pass the service provider to RulesSearchTool so it can resolve the service on each call
+        // This avoids ObjectDisposedException when the tool outlives the scope that created it
+        using IServiceScope scope = _serviceProvider.CreateScope();
+        IRulesSearchService? rulesSearchService = scope.ServiceProvider.GetService<IRulesSearchService>();
         if (rulesSearchService != null)
         {
-            RulesSearchTool rulesSearchTool = new(game, rulesSearchService);
+            RulesSearchTool rulesSearchTool = new(game, _serviceProvider);
             AIFunction rulesSearchFunction = AIFunctionFactory.Create(
                 (string query) => rulesSearchTool.SearchRulesAsync(query),
                 "SearchRules",

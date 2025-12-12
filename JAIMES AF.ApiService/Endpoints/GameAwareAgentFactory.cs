@@ -3,6 +3,7 @@ using MattEland.Jaimes.Tools;
 using Microsoft.Agents.AI;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
@@ -14,7 +15,7 @@ public class GameAwareAgentFactory
     private readonly IGameService _gameService;
     private readonly IChatClient _chatClient;
     private readonly ILogger<GameAwareAgentFactory> _logger;
-    private readonly IRulesSearchService? _rulesSearchService;
+    private readonly IServiceProvider _serviceProvider;
     private readonly IChatHistoryService _chatHistoryService;
 
     public GameAwareAgentFactory(
@@ -22,13 +23,13 @@ public class GameAwareAgentFactory
         IChatClient chatClient,
         ILogger<GameAwareAgentFactory> logger,
         IChatHistoryService chatHistoryService,
-        IRulesSearchService? rulesSearchService = null)
+        IServiceProvider serviceProvider)
     {
         _gameService = gameService;
         _chatClient = chatClient;
         _logger = logger;
         _chatHistoryService = chatHistoryService;
-        _rulesSearchService = rulesSearchService;
+        _serviceProvider = serviceProvider;
     }
 
     public async Task<AIAgent> CreateAgentForGameAsync(Guid gameId, CancellationToken cancellationToken = default)
@@ -70,9 +71,14 @@ public class GameAwareAgentFactory
             "Retrieves detailed information about the current player character in the game, including their name, unique identifier, and character description. Use this tool whenever you need to reference or describe the player character, their background, or their current state in the game world.");
         toolList.Add(playerInfoFunction);
 
-        if (_rulesSearchService != null)
+        // Check if IRulesSearchService is available in the service provider
+        // We pass the service provider to RulesSearchTool so it can resolve the service on each call
+        // This avoids ObjectDisposedException when the tool outlives the scope that created it
+        using IServiceScope scope = _serviceProvider.CreateScope();
+        IRulesSearchService? rulesSearchService = scope.ServiceProvider.GetService<IRulesSearchService>();
+        if (rulesSearchService != null)
         {
-            RulesSearchTool rulesSearchTool = new(game, _rulesSearchService);
+            RulesSearchTool rulesSearchTool = new(game, _serviceProvider);
             AIFunction rulesSearchFunction = AIFunctionFactory.Create(
                 (string query) => rulesSearchTool.SearchRulesAsync(query),
                 "SearchRules",

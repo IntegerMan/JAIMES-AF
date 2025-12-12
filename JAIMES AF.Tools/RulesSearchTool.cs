@@ -1,16 +1,17 @@
 using MattEland.Jaimes.ServiceDefinitions.Responses;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MattEland.Jaimes.Tools;
 
 /// <summary>
 /// Tool that provides rules search functionality using Kernel Memory RAG.
 /// </summary>
-public class RulesSearchTool(GameDto game, IRulesSearchService rulesSearchService)
+public class RulesSearchTool(GameDto game, IServiceProvider serviceProvider)
 {
     private readonly GameDto _game = game ?? throw new ArgumentNullException(nameof(game));
 
-    private readonly IRulesSearchService _rulesSearchService =
-        rulesSearchService ?? throw new ArgumentNullException(nameof(rulesSearchService));
+    private readonly IServiceProvider _serviceProvider =
+        serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
 
     /// <summary>
     /// Searches the ruleset's rules to find answers to specific questions or queries.
@@ -27,9 +28,19 @@ public class RulesSearchTool(GameDto game, IRulesSearchService rulesSearchServic
 
         string rulesetId = _game.Ruleset.Id;
 
+        // Create a scope to resolve IRulesSearchService on each call
+        // This ensures we get a fresh scoped instance and avoid ObjectDisposedException
+        // when the tool outlives the scope that created it
+        using IServiceScope scope = _serviceProvider.CreateScope();
+        IRulesSearchService? rulesSearchService = scope.ServiceProvider.GetService<IRulesSearchService>();
+        if (rulesSearchService == null)
+        {
+            return "Rules search service is not available.";
+        }
+
         // Use SearchRulesDetailedAsync to get detailed results for storage
         // Results are always stored when called from agent tool calls
-        SearchRulesResponse response = await _rulesSearchService.SearchRulesDetailedAsync(rulesetId, query, true);
+        SearchRulesResponse response = await rulesSearchService.SearchRulesDetailedAsync(rulesetId, query, true);
 
         if (response.Results.Length == 0) return "No relevant rules found for your query.";
 
