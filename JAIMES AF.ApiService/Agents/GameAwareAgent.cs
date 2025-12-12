@@ -64,17 +64,15 @@ public class GameAwareAgent : AIAgent
         
         AIAgent gameAgent = await GetOrCreateGameAgentAsync(cancellationToken);
         
-        // For AGUI, we don't use the server-side thread because AGUI manages conversation via ConversationId
-        // The thread is only needed for persistence after the run
-        // Passing the thread would cause message accumulation (thread has MessageStore with 1000+ messages)
-        _logger.LogInformation("Running agent for game {GameId} - NOT using server-side thread (AGUI manages conversation via ConversationId)", gameId);
-        
-        // Run with the game-specific agent but WITHOUT the thread
-        // AGUI will manage conversation state via ConversationId
-        AgentRunResponse response = await gameAgent.RunAsync(messagesList, thread: null, options, cancellationToken);
-        
-        // After the run, load the thread for persistence (but don't use it for the run itself)
+        // Load the thread BEFORE running so the agent has conversation history
+        // This ensures the agent generates responses with full context, matching what AGUI returns to the client
         AgentThread? gameThread = await GetOrCreateGameThreadAsync(gameAgent, cancellationToken);
+        
+        _logger.LogInformation("Running agent for game {GameId} with thread (has conversation history for context)", gameId);
+        
+        // Run with the game-specific agent AND the thread so it has conversation history
+        // This ensures the response matches what AGUI returns to the client
+        AgentRunResponse response = await gameAgent.RunAsync(messagesList, gameThread, options, cancellationToken);
         
         _logger.LogInformation("Agent run completed for game {GameId}. Response contains {MessageCount} message(s)", 
             gameId, response.Messages?.Count() ?? 0);
@@ -125,14 +123,14 @@ public class GameAwareAgent : AIAgent
             yield return update;
         }
         
-        // After streaming completes, get the final response to persist
+        // After streaming completes, the thread has been updated with the new messages
+        // Get the final response from the thread for persistence
         // Note: We'll need to run again to get the full response for persistence
         // This is a limitation - ideally we'd collect during streaming
         List<ChatMessage> messagesList = (messages ?? []).ToList();
-        AgentRunResponse finalResponse = await gameAgent.RunAsync(messagesList, thread: null, options, cancellationToken);
-        // Load thread for persistence (but don't use it for the run)
-        AgentThread? persistenceThread = await GetOrCreateGameThreadAsync(gameAgent, cancellationToken);
-        await PersistGameStateAsync(messagesList, finalResponse, persistenceThread, cancellationToken);
+        // Use the same thread that was used during streaming (it's already updated)
+        AgentRunResponse finalResponse = await gameAgent.RunAsync(messagesList, gameThread ?? thread, options, cancellationToken);
+        await PersistGameStateAsync(messagesList, finalResponse, gameThread ?? thread, cancellationToken);
     }
 
     private async Task<AIAgent> GetOrCreateGameAgentAsync(CancellationToken cancellationToken)
