@@ -223,15 +223,18 @@ public class GameAwareAgent : AIAgent
             systemPrompt = "You are a helpful game master assistant.";
         }
 
+        // Create tools once and reuse for both agent creation and logging
+        IList<AITool>? tools = CreateTools(gameDto);
+        
         IChatClient instrumentedChatClient = chatClient.WrapWithInstrumentation(logger);
         AIAgent gameAgent = instrumentedChatClient.CreateJaimesAgent(
             logger,
             $"JaimesAgent-{gameId}",
             systemPrompt,
-            CreateTools(gameDto));
+            tools);
 
         _logger.LogInformation("Agent created for game {GameId} with {ToolCount} tool(s)", 
-            gameId, CreateTools(gameDto)?.Count ?? 0);
+            gameId, tools?.Count ?? 0);
 
         // Cache it for this request
         context.Items[cacheKey] = gameAgent;
