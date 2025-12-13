@@ -1,6 +1,6 @@
 using System.Text.Json;
-using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.Agents.AI;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace MattEland.Jaimes.Agents.Services;
@@ -10,31 +10,38 @@ namespace MattEland.Jaimes.Agents.Services;
 /// </summary>
 public class GameConversationMemoryProviderFactory
 {
-    private readonly IChatHistoryService _chatHistoryService;
+    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<GameConversationMemoryProvider> _logger;
 
     public GameConversationMemoryProviderFactory(
-        IChatHistoryService chatHistoryService,
+        IServiceProvider serviceProvider,
         ILogger<GameConversationMemoryProvider> logger)
     {
-        _chatHistoryService = chatHistoryService;
+        _serviceProvider = serviceProvider;
         _logger = logger;
     }
 
     /// <summary>
     /// Creates a memory provider for the specified game.
     /// </summary>
-    public GameConversationMemoryProvider CreateForGame(Guid gameId)
+    /// <param name="gameId">The game ID</param>
+    /// <param name="rootServiceProvider">Optional root service provider. If not provided, uses the factory's service provider.</param>
+    public GameConversationMemoryProvider CreateForGame(Guid gameId, IServiceProvider? rootServiceProvider = null)
     {
-        return new GameConversationMemoryProvider(gameId, _chatHistoryService, _logger);
+        IServiceProvider serviceProvider = rootServiceProvider ?? _serviceProvider;
+        return new GameConversationMemoryProvider(gameId, serviceProvider, _logger);
     }
 
     /// <summary>
     /// Creates a memory provider from serialized state (used when deserializing threads).
     /// </summary>
-    public GameConversationMemoryProvider CreateFromSerializedState(Guid gameId, JsonElement serializedState)
+    /// <param name="gameId">The game ID</param>
+    /// <param name="serializedState">The serialized state</param>
+    /// <param name="rootServiceProvider">Optional root service provider. If not provided, uses the factory's service provider.</param>
+    public GameConversationMemoryProvider CreateFromSerializedState(Guid gameId, JsonElement serializedState, IServiceProvider? rootServiceProvider = null)
     {
-        return new GameConversationMemoryProvider(gameId, _chatHistoryService, _logger, serializedState);
+        IServiceProvider serviceProvider = rootServiceProvider ?? _serviceProvider;
+        return new GameConversationMemoryProvider(gameId, serviceProvider, _logger, serializedState);
     }
 }
 

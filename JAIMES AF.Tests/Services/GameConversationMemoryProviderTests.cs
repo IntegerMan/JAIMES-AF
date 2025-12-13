@@ -5,6 +5,7 @@ using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Tests.Repositories;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Shouldly;
@@ -37,9 +38,9 @@ public class GameConversationMemoryProviderTests : RepositoryTestBase
     {
         // Arrange
         Guid gameId = Guid.NewGuid();
-        IChatHistoryService chatHistoryService = new ChatHistoryService(Context);
+        IServiceProvider serviceProvider = CreateServiceProvider();
         ILogger<GameConversationMemoryProvider> logger = LoggerFactory.CreateLogger<GameConversationMemoryProvider>();
-        GameConversationMemoryProvider provider = new(gameId, chatHistoryService, logger);
+        GameConversationMemoryProvider provider = new(gameId, serviceProvider, logger);
         
         // Note: This test is simplified since creating a real AgentThread requires a chat client
         // In a full implementation, you would use a mock framework to create a mock thread
@@ -53,15 +54,22 @@ public class GameConversationMemoryProviderTests : RepositoryTestBase
     {
         // Arrange
         Guid gameId = Guid.NewGuid();
-        IChatHistoryService chatHistoryService = new ChatHistoryService(Context);
+        IServiceProvider serviceProvider = CreateServiceProvider();
         ILogger<GameConversationMemoryProvider> logger = LoggerFactory.CreateLogger<GameConversationMemoryProvider>();
-        GameConversationMemoryProviderFactory factory = new(chatHistoryService, logger);
+        GameConversationMemoryProviderFactory factory = new(serviceProvider, logger);
         
         // Act
         GameConversationMemoryProvider provider = factory.CreateForGame(gameId);
         
         // Assert
         provider.ShouldNotBeNull();
+    }
+
+    private IServiceProvider CreateServiceProvider()
+    {
+        ServiceCollection services = new();
+        services.AddSingleton<IChatHistoryService>(_ => new ChatHistoryService(Context));
+        return services.BuildServiceProvider();
     }
 
     private async Task CreateTestGameAsync(Guid gameId)

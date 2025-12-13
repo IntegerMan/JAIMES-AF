@@ -1,4 +1,4 @@
-﻿using MattEland.Jaimes.Agents.Helpers;
+using MattEland.Jaimes.Agents.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json;
 
@@ -141,9 +141,15 @@ public class ChatService(
 
         // Create and attach memory provider for this game
         // This ensures conversation history is persisted consistently
-        using IServiceScope scope = _serviceProvider.CreateScope();
-        GameConversationMemoryProviderFactory memoryProviderFactory = scope.ServiceProvider.GetRequiredService<GameConversationMemoryProviderFactory>();
-        GameConversationMemoryProvider memoryProvider = memoryProviderFactory.CreateForGame(request.GameId);
+        // We need to resolve the factory from a scope (since it's scoped), but pass the root
+        // service provider to CreateForGame so the memory provider can create its own scopes
+        // and outlive the scope that created it
+        GameConversationMemoryProvider memoryProvider;
+        using (IServiceScope factoryScope = _serviceProvider.CreateScope())
+        {
+            GameConversationMemoryProviderFactory memoryProviderFactory = factoryScope.ServiceProvider.GetRequiredService<GameConversationMemoryProviderFactory>();
+            memoryProvider = memoryProviderFactory.CreateForGame(request.GameId, _serviceProvider);
+        }
         memoryProvider.SetThread(thread);
         _logger.LogInformation("Created memory provider for initial message generation for game {GameId}", request.GameId);
 

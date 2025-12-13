@@ -265,18 +265,19 @@ public class GameAwareAgent : AIAgent
             return thread;
         }
 
-        // Get scoped services
-        using IServiceScope scope = _serviceProvider.CreateScope();
-        IChatHistoryService chatHistoryService = scope.ServiceProvider.GetRequiredService<IChatHistoryService>();
-        GameConversationMemoryProviderFactory memoryProviderFactory = scope.ServiceProvider.GetRequiredService<GameConversationMemoryProviderFactory>();
-
-        // Load or create thread
+        // Get scoped service for loading thread
         AgentThread? gameThread = null;
-        string? existingThreadJson = await chatHistoryService.GetMostRecentThreadJsonAsync(gameId, cancellationToken);
-        if (!string.IsNullOrEmpty(existingThreadJson))
+        using (IServiceScope scope = _serviceProvider.CreateScope())
         {
-            JsonElement jsonElement = JsonSerializer.Deserialize<JsonElement>(existingThreadJson, JsonSerializerOptions.Web);
-            gameThread = agent.DeserializeThread(jsonElement, JsonSerializerOptions.Web);
+            IChatHistoryService chatHistoryService = scope.ServiceProvider.GetRequiredService<IChatHistoryService>();
+
+            // Load or create thread
+            string? existingThreadJson = await chatHistoryService.GetMostRecentThreadJsonAsync(gameId, cancellationToken);
+            if (!string.IsNullOrEmpty(existingThreadJson))
+            {
+                JsonElement jsonElement = JsonSerializer.Deserialize<JsonElement>(existingThreadJson, JsonSerializerOptions.Web);
+                gameThread = agent.DeserializeThread(jsonElement, JsonSerializerOptions.Web);
+            }
         }
 
         gameThread ??= agent.GetNewThread();
@@ -284,12 +285,22 @@ public class GameAwareAgent : AIAgent
         // Create and attach memory provider to automatically persist conversation history
         // Note: The memory provider will be called manually from PersistGameStateAsync
         // since the Agent Framework API for attaching context providers may vary
-        GameConversationMemoryProvider memoryProvider = memoryProviderFactory.CreateForGame(gameId);
+        // The memory provider now uses IServiceProvider to resolve services on-demand,
+        // so it can outlive the scope that created it
+        // We need to resolve the factory from a scope (since it's scoped), but pass the root
+        // service provider to CreateForGame so the memory provider can create its own scopes
+        GameConversationMemoryProvider memoryProvider;
+        using (IServiceScope factoryScope = _serviceProvider.CreateScope())
+        {
+            GameConversationMemoryProviderFactory memoryProviderFactory = factoryScope.ServiceProvider.GetRequiredService<GameConversationMemoryProviderFactory>();
+            memoryProvider = memoryProviderFactory.CreateForGame(gameId, _serviceProvider);
+        }
         memoryProvider.SetThread(gameThread);
         
         // Store memory provider in context for use in PersistGameStateAsync
         string memoryProviderKey = $"MemoryProvider_{gameId}";
         context.Items[memoryProviderKey] = memoryProvider;
+        _logger.LogInformation("Created memory provider for game {GameId}", gameId);
         _logger.LogInformation("Created memory provider for game {GameId}", gameId);
 
         // Cache it for this request

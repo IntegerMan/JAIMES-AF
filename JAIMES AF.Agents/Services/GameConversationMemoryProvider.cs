@@ -2,6 +2,7 @@ using System.Text.Json;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MattEland.Jaimes.Agents.Services;
 
@@ -12,17 +13,17 @@ namespace MattEland.Jaimes.Agents.Services;
 public class GameConversationMemoryProvider : AIContextProvider
 {
     private readonly Guid _gameId;
-    private readonly IChatHistoryService _chatHistoryService;
+    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<GameConversationMemoryProvider> _logger;
     private AgentThread? _cachedThread;
 
     public GameConversationMemoryProvider(
         Guid gameId,
-        IChatHistoryService chatHistoryService,
+        IServiceProvider serviceProvider,
         ILogger<GameConversationMemoryProvider> logger)
     {
         _gameId = gameId;
-        _chatHistoryService = chatHistoryService;
+        _serviceProvider = serviceProvider;
         _logger = logger;
     }
 
@@ -31,10 +32,10 @@ public class GameConversationMemoryProvider : AIContextProvider
     /// </summary>
     public GameConversationMemoryProvider(
         Guid gameId,
-        IChatHistoryService chatHistoryService,
+        IServiceProvider serviceProvider,
         ILogger<GameConversationMemoryProvider> logger,
         JsonElement serializedState)
-        : this(gameId, chatHistoryService, logger)
+        : this(gameId, serviceProvider, logger)
     {
         // The serialized state is not used here - thread deserialization happens at the agent level
         // This constructor is called when the thread is deserialized, but we don't need to do anything
@@ -99,7 +100,12 @@ public class GameConversationMemoryProvider : AIContextProvider
             string threadJson = thread.Serialize(JsonSerializerOptions.Web).GetRawText();
             _logger.LogDebug("Saving thread state for game {GameId}, length: {Length} characters", _gameId, threadJson.Length);
             
-            await _chatHistoryService.SaveThreadJsonAsync(_gameId, threadJson, messageId, cancellationToken);
+            // Resolve IChatHistoryService from a new scope to avoid ObjectDisposedException
+            // The memory provider may outlive the scope that created it
+            using IServiceScope scope = _serviceProvider.CreateScope();
+            IChatHistoryService chatHistoryService = scope.ServiceProvider.GetRequiredService<IChatHistoryService>();
+            
+            await chatHistoryService.SaveThreadJsonAsync(_gameId, threadJson, messageId, cancellationToken);
             _logger.LogInformation("Saved thread state for game {GameId}", _gameId);
         }
         catch (Exception ex)
