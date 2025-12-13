@@ -1,5 +1,6 @@
 ﻿using MattEland.Jaimes.Agents.Helpers;
 using Microsoft.Extensions.DependencyInjection;
+using System.Text.Json;
 
 namespace MattEland.Jaimes.Agents.Services;
 
@@ -138,6 +139,14 @@ public class ChatService(
         // Create a new thread for this game
         AgentThread thread = agent.GetNewThread();
 
+        // Create and attach memory provider for this game
+        // This ensures conversation history is persisted consistently
+        using IServiceScope scope = _serviceProvider.CreateScope();
+        GameConversationMemoryProviderFactory memoryProviderFactory = scope.ServiceProvider.GetRequiredService<GameConversationMemoryProviderFactory>();
+        GameConversationMemoryProvider memoryProvider = memoryProviderFactory.CreateForGame(request.GameId);
+        memoryProvider.SetThread(thread);
+        _logger.LogInformation("Created memory provider for initial message generation for game {GameId}", request.GameId);
+
         // Build the initial prompt with new game instructions
         // Player character info is now available via GetPlayerInfo tool call, so it's not included in the prompt
         StringBuilder promptBuilder = new();
@@ -158,6 +167,10 @@ public class ChatService(
         // Serialize the thread after the chat
         json = thread.Serialize(JsonSerializerOptions.Web).GetRawText();
         _logger.LogInformation("Thread after Initial Message: {Thread}", json);
+
+        // Persist thread state using memory provider
+        await memoryProvider.SaveThreadStateManuallyAsync(thread, null, cancellationToken);
+        _logger.LogInformation("Saved initial thread state for game {GameId} via memory provider", request.GameId);
 
         // Get the first message from the response
         string? messageText = response.Messages.FirstOrDefault()?.Text;

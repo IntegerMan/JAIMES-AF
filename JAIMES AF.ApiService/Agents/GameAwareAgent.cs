@@ -1,5 +1,6 @@
 using System.Text.Json;
 using MattEland.Jaimes.Agents.Helpers;
+using MattEland.Jaimes.Agents.Services;
 using MattEland.Jaimes.Tools;
 using Microsoft.Agents.AI;
 using Microsoft.AspNetCore.Http;
@@ -264,9 +265,10 @@ public class GameAwareAgent : AIAgent
             return thread;
         }
 
-        // Get scoped service
+        // Get scoped services
         using IServiceScope scope = _serviceProvider.CreateScope();
         IChatHistoryService chatHistoryService = scope.ServiceProvider.GetRequiredService<IChatHistoryService>();
+        GameConversationMemoryProviderFactory memoryProviderFactory = scope.ServiceProvider.GetRequiredService<GameConversationMemoryProviderFactory>();
 
         // Load or create thread
         AgentThread? gameThread = null;
@@ -278,6 +280,17 @@ public class GameAwareAgent : AIAgent
         }
 
         gameThread ??= agent.GetNewThread();
+
+        // Create and attach memory provider to automatically persist conversation history
+        // Note: The memory provider will be called manually from PersistGameStateAsync
+        // since the Agent Framework API for attaching context providers may vary
+        GameConversationMemoryProvider memoryProvider = memoryProviderFactory.CreateForGame(gameId);
+        memoryProvider.SetThread(gameThread);
+        
+        // Store memory provider in context for use in PersistGameStateAsync
+        string memoryProviderKey = $"MemoryProvider_{gameId}";
+        context.Items[memoryProviderKey] = memoryProvider;
+        _logger.LogInformation("Created memory provider for game {GameId}", gameId);
 
         // Cache it for this request
         context.Items[cacheKey] = gameThread;
@@ -369,11 +382,26 @@ public class GameAwareAgent : AIAgent
         // Get the last AI message ID for thread association
         int? lastAiMessageId = aiMessageEntities.LastOrDefault()?.Id;
 
-        // Serialize and save thread after completion
-        string threadJson = thread.Serialize(JsonSerializerOptions.Web).GetRawText();
-        _logger.LogDebug("Serialized thread for game {GameId}, length: {Length} characters", gameId, threadJson.Length);
-        await chatHistoryService.SaveThreadJsonAsync(gameId, threadJson, lastAiMessageId, cancellationToken);
-        _logger.LogInformation("Saved thread JSON for game {GameId}", gameId);
+        // Use memory provider to persist thread state
+        // The memory provider provides a consistent interface for thread persistence
+        string memoryProviderKey = $"MemoryProvider_{gameId}";
+        if (context.Items.TryGetValue(memoryProviderKey, out object? providerObj) && providerObj is GameConversationMemoryProvider memoryProvider)
+        {
+            // Update thread reference in case it changed
+            memoryProvider.SetThread(thread);
+            
+            // Manually invoke the persistence logic from the memory provider
+            // This provides a consistent interface for thread persistence
+            await memoryProvider.SaveThreadStateManuallyAsync(thread, lastAiMessageId, cancellationToken);
+        }
+        else
+        {
+            // Fallback to direct persistence if memory provider not available
+            string threadJson = thread.Serialize(JsonSerializerOptions.Web).GetRawText();
+            _logger.LogDebug("Serialized thread for game {GameId}, length: {Length} characters", gameId, threadJson.Length);
+            await chatHistoryService.SaveThreadJsonAsync(gameId, threadJson, lastAiMessageId, cancellationToken);
+            _logger.LogInformation("Saved thread JSON for game {GameId}", gameId);
+        }
     }
 
     private IList<AITool>? CreateTools(GameDto game)
