@@ -17,3 +17,4 @@ public class ChunkReadyForEmbeddingMessage
     public string DocumentKind { get; set; } = DocumentKinds.Sourcebook;
     public string RulesetId { get; set; } = string.Empty;
 }
+
