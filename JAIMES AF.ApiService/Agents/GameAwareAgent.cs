@@ -301,7 +301,6 @@ public class GameAwareAgent : AIAgent
         string memoryProviderKey = $"MemoryProvider_{gameId}";
         context.Items[memoryProviderKey] = memoryProvider;
         _logger.LogInformation("Created memory provider for game {GameId}", gameId);
-        _logger.LogInformation("Created memory provider for game {GameId}", gameId);
 
         // Cache it for this request
         context.Items[cacheKey] = gameThread;
