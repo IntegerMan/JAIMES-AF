@@ -1,3 +1,4 @@
+using MattEland.Jaimes.Agents.Services;
 using MattEland.Jaimes.ApiService.Agents;
 using MattEland.Jaimes.ServiceLayer;
 using MattEland.Jaimes.Workers.Services;
@@ -108,6 +109,7 @@ public class Program
 
         // Register Agents services explicitly (not auto-registered)
         builder.Services.AddScoped<IRulesSearchService, RulesSearchService>();
+        builder.Services.AddScoped<GameConversationMemoryProviderFactory>();
         
         // Register HttpContextAccessor for GameAwareAgent
         builder.Services.AddHttpContextAccessor();

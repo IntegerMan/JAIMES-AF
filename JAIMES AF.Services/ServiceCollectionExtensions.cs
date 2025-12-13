@@ -17,7 +17,9 @@ public static class ServiceCollectionExtensions
             .WithScopedLifetime());
         services.Scan(scan => scan
             .FromAssemblyOf<ChatService>()
-            .AddClasses(classes => classes.InNamespaceOf<ChatService>())
+            .AddClasses(classes => classes
+                .InNamespaceOf<ChatService>()
+                .Where(type => type != typeof(MattEland.Jaimes.Agents.Services.GameConversationMemoryProvider)))
             .AsSelfWithInterfaces()
             .WithScopedLifetime());
 
