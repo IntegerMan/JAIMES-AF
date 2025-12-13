@@ -17,7 +17,8 @@ public class ScenariosService(IDbContextFactory<JaimesDbContext> contextFactory)
                 Description = s.Description,
                 Name = s.Name,
                 SystemPrompt = s.SystemPrompt,
-                NewGameInstructions = s.NewGameInstructions
+                NewGameInstructions = s.NewGameInstructions,
+                InitialGreeting = s.InitialGreeting
             })
             .ToArray();
     }
@@ -39,7 +40,8 @@ public class ScenariosService(IDbContextFactory<JaimesDbContext> contextFactory)
             Description = scenario.Description,
             Name = scenario.Name,
             SystemPrompt = scenario.SystemPrompt,
-            NewGameInstructions = scenario.NewGameInstructions
+            NewGameInstructions = scenario.NewGameInstructions,
+            InitialGreeting = scenario.InitialGreeting
         };
     }
 
@@ -49,6 +51,7 @@ public class ScenariosService(IDbContextFactory<JaimesDbContext> contextFactory)
         string name,
         string systemPrompt,
         string newGameInstructions,
+        string? initialGreeting,
         CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -72,7 +75,8 @@ public class ScenariosService(IDbContextFactory<JaimesDbContext> contextFactory)
             Description = description,
             Name = name,
             SystemPrompt = systemPrompt,
-            NewGameInstructions = newGameInstructions
+            NewGameInstructions = newGameInstructions,
+            InitialGreeting = initialGreeting
         };
 
         context.Scenarios.Add(newScenario);
@@ -85,7 +89,8 @@ public class ScenariosService(IDbContextFactory<JaimesDbContext> contextFactory)
             Description = newScenario.Description,
             Name = newScenario.Name,
             SystemPrompt = newScenario.SystemPrompt,
-            NewGameInstructions = newScenario.NewGameInstructions
+            NewGameInstructions = newScenario.NewGameInstructions,
+            InitialGreeting = newScenario.InitialGreeting
         };
     }
 
@@ -95,6 +100,7 @@ public class ScenariosService(IDbContextFactory<JaimesDbContext> contextFactory)
         string name,
         string systemPrompt,
         string newGameInstructions,
+        string? initialGreeting,
         CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -115,6 +121,7 @@ public class ScenariosService(IDbContextFactory<JaimesDbContext> contextFactory)
         scenario.Name = name;
         scenario.SystemPrompt = systemPrompt;
         scenario.NewGameInstructions = newGameInstructions;
+        scenario.InitialGreeting = initialGreeting;
 
         await context.SaveChangesAsync(cancellationToken);
 
@@ -125,7 +132,8 @@ public class ScenariosService(IDbContextFactory<JaimesDbContext> contextFactory)
             Description = scenario.Description,
             Name = scenario.Name,
             SystemPrompt = scenario.SystemPrompt,
-            NewGameInstructions = scenario.NewGameInstructions
+            NewGameInstructions = scenario.NewGameInstructions,
+            InitialGreeting = scenario.InitialGreeting
         };
     }
 }

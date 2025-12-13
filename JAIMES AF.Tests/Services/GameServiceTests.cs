@@ -1,3 +1,5 @@
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using MattEland.Jaimes.ServiceLayer.Services;
 
 namespace MattEland.Jaimes.Tests.Services;
@@ -26,7 +28,7 @@ public class GameServiceTests : IAsyncLifetime
         _context.Scenarios.Add(new Scenario
         {
             Id = "test-scenario", RulesetId = "test-ruleset", Name = "Unspecified", SystemPrompt = "Test System Prompt",
-            NewGameInstructions = "Test New Game Instructions"
+            NewGameInstructions = "Test New Game Instructions", InitialGreeting = null
         });
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -34,7 +36,9 @@ public class GameServiceTests : IAsyncLifetime
         _contextFactory = new TestDbContextFactory(options);
         _mockChatService = new MockChatService();
         _mockChatHistoryService = new MockChatHistoryService();
-        _gameService = new GameService(_contextFactory, _mockChatService, _mockChatHistoryService);
+        MockChatClient mockChatClient = new();
+        ILoggerFactory loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+        _gameService = new GameService(_contextFactory, _mockChatHistoryService, mockChatClient, loggerFactory);
     }
 
     public async ValueTask DisposeAsync()
@@ -59,7 +63,9 @@ public class GameServiceTests : IAsyncLifetime
         gameDto.Scenario.Id.ShouldBe(scenarioId);
         gameDto.Player.Id.ShouldBe(playerId);
         gameDto.Messages.ShouldHaveSingleItem();
-        gameDto.Messages[0].Text.ShouldBe(MockChatService.TestInitialMessage);
+        // The message should be the InitialGreeting from the scenario, or "Welcome to the adventure!" if not set
+        // Since test scenario doesn't have InitialGreeting, it should use the fallback
+        gameDto.Messages[0].Text.ShouldBe("Welcome to the adventure!");
         gameDto.Messages[0].ParticipantName.ShouldBe("Game Master");
         gameDto.Messages[0].Id.ShouldBeGreaterThan(0);
 
@@ -72,8 +78,8 @@ public class GameServiceTests : IAsyncLifetime
         Message? messageInDb = await _context.Messages.FirstOrDefaultAsync(m => m.GameId == gameDto.GameId,
             TestContext.Current.CancellationToken);
         messageInDb.ShouldNotBeNull();
-        messageInDb.Text.ShouldBe(MockChatService.TestInitialMessage);
-        messageInDb.PlayerId.ShouldBeNull(); // AI-generated message
+        messageInDb.Text.ShouldBe("Welcome to the adventure!");
+        messageInDb.PlayerId.ShouldBeNull(); // System message
     }
 
     [Fact]
@@ -277,6 +283,28 @@ public class GameServiceTests : IAsyncLifetime
         exception.Message.ShouldContain("uses ruleset 'test-ruleset'");
     }
 
+    [Fact]
+    public async Task CreateGameAsync_UsesInitialGreeting_WhenSet()
+    {
+        // Arrange
+        string customGreeting = "We're about to get started on a solo adventure, but before we do, tell me a bit about your character and the style of adventure you'd like to have";
+        _context.Scenarios.Add(new Scenario
+        {
+            Id = "scenario-with-greeting", RulesetId = "test-ruleset", Name = "Test Scenario", 
+            SystemPrompt = "Test System Prompt", NewGameInstructions = "Test Instructions",
+            InitialGreeting = customGreeting
+        });
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act
+        GameDto gameDto = await _gameService.CreateGameAsync("scenario-with-greeting", "test-player", TestContext.Current.CancellationToken);
+
+        // Assert
+        gameDto.Messages.ShouldHaveSingleItem();
+        gameDto.Messages[0].Text.ShouldBe(customGreeting);
+        gameDto.Messages[0].ParticipantName.ShouldBe("Game Master");
+    }
+
 
     // Test factory that returns the same context instance (for testing)
     private class TestDbContextFactory(DbContextOptions<JaimesDbContext> options) : IDbContextFactory<JaimesDbContext>
@@ -326,5 +354,16 @@ public class GameServiceTests : IAsyncLifetime
             _threads[gameId] = threadJson;
             return Task.FromResult(Guid.NewGuid());
         }
+    }
+
+    private class MockChatClient : IChatClient
+    {
+        public IReadOnlyList<ChatMessage>? History => throw new NotSupportedException();
+        public void AddSystemMessage(string text) => throw new NotSupportedException();
+        public void ClearHistory() => throw new NotSupportedException();
+        public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public object? GetService(Type serviceType, object? serviceKey = null) => null;
+        public void Dispose() { }
     }
 }

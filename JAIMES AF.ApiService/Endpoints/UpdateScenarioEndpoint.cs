@@ -33,6 +33,7 @@ public class UpdateScenarioEndpoint : Endpoint<UpdateScenarioRequest, ScenarioRe
                 req.Name,
                 req.SystemPrompt,
                 req.NewGameInstructions,
+                req.InitialGreeting,
                 ct);
 
             ScenarioResponse response = new()
@@ -42,7 +43,8 @@ public class UpdateScenarioEndpoint : Endpoint<UpdateScenarioRequest, ScenarioRe
                 Description = scenario.Description,
                 Name = scenario.Name,
                 SystemPrompt = scenario.SystemPrompt,
-                NewGameInstructions = scenario.NewGameInstructions
+                NewGameInstructions = scenario.NewGameInstructions,
+                InitialGreeting = scenario.InitialGreeting
             };
 
             await Send.OkAsync(response, ct);

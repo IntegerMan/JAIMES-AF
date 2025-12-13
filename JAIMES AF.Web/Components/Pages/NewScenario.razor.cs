@@ -15,6 +15,7 @@ public partial class NewScenario
     private string? _description;
     private string _systemPrompt = string.Empty;
     private string _newGameInstructions = string.Empty;
+    private string? _initialGreeting;
     private bool _isLoading = true;
     private bool _isSaving = false;
     private string? _errorMessage;
@@ -74,7 +75,8 @@ public partial class NewScenario
                 Description = _description,
                 Name = _name,
                 SystemPrompt = _systemPrompt,
-                NewGameInstructions = _newGameInstructions
+                NewGameInstructions = _newGameInstructions,
+                InitialGreeting = _initialGreeting
             };
 
             HttpResponseMessage response = await Http.PostAsJsonAsync("/scenarios", request);

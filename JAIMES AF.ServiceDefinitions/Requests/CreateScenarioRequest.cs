@@ -8,4 +8,5 @@ public class CreateScenarioRequest
     public required string Name { get; set; }
     public required string SystemPrompt { get; set; }
     public required string NewGameInstructions { get; set; }
+    public string? InitialGreeting { get; set; }
 }

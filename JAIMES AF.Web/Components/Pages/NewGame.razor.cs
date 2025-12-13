@@ -68,6 +68,7 @@ public partial class NewGame
             return;
         }
 
+        ILogger logger = LoggerFactory.CreateLogger("NewGame");
         _isCreating = true;
         _errorMessage = null;
         try
@@ -78,17 +79,27 @@ public partial class NewGame
                 PlayerId = _selectedPlayerId
             };
 
+            logger.LogInformation("Creating game with ScenarioId: {ScenarioId}, PlayerId: {PlayerId}", _selectedScenarioId, _selectedPlayerId);
             HttpResponseMessage response = await Http.PostAsJsonAsync("/games/", request);
 
+            logger.LogInformation("Game creation response received. StatusCode: {StatusCode}", response.StatusCode);
+            
             if (response.IsSuccessStatusCode)
             {
                 NewGameResponse? gameResponse = await response.Content.ReadFromJsonAsync<NewGameResponse>();
+                logger.LogInformation("Response parsed. GameResponse is null: {IsNull}, GameId: {GameId}", 
+                    gameResponse == null, gameResponse?.GameId);
+                
                 if (gameResponse != null)
                 {
-                    Navigation.NavigateTo($"/games/{gameResponse.GameId}");
+                    string navigationUrl = $"/games/{gameResponse.GameId}";
+                    logger.LogInformation("Navigating to: {Url}", navigationUrl);
+                    Navigation.NavigateTo(navigationUrl);
+                    logger.LogInformation("Navigation.NavigateTo called successfully");
                 }
                 else
                 {
+                    logger.LogWarning("Game was created but the response was invalid (gameResponse is null)");
                     _errorMessage = "Game was created but the response was invalid.";
                     StateHasChanged();
                 }
@@ -100,11 +111,13 @@ public partial class NewGame
                 {
                     body = await response.Content.ReadAsStringAsync();
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // ignored
+                    logger.LogWarning(ex, "Failed to read error response body");
                 }
 
+                logger.LogError("Game creation failed. StatusCode: {StatusCode}, ReasonPhrase: {ReasonPhrase}, Body: {Body}", 
+                    response.StatusCode, response.ReasonPhrase, body);
                 _errorMessage =
                     $"Failed to create game: {response.ReasonPhrase}{(string.IsNullOrEmpty(body) ? string.Empty : " - " + body)}";
                 StateHasChanged();
@@ -112,7 +125,7 @@ public partial class NewGame
         }
         catch (Exception ex)
         {
-            LoggerFactory.CreateLogger("NewGame").LogError(ex, "Failed to create game");
+            logger.LogError(ex, "Exception occurred while creating game");
             _errorMessage = "Failed to create game: " + ex.Message;
             StateHasChanged();
         }

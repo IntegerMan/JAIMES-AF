@@ -16,6 +16,7 @@ public partial class EditScenario
     private string? _description;
     private string _systemPrompt = string.Empty;
     private string _newGameInstructions = string.Empty;
+    private string? _initialGreeting;
     private bool _isLoading = true;
     private bool _isSaving = false;
     private string? _errorMessage;
@@ -53,6 +54,7 @@ public partial class EditScenario
             _description = scenarioResponse.Description;
             _systemPrompt = scenarioResponse.SystemPrompt;
             _newGameInstructions = scenarioResponse.NewGameInstructions;
+            _initialGreeting = scenarioResponse.InitialGreeting;
         }
         catch (Exception ex)
         {
@@ -93,7 +95,8 @@ public partial class EditScenario
                 Description = _description,
                 Name = _name,
                 SystemPrompt = _systemPrompt,
-                NewGameInstructions = _newGameInstructions
+                NewGameInstructions = _newGameInstructions,
+                InitialGreeting = _initialGreeting
             };
 
             HttpResponseMessage response = await Http.PutAsJsonAsync($"/scenarios/{ScenarioId}", request);

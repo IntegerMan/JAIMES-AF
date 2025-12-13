@@ -1,9 +1,16 @@
+using System.Text.Json;
+using Microsoft.Agents.AI;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
+using MattEland.Jaimes.Agents.Helpers;
+
 namespace MattEland.Jaimes.ServiceLayer.Services;
 
 public class GameService(
     IDbContextFactory<JaimesDbContext> contextFactory,
-    IChatService chatService,
-    IChatHistoryService chatHistoryService) : IGameService
+    IChatHistoryService chatHistoryService,
+    IChatClient chatClient,
+    ILoggerFactory loggerFactory) : IGameService
 {
     public async Task<GameDto> CreateGameAsync(string scenarioId,
         string playerId,
@@ -42,36 +49,47 @@ public class GameService(
         context.Games.Add(game);
         await context.SaveChangesAsync(cancellationToken);
 
-        // Generate the initial message using the chat service
-        GenerateInitialMessageRequest request = new()
-        {
-            GameId = game.Id,
-            SystemPrompt = scenario.SystemPrompt,
-            NewGameInstructions = scenario.NewGameInstructions,
-            PlayerName = player.Name,
-            PlayerDescription = player.Description
-        };
+        // Use InitialGreeting if available, otherwise fall back to a generic greeting
+        string greetingText = !string.IsNullOrWhiteSpace(scenario.InitialGreeting)
+            ? scenario.InitialGreeting
+            : "Welcome to the adventure!";
 
-        InitialMessageResponse initialResponse =
-            await chatService.GenerateInitialMessageAsync(request, cancellationToken);
-
-        // Create the initial message from the AI
+        // Create the initial message immediately (no AI call needed)
         Message message = new()
         {
             GameId = game.Id,
-            Text = initialResponse.Message,
-            PlayerId = null, // AI-generated message, not from player
+            Text = greetingText,
+            PlayerId = null, // System message, not from player
             CreatedAt = DateTime.UtcNow
         };
 
         context.Messages.Add(message);
         await context.SaveChangesAsync(cancellationToken);
 
-        // Save the thread JSON with the message ID
-        await chatHistoryService.SaveThreadJsonAsync(game.Id,
-            initialResponse.ThreadJson,
-            message.Id,
-            cancellationToken);
+        // Create an agent thread with the greeting message included
+        // This ensures the AI is aware of the greeting when the game is loaded
+        ILogger logger = loggerFactory.CreateLogger<GameService>();
+        IChatClient instrumentedChatClient = chatClient.WrapWithInstrumentation(logger);
+        
+        // Create a minimal agent just for thread creation
+        // We use the scenario's system prompt to ensure consistency
+        string systemPrompt = !string.IsNullOrWhiteSpace(scenario.SystemPrompt)
+            ? scenario.SystemPrompt
+            : "You are a helpful game master assistant.";
+        
+        AIAgent agent = instrumentedChatClient.CreateJaimesAgent(logger, $"JaimesAgent-{game.Id}", systemPrompt, null);
+        AgentThread thread = agent.GetNewThread();
+        
+        // Add the greeting message to the thread by running the agent with it
+        // We use a simple approach: run with the greeting as a user message that asks to say the greeting
+        // This will add the greeting to the thread context
+        // Note: This is a lightweight operation that just initializes the thread with the greeting
+        string prompt = $"Please say: {greetingText}";
+        await agent.RunAsync(prompt, thread, cancellationToken: cancellationToken);
+        
+        // Serialize the thread and save it
+        string threadJson = thread.Serialize(JsonSerializerOptions.Web).GetRawText();
+        await chatHistoryService.SaveThreadJsonAsync(game.Id, threadJson, message.Id, cancellationToken);
 
         // Reload game with navigation properties for mapping
         Game gameWithNav = await context.Games

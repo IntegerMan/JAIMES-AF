@@ -11,6 +11,7 @@ public interface IScenariosService
         string name,
         string systemPrompt,
         string newGameInstructions,
+        string? initialGreeting,
         CancellationToken cancellationToken = default);
 
     Task<ScenarioDto> UpdateScenarioAsync(string id,
@@ -19,5 +20,6 @@ public interface IScenariosService
         string name,
         string systemPrompt,
         string newGameInstructions,
+        string? initialGreeting,
         CancellationToken cancellationToken = default);
 }
