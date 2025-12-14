@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.Json;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
@@ -66,8 +67,9 @@ public class GameService(
         context.Messages.Add(message);
         await context.SaveChangesAsync(cancellationToken);
 
-        // Create an agent thread with the greeting message included
-        // This ensures the AI is aware of the greeting when the game is loaded
+        // Create an agent thread for the game
+        // The greeting message is already saved in the database, so we don't need to call the LLM
+        // The thread will be populated with conversation history as messages are sent
         ILogger logger = loggerFactory.CreateLogger<GameService>();
         IChatClient instrumentedChatClient = chatClient.WrapWithInstrumentation(logger);
 
@@ -80,14 +82,29 @@ public class GameService(
         AIAgent agent = instrumentedChatClient.CreateJaimesAgent(logger, $"JaimesAgent-{game.Id}", systemPrompt, null);
         AgentThread thread = agent.GetNewThread();
 
-        // Add the greeting message to the thread by running the agent with it
-        // We use a simple approach: run with the greeting as a user message that asks to say the greeting
-        // This will add the greeting to the thread context
-        // Note: This is a lightweight operation that just initializes the thread with the greeting
-        string prompt = $"Please say: {greetingText}";
-        await agent.RunAsync(prompt, thread, cancellationToken: cancellationToken);
+        // Add the initial greeting message to the thread
+        // This ensures the AI is aware of the greeting when the game is loaded
+        ChatMessage greetingChatMessage = new(ChatRole.Assistant, greetingText);
 
-        // Serialize the thread and save it
+        // Use reflection to call the protected static NotifyThreadOfNewMessagesAsync method
+        // This notifies the thread about the initial greeting message
+        MethodInfo? notifyMethod = typeof(AIAgent).GetMethod(
+            "NotifyThreadOfNewMessagesAsync",
+            BindingFlags.NonPublic | BindingFlags.Static,
+            null,
+            [typeof(AgentThread), typeof(IEnumerable<ChatMessage>), typeof(CancellationToken)],
+            null);
+
+        if (notifyMethod != null)
+        {
+            await (Task)notifyMethod.Invoke(null, [thread, new[] { greetingChatMessage }, cancellationToken])!;
+        }
+        else
+        {
+            logger.LogWarning("Could not find NotifyThreadOfNewMessagesAsync method via reflection");
+        }
+
+        // Serialize the thread with the greeting message and save it
         string threadJson = thread.Serialize(JsonSerializerOptions.Web).GetRawText();
         await chatHistoryService.SaveThreadJsonAsync(game.Id, threadJson, message.Id, cancellationToken);
 
