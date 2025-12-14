@@ -9,7 +9,6 @@ global using MattEland.Jaimes.Agents.Middleware;
 global using MattEland.Jaimes.Domain;
 global using MattEland.Jaimes.Repositories;
 global using MattEland.Jaimes.Repositories.Entities;
-global using MattEland.Jaimes.ServiceDefaults;
 global using MattEland.Jaimes.ServiceDefinitions.Requests;
 global using MattEland.Jaimes.ServiceDefinitions.Responses;
 global using MattEland.Jaimes.ServiceDefinitions.Services;

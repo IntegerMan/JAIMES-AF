@@ -24,7 +24,7 @@ This project contains the data access layer using Entity Framework Core. It defi
   - `DeleteBehavior.NoAction` for optional references
 
 ## Migrations
-- **CRITICAL**: When modifying seed data (e.g., `SystemPrompt`, `NewGameInstructions`, or any `HasData()` values), you MUST create a new migration
+- **CRITICAL**: When modifying seed data (e.g., `SystemPrompt`, `InitialGreeting`, or any `HasData()` values), you MUST create a new migration
 - Migration command: `dotnet ef migrations add <MigrationName> --project '.\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj' --startup-project '.\JAIMES AF.ApiService\JAIMES AF.ApiService.csproj'`
 - The "potential data loss" warning when updating seed data is expected and safe to ignore
 - Migrations are automatically applied at application startup

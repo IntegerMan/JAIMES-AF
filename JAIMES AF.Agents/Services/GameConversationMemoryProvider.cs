@@ -99,12 +99,12 @@ public class GameConversationMemoryProvider : AIContextProvider
         {
             string threadJson = thread.Serialize(JsonSerializerOptions.Web).GetRawText();
             _logger.LogDebug("Saving thread state for game {GameId}, length: {Length} characters", _gameId, threadJson.Length);
-            
+
             // Resolve IChatHistoryService from a new scope to avoid ObjectDisposedException
             // The memory provider may outlive the scope that created it
             using IServiceScope scope = _serviceProvider.CreateScope();
             IChatHistoryService chatHistoryService = scope.ServiceProvider.GetRequiredService<IChatHistoryService>();
-            
+
             await chatHistoryService.SaveThreadJsonAsync(_gameId, threadJson, messageId, cancellationToken);
             _logger.LogInformation("Saved thread state for game {GameId}", _gameId);
         }

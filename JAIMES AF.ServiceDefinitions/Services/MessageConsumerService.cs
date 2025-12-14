@@ -236,7 +236,7 @@ public class MessageConsumerService<T>(
 
                         if (retryCount < maxRetries)
                         {
-                            int delayMs = (int) Math.Pow(2, retryCount) * 1000;
+                            int delayMs = (int)Math.Pow(2, retryCount) * 1000;
                             await Task.Delay(delayMs, stoppingToken);
                         }
                     }

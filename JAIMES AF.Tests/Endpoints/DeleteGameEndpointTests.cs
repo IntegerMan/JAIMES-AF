@@ -6,7 +6,7 @@ public class DeleteGameEndpointTests : EndpointTestBase
     public async Task DeleteGameEndpoint_DeletesGameSuccessfully()
     {
         // Arrange - Create a game first
-        var createRequest = new {ScenarioId = "test-scenario", PlayerId = "test-player"};
+        var createRequest = new { ScenarioId = "test-scenario", PlayerId = "test-player" };
         CancellationToken ct = TestContext.Current.CancellationToken;
         HttpResponseMessage createResponse = await Client.PostAsJsonAsync("/games/", createRequest, ct);
         createResponse.StatusCode.ShouldBe(HttpStatusCode.Created);

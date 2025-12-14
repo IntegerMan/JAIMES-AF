@@ -61,7 +61,6 @@ public class PlayerInfoToolTests
                 Id = "test-scenario",
                 Name = "Test Scenario",
                 SystemPrompt = "Test system prompt",
-                NewGameInstructions = "Test instructions",
                 RulesetId = "test-ruleset"
             },
             Ruleset = new RulesetDto

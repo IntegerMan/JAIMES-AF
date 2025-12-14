@@ -70,23 +70,23 @@ public class GameService(
         // This ensures the AI is aware of the greeting when the game is loaded
         ILogger logger = loggerFactory.CreateLogger<GameService>();
         IChatClient instrumentedChatClient = chatClient.WrapWithInstrumentation(logger);
-        
+
         // Create a minimal agent just for thread creation
         // We use the scenario's system prompt to ensure consistency
         string systemPrompt = !string.IsNullOrWhiteSpace(scenario.SystemPrompt)
             ? scenario.SystemPrompt
             : "You are a helpful game master assistant.";
-        
+
         AIAgent agent = instrumentedChatClient.CreateJaimesAgent(logger, $"JaimesAgent-{game.Id}", systemPrompt, null);
         AgentThread thread = agent.GetNewThread();
-        
+
         // Add the greeting message to the thread by running the agent with it
         // We use a simple approach: run with the greeting as a user message that asks to say the greeting
         // This will add the greeting to the thread context
         // Note: This is a lightweight operation that just initializes the thread with the greeting
         string prompt = $"Please say: {greetingText}";
         await agent.RunAsync(prompt, thread, cancellationToken: cancellationToken);
-        
+
         // Serialize the thread and save it
         string threadJson = thread.Serialize(JsonSerializerOptions.Web).GetRawText();
         await chatHistoryService.SaveThreadJsonAsync(game.Id, threadJson, message.Id, cancellationToken);

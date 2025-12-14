@@ -17,16 +17,16 @@ public class ListScenariosEndpoint : Ep.NoReq.Res<ScenarioListResponse>
     {
         ScenarioDto[] scenarios = await ScenariosService.GetScenariosAsync(ct);
         await Send.OkAsync(new ScenarioListResponse
+        {
+            Scenarios = scenarios.Select(s => new ScenarioInfoResponse
             {
-                Scenarios = scenarios.Select(s => new ScenarioInfoResponse
-                    {
-                        Id = s.Id,
-                        RulesetId = s.RulesetId,
-                        Description = s.Description,
-                        Name = s.Name
-                    })
+                Id = s.Id,
+                RulesetId = s.RulesetId,
+                Description = s.Description,
+                Name = s.Name
+            })
                     .ToArray()
-            },
+        },
             ct);
     }
 }

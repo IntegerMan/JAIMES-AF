@@ -10,7 +10,6 @@ public interface IScenariosService
         string? description,
         string name,
         string systemPrompt,
-        string newGameInstructions,
         string? initialGreeting,
         CancellationToken cancellationToken = default);
 
@@ -19,7 +18,6 @@ public interface IScenariosService
         string? description,
         string name,
         string systemPrompt,
-        string newGameInstructions,
         string? initialGreeting,
         CancellationToken cancellationToken = default);
 }

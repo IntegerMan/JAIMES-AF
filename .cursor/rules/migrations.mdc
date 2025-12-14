@@ -20,7 +20,7 @@ dotnet ef migrations add <MigrationName> --project '.\JAIMES AF.Repositories\JAI
 **CRITICAL**: When modifying seed data in `JaimesDbContext.cs`:
 - Any changes to `HasData()` calls
 - Updates to `SystemPrompt` values
-- Updates to `NewGameInstructions` values
+- Updates to `InitialGreeting` values
 - Changes to any default seed data values
 
 **You MUST create a new migration** - even though EF Core may warn about "potential data loss", this is expected and safe to ignore for seed data updates.

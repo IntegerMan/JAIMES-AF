@@ -38,7 +38,7 @@ public class SemanticSlicerStrategy(
         };
 
         Slicer slicer = new(slicerOptions);
-        
+
         IList<DocumentChunk> documentChunks;
         try
         {
@@ -50,7 +50,7 @@ public class SemanticSlicerStrategy(
             throw;
         }
 
-        logger.LogDebug("SemanticSlicer produced {Count} chunks for document {DocumentId}", 
+        logger.LogDebug("SemanticSlicer produced {Count} chunks for document {DocumentId}",
             documentChunks.Count, sourceDocumentId);
 
         int chunkIndex = 0;
@@ -59,12 +59,12 @@ public class SemanticSlicerStrategy(
         {
             // DocumentChunk has a Content property (not Text)
             string chunkText = documentChunk.Content ?? string.Empty;
-            
+
             // Filter out chunks that are too short (MinChunkChars)
             if (chunkText.Length < options.MinChunkChars)
             {
                 filteredCount++;
-                logger.LogDebug("Filtered out chunk {Index} for document {DocumentId} (length {Length} < MinChunkChars {MinChars})", 
+                logger.LogDebug("Filtered out chunk {Index} for document {DocumentId} (length {Length} < MinChunkChars {MinChars})",
                     chunkIndex, sourceDocumentId, chunkText.Length, options.MinChunkChars);
                 continue;
             }
@@ -78,13 +78,13 @@ public class SemanticSlicerStrategy(
                 SourceDocumentId = sourceDocumentId,
                 Embedding = null // No embedding - will be queued for generation
             };
-            
+
             chunkIndex++;
         }
 
         if (filteredCount > 0)
         {
-            logger.LogInformation("Filtered out {FilteredCount} chunks shorter than {MinChunkChars} characters for document {DocumentId}", 
+            logger.LogInformation("Filtered out {FilteredCount} chunks shorter than {MinChunkChars} characters for document {DocumentId}",
                 filteredCount, options.MinChunkChars, sourceDocumentId);
         }
     }

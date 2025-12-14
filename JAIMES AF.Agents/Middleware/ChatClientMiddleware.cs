@@ -93,7 +93,7 @@ public static class ChatClientMiddleware
 
                 // Calculate duration
                 long durationTicks = Stopwatch.GetTimestamp() - startTime;
-                double durationMs = durationTicks / (double) Stopwatch.Frequency * 1000.0;
+                double durationMs = durationTicks / (double)Stopwatch.Frequency * 1000.0;
 
                 // Record metrics
                 ChatClientInvocations.Add(1, new KeyValuePair<string, object?>("status", "success"));
@@ -123,7 +123,7 @@ public static class ChatClientMiddleware
 
                 // Calculate duration even on error
                 long durationTicks = Stopwatch.GetTimestamp() - startTime;
-                double durationMs = durationTicks / (double) Stopwatch.Frequency * 1000.0;
+                double durationMs = durationTicks / (double)Stopwatch.Frequency * 1000.0;
 
                 // Record error metric
                 ChatClientInvocations.Add(1, new KeyValuePair<string, object?>("status", "error"));
@@ -154,7 +154,7 @@ public static class ChatClientMiddleware
                         string fullResponseText = responseSummary;
                         if (responseSummary.Length > 500) responseSummary = responseSummary[..500] + "... (truncated)";
                         activity.SetTag("chat.response_summary", responseSummary);
-                        
+
                         // Log the response text prominently
                         logger.LogInformation(
                             "📤 Chat client response text: {ResponseText}",

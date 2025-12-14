@@ -83,13 +83,13 @@ public partial class NewGame
             HttpResponseMessage response = await Http.PostAsJsonAsync("/games/", request);
 
             logger.LogInformation("Game creation response received. StatusCode: {StatusCode}", response.StatusCode);
-            
+
             if (response.IsSuccessStatusCode)
             {
                 NewGameResponse? gameResponse = await response.Content.ReadFromJsonAsync<NewGameResponse>();
-                logger.LogInformation("Response parsed. GameResponse is null: {IsNull}, GameId: {GameId}", 
+                logger.LogInformation("Response parsed. GameResponse is null: {IsNull}, GameId: {GameId}",
                     gameResponse == null, gameResponse?.GameId);
-                
+
                 if (gameResponse != null)
                 {
                     string navigationUrl = $"/games/{gameResponse.GameId}";
@@ -116,7 +116,7 @@ public partial class NewGame
                     logger.LogWarning(ex, "Failed to read error response body");
                 }
 
-                logger.LogError("Game creation failed. StatusCode: {StatusCode}, ReasonPhrase: {ReasonPhrase}, Body: {Body}", 
+                logger.LogError("Game creation failed. StatusCode: {StatusCode}, ReasonPhrase: {ReasonPhrase}, Body: {Body}",
                     response.StatusCode, response.ReasonPhrase, body);
                 _errorMessage =
                     $"Failed to create game: {response.ReasonPhrase}{(string.IsNullOrEmpty(body) ? string.Empty : " - " + body)}";

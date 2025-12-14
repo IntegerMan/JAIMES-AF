@@ -15,7 +15,6 @@ public partial class EditScenario
     private string _name = string.Empty;
     private string? _description;
     private string _systemPrompt = string.Empty;
-    private string _newGameInstructions = string.Empty;
     private string? _initialGreeting;
     private bool _isLoading = true;
     private bool _isSaving = false;
@@ -53,7 +52,6 @@ public partial class EditScenario
             _name = scenarioResponse.Name;
             _description = scenarioResponse.Description;
             _systemPrompt = scenarioResponse.SystemPrompt;
-            _newGameInstructions = scenarioResponse.NewGameInstructions;
             _initialGreeting = scenarioResponse.InitialGreeting;
         }
         catch (Exception ex)
@@ -72,8 +70,7 @@ public partial class EditScenario
     {
         return !string.IsNullOrWhiteSpace(_selectedRulesetId) &&
                !string.IsNullOrWhiteSpace(_name) &&
-               !string.IsNullOrWhiteSpace(_systemPrompt) &&
-               !string.IsNullOrWhiteSpace(_newGameInstructions);
+               !string.IsNullOrWhiteSpace(_systemPrompt);
     }
 
     private async Task UpdateScenarioAsync()
@@ -95,7 +92,6 @@ public partial class EditScenario
                 Description = _description,
                 Name = _name,
                 SystemPrompt = _systemPrompt,
-                NewGameInstructions = _newGameInstructions,
                 InitialGreeting = _initialGreeting
             };
 

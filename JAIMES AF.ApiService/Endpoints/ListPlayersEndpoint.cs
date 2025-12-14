@@ -17,16 +17,16 @@ public class ListPlayersEndpoint : Ep.NoReq.Res<PlayerListResponse>
     {
         PlayerDto[] players = await PlayersService.GetPlayersAsync(ct);
         await Send.OkAsync(new PlayerListResponse
+        {
+            Players = players.Select(p => new PlayerInfoResponse
             {
-                Players = players.Select(p => new PlayerInfoResponse
-                    {
-                        Id = p.Id,
-                        RulesetId = p.RulesetId,
-                        Description = p.Description,
-                        Name = p.Name
-                    })
+                Id = p.Id,
+                RulesetId = p.RulesetId,
+                Description = p.Description,
+                Name = p.Name
+            })
                     .ToArray()
-            },
+        },
             ct);
     }
 }

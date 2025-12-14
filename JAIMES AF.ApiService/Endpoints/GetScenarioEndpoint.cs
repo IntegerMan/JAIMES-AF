@@ -34,7 +34,6 @@ public class GetScenarioEndpoint : EndpointWithoutRequest<ScenarioResponse>
                 Description = scenario.Description,
                 Name = scenario.Name,
                 SystemPrompt = scenario.SystemPrompt,
-                NewGameInstructions = scenario.NewGameInstructions,
                 InitialGreeting = scenario.InitialGreeting
             };
 

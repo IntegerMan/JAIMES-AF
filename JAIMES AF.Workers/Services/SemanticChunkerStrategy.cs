@@ -38,7 +38,7 @@ public class SemanticChunkerStrategy(
             throw;
         }
 
-        logger.LogDebug("SemanticChunker produced {Count} chunks for document {DocumentId}", 
+        logger.LogDebug("SemanticChunker produced {Count} chunks for document {DocumentId}",
             semanticChunks.Count, sourceDocumentId);
 
         int chunkIndex = 0;
@@ -51,7 +51,7 @@ public class SemanticChunkerStrategy(
             if (semanticChunk.Text.Length < options.MinChunkChars)
             {
                 filteredCount++;
-                logger.LogDebug("Filtered out chunk {Index} for document {DocumentId} (length {Length} < MinChunkChars {MinChars})", 
+                logger.LogDebug("Filtered out chunk {Index} for document {DocumentId} (length {Length} < MinChunkChars {MinChars})",
                     i, sourceDocumentId, semanticChunk.Text.Length, options.MinChunkChars);
                 continue;
             }
@@ -72,13 +72,13 @@ public class SemanticChunkerStrategy(
                 SourceDocumentId = sourceDocumentId,
                 Embedding = embedding
             };
-            
+
             chunkIndex++;
         }
 
         if (filteredCount > 0)
         {
-            logger.LogInformation("Filtered out {FilteredCount} chunks shorter than {MinChunkChars} characters for document {DocumentId}", 
+            logger.LogInformation("Filtered out {FilteredCount} chunks shorter than {MinChunkChars} characters for document {DocumentId}",
                 filteredCount, options.MinChunkChars, sourceDocumentId);
         }
     }

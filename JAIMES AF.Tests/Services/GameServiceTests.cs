@@ -23,12 +23,15 @@ public class GameServiceTests : IAsyncLifetime
         await _context.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
 
         // Add test data for validation
-        _context.Rulesets.Add(new Ruleset {Id = "test-ruleset", Name = "Test Ruleset"});
-        _context.Players.Add(new Player {Id = "test-player", RulesetId = "test-ruleset", Name = "Unspecified"});
+        _context.Rulesets.Add(new Ruleset { Id = "test-ruleset", Name = "Test Ruleset" });
+        _context.Players.Add(new Player { Id = "test-player", RulesetId = "test-ruleset", Name = "Unspecified" });
         _context.Scenarios.Add(new Scenario
         {
-            Id = "test-scenario", RulesetId = "test-ruleset", Name = "Unspecified", SystemPrompt = "Test System Prompt",
-            NewGameInstructions = "Test New Game Instructions", InitialGreeting = null
+            Id = "test-scenario",
+            RulesetId = "test-ruleset",
+            Name = "Unspecified",
+            SystemPrompt = "Test System Prompt",
+            InitialGreeting = null
         });
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -267,9 +270,9 @@ public class GameServiceTests : IAsyncLifetime
     public async Task CreateGameAsync_ThrowsException_WhenPlayerAndScenarioRulesetMismatch()
     {
         // Arrange
-        _context.Rulesets.Add(new Ruleset {Id = "different-ruleset", Name = "Different Ruleset"});
+        _context.Rulesets.Add(new Ruleset { Id = "different-ruleset", Name = "Different Ruleset" });
         _context.Players.Add(new Player
-            {Id = "player-different-ruleset", RulesetId = "different-ruleset", Name = "Unspecified"});
+        { Id = "player-different-ruleset", RulesetId = "different-ruleset", Name = "Unspecified" });
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         string scenarioId = "test-scenario";
@@ -290,8 +293,10 @@ public class GameServiceTests : IAsyncLifetime
         string customGreeting = "We're about to get started on a solo adventure, but before we do, tell me a bit about your character and the style of adventure you'd like to have";
         _context.Scenarios.Add(new Scenario
         {
-            Id = "scenario-with-greeting", RulesetId = "test-ruleset", Name = "Test Scenario", 
-            SystemPrompt = "Test System Prompt", NewGameInstructions = "Test Instructions",
+            Id = "scenario-with-greeting",
+            RulesetId = "test-ruleset",
+            Name = "Test Scenario",
+            SystemPrompt = "Test System Prompt",
             InitialGreeting = customGreeting
         });
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);

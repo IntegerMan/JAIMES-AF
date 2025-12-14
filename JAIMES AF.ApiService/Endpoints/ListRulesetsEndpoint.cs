@@ -18,14 +18,14 @@ public class ListRulesetsEndpoint : Ep.NoReq.Res<RulesetListResponse>
         RulesetDto[] rulesets = await RulesetsService.GetRulesetsAsync(ct);
 
         await Send.OkAsync(new RulesetListResponse
+        {
+            Rulesets = rulesets.Select(r => new RulesetInfoResponse
             {
-                Rulesets = rulesets.Select(r => new RulesetInfoResponse
-                    {
-                        Id = r.Id,
-                        Name = r.Name
-                    })
+                Id = r.Id,
+                Name = r.Name
+            })
                     .ToArray()
-            },
+        },
             ct);
     }
 }

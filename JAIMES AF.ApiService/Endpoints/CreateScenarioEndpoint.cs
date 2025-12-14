@@ -24,7 +24,6 @@ public class CreateScenarioEndpoint : Endpoint<CreateScenarioRequest, ScenarioRe
                 req.Description,
                 req.Name,
                 req.SystemPrompt,
-                req.NewGameInstructions,
                 req.InitialGreeting,
                 ct);
 
@@ -35,7 +34,6 @@ public class CreateScenarioEndpoint : Endpoint<CreateScenarioRequest, ScenarioRe
                 Description = scenario.Description,
                 Name = scenario.Name,
                 SystemPrompt = scenario.SystemPrompt,
-                NewGameInstructions = scenario.NewGameInstructions,
                 InitialGreeting = scenario.InitialGreeting
             };
 

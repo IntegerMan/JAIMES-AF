@@ -172,12 +172,14 @@ public abstract class EndpointTestBase : IAsyncLifetime
     protected virtual async Task SeedTestDataAsync(JaimesDbContext context, CancellationToken cancellationToken)
     {
         // Add default test data
-        context.Rulesets.Add(new Ruleset {Id = "test-ruleset", Name = "Test Ruleset"});
-        context.Players.Add(new Player {Id = "test-player", RulesetId = "test-ruleset", Name = "Unspecified"});
+        context.Rulesets.Add(new Ruleset { Id = "test-ruleset", Name = "Test Ruleset" });
+        context.Players.Add(new Player { Id = "test-player", RulesetId = "test-ruleset", Name = "Unspecified" });
         context.Scenarios.Add(new Scenario
         {
-            Id = "test-scenario", RulesetId = "test-ruleset", Name = "Unspecified", SystemPrompt = "UPDATE ME",
-            NewGameInstructions = "UPDATE ME"
+            Id = "test-scenario",
+            RulesetId = "test-ruleset",
+            Name = "Unspecified",
+            SystemPrompt = "UPDATE ME"
         });
         await context.SaveChangesAsync(cancellationToken);
     }

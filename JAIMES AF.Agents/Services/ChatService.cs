@@ -70,7 +70,7 @@ public class ChatService(
 
                 // Log the full tool object for debugging
                 _logger.LogDebug("Full tool details: {ToolDetails}",
-                    JsonSerializer.Serialize(tool, new JsonSerializerOptions {WriteIndented = true}));
+                    JsonSerializer.Serialize(tool, new JsonSerializerOptions { WriteIndented = true }));
             }
 
             _logger.LogInformation(
@@ -122,7 +122,7 @@ public class ChatService(
                 Id = string.Empty, // Not available in request
                 Name = string.Empty,
                 SystemPrompt = request.SystemPrompt,
-                NewGameInstructions = request.NewGameInstructions,
+                InitialGreeting = request.InitialGreeting,
                 RulesetId = string.Empty
             },
             Ruleset = new RulesetDto
@@ -153,11 +153,14 @@ public class ChatService(
         memoryProvider.SetThread(thread);
         _logger.LogInformation("Created memory provider for initial message generation for game {GameId}", request.GameId);
 
-        // Build the initial prompt with new game instructions
+        // Build the initial prompt with initial greeting
         // Player character info is now available via GetPlayerInfo tool call, so it's not included in the prompt
         StringBuilder promptBuilder = new();
-        promptBuilder.AppendLine(request.NewGameInstructions);
-        promptBuilder.AppendLine();
+        if (!string.IsNullOrWhiteSpace(request.InitialGreeting))
+        {
+            promptBuilder.AppendLine(request.InitialGreeting);
+            promptBuilder.AppendLine();
+        }
         promptBuilder.AppendLine(
             "Please begin the adventure with an opening message that introduces the scenario and sets the scene for the player.");
 

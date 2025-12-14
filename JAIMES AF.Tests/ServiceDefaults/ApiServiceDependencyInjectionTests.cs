@@ -42,15 +42,15 @@ public class ApiServiceDependencyInjectionTests
 
         foreach (ServiceDescriptor descriptor in hostedServiceDescriptors)
         {
-            string serviceName = descriptor.ImplementationType?.Name 
-                ?? descriptor.ImplementationInstance?.GetType().Name 
+            string serviceName = descriptor.ImplementationType?.Name
+                ?? descriptor.ImplementationInstance?.GetType().Name
                 ?? (descriptor.ImplementationFactory != null ? $"factory-based (returns {GetFactoryReturnType(descriptor.ImplementationFactory)})" : "unknown");
-            
+
             // Get more details for debugging
             string details = $"ServiceType: {descriptor.ServiceType.Name}, " +
                            $"ImplementationType: {descriptor.ImplementationType?.Name ?? "null"}, " +
                            $"Lifetime: {descriptor.Lifetime}";
-            
+
             descriptor.Lifetime.ShouldBe(ServiceLifetime.Singleton,
                 $"IHostedService implementation '{serviceName}' must be registered as Singleton, but was {descriptor.Lifetime}. Details: {details}");
         }

@@ -6,7 +6,7 @@ public class ListGamesEndpointTests : EndpointTestBase
     public async Task ListGamesEndpoint_ReturnsGameInfo()
     {
         // Arrange - Create a game first
-        var createRequest = new {ScenarioId = "test-scenario", PlayerId = "test-player"};
+        var createRequest = new { ScenarioId = "test-scenario", PlayerId = "test-player" };
         CancellationToken ct = TestContext.Current.CancellationToken;
         await Client.PostAsJsonAsync("/games/", createRequest, ct);
 

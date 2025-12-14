@@ -25,7 +25,7 @@ public static class RabbitMqConnectionFactory
         // Parse connection string (format: amqp://username:password@host:port/vhost)
         Uri rabbitUri = new(connectionString);
         string host = rabbitUri.Host;
-        ushort port = rabbitUri.Port > 0 ? (ushort) rabbitUri.Port : (ushort) 5672;
+        ushort port = rabbitUri.Port > 0 ? (ushort)rabbitUri.Port : (ushort)5672;
         string? username = null;
         string? password = null;
 

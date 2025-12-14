@@ -41,7 +41,7 @@ public class GameConversationMemoryProviderTests : RepositoryTestBase
         IServiceProvider serviceProvider = CreateServiceProvider();
         ILogger<GameConversationMemoryProvider> logger = LoggerFactory.CreateLogger<GameConversationMemoryProvider>();
         GameConversationMemoryProvider provider = new(gameId, serviceProvider, logger);
-        
+
         // Note: This test is simplified since creating a real AgentThread requires a chat client
         // In a full implementation, you would use a mock framework to create a mock thread
         // For now, we just verify the method doesn't throw
@@ -57,10 +57,10 @@ public class GameConversationMemoryProviderTests : RepositoryTestBase
         IServiceProvider serviceProvider = CreateServiceProvider();
         ILogger<GameConversationMemoryProvider> logger = LoggerFactory.CreateLogger<GameConversationMemoryProvider>();
         GameConversationMemoryProviderFactory factory = new(serviceProvider, logger);
-        
+
         // Act
         GameConversationMemoryProvider provider = factory.CreateForGame(gameId);
-        
+
         // Assert
         provider.ShouldNotBeNull();
     }

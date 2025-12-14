@@ -99,6 +99,6 @@ internal static class AiModelConfiguration
     {
         // If a custom endpoint is provided, use it, otherwise fall back to api.openai.com
         Uri baseUri = new(string.IsNullOrWhiteSpace(endpoint) ? "https://api.openai.com/v1" : endpoint);
-        return new OpenAIClient(new ApiKeyCredential(apiKey), new OpenAIClientOptions {Endpoint = baseUri});
+        return new OpenAIClient(new ApiKeyCredential(apiKey), new OpenAIClientOptions { Endpoint = baseUri });
     }
 }

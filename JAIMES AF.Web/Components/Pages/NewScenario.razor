@@ -67,23 +67,13 @@
 				              Lines="5"
 				              HelperText="Instructions for the AI game master on how to run this scenario"/>
 
-				<MudTextField @bind-Value="_newGameInstructions"
-				              Label="New Game Instructions"
-				              Variant="Variant.Outlined"
-				              Class="mb-4"
-				              Disabled="_isSaving"
-				              Required="true"
-				              RequiredError="New Game Instructions is required"
-				              Lines="5"
-				              HelperText="The initial message shown to players when starting a new game with this scenario"/>
-
 				<MudTextField @bind-Value="_initialGreeting"
 				              Label="Initial Greeting"
 				              Variant="Variant.Outlined"
 				              Class="mb-4"
 				              Disabled="_isSaving"
-				              Lines="3"
-				              HelperText="The greeting message that appears immediately when a new game is created (optional, replaces slow AI-generated greeting)"/>
+				              Lines="5"
+				              HelperText="The initial message shown to players when starting a new game with this scenario (optional)"/>
 
 				<div class="d-flex gap-2">
 					<MudButton Variant="Variant.Filled"

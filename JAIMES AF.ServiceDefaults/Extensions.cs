@@ -198,7 +198,7 @@ public static class Extensions
                 args.Outcome.Result?.StatusCode == System.Net.HttpStatusCode.RequestTimeout ||
                 args.Outcome.Result?.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable ||
                 (args.Outcome.Result?.StatusCode >= System.Net.HttpStatusCode.InternalServerError &&
-                 args.Outcome.Result?.StatusCode <= (System.Net.HttpStatusCode) 599));
+                 args.Outcome.Result?.StatusCode <= (System.Net.HttpStatusCode)599));
         };
     }
 }

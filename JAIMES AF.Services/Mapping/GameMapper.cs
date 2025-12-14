@@ -19,8 +19,7 @@ public static partial class GameMapper
                 Id = game.ScenarioId,
                 RulesetId = game.RulesetId,
                 Name = game.ScenarioId,
-                SystemPrompt = string.Empty,
-                NewGameInstructions = string.Empty
+                SystemPrompt = string.Empty
             },
             Player = game.Player?.ToDto() ?? new PlayerDto
             {

@@ -54,7 +54,6 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.Property(s => s.RulesetId).IsRequired();
             entity.Property(s => s.Name).IsRequired();
             entity.Property(s => s.SystemPrompt).IsRequired().HasDefaultValue("UPDATE ME");
-            entity.Property(s => s.NewGameInstructions).IsRequired().HasDefaultValue("UPDATE ME");
 
             entity.HasOne(s => s.Ruleset)
                 .WithMany(r => r.Scenarios)
@@ -252,16 +251,16 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
         });
 
         // Seed data - use lowercase ids for new defaults
-        // IMPORTANT: When modifying any seed data values (e.g., SystemPrompt, NewGameInstructions, or any HasData() values),
+        // IMPORTANT: When modifying any seed data values (e.g., SystemPrompt, InitialGreeting, or any HasData() values),
         // you MUST create a new EF Core migration. See AGENTS.md for the migration command.
         modelBuilder.Entity<Ruleset>()
             .HasData(
-                new Ruleset {Id = "dnd5e", Name = "Dungeons and Dragons 5th Edition"}
+                new Ruleset { Id = "dnd5e", Name = "Dungeons and Dragons 5th Edition" }
             );
 
         modelBuilder.Entity<Player>()
             .HasData(
-                new Player {Id = "emcee", RulesetId = "dnd5e", Description = "Default player", Name = "Emcee"}
+                new Player { Id = "emcee", RulesetId = "dnd5e", Description = "Default player", Name = "Emcee" }
             );
 
         modelBuilder.Entity<Scenario>()
@@ -274,10 +273,19 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                     Name = "Island Test",
                     SystemPrompt =
                         "You are a Dungeon Master running a solo D&D 5th Edition adventure. You guide a single player through an engaging narrative on a mysterious tropical island. Create vivid descriptions, present interesting choices, and adapt the story based on the player's actions. Use D&D 5e rules for combat, skill checks, and character interactions. Keep the adventure challenging but fair, and always maintain an immersive atmosphere. When formatting your responses, you may use markdown for bold (**text**) and italic (*text*) formatting, but do not use markdown headers (lines starting with #). Write naturally in paragraph form without section headers.",
-                    NewGameInstructions =
-                        "You find yourself washed ashore on a pristine tropical beach. The warm sun beats down on your skin as you take in your surroundings. Crystal-clear turquoise water laps gently at the white sand beach. Behind you, a dense jungle stretches inland, filled with the sounds of exotic birds and rustling leaves. Your gear is scattered nearby, having survived the shipwreck that brought you here. You have no memory of how you arrived, but you know one thing: you must survive and discover the secrets of this mysterious island. What do you do first?",
                     InitialGreeting =
-                        "We're about to get started on a solo adventure, but before we do, tell me a bit about your character and the style of adventure you'd like to have"
+                        "You find yourself washed ashore on a pristine tropical beach. The warm sun beats down on your skin as you take in your surroundings. Crystal-clear turquoise water laps gently at the white sand beach. Behind you, a dense jungle stretches inland, filled with the sounds of exotic birds and rustling leaves. Your gear is scattered nearby, having survived the shipwreck that brought you here. You have no memory of how you arrived, but you know one thing: you must survive and discover the secrets of this mysterious island. What do you do first?"
+                },
+                new Scenario
+                {
+                    Id = "codemashKalahari",
+                    RulesetId = "dnd5e",
+                    Description = "A dark fantasy adventure set in a LEGO-themed cursed conference center",
+                    Name = "CodeMash Kalahari: The Cursed Conference",
+                    SystemPrompt =
+                        "You are an AI dungeon master running a solo game of Dungeons and Dragons 5th Edition for a single human player controlling one character. Your goal is to keep the player challenged, advance the story, and create interesting encounters using rules consistent with D&D 5th Edition. This adventure takes place in early January 2026 at the Kalahari Resort conference center in Sandusky, Ohio, which has been cursed by a dark lich. The entire area is surrounded by blizzards and fell magic that has transformed everything into a LEGO-themed fantasy realm. Take inspiration from LEGO sets, themes, and concepts when describing the world, its inhabitants, architecture, and creatures. Maintain a fantasy technology level appropriate for D&D, but treat the player as someone who has traveled from the modern world into this twisted fantasy realm. The player should feel like they've stepped from reality into a nightmarish LEGO world where the familiar has become fantastical and dangerous. When formatting your responses, you may use markdown for bold (**text**) and italic (*text*) formatting, but do not use markdown headers (lines starting with #). Write naturally in paragraph form without section headers.",
+                    InitialGreeting =
+                        "Hello, adventurer. Welcome to what was once the CodeMash conference at the Kalahari Resort—though you'll find it's become something far stranger and more dangerous. The blizzards outside rage endlessly, and the fell magic of a dark lich has twisted this place into a realm where everything is made of bricks, where the familiar has become fantastical, and where every corner could hold both wonder and peril. Before we begin our journey through this twisted and demented brick world, tell me about your character. Who are you? What brings you here? And what kind of adventure are you seeking—do you crave mystery, combat, exploration, or something else entirely? Once I know more about you, I'll set the scene and we'll begin our tale."
                 }
             );
     }

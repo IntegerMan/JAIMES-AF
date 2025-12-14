@@ -193,13 +193,13 @@ public class DocumentEmbeddingService(
         {
             // Convert metadata to Qdrant payload
             Dictionary<string, Value> payload = new();
-            foreach ((string key, string value) in metadata) payload[key] = new Value {StringValue = value};
+            foreach ((string key, string value) in metadata) payload[key] = new Value { StringValue = value };
 
             PointStruct point = new()
             {
                 Id = qdrantPointId,
                 Vectors = embedding,
-                Payload = {payload}
+                Payload = { payload }
             };
 
             await qdrantClient.UpsertAsync(
@@ -280,7 +280,7 @@ public class DocumentEmbeddingService(
         // Create collection with vector configuration
         VectorParams vectorParams = new()
         {
-            Size = (ulong) dimensions,
+            Size = (ulong)dimensions,
             Distance = Distance.Cosine
         };
 

@@ -145,7 +145,7 @@ public class RepositoryConfigurationTests
         await context.Database.EnsureCreatedAsync(ct);
 
         // Act
-        context.Rulesets.Add(new Ruleset {Id = "test", Name = "Test Ruleset"});
+        context.Rulesets.Add(new Ruleset { Id = "test", Name = "Test Ruleset" });
         await context.SaveChangesAsync(ct);
 
         // Assert
