@@ -368,3 +368,4 @@ FodyWeavers.xsd
 *.db-wal
 VectorStore/
 JAIMES AF.DocumentCracker/Output/*
+.formatting.lock

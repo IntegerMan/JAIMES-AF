@@ -1,0 +1,36 @@
+<Project>
+  <!--
+    Auto-formatting during build.
+    Set EnableAutoFormat=false to disable auto-formatting (e.g., in CI/CD pipelines where formatting is checked separately).
+  -->
+  <PropertyGroup>
+    <EnableAutoFormat Condition="'$(EnableAutoFormat)' == ''">true</EnableAutoFormat>
+    <_FormatLockFile>$(MSBuildThisFileDirectory).formatting.lock</_FormatLockFile>
+  </PropertyGroup>
+
+  <!--
+    Format code before compilation at the solution level.
+    This ensures all code is consistently formatted according to .editorconfig rules.
+    Uses a lock file to ensure formatting only runs once per build session.
+  -->
+  <Target Name="FormatCode" 
+          BeforeTargets="Build" 
+          Condition="'$(EnableAutoFormat)' != 'false' AND !Exists('$(_FormatLockFile)')">
+    <Touch Files="$(_FormatLockFile)" AlwaysCreate="true" />
+    <Message Text="Formatting C# code files in solution..." Importance="normal" />
+    <Exec Command="dotnet format --include-generated --verbosity minimal --no-restore" 
+          WorkingDirectory="$(MSBuildThisFileDirectory)"
+          ContinueOnError="true" 
+          IgnoreExitCode="true" />
+  </Target>
+
+  <!--
+    Clean up the lock file after build completes.
+    This ensures formatting can run again in the next build.
+  -->
+  <Target Name="CleanupFormatLock" 
+          AfterTargets="AfterBuild"
+          Condition="Exists('$(_FormatLockFile)')">
+    <Delete Files="$(_FormatLockFile)" ContinueOnError="true" />
+  </Target>
+</Project>
