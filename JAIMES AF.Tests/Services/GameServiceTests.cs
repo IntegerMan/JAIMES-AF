@@ -1,6 +1,9 @@
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using MattEland.Jaimes.ServiceLayer.Services;
+using MattEland.Jaimes.ServiceDefaults;
 
 namespace MattEland.Jaimes.Tests.Services;
 
@@ -39,9 +42,24 @@ public class GameServiceTests : IAsyncLifetime
         _contextFactory = new TestDbContextFactory(options);
         _mockChatService = new MockChatService();
         _mockChatHistoryService = new MockChatHistoryService();
-        MockChatClient mockChatClient = new();
+
+        // Use a real chat client with Ollama provider (no API keys required for testing)
+        // This allows the tests to create real agents that support the reflection method
+        ServiceCollection services = new();
+        IConfiguration configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                {"TextGenerationModel:Provider", "Ollama"}
+            })
+            .Build();
+        services.AddLogging();
+        services.AddHttpClient();
+        services.AddChatClient(configuration, "TextGenerationModel", null, null);
+        ServiceProvider serviceProvider = services.BuildServiceProvider();
+        IChatClient chatClient = serviceProvider.GetRequiredService<IChatClient>();
+
         ILoggerFactory loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-        _gameService = new GameService(_contextFactory, _mockChatHistoryService, mockChatClient, loggerFactory);
+        _gameService = new GameService(_contextFactory, _mockChatHistoryService, chatClient, loggerFactory);
     }
 
     public async ValueTask DisposeAsync()

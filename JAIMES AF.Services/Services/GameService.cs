@@ -97,11 +97,33 @@ public class GameService(
 
         if (notifyMethod != null)
         {
-            await (Task)notifyMethod.Invoke(null, [thread, new[] { greetingChatMessage }, cancellationToken])!;
+            try
+            {
+                await (Task)notifyMethod.Invoke(null, [thread, new[] { greetingChatMessage }, cancellationToken])!;
+                logger.LogDebug("Successfully added initial greeting message to thread via reflection");
+            }
+            catch (Exception ex)
+            {
+                // If the reflection call fails, we cannot safely proceed as the greeting won't be in the thread
+                // This would cause inconsistent state: greeting in Messages table but not in thread JSON
+                logger.LogError(ex, "Failed to add initial greeting message to thread via reflection. This would cause inconsistent state.");
+                throw new InvalidOperationException(
+                    "Failed to add initial greeting message to agent thread. The greeting message exists in the database but cannot be added to the thread. " +
+                    "This would cause inconsistent state where the AI won't have the greeting in its conversation context. " +
+                    "Please ensure the Microsoft.Agents.AI library version supports NotifyThreadOfNewMessagesAsync.",
+                    ex);
+            }
         }
         else
         {
-            logger.LogWarning("Could not find NotifyThreadOfNewMessagesAsync method via reflection");
+            // If the method doesn't exist, we cannot safely proceed as the greeting won't be in the thread
+            // This would cause inconsistent state: greeting in Messages table but not in thread JSON
+            logger.LogError("Could not find NotifyThreadOfNewMessagesAsync method via reflection. Cannot add greeting to thread.");
+            throw new InvalidOperationException(
+                "Cannot add initial greeting message to agent thread: NotifyThreadOfNewMessagesAsync method not found. " +
+                "The greeting message exists in the database but cannot be added to the thread. " +
+                "This would cause inconsistent state where the AI won't have the greeting in its conversation context. " +
+                "Please ensure the Microsoft.Agents.AI library version supports NotifyThreadOfNewMessagesAsync.");
         }
 
         // Serialize the thread with the greeting message and save it
