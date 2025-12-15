@@ -163,7 +163,12 @@ public class ApiServiceDependencyInjectionTests
 
                 // Document chunking
                 {"DocumentChunking:QdrantEndpoint", "http://localhost:6334"},
-                {"DocumentChunking:CollectionName", "test-collection"}
+                {"DocumentChunking:CollectionName", "test-collection"},
+
+                // ChatService (optional, for backward compatibility)
+                {"ChatService:Provider", "Ollama"},
+                {"ChatService:Endpoint", "http://localhost:11434"},
+                {"ChatService:Name", "gemma3"}
             })
             .Build();
     }

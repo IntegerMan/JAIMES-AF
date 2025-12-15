@@ -143,14 +143,80 @@ Advanced override (rarely needed):
 
 ## Chat Service Configuration
 
-- Default deployment name: `gpt-4o-mini` (update `ChatService:Deployment` to match your Azure OpenAI resource).
-- Secrets required:
-  ```bash
-  cd "JAIMES AF.ApiService"
-  dotnet user-secrets set "ChatService:Endpoint" "https://YourResource.openai.azure.com/"
-  dotnet user-secrets set "ChatService:ApiKey" "your-actual-api-key"
-  ```
-- Add optional settings such as temperature or system prompts via `appsettings.*.json` or user secrets.
+The `ChatService` configuration section supports multiple providers: Ollama, OpenAI, and Azure OpenAI. Configure via `appsettings.json` or user secrets.
+
+### Provider Selection
+
+Set the `Provider` property to one of:
+- `Ollama` - Local or remote Ollama server
+- `OpenAi` - OpenAI API
+- `AzureOpenAi` - Azure OpenAI service
+
+### Azure OpenAI Configuration
+
+**Required properties:**
+- `Provider`: `"AzureOpenAi"`
+- `Endpoint`: Azure OpenAI endpoint URL (e.g., `"https://YourResource.openai.azure.com/"`)
+- `Name`: Deployment name (e.g., `"gpt-4o-mini"`)
+
+**Authentication options:**
+
+1. **API Key authentication** (default):
+   ```bash
+   cd "JAIMES AF.ApiService"
+   dotnet user-secrets set "ChatService:Provider" "AzureOpenAi"
+   dotnet user-secrets set "ChatService:Endpoint" "https://YourResource.openai.azure.com/"
+   dotnet user-secrets set "ChatService:ApiKey" "your-actual-api-key"
+   dotnet user-secrets set "ChatService:Name" "gpt-4o-mini"
+   ```
+
+2. **Azure Managed Identity** (for Azure-hosted deployments):
+   - Set `ApiKey` to empty string or `"Identity"`
+   - The application will use Azure Managed Identity automatically
+   ```bash
+   dotnet user-secrets set "ChatService:Provider" "AzureOpenAi"
+   dotnet user-secrets set "ChatService:Endpoint" "https://YourResource.openai.azure.com/"
+   dotnet user-secrets set "ChatService:ApiKey" "Identity"
+   dotnet user-secrets set "ChatService:Name" "gpt-4o-mini"
+   ```
+
+### OpenAI Configuration
+
+**Required properties:**
+- `Provider`: `"OpenAi"`
+- `Name`: Model name (e.g., `"gpt-4o-mini"`)
+- `ApiKey`: OpenAI API key
+
+**Optional properties:**
+- `Endpoint`: Custom endpoint URL (defaults to `https://api.openai.com/v1` if not provided)
+
+```bash
+cd "JAIMES AF.ApiService"
+dotnet user-secrets set "ChatService:Provider" "OpenAi"
+dotnet user-secrets set "ChatService:ApiKey" "your-openai-api-key"
+dotnet user-secrets set "ChatService:Name" "gpt-4o-mini"
+# Optional: dotnet user-secrets set "ChatService:Endpoint" "https://custom-endpoint.com/v1"
+```
+
+### Ollama Configuration
+
+**Required properties:**
+- `Provider`: `"Ollama"`
+
+**Optional properties:**
+- `Endpoint`: Ollama server endpoint (defaults to Aspire connection string or `http://localhost:11434`)
+- `Name`: Model name (defaults to Aspire connection string or `"gemma3"`)
+- `ApiKey`: Typically not needed for local Ollama instances
+
+```bash
+# Minimal configuration (uses Aspire defaults)
+dotnet user-secrets set "ChatService:Provider" "Ollama"
+
+# Or specify explicitly
+dotnet user-secrets set "ChatService:Provider" "Ollama"
+dotnet user-secrets set "ChatService:Endpoint" "http://localhost:11434"
+dotnet user-secrets set "ChatService:Name" "gemma3"
+```
 
 ## Running Tests
 

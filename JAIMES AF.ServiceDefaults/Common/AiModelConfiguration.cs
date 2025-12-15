@@ -1,6 +1,7 @@
 using System.ClientModel;
 using Azure.AI.OpenAI;
 using Azure.Identity;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using OpenAI;
 
 namespace MattEland.Jaimes.ServiceDefaults.Common;
