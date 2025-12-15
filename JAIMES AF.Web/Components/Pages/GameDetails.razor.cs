@@ -119,45 +119,31 @@ public partial class GameDetails
                 return;
             }
 
-            // Build the message to send to the agent
-            // For the first message, include the initial greeting context so the agent knows what was displayed
+            // Build the messages to send to the agent
+            // For the first message, send TWO messages: the initial greeting as Assistant, then the player's response as User
             // For subsequent messages, just send the player's new message
-            string textToSend;
+            List<ChatMessage> messagesToSend = [];
+
             if (isFirstPlayerMessage)
             {
                 string? initialGreeting = GetInitialGreeting();
                 if (!string.IsNullOrWhiteSpace(initialGreeting))
                 {
-                    // Include the initial greeting as context for the AI
-                    textToSend = $"""
-                        [Game Master's opening message that was displayed to the player:]
-                        {initialGreeting}
-
-                        ---
-
-                        [Player's response:]
-                        {messageText}
-                        """;
-                    _logger?.LogInformation("First player message - including initial greeting context for agent");
-                }
-                else
-                {
-                    textToSend = messageText;
+                    // First, add the initial greeting as an Assistant message so the agent knows what was displayed
+                    messagesToSend.Add(new ChatMessage(ChatRole.Assistant, initialGreeting));
+                    _logger?.LogInformation("First player message - including initial greeting as Assistant message for agent context");
                 }
             }
-            else
-            {
-                textToSend = messageText;
-            }
+
+            // Add the player's message
+            messagesToSend.Add(new ChatMessage(ChatRole.User, messageText));
 
             // AGUI manages threads automatically via ConversationId
             // Don't pass a thread - AGUI will create/manage it via ConversationId to avoid MessageStore conflicts
-            // AGUI manages conversation history, so we only need to send the NEW message, not all messages
+            // AGUI manages conversation history, so we only need to send the NEW message(s), not all messages
             // Sending all messages causes exponential growth because the server thread already contains history
-            ChatMessage newUserMessage = new(ChatRole.User, textToSend);
-
-            _logger?.LogDebug("Sending message to AGUI (AGUI manages conversation history via ConversationId)");
-            AgentRunResponse resp = await _agent.RunAsync([newUserMessage], thread: null);
+            _logger?.LogDebug("Sending {Count} message(s) to AGUI (AGUI manages conversation history via ConversationId)", messagesToSend.Count);
+            AgentRunResponse resp = await _agent.RunAsync(messagesToSend, thread: null);
 
             // Only add valid messages with proper roles to the collection
             foreach (var message in resp.Messages ?? [])
