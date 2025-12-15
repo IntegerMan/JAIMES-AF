@@ -1,9 +1,7 @@
 namespace MattEland.Jaimes.ServiceLayer.Services;
 
 public class GameService(
-    IDbContextFactory<JaimesDbContext> contextFactory,
-    IChatService chatService,
-    IChatHistoryService chatHistoryService) : IGameService
+    IDbContextFactory<JaimesDbContext> contextFactory) : IGameService
 {
     public async Task<GameDto> CreateGameAsync(string scenarioId,
         string playerId,
@@ -38,40 +36,28 @@ public class GameService(
             CreatedAt = DateTime.UtcNow
         };
 
-        // Save the game first so it exists for the chat service
+        // Save the game first
         context.Games.Add(game);
         await context.SaveChangesAsync(cancellationToken);
 
-        // Generate the initial message using the chat service
-        GenerateInitialMessageRequest request = new()
-        {
-            GameId = game.Id,
-            SystemPrompt = scenario.SystemPrompt,
-            NewGameInstructions = scenario.NewGameInstructions,
-            PlayerName = player.Name,
-            PlayerDescription = player.Description
-        };
+        // Use InitialGreeting if available, otherwise fall back to a generic greeting
+        string greetingText = !string.IsNullOrWhiteSpace(scenario.InitialGreeting)
+            ? scenario.InitialGreeting
+            : "Welcome to the adventure!";
 
-        InitialMessageResponse initialResponse =
-            await chatService.GenerateInitialMessageAsync(request, cancellationToken);
-
-        // Create the initial message from the AI
+        // Create the initial message immediately (no AI call needed)
+        // This message is displayed to the user and will be included as context
+        // when the player sends their first message to the agent
         Message message = new()
         {
             GameId = game.Id,
-            Text = initialResponse.Message,
-            PlayerId = null, // AI-generated message, not from player
+            Text = greetingText,
+            PlayerId = null, // System message, not from player
             CreatedAt = DateTime.UtcNow
         };
 
         context.Messages.Add(message);
         await context.SaveChangesAsync(cancellationToken);
-
-        // Save the thread JSON with the message ID
-        await chatHistoryService.SaveThreadJsonAsync(game.Id,
-            initialResponse.ThreadJson,
-            message.Id,
-            cancellationToken);
 
         // Reload game with navigation properties for mapping
         Game gameWithNav = await context.Games

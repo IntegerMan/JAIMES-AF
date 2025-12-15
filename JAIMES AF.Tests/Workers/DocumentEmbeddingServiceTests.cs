@@ -35,7 +35,7 @@ public class DocumentEmbeddingServiceTests
         message.DocumentId = actualDocumentId.ToString();
         await context.SetupChunkAsync(message.ChunkId, actualDocumentId, message.ChunkText, message.ChunkIndex);
 
-        float[] expectedEmbedding = new float[] {0.1f, 0.2f, 0.3f};
+        float[] expectedEmbedding = new float[] { 0.1f, 0.2f, 0.3f };
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
 
         await context.Service.ProcessChunkAsync(message, CancellationToken.None);
@@ -66,7 +66,7 @@ public class DocumentEmbeddingServiceTests
         message.DocumentId = actualDocumentId.ToString();
         await context.SetupChunkAsync(message.ChunkId, actualDocumentId, message.ChunkText, message.ChunkIndex);
 
-        float[] expectedEmbedding = new float[] {0.1f, 0.2f};
+        float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
 
         await context.Service.ProcessChunkAsync(message, CancellationToken.None);
@@ -95,7 +95,7 @@ public class DocumentEmbeddingServiceTests
         message.DocumentId = actualDocumentId.ToString();
         await context.SetupChunkAsync(message.ChunkId, actualDocumentId, message.ChunkText, message.ChunkIndex);
 
-        float[] expectedEmbedding = new float[] {0.1f, 0.2f};
+        float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
 
         await context.Service.ProcessChunkAsync(message, CancellationToken.None);
@@ -126,7 +126,7 @@ public class DocumentEmbeddingServiceTests
         message.DocumentId = actualDocumentId.ToString();
         await context.SetupChunkAsync(message.ChunkId, actualDocumentId, message.ChunkText, message.ChunkIndex);
 
-        float[] expectedEmbedding = new float[] {0.1f, 0.2f};
+        float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
 
         await context.Service.ProcessChunkAsync(message, CancellationToken.None);
@@ -211,7 +211,7 @@ public class DocumentEmbeddingServiceTests
         int actualDocumentId = await context.SetupDocumentAsync(message.FileName);
         message.DocumentId = actualDocumentId.ToString();
 
-        float[] expectedEmbedding = new float[] {0.1f, 0.2f};
+        float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
 
         await context.Service.ProcessChunkAsync(message, CancellationToken.None);
@@ -243,7 +243,7 @@ public class DocumentEmbeddingServiceTests
         await context.SetupChunkAsync(message.ChunkId, nonExistentDocumentId, message.ChunkText, message.ChunkIndex);
         // Note: Not setting up document here to test missing document scenario
 
-        float[] expectedEmbedding = new float[] {0.1f, 0.2f};
+        float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
 
         await context.Service.ProcessChunkAsync(message, CancellationToken.None);
@@ -273,7 +273,7 @@ public class DocumentEmbeddingServiceTests
         message.DocumentId = actualDocumentId.ToString();
         await context.SetupChunkAsync(message.ChunkId, actualDocumentId, message.ChunkText, message.ChunkIndex);
 
-        float[] expectedEmbedding = new float[] {0.1f, 0.2f};
+        float[] expectedEmbedding = new float[] { 0.1f, 0.2f };
         await context.SetupOllamaEmbeddingResponse(expectedEmbedding);
 
         await context.Service.ProcessChunkAsync(message, CancellationToken.None);
@@ -335,7 +335,7 @@ public class DocumentEmbeddingServiceTests
                 .Setup(client => client.GetCollectionInfoAsync(
                     It.IsAny<string>(),
                     It.IsAny<CancellationToken>()))
-                .ReturnsAsync((CollectionInfo?) null);
+                .ReturnsAsync((CollectionInfo?)null);
 
             TestDbContextFactory dbContextFactory = new(dbOptions);
 

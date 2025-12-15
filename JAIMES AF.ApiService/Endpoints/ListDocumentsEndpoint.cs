@@ -61,9 +61,9 @@ public class ListDocumentsEndpoint(IDbContextFactory<JaimesDbContext> dbContextF
         Logger.LogInformation("Returning {Count} documents with status information", documents.Count);
 
         await Send.OkAsync(new DocumentStatusResponse
-            {
-                Documents = documents.ToArray()
-            },
+        {
+            Documents = documents.ToArray()
+        },
             ct);
     }
 }

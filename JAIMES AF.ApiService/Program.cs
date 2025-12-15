@@ -27,7 +27,7 @@ public class Program
 
         // Add AG-UI Backend
         builder.Services.AddAGUI();
-        
+
         // Add Swagger services
         builder.Services.AddEndpointsApiExplorer();
 
@@ -98,10 +98,10 @@ public class Program
         // Remove ALL registrations of RagSearchStorageService (in case it was registered as scoped by scanning)
         builder.Services.RemoveAll(typeof(RagSearchStorageService));
         builder.Services.AddSingleton<RagSearchStorageService>();
-        
+
         // Register as IHostedService - must be singleton for host to resolve from root provider
         builder.Services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<RagSearchStorageService>());
-        
+
         // Register the interface to resolve to the same instance
         builder.Services.RemoveAll(typeof(IRagSearchStorageService));
         builder.Services.AddSingleton<IRagSearchStorageService>(provider =>
@@ -110,10 +110,10 @@ public class Program
         // Register Agents services explicitly (not auto-registered)
         builder.Services.AddScoped<IRulesSearchService, RulesSearchService>();
         builder.Services.AddScoped<GameConversationMemoryProviderFactory>();
-        
+
         // Register HttpContextAccessor for GameAwareAgent
         builder.Services.AddHttpContextAccessor();
-        
+
         // Register GameAwareAgent as singleton for use with MapAGUI
         // It's safe to be singleton because it uses IHttpContextAccessor for per-request context
         builder.Services.AddSingleton<GameAwareAgent>();

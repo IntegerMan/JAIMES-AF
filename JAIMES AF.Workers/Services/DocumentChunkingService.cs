@@ -26,7 +26,7 @@ public class DocumentChunkingService(
 
         try
         {
-            logger.LogDebug("Processing document for chunking: {DocumentId} ({FileName})", 
+            logger.LogDebug("Processing document for chunking: {DocumentId} ({FileName})",
                 message.DocumentId, message.FileName);
 
             // Parse document ID as integer
@@ -41,17 +41,17 @@ public class DocumentChunkingService(
 
             if (string.IsNullOrWhiteSpace(documentContent))
             {
-                logger.LogWarning("Document {DocumentId} has empty content, skipping chunking", 
+                logger.LogWarning("Document {DocumentId} has empty content, skipping chunking",
                     message.DocumentId);
                 activity?.SetStatus(ActivityStatusCode.Error, "Empty document content");
                 return;
             }
 
             // Step 2: Chunk the document
-            logger.LogInformation("Starting chunking for document {DocumentId}. Content length: {ContentLength}", 
+            logger.LogInformation("Starting chunking for document {DocumentId}. Content length: {ContentLength}",
                 message.DocumentId, documentContent.Length);
             activity?.SetTag("chunking.content_length", documentContent.Length);
-            
+
             List<TextChunk> chunks;
             try
             {
@@ -59,18 +59,18 @@ public class DocumentChunkingService(
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to chunk document {DocumentId}. This may be due to embedding generation issues.", 
+                logger.LogError(ex, "Failed to chunk document {DocumentId}. This may be due to embedding generation issues.",
                     message.DocumentId);
                 activity?.SetStatus(ActivityStatusCode.Error, $"Chunking failed: {ex.Message}");
                 throw;
             }
-            
+
             activity?.SetTag("chunking.chunk_count", chunks.Count);
             logger.LogInformation("Document {DocumentId} split into {ChunkCount} chunks", message.DocumentId, chunks.Count);
 
             if (chunks.Count == 0)
             {
-                logger.LogError("Document {DocumentId} produced no chunks after chunking. This is a failure condition.", 
+                logger.LogError("Document {DocumentId} produced no chunks after chunking. This is a failure condition.",
                     message.DocumentId);
                 activity?.SetStatus(ActivityStatusCode.Error, "No chunks produced");
                 throw new InvalidOperationException($"Document {message.DocumentId} produced no chunks after chunking. This may indicate a problem with the chunking strategy or document content.");
@@ -93,7 +93,7 @@ public class DocumentChunkingService(
                     {
                         // Extract page number from chunk text (looks for "--- Page X ---" markers)
                         int? pageNumber = ExtractPageNumberFromChunkText(chunk.Text);
-                        
+
                         // Chunk has no embedding - queue it for embedding generation
                         ChunkReadyForEmbeddingMessage embeddingMessage = new()
                         {
@@ -116,7 +116,7 @@ public class DocumentChunkingService(
                         await messagePublisher.PublishAsync(embeddingMessage, cancellationToken);
                         queuedCount++;
 
-                        logger.LogDebug("Queued chunk {ChunkId} (index {ChunkIndex}) for embedding generation for document {DocumentId}", 
+                        logger.LogDebug("Queued chunk {ChunkId} (index {ChunkIndex}) for embedding generation for document {DocumentId}",
                             chunk.Id, chunk.Index, message.DocumentId);
                         continue;
                     }
@@ -141,12 +141,12 @@ public class DocumentChunkingService(
                     await qdrantStore.StoreEmbeddingAsync(chunk.Id, chunk.Embedding, metadata, cancellationToken);
                     storedCount++;
 
-                    logger.LogDebug("Stored chunk {ChunkId} (index {ChunkIndex}) in Qdrant for document {DocumentId}", 
+                    logger.LogDebug("Stored chunk {ChunkId} (index {ChunkIndex}) in Qdrant for document {DocumentId}",
                         chunk.Id, chunk.Index, message.DocumentId);
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "Failed to process chunk {ChunkId} (index {ChunkIndex}) for document {DocumentId}", 
+                    logger.LogError(ex, "Failed to process chunk {ChunkId} (index {ChunkIndex}) for document {DocumentId}",
                         chunk.Id, chunk.Index, message.DocumentId);
                     // Continue processing other chunks even if one fails
                 }
@@ -157,7 +157,7 @@ public class DocumentChunkingService(
 
             activity?.SetTag("chunking.stored_chunks", storedCount);
             activity?.SetTag("chunking.queued_chunks", queuedCount);
-            logger.LogInformation("Successfully processed document {DocumentId}: {StoredCount} chunks stored in Qdrant, {QueuedCount} chunks queued for embedding generation out of {ChunkCount} total chunks", 
+            logger.LogInformation("Successfully processed document {DocumentId}: {StoredCount} chunks stored in Qdrant, {QueuedCount} chunks queued for embedding generation out of {ChunkCount} total chunks",
                 message.DocumentId, storedCount, queuedCount, chunks.Count);
             activity?.SetStatus(ActivityStatusCode.Ok);
         }
@@ -177,7 +177,7 @@ public class DocumentChunkingService(
         try
         {
             await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-            
+
             CrackedDocument? document = await dbContext.CrackedDocuments
                 .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken);
 
@@ -186,7 +186,7 @@ public class DocumentChunkingService(
                 throw new InvalidOperationException($"Document with ID {documentId} not found in PostgreSQL");
             }
 
-            logger.LogDebug("Downloaded document content for {DocumentId} ({Length} characters)", 
+            logger.LogDebug("Downloaded document content for {DocumentId} ({Length} characters)",
                 documentId, document.Content.Length);
 
             activity?.SetStatus(ActivityStatusCode.Ok);
@@ -209,7 +209,7 @@ public class DocumentChunkingService(
         try
         {
             await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-            
+
             // Store chunks (using upsert logic to handle duplicates)
             foreach (TextChunk chunk in chunks)
             {
@@ -240,7 +240,7 @@ public class DocumentChunkingService(
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            logger.LogDebug("Stored {Count} chunks in PostgreSQL for document {DocumentId}", 
+            logger.LogDebug("Stored {Count} chunks in PostgreSQL for document {DocumentId}",
                 chunks.Count, documentId);
 
             activity?.SetStatus(ActivityStatusCode.Ok);
@@ -262,7 +262,7 @@ public class DocumentChunkingService(
         try
         {
             await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-            
+
             CrackedDocument? document = await dbContext.CrackedDocuments
                 .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken);
 
@@ -275,8 +275,8 @@ public class DocumentChunkingService(
                 document.TotalChunks = totalChunks;
                 document.ProcessedChunkCount = 0; // Reset processed count when re-chunking
                 await dbContext.SaveChangesAsync(cancellationToken);
-                
-                logger.LogDebug("Updated document {DocumentId} with TotalChunks={TotalChunks}", 
+
+                logger.LogDebug("Updated document {DocumentId} with TotalChunks={TotalChunks}",
                     documentId, totalChunks);
             }
 
@@ -298,7 +298,7 @@ public class DocumentChunkingService(
         try
         {
             await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-            
+
             CrackedDocument? document = await dbContext.CrackedDocuments
                 .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken);
 
@@ -310,7 +310,7 @@ public class DocumentChunkingService(
             {
                 document.IsProcessed = true;
                 await dbContext.SaveChangesAsync(cancellationToken);
-                
+
                 logger.LogDebug("Marked document {DocumentId} as processed", documentId);
             }
 
@@ -345,7 +345,7 @@ public class DocumentChunkingService(
 
         // Find the start of the page number (after "--- Page ")
         int numberStart = pageMarkerIndex + 9; // Length of "--- Page "
-        
+
         // Find the end of the page number (before " ---")
         int numberEnd = chunkText.IndexOf(" ---", numberStart, StringComparison.Ordinal);
         if (numberEnd < 0)
@@ -355,7 +355,7 @@ public class DocumentChunkingService(
 
         // Extract the page number substring
         string pageNumberStr = chunkText.Substring(numberStart, numberEnd - numberStart).Trim();
-        
+
         if (int.TryParse(pageNumberStr, out int pageNumber))
         {
             return pageNumber;

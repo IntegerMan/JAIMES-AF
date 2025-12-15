@@ -92,17 +92,17 @@ public class RulesSearchService : IRulesSearchService
 
                 // Convert RuleSearchResult to SearchRuleResult for storage
                 SearchRuleResult[] searchResults = results.Select(r => new SearchRuleResult
-                    {
-                        Text = string.IsNullOrWhiteSpace(r.Title)
+                {
+                    Text = string.IsNullOrWhiteSpace(r.Title)
                             ? r.Content
                             : $"{r.Title}\n\n{r.Content}",
-                        DocumentId = r.RuleId, // Use RuleId as DocumentId since we don't have document info
-                        DocumentName = string.IsNullOrWhiteSpace(r.Title) ? "Rule" : r.Title,
-                        RulesetId = r.RulesetId,
-                        EmbeddingId = r.RuleId, // Use RuleId as EmbeddingId since we don't have the actual embedding ID
-                        ChunkId = r.RuleId, // Use RuleId as ChunkId
-                        Relevancy = r.Score // Convert float to double
-                    })
+                    DocumentId = r.RuleId, // Use RuleId as DocumentId since we don't have document info
+                    DocumentName = string.IsNullOrWhiteSpace(r.Title) ? "Rule" : r.Title,
+                    RulesetId = r.RulesetId,
+                    EmbeddingId = r.RuleId, // Use RuleId as EmbeddingId since we don't have the actual embedding ID
+                    ChunkId = r.RuleId, // Use RuleId as ChunkId
+                    Relevancy = r.Score // Convert float to double
+                })
                     .ToArray();
 
                 _storageService.EnqueueSearchResults(
@@ -183,15 +183,15 @@ public class RulesSearchService : IRulesSearchService
 
             // Convert to response format - results are already sorted by relevancy descending
             SearchRuleResult[] searchResults = results.Select(r => new SearchRuleResult
-                {
-                    Text = r.Text,
-                    DocumentId = r.DocumentId,
-                    DocumentName = r.DocumentName,
-                    RulesetId = r.RulesetId,
-                    EmbeddingId = r.EmbeddingId,
-                    ChunkId = r.ChunkId,
-                    Relevancy = r.Relevancy
-                })
+            {
+                Text = r.Text,
+                DocumentId = r.DocumentId,
+                DocumentName = r.DocumentName,
+                RulesetId = r.RulesetId,
+                EmbeddingId = r.EmbeddingId,
+                ChunkId = r.ChunkId,
+                Relevancy = r.Relevancy
+            })
                 .ToArray();
 
             SearchRulesResponse response = new()

@@ -30,8 +30,8 @@ public static class AgentRunMiddleware
             ChatMessage? lastUserMessage = messages.LastOrDefault(m => m.Role == ChatRole.User);
             if (lastUserMessage != null && !string.IsNullOrEmpty(lastUserMessage.Text))
             {
-                string messagePreview = lastUserMessage.Text.Length > 500 
-                    ? lastUserMessage.Text.Substring(0, 500) + "..." 
+                string messagePreview = lastUserMessage.Text.Length > 500
+                    ? lastUserMessage.Text.Substring(0, 500) + "..."
                     : lastUserMessage.Text;
                 logger.LogInformation(
                     "📥 Incoming message text: {MessageText}",
@@ -134,7 +134,7 @@ public static class AgentRunMiddleware
                         // Truncate long responses for logging
                         if (responseSummary.Length > 500) responseSummary = responseSummary[..500] + "... (truncated)";
                         activity.SetTag("agent.response_summary", responseSummary);
-                        
+
                         // Log the response text prominently
                         logger.LogInformation(
                             "📤 Response message text: {ResponseText}",

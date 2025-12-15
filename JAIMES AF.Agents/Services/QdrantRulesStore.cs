@@ -69,7 +69,7 @@ public class QdrantRulesStore(
         {
             VectorParams vectorParams = new()
             {
-                Size = (ulong) EmbeddingDimensions,
+                Size = (ulong)EmbeddingDimensions,
                 Distance = Distance.Cosine
             };
 
@@ -108,10 +108,10 @@ public class QdrantRulesStore(
 
             // Convert metadata to Qdrant payload
             Dictionary<string, Value> payload = new();
-            foreach ((string key, string value) in metadata) payload[key] = new Value {StringValue = value};
+            foreach ((string key, string value) in metadata) payload[key] = new Value { StringValue = value };
 
             // Generate a point ID from the rule ID string
-            ulong qdrantPointId = (ulong) Math.Abs(ruleId.GetHashCode());
+            ulong qdrantPointId = (ulong)Math.Abs(ruleId.GetHashCode());
             if (qdrantPointId == 0)
                 // Avoid zero ID (Qdrant doesn't allow it)
                 qdrantPointId = 1;
@@ -120,12 +120,12 @@ public class QdrantRulesStore(
             {
                 Id = qdrantPointId,
                 Vectors = embedding,
-                Payload = {payload}
+                Payload = { payload }
             };
 
             await qdrantClient.UpsertAsync(
                 CollectionName,
-                new[] {point},
+                new[] { point },
                 cancellationToken: cancellationToken);
 
             logger.LogInformation("Stored rule {RuleId} in collection {CollectionName}",
@@ -183,7 +183,7 @@ public class QdrantRulesStore(
                 CollectionName,
                 queryEmbedding,
                 filter,
-                limit: (ulong) limit,
+                limit: (ulong)limit,
                 cancellationToken: cancellationToken);
 
             List<RuleSearchResult> results = new();
@@ -258,7 +258,7 @@ public class QdrantRulesStore(
                 DocumentEmbeddingsCollectionName,
                 queryEmbedding,
                 filter,
-                limit: (ulong) limit,
+                limit: (ulong)limit,
                 cancellationToken: cancellationToken);
 
             List<DocumentRuleSearchResult> results = new();

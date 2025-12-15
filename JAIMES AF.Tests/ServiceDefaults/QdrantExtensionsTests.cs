@@ -132,7 +132,7 @@ public class QdrantExtensionsTests
         {
             SectionPrefix = "TestSection",
             RequireConfiguration = true,
-            AdditionalApiKeyKeys = new[] {"Custom:ApiKey"}
+            AdditionalApiKeyKeys = new[] { "Custom:ApiKey" }
         };
 
         services.AddQdrantClient(configuration, options, out _);

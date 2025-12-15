@@ -17,13 +17,13 @@ public class DocumentChangeDetectorServiceTests
         using DocumentChangeDetectorTestContext context = new();
         context.DirectoryScannerMock
             .Setup(scanner => scanner.GetSubdirectories(root.Path))
-            .Returns(new[] {subDirectory});
+            .Returns(new[] { subDirectory });
         context.DirectoryScannerMock
             .Setup(scanner => scanner.GetFiles(root.Path, context.Options.SupportedExtensions))
             .Returns(Array.Empty<string>());
         context.DirectoryScannerMock
             .Setup(scanner => scanner.GetFiles(subDirectory, context.Options.SupportedExtensions))
-            .Returns(new[] {filePath});
+            .Returns(new[] { filePath });
         context.ChangeTrackerMock
             .Setup(tracker => tracker.ComputeFileHashAsync(filePath, It.IsAny<CancellationToken>()))
             .ReturnsAsync("hash-new");
@@ -59,13 +59,13 @@ public class DocumentChangeDetectorServiceTests
         using DocumentChangeDetectorTestContext context = new();
         context.DirectoryScannerMock
             .Setup(scanner => scanner.GetSubdirectories(root.Path))
-            .Returns(new[] {subDirectory});
+            .Returns(new[] { subDirectory });
         context.DirectoryScannerMock
             .Setup(scanner => scanner.GetFiles(root.Path, context.Options.SupportedExtensions))
             .Returns(Array.Empty<string>());
         context.DirectoryScannerMock
             .Setup(scanner => scanner.GetFiles(subDirectory, context.Options.SupportedExtensions))
-            .Returns(new[] {filePath});
+            .Returns(new[] { filePath });
 
         context.ChangeTrackerMock
             .Setup(tracker => tracker.ComputeFileHashAsync(filePath, It.IsAny<CancellationToken>()))
@@ -121,13 +121,13 @@ public class DocumentChangeDetectorServiceTests
         using DocumentChangeDetectorTestContext context = new();
         context.DirectoryScannerMock
             .Setup(scanner => scanner.GetSubdirectories(root.Path))
-            .Returns(new[] {subDirectory});
+            .Returns(new[] { subDirectory });
         context.DirectoryScannerMock
             .Setup(scanner => scanner.GetFiles(root.Path, context.Options.SupportedExtensions))
             .Returns(Array.Empty<string>());
         context.DirectoryScannerMock
             .Setup(scanner => scanner.GetFiles(subDirectory, context.Options.SupportedExtensions))
-            .Returns(new[] {filePath});
+            .Returns(new[] { filePath });
 
         context.ChangeTrackerMock
             .Setup(tracker => tracker.ComputeFileHashAsync(filePath, It.IsAny<CancellationToken>()))

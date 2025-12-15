@@ -7,7 +7,7 @@ public class Scenario
     public string? Description { get; set; }
     public required string Name { get; set; }
     public required string SystemPrompt { get; set; }
-    public required string NewGameInstructions { get; set; }
+    public string? InitialGreeting { get; set; }
     public Ruleset? Ruleset { get; set; }
     public ICollection<Game> Games { get; set; } = new List<Game>();
 }

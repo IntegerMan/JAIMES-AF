@@ -203,7 +203,7 @@ public class SearchRulesEndpointTests : EndpointTestBase
 
         _mockRulesSearchService
             .Setup(s => s.SearchRulesDetailedAsync(null, "combat", It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new SearchRulesResponse {Results = expectedResults});
+            .ReturnsAsync(new SearchRulesResponse { Results = expectedResults });
 
         SearchRulesRequest request = new()
         {
@@ -251,7 +251,7 @@ public class SearchRulesEndpointTests : EndpointTestBase
                 "spell casting",
                 It.IsAny<bool>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new SearchRulesResponse {Results = expectedResults});
+            .ReturnsAsync(new SearchRulesResponse { Results = expectedResults });
 
         SearchRulesRequest request = new()
         {
@@ -344,7 +344,7 @@ public class SearchRulesEndpointTests : EndpointTestBase
 
         _mockRulesSearchService
             .Setup(s => s.SearchRulesDetailedAsync(null, "test", It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new SearchRulesResponse {Results = expectedResults});
+            .ReturnsAsync(new SearchRulesResponse { Results = expectedResults });
 
         SearchRulesRequest request = new()
         {
@@ -379,7 +379,7 @@ public class SearchRulesEndpointTests : EndpointTestBase
                 "nonexistent",
                 It.IsAny<bool>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new SearchRulesResponse {Results = Array.Empty<SearchRuleResult>()});
+            .ReturnsAsync(new SearchRulesResponse { Results = Array.Empty<SearchRuleResult>() });
 
         SearchRulesRequest request = new()
         {

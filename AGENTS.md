@@ -60,7 +60,7 @@ Rules Search
 
 Database migrations and seed data
 
-- **CRITICAL**: When modifying seed data in `JaimesDbContext.cs` (e.g., updating `SystemPrompt`, `NewGameInstructions`, or any `HasData()` values), you MUST create a new EF Core migration.
+- **CRITICAL**: When modifying seed data in `JaimesDbContext.cs` (e.g., updating `SystemPrompt`, `InitialGreeting`, or any `HasData()` values), you MUST create a new EF Core migration.
 - Command to create migration: `dotnet ef migrations add <MigrationName> --project '.\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj' --startup-project '.\JAIMES AF.ApiService\JAIMES AF.ApiService.csproj'`
 - The warning about "potential data loss" when updating seed data is expected and safe to ignore - it's just EF Core being cautious about seed data updates.
 - Migrations are automatically applied at application startup via the database initialization code.

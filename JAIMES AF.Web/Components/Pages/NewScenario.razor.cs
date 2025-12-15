@@ -14,7 +14,7 @@ public partial class NewScenario
     private string _name = string.Empty;
     private string? _description;
     private string _systemPrompt = string.Empty;
-    private string _newGameInstructions = string.Empty;
+    private string? _initialGreeting;
     private bool _isLoading = true;
     private bool _isSaving = false;
     private string? _errorMessage;
@@ -50,8 +50,7 @@ public partial class NewScenario
         return !string.IsNullOrWhiteSpace(_scenarioId) &&
                !string.IsNullOrWhiteSpace(_selectedRulesetId) &&
                !string.IsNullOrWhiteSpace(_name) &&
-               !string.IsNullOrWhiteSpace(_systemPrompt) &&
-               !string.IsNullOrWhiteSpace(_newGameInstructions);
+               !string.IsNullOrWhiteSpace(_systemPrompt);
     }
 
     private async Task CreateScenarioAsync()
@@ -74,7 +73,7 @@ public partial class NewScenario
                 Description = _description,
                 Name = _name,
                 SystemPrompt = _systemPrompt,
-                NewGameInstructions = _newGameInstructions
+                InitialGreeting = _initialGreeting
             };
 
             HttpResponseMessage response = await Http.PostAsJsonAsync("/scenarios", request);

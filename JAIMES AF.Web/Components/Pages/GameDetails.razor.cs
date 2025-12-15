@@ -101,9 +101,12 @@ public partial class GameDetails
         _errorMessage = null;
         try
         {
+            // Check if this is the first player message (no User messages yet)
+            bool isFirstPlayerMessage = IsFirstPlayerMessage();
+
             // Indicate message is being sent
             _messages.Add(new(ChatRole.User, messageText));
-            _logger?.LogInformation("Sending message {Text} from User", messageText);
+            _logger?.LogInformation("Sending message {Text} from User (first message: {IsFirst})", messageText, isFirstPlayerMessage);
 
             // Scroll to bottom after adding user message and showing typing indicator
             _shouldScrollToBottom = true;
@@ -116,15 +119,32 @@ public partial class GameDetails
                 return;
             }
 
+            // Build the messages to send to the agent
+            // For the first message, send TWO messages: the initial greeting as Assistant, then the player's response as User
+            // For subsequent messages, just send the player's new message
+            List<ChatMessage> messagesToSend = [];
+
+            if (isFirstPlayerMessage)
+            {
+                string? initialGreeting = GetInitialGreeting();
+                if (!string.IsNullOrWhiteSpace(initialGreeting))
+                {
+                    // First, add the initial greeting as an Assistant message so the agent knows what was displayed
+                    messagesToSend.Add(new ChatMessage(ChatRole.Assistant, initialGreeting));
+                    _logger?.LogInformation("First player message - including initial greeting as Assistant message for agent context");
+                }
+            }
+
+            // Add the player's message
+            messagesToSend.Add(new ChatMessage(ChatRole.User, messageText));
+
             // AGUI manages threads automatically via ConversationId
             // Don't pass a thread - AGUI will create/manage it via ConversationId to avoid MessageStore conflicts
-            // AGUI manages conversation history, so we only need to send the NEW message, not all messages
+            // AGUI manages conversation history, so we only need to send the NEW message(s), not all messages
             // Sending all messages causes exponential growth because the server thread already contains history
-            ChatMessage newUserMessage = new(ChatRole.User, messageText);
-            
-            _logger?.LogDebug("Sending single new message to AGUI (AGUI manages conversation history via ConversationId)");
-            AgentRunResponse resp = await _agent.RunAsync([newUserMessage], thread: null);
-            
+            _logger?.LogDebug("Sending {Count} message(s) to AGUI (AGUI manages conversation history via ConversationId)", messagesToSend.Count);
+            AgentRunResponse resp = await _agent.RunAsync(messagesToSend, thread: null);
+
             // Only add valid messages with proper roles to the collection
             foreach (var message in resp.Messages ?? [])
             {
@@ -134,24 +154,24 @@ public partial class GameDetails
                     _logger?.LogWarning("Skipping null message in response");
                     continue;
                 }
-                
+
                 // Skip messages with empty text
                 if (string.IsNullOrWhiteSpace(message.Text))
                 {
                     _logger?.LogDebug("Skipping message with empty text, Role: {Role}", message.Role);
                     continue;
                 }
-                
+
                 // Normalize and validate the role
                 // AGUI may return roles as strings or with different casing
                 // Handle potential issues with Role enum
                 ChatRole messageRole = message.Role;
                 string roleString = messageRole.ToString()?.Trim() ?? string.Empty;
-                
+
                 // Handle case-insensitive role matching and empty/invalid roles
                 ChatRole normalizedRole;
-                if (string.IsNullOrEmpty(roleString) || 
-                    (!roleString.Equals("User", StringComparison.OrdinalIgnoreCase) && 
+                if (string.IsNullOrEmpty(roleString) ||
+                    (!roleString.Equals("User", StringComparison.OrdinalIgnoreCase) &&
                      !roleString.Equals("Assistant", StringComparison.OrdinalIgnoreCase)))
                 {
                     // Try to infer role from AuthorName or default to Assistant for non-User messages
@@ -169,17 +189,17 @@ public partial class GameDetails
                 else
                 {
                     // Normalize the role to proper enum value
-                    normalizedRole = roleString.Equals("User", StringComparison.OrdinalIgnoreCase) 
-                        ? ChatRole.User 
+                    normalizedRole = roleString.Equals("User", StringComparison.OrdinalIgnoreCase)
+                        ? ChatRole.User
                         : ChatRole.Assistant;
                 }
-                
+
                 // Create a new message with normalized role to ensure consistency
                 ChatMessage normalizedMessage = new(normalizedRole, message.Text)
                 {
                     AuthorName = message.AuthorName
                 };
-                
+
                 _logger?.LogInformation("Received message '{Text}' from {Role}", message.Text, normalizedRole);
                 _messages.Add(normalizedMessage);
             }
@@ -214,5 +234,32 @@ public partial class GameDetails
         {
             // Ignore exceptions - element might not be rendered yet or JS interop might not be available
         }
+    }
+
+    /// <summary>
+    /// Checks if the player has not yet sent any messages in this game.
+    /// This is used to determine whether to include the initial greeting context
+    /// when sending the first message to the agent.
+    /// </summary>
+    private bool IsFirstPlayerMessage()
+    {
+        // Check if there are any User (player) messages in the current message list
+        // Note: We check before adding the new message, so if there are no User messages,
+        // this is the first player message
+        return !_messages.Any(m => m.Role == ChatRole.User);
+    }
+
+    /// <summary>
+    /// Gets the initial greeting message from the Game Master.
+    /// This is the first Assistant message in the conversation, which was displayed
+    /// to the player when the game started.
+    /// </summary>
+    private string? GetInitialGreeting()
+    {
+        // The initial greeting is the first Assistant message (from Game Master)
+        return _messages
+            .Where(m => m.Role == ChatRole.Assistant)
+            .Select(m => m.Text)
+            .FirstOrDefault();
     }
 }

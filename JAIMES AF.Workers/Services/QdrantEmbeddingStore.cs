@@ -73,7 +73,8 @@ public class QdrantEmbeddingStore(
             if (ex.StatusCode == StatusCode.NotFound)
             {
                 logger.LogInformation("Collection {CollectionName} does not exist, creating it", options.CollectionName);
-            } else
+            }
+            else
             {
                 // Internal error might mean Qdrant isn't ready yet
                 logger.LogWarning("Qdrant returned internal error, might not be ready yet: {Message}", ex.Message);
