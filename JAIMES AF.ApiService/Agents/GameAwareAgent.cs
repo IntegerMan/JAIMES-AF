@@ -1,9 +1,6 @@
 using System.Text.Json;
 using MattEland.Jaimes.Agents.Helpers;
-using MattEland.Jaimes.Agents.Services;
 using MattEland.Jaimes.Tools;
-using Microsoft.Agents.AI;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.AI;
 
 namespace MattEland.Jaimes.ApiService.Agents;
@@ -12,21 +9,14 @@ namespace MattEland.Jaimes.ApiService.Agents;
 /// A wrapper agent that creates game-specific agents based on the request route.
 /// This allows us to use MapAGUI with game-specific agents.
 /// </summary>
-public class GameAwareAgent : AIAgent
+public class GameAwareAgent(
+    IServiceProvider serviceProvider,
+    IHttpContextAccessor httpContextAccessor,
+    ILogger<GameAwareAgent> logger) : AIAgent
 {
-    private readonly IServiceProvider _serviceProvider;
-    private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly ILogger<GameAwareAgent> _logger;
-
-    public GameAwareAgent(
-        IServiceProvider serviceProvider,
-        IHttpContextAccessor httpContextAccessor,
-        ILogger<GameAwareAgent> logger)
-    {
-        _serviceProvider = serviceProvider;
-        _httpContextAccessor = httpContextAccessor;
-        _logger = logger;
-    }
+    private readonly IServiceProvider _serviceProvider = serviceProvider;
+    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+    private readonly ILogger<GameAwareAgent> _logger = logger;
 
     public override async Task<AgentRunResponse> RunAsync(
         IEnumerable<ChatMessage> messages,
