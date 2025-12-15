@@ -35,7 +35,7 @@ public class DatabaseInitializationTests
         scenario.RulesetId.ShouldBe("dnd5e");
         scenario.SystemPrompt.ShouldContain("Dungeon Master");
         scenario.InitialGreeting.ShouldNotBeNull();
-        scenario.InitialGreeting.ShouldContain("tropical beach");
+        scenario.InitialGreeting.ShouldContain("white sand beach");
     }
 
     [Fact]
