@@ -1,9 +1,4 @@
-using Microsoft.Extensions.AI;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using MattEland.Jaimes.ServiceLayer.Services;
-using MattEland.Jaimes.ServiceDefaults;
 
 namespace MattEland.Jaimes.Tests.Services;
 
@@ -12,8 +7,6 @@ public class GameServiceTests : IAsyncLifetime
     private JaimesDbContext _context = null!;
     private IDbContextFactory<JaimesDbContext> _contextFactory = null!;
     private GameService _gameService = null!;
-    private MockChatService _mockChatService = null!;
-    private MockChatHistoryService _mockChatHistoryService = null!;
 
     public async ValueTask InitializeAsync()
     {
@@ -40,26 +33,9 @@ public class GameServiceTests : IAsyncLifetime
 
         // Create a factory that returns the same context (for testing)
         _contextFactory = new TestDbContextFactory(options);
-        _mockChatService = new MockChatService();
-        _mockChatHistoryService = new MockChatHistoryService();
 
-        // Use a real chat client with Ollama provider (no API keys required for testing)
-        // This allows the tests to create real agents that support the reflection method
-        ServiceCollection services = new();
-        IConfiguration configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                {"TextGenerationModel:Provider", "Ollama"}
-            })
-            .Build();
-        services.AddLogging();
-        services.AddHttpClient();
-        services.AddChatClient(configuration, "TextGenerationModel", null, null);
-        ServiceProvider serviceProvider = services.BuildServiceProvider();
-        IChatClient chatClient = serviceProvider.GetRequiredService<IChatClient>();
-
-        ILoggerFactory loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-        _gameService = new GameService(_contextFactory, _mockChatHistoryService, chatClient, loggerFactory);
+        // GameService now only needs the DbContextFactory - no chat client or thread dependencies
+        _gameService = new GameService(_contextFactory);
     }
 
     public async ValueTask DisposeAsync()
@@ -342,51 +318,5 @@ public class GameServiceTests : IAsyncLifetime
             await Task.CompletedTask;
             return new JaimesDbContext(options);
         }
-    }
-
-    // Mock implementations for testing
-    private class MockChatService : IChatService
-    {
-        public const string TestInitialMessage = "Welcome to the test adventure!";
-
-        public Task<InitialMessageResponse> GenerateInitialMessageAsync(GenerateInitialMessageRequest request,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(new InitialMessageResponse
-            {
-                Message = TestInitialMessage,
-                ThreadJson = "{\"thread\":\"test\"}"
-            });
-        }
-    }
-
-    private class MockChatHistoryService : IChatHistoryService
-    {
-        private readonly Dictionary<Guid, string> _threads = new();
-
-        public Task<string?> GetMostRecentThreadJsonAsync(Guid gameId, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(_threads.TryGetValue(gameId, out string? value) ? value : null);
-        }
-
-        public Task<Guid> SaveThreadJsonAsync(Guid gameId,
-            string threadJson,
-            int? messageId = null,
-            CancellationToken cancellationToken = default)
-        {
-            _threads[gameId] = threadJson;
-            return Task.FromResult(Guid.NewGuid());
-        }
-    }
-
-    private class MockChatClient : IChatClient
-    {
-        public IReadOnlyList<ChatMessage>? History => throw new NotSupportedException();
-        public void AddSystemMessage(string text) => throw new NotSupportedException();
-        public void ClearHistory() => throw new NotSupportedException();
-        public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public object? GetService(Type serviceType, object? serviceKey = null) => null;
-        public void Dispose() { }
     }
 }

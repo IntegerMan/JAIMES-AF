@@ -190,7 +190,7 @@ public class GameAwareAgent(
         using IServiceScope scope = _serviceProvider.CreateScope();
         IGameService gameService = scope.ServiceProvider.GetRequiredService<IGameService>();
         IChatClient chatClient = scope.ServiceProvider.GetRequiredService<IChatClient>();
-        ILogger logger = scope.ServiceProvider.GetRequiredService<ILogger<GameAwareAgent>>();
+        ILogger scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<GameAwareAgent>>();
 
         // Get the game
         _logger.LogDebug("Fetching game data for game {GameId}", gameId);
@@ -217,9 +217,9 @@ public class GameAwareAgent(
         // Create tools once and reuse for both agent creation and logging
         IList<AITool>? tools = CreateTools(gameDto);
 
-        IChatClient instrumentedChatClient = chatClient.WrapWithInstrumentation(logger);
+        IChatClient instrumentedChatClient = chatClient.WrapWithInstrumentation(scopedLogger);
         AIAgent gameAgent = instrumentedChatClient.CreateJaimesAgent(
-            logger,
+            scopedLogger,
             $"JaimesAgent-{gameId}",
             systemPrompt,
             tools);

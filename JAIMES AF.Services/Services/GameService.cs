@@ -1,17 +1,7 @@
-using System.Reflection;
-using System.Text.Json;
-using Microsoft.Agents.AI;
-using Microsoft.Extensions.AI;
-using Microsoft.Extensions.Logging;
-using MattEland.Jaimes.Agents.Helpers;
-
 namespace MattEland.Jaimes.ServiceLayer.Services;
 
 public class GameService(
-    IDbContextFactory<JaimesDbContext> contextFactory,
-    IChatHistoryService chatHistoryService,
-    IChatClient chatClient,
-    ILoggerFactory loggerFactory) : IGameService
+    IDbContextFactory<JaimesDbContext> contextFactory) : IGameService
 {
     public async Task<GameDto> CreateGameAsync(string scenarioId,
         string playerId,
@@ -46,7 +36,7 @@ public class GameService(
             CreatedAt = DateTime.UtcNow
         };
 
-        // Save the game first so it exists for the chat service
+        // Save the game first
         context.Games.Add(game);
         await context.SaveChangesAsync(cancellationToken);
 
@@ -56,6 +46,8 @@ public class GameService(
             : "Welcome to the adventure!";
 
         // Create the initial message immediately (no AI call needed)
+        // This message is displayed to the user and will be included as context
+        // when the player sends their first message to the agent
         Message message = new()
         {
             GameId = game.Id,
@@ -66,69 +58,6 @@ public class GameService(
 
         context.Messages.Add(message);
         await context.SaveChangesAsync(cancellationToken);
-
-        // Create an agent thread for the game
-        // The greeting message is already saved in the database, so we don't need to call the LLM
-        // The thread will be populated with conversation history as messages are sent
-        ILogger logger = loggerFactory.CreateLogger<GameService>();
-        IChatClient instrumentedChatClient = chatClient.WrapWithInstrumentation(logger);
-
-        // Create a minimal agent just for thread creation
-        // We use the scenario's system prompt to ensure consistency
-        string systemPrompt = !string.IsNullOrWhiteSpace(scenario.SystemPrompt)
-            ? scenario.SystemPrompt
-            : "You are a helpful game master assistant.";
-
-        AIAgent agent = instrumentedChatClient.CreateJaimesAgent(logger, $"JaimesAgent-{game.Id}", systemPrompt, null);
-        AgentThread thread = agent.GetNewThread();
-
-        // Add the initial greeting message to the thread
-        // This ensures the AI is aware of the greeting when the game is loaded
-        ChatMessage greetingChatMessage = new(ChatRole.Assistant, greetingText);
-
-        // Use reflection to call the protected static NotifyThreadOfNewMessagesAsync method
-        // This notifies the thread about the initial greeting message
-        MethodInfo? notifyMethod = typeof(AIAgent).GetMethod(
-            "NotifyThreadOfNewMessagesAsync",
-            BindingFlags.NonPublic | BindingFlags.Static,
-            null,
-            [typeof(AgentThread), typeof(IEnumerable<ChatMessage>), typeof(CancellationToken)],
-            null);
-
-        if (notifyMethod != null)
-        {
-            try
-            {
-                await (Task)notifyMethod.Invoke(null, [thread, new[] { greetingChatMessage }, cancellationToken])!;
-                logger.LogDebug("Successfully added initial greeting message to thread via reflection");
-            }
-            catch (Exception ex)
-            {
-                // If the reflection call fails, we cannot safely proceed as the greeting won't be in the thread
-                // This would cause inconsistent state: greeting in Messages table but not in thread JSON
-                logger.LogError(ex, "Failed to add initial greeting message to thread via reflection. This would cause inconsistent state.");
-                throw new InvalidOperationException(
-                    "Failed to add initial greeting message to agent thread. The greeting message exists in the database but cannot be added to the thread. " +
-                    "This would cause inconsistent state where the AI won't have the greeting in its conversation context. " +
-                    "Please ensure the Microsoft.Agents.AI library version supports NotifyThreadOfNewMessagesAsync.",
-                    ex);
-            }
-        }
-        else
-        {
-            // If the method doesn't exist, we cannot safely proceed as the greeting won't be in the thread
-            // This would cause inconsistent state: greeting in Messages table but not in thread JSON
-            logger.LogError("Could not find NotifyThreadOfNewMessagesAsync method via reflection. Cannot add greeting to thread.");
-            throw new InvalidOperationException(
-                "Cannot add initial greeting message to agent thread: NotifyThreadOfNewMessagesAsync method not found. " +
-                "The greeting message exists in the database but cannot be added to the thread. " +
-                "This would cause inconsistent state where the AI won't have the greeting in its conversation context. " +
-                "Please ensure the Microsoft.Agents.AI library version supports NotifyThreadOfNewMessagesAsync.");
-        }
-
-        // Serialize the thread with the greeting message and save it
-        string threadJson = thread.Serialize(JsonSerializerOptions.Web).GetRawText();
-        await chatHistoryService.SaveThreadJsonAsync(game.Id, threadJson, message.Id, cancellationToken);
 
         // Reload game with navigation properties for mapping
         Game gameWithNav = await context.Games

@@ -101,9 +101,12 @@ public partial class GameDetails
         _errorMessage = null;
         try
         {
+            // Check if this is the first player message (no User messages yet)
+            bool isFirstPlayerMessage = IsFirstPlayerMessage();
+
             // Indicate message is being sent
             _messages.Add(new(ChatRole.User, messageText));
-            _logger?.LogInformation("Sending message {Text} from User", messageText);
+            _logger?.LogInformation("Sending message {Text} from User (first message: {IsFirst})", messageText, isFirstPlayerMessage);
 
             // Scroll to bottom after adding user message and showing typing indicator
             _shouldScrollToBottom = true;
@@ -116,13 +119,44 @@ public partial class GameDetails
                 return;
             }
 
+            // Build the message to send to the agent
+            // For the first message, include the initial greeting context so the agent knows what was displayed
+            // For subsequent messages, just send the player's new message
+            string textToSend;
+            if (isFirstPlayerMessage)
+            {
+                string? initialGreeting = GetInitialGreeting();
+                if (!string.IsNullOrWhiteSpace(initialGreeting))
+                {
+                    // Include the initial greeting as context for the AI
+                    textToSend = $"""
+                        [Game Master's opening message that was displayed to the player:]
+                        {initialGreeting}
+
+                        ---
+
+                        [Player's response:]
+                        {messageText}
+                        """;
+                    _logger?.LogInformation("First player message - including initial greeting context for agent");
+                }
+                else
+                {
+                    textToSend = messageText;
+                }
+            }
+            else
+            {
+                textToSend = messageText;
+            }
+
             // AGUI manages threads automatically via ConversationId
             // Don't pass a thread - AGUI will create/manage it via ConversationId to avoid MessageStore conflicts
             // AGUI manages conversation history, so we only need to send the NEW message, not all messages
             // Sending all messages causes exponential growth because the server thread already contains history
-            ChatMessage newUserMessage = new(ChatRole.User, messageText);
+            ChatMessage newUserMessage = new(ChatRole.User, textToSend);
 
-            _logger?.LogDebug("Sending single new message to AGUI (AGUI manages conversation history via ConversationId)");
+            _logger?.LogDebug("Sending message to AGUI (AGUI manages conversation history via ConversationId)");
             AgentRunResponse resp = await _agent.RunAsync([newUserMessage], thread: null);
 
             // Only add valid messages with proper roles to the collection
@@ -214,5 +248,32 @@ public partial class GameDetails
         {
             // Ignore exceptions - element might not be rendered yet or JS interop might not be available
         }
+    }
+
+    /// <summary>
+    /// Checks if the player has not yet sent any messages in this game.
+    /// This is used to determine whether to include the initial greeting context
+    /// when sending the first message to the agent.
+    /// </summary>
+    private bool IsFirstPlayerMessage()
+    {
+        // Check if there are any User (player) messages in the current message list
+        // Note: We check before adding the new message, so if there are no User messages,
+        // this is the first player message
+        return !_messages.Any(m => m.Role == ChatRole.User);
+    }
+
+    /// <summary>
+    /// Gets the initial greeting message from the Game Master.
+    /// This is the first Assistant message in the conversation, which was displayed
+    /// to the player when the game started.
+    /// </summary>
+    private string? GetInitialGreeting()
+    {
+        // The initial greeting is the first Assistant message (from Game Master)
+        return _messages
+            .Where(m => m.Role == ChatRole.Assistant)
+            .Select(m => m.Text)
+            .FirstOrDefault();
     }
 }
