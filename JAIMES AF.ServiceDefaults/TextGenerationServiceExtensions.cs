@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Azure.AI.OpenAI;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceDefaults.Common;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;

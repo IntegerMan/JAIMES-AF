@@ -1,4 +1,4 @@
-namespace MattEland.Jaimes.ServiceDefaults;
+namespace MattEland.Jaimes.ServiceDefinitions.Services;
 
 /// <summary>
 /// Provider types for embedding and text generation model services.

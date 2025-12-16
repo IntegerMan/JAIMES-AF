@@ -163,7 +163,12 @@ public class ApiServiceDependencyInjectionTests
 
                 // Document chunking
                 {"DocumentChunking:QdrantEndpoint", "http://localhost:6334"},
-                {"DocumentChunking:CollectionName", "test-collection"}
+                {"DocumentChunking:CollectionName", "test-collection"},
+
+                // ChatService (optional, for backward compatibility)
+                {"ChatService:Provider", "Ollama"},
+                {"ChatService:Endpoint", "http://localhost:11434"},
+                {"ChatService:Name", "gemma3"}
             })
             .Build();
     }
@@ -193,15 +198,10 @@ public class ApiServiceDependencyInjectionTests
         services.AddSingleton(new ActivitySource("Jaimes.ApiService"));
 
         // Configure text generation service
-        string? ollamaConnectionString = configuration.GetConnectionString("chatModel");
-        (string? ollamaEndpoint, string? ollamaModel) =
-            EmbeddingServiceExtensions.ParseOllamaConnectionString(ollamaConnectionString);
-
+        // Configuration is provided via configuration sections (simulating AppHost environment variables)
         services.AddChatClient(
             configuration,
-            "TextGenerationModel",
-            ollamaEndpoint,
-            ollamaModel);
+            "TextGenerationModel");
 
         // Keep JaimesChatOptions for backward compatibility
         JaimesChatOptions? chatOptions = configuration.GetSection("ChatService").Get<JaimesChatOptions>();
@@ -230,15 +230,10 @@ public class ApiServiceDependencyInjectionTests
             provider.GetRequiredService<RagSearchStorageService>());
 
         // Register embedding generator for rules
-        string? embedConnectionString = configuration.GetConnectionString("embedModel");
-        (string? embedOllamaEndpoint, string? embedOllamaModel) =
-            EmbeddingServiceExtensions.ParseOllamaConnectionString(embedConnectionString);
-
+        // Configuration is provided via configuration sections (simulating AppHost environment variables)
         services.AddEmbeddingGenerator(
             configuration,
-            "EmbeddingModel",
-            embedOllamaEndpoint,
-            embedOllamaModel);
+            "EmbeddingModel");
 
         // Add Jaimes repositories and services
         services.AddJaimesRepositories(configuration);

@@ -57,25 +57,11 @@ builder.Services.AddQdrantClient(builder.Configuration,
     out QdrantExtensions.QdrantConnectionConfig qdrantConfig);
 
 // Configure embedding service
-// Get Ollama endpoint and model from Aspire connection strings (for default Ollama provider)
-string? explicitEndpoint = builder.Configuration["DocumentEmbedding:OllamaEndpoint"]?.TrimEnd('/');
-// Get the embedding model connection string provided by Aspire via .WithReference(embedModel)
-string? ollamaConnectionString = builder.Configuration.GetConnectionString("embedModel");
-
-// Parse connection string and use explicit endpoint if configured
-(string? ollamaEndpoint, string? ollamaModel) =
-    EmbeddingServiceExtensions.ParseOllamaConnectionString(ollamaConnectionString);
-ollamaEndpoint = explicitEndpoint ?? ollamaEndpoint;
-
-// Register embedding generator (supports Ollama, Azure OpenAI, and OpenAI)
-// Uses Microsoft.Extensions.AI's IEmbeddingGenerator<string, Embedding<float>> interface
-// Note: Aspire provides model name via connection string or environment variables
-
+// Configuration is provided by AppHost via environment variables
+// Legacy DocumentEmbedding:OllamaEndpoint is supported for backward compatibility
 builder.Services.AddEmbeddingGenerator(
     builder.Configuration,
-    "EmbeddingModel",
-    ollamaEndpoint,
-    ollamaModel);
+    "EmbeddingModel");
 
 // Register QdrantClient wrapper
 builder.Services.AddSingleton<IJaimesEmbeddingClient>(sp =>

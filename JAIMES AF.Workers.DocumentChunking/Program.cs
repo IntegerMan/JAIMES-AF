@@ -61,37 +61,12 @@ string? logOllamaModel = null;
 
 if (useSemanticChunker)
 {
-    // Configure embedding service inputs
-    string? explicitEndpoint = builder.Configuration["DocumentChunking:OllamaEndpoint"]?.TrimEnd('/');
-    string? ollamaConnectionString = builder.Configuration.GetConnectionString("embedModel");
-    (string? ollamaEndpoint, string? ollamaModel) =
-        EmbeddingServiceExtensions.ParseOllamaConnectionString(ollamaConnectionString);
-    ollamaEndpoint = explicitEndpoint ?? ollamaEndpoint;
-
-    if (string.IsNullOrWhiteSpace(ollamaEndpoint))
-        throw new InvalidOperationException(
-            "Ollama endpoint is not configured. " +
-            "Expected 'DocumentChunking:OllamaEndpoint' from AppHost or connection string from model reference.");
-
-    // Use model from connection string, otherwise fall back to config
-    ollamaModel ??= options.OllamaModel;
-
-    // Register OllamaApiClient from OllamaSharp as the embedding generator
-    // OllamaApiClient implements IEmbeddingGenerator<string, Embedding<float>>
-    builder.Services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(sp =>
-    {
-        Uri ollamaUri = new(ollamaEndpoint);
-
-        // Use model name from config or Aspire if available
-        if (string.IsNullOrWhiteSpace(ollamaModel))
-            throw new InvalidOperationException(
-                "Ollama model name is not configured. " +
-                "Ensure the model is specified in EmbeddingModel:Name, DocumentChunking:OllamaModel, " +
-                "or provided via Aspire connection string.");
-
-        OllamaApiClient client = new(ollamaUri, ollamaModel);
-        return client;
-    });
+    // Configure embedding service
+    // Configuration is provided by AppHost via environment variables
+    // Legacy DocumentChunking:OllamaEndpoint is supported for backward compatibility
+    builder.Services.AddEmbeddingGenerator(
+        builder.Configuration,
+        "EmbeddingModel");
 
     // Register SemanticChunker and chunking strategy
     builder.Services.AddSingleton<SemanticChunker>(sp =>
@@ -116,9 +91,9 @@ if (useSemanticChunker)
     });
     builder.Services.AddSingleton<ITextChunkingStrategy, SemanticChunkerStrategy>();
 
-    // Capture for logging
-    logOllamaEndpoint = ollamaEndpoint;
-    logOllamaModel = ollamaModel;
+    // Capture for logging (read from configuration)
+    logOllamaEndpoint = builder.Configuration["EmbeddingModel:Endpoint"];
+    logOllamaModel = builder.Configuration["EmbeddingModel:Name"];
 }
 else if (useSemanticSlicer)
 {

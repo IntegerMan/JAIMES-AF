@@ -1,8 +1,43 @@
-// Use polling instead of inotify to avoid watcher limits
+using Microsoft.Extensions.Configuration;
+using System.Reflection;
+using MattEland.Jaimes.AppHost;
+using static MattEland.Jaimes.AppHost.AppHostHelpers;
 
+// Use polling instead of inotify to avoid watcher limits
 Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER", "1", EnvironmentVariableTarget.Process);
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
+
+// Read AI provider configuration from appsettings.json
+IConfiguration configuration = new ConfigurationBuilder()
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
+    .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: false)
+    .AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true)
+    .AddEnvironmentVariables()
+    .Build();
+
+// Parse TextGenerationModel configuration
+var textGenConfig = new ModelProviderConfig(
+    Provider: configuration["TextGenerationModel:Provider"] ?? "Ollama",
+    Endpoint: configuration["TextGenerationModel:Endpoint"],
+    Name: configuration["TextGenerationModel:Name"] ?? "gemma3",
+    Auth: configuration["TextGenerationModel:Auth"] ?? "None",
+    Key: configuration["TextGenerationModel:Key"]);
+bool isTextGenOllama = string.Equals(textGenConfig.Provider, "Ollama", StringComparison.OrdinalIgnoreCase);
+
+// Parse EmbeddingModel configuration
+var embedConfig = new ModelProviderConfig(
+    Provider: configuration["EmbeddingModel:Provider"] ?? "Ollama",
+    Endpoint: configuration["EmbeddingModel:Endpoint"],
+    Name: configuration["EmbeddingModel:Name"] ?? "nomic-embed-text:v1.5",
+    Auth: configuration["EmbeddingModel:Auth"] ?? "None",
+    Key: configuration["EmbeddingModel:Key"]);
+bool isEmbedOllama = string.Equals(embedConfig.Provider, "Ollama", StringComparison.OrdinalIgnoreCase);
+
+// Determine if we need Ollama container (only if Provider is Ollama and Endpoint is empty)
+bool needsOllamaContainer = (isTextGenOllama && string.IsNullOrWhiteSpace(textGenConfig.Endpoint)) ||
+                             (isEmbedOllama && string.IsNullOrWhiteSpace(embedConfig.Endpoint));
 
 // We'll be consolidating our various datastores into PostgreSQL with JSONB and pgvector in the future,
 IResourceBuilder<PostgresServerResource> postgres = builder.AddPostgres("postgres")
@@ -25,16 +60,28 @@ IResourceBuilder<PostgresServerResource> pgAdmin = postgres.WithPgAdmin(admin =>
 IResourceBuilder<PostgresDatabaseResource> postgresdb = postgres.AddDatabase("postgres-db", "postgres")
     .WithCreationScript("CREATE EXTENSION IF NOT EXISTS vector;");
 
+// Conditionally create Ollama container only if needed
+IResourceBuilder<OllamaResource>? ollama = null;
+IResourceBuilder<OllamaModelResource>? chatModel = null;
+IResourceBuilder<OllamaModelResource>? embedModel = null;
 
-// Add Ollama with nomic-embed-text model for embeddings
-IResourceBuilder<OllamaResource> ollama = builder.AddOllama("ollama-models")
-    .WithIconName("BrainSparkle")
-    .WithDataVolume();
+if (needsOllamaContainer)
+{
+    ollama = builder.AddOllama("ollama-models")
+        .WithIconName("BrainSparkle")
+        .WithDataVolume();
 
-// Note: versioning is important for embedding models to ensure consistency and reproducibility.
-IResourceBuilder<OllamaModelResource> embedModel =
-    ollama.AddModel("embedModel", "nomic-embed-text:v1.5").WithIconName("CodeTextEdit");
-IResourceBuilder<OllamaModelResource> chatModel = ollama.AddModel("chatModel", "gemma3").WithIconName("CommentText");
+    // Conditionally create models only if Ollama container exists
+    if (isTextGenOllama && string.IsNullOrWhiteSpace(textGenConfig.Endpoint))
+    {
+        chatModel = ollama.AddModel("chatModel", textGenConfig.Name!).WithIconName("CommentText");
+    }
+
+    if (isEmbedOllama && string.IsNullOrWhiteSpace(embedConfig.Endpoint))
+    {
+        embedModel = ollama.AddModel("embedModel", embedConfig.Name!).WithIconName("CodeTextEdit");
+    }
+}
 // Add Qdrant for vector embeddings
 // Note: Qdrant API key is an Aspire parameter (not user secret) because it's required by the Aspire-managed Qdrant resource.
 // Application-level secrets (e.g., Azure OpenAI API keys) are managed via user secrets.
@@ -84,17 +131,24 @@ IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIME
         {
             Url = "/health",
             DisplayText = "👨‍⚕️ Health"
-        })
-    .WithReference(chatModel)
-    .WithReference(embedModel)
+        });
+
+apiService = apiService
+    .WithOllamaReferences(ollama, chatModel, embedModel, needsChatModel: true, needsEmbedModel: true)
     .WithReference(postgresdb)
     .WithReference(qdrant)
     .WithReference(lavinmq)
     .WaitFor(qdrant)
-    .WaitFor(ollama)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
-    .WaitFor(lavinmq);
+    .WaitFor(lavinmq)
+    .WithEnvironment(context =>
+    {
+        void SetVar(string key, object value) => context.EnvironmentVariables[key] = value;
+
+        SetModelProviderEnvironmentVariables(SetVar, "TextGenerationModel", textGenConfig, chatModel, ollama, isTextGenOllama);
+        SetModelProviderEnvironmentVariables(SetVar, "EmbeddingModel", embedConfig, embedModel, ollama, isEmbedOllama);
+    });
 
 builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")
     .WithIconName("GameChat")
@@ -150,62 +204,42 @@ builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChangeDetector>("document-
     .WaitFor(postgres)
     .WaitFor(postgresdb);
 
-builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChunking>("document-chunking-worker")
+IResourceBuilder<ProjectResource> documentChunkingWorker = builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChunking>("document-chunking-worker")
     .WithIconName("DocumentSplit")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
     .WithReference(qdrant)
-    .WithReference(embedModel)
+    .WithOllamaReferences(ollama, chatModel, embedModel, needsChatModel: false, needsEmbedModel: true)
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
     .WaitFor(qdrant)
-    .WaitFor(ollama)
     .WithEnvironment(context =>
     {
-        // Set Ollama endpoint for embedding generation (needed for SemanticChunker)
-        EndpointReference ollamaEndpoint = ollama.GetEndpoint("http");
-        context.EnvironmentVariables["DocumentChunking__OllamaEndpoint"] =
-            $"http://{ollamaEndpoint.Host}:{ollamaEndpoint.Port}";
+        void SetVar(string key, object value) => context.EnvironmentVariables[key] = value;
 
-        // Set Qdrant endpoint
-        EndpointReference qdrantGrpcEndpoint = qdrant.GetEndpoint("grpc");
-        context.EnvironmentVariables["DocumentChunking__QdrantHost"] = qdrantGrpcEndpoint.Host;
-        context.EnvironmentVariables["DocumentChunking__QdrantPort"] = qdrantGrpcEndpoint.Port;
-        context.EnvironmentVariables["ConnectionStrings__qdrant-embeddings"] =
-            qdrant.Resource.ConnectionStringExpression;
-
-        // Set Qdrant API key (use the parameter value)
-        context.EnvironmentVariables["qdrant-api-key"] = qdrantApiKey.Resource.ValueExpression;
+        SetQdrantEnvironmentVariables(SetVar, "DocumentChunking", qdrant, qdrantApiKey);
+        SetModelProviderEnvironmentVariables(SetVar, "EmbeddingModel", embedConfig, embedModel, ollama, isEmbedOllama);
+        SetLegacyOllamaEndpoint(SetVar, "DocumentChunking__OllamaEndpoint", ollama, embedModel, embedConfig.Endpoint);
     });
 
-builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbedding>("document-embedding-worker")
+IResourceBuilder<ProjectResource> documentEmbeddingWorker = builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbedding>("document-embedding-worker")
     .WithIconName("DocumentEmbed")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
     .WithReference(qdrant)
-    .WithReference(embedModel)
+    .WithOllamaReferences(ollama, chatModel, embedModel, needsChatModel: false, needsEmbedModel: true)
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
     .WaitFor(qdrant)
-    .WaitFor(ollama)
     .WithEnvironment(context =>
     {
-        // Set Ollama endpoint for embedding generation
-        EndpointReference ollamaEndpoint = ollama.GetEndpoint("http");
-        context.EnvironmentVariables["DocumentEmbedding__OllamaEndpoint"] =
-            $"http://{ollamaEndpoint.Host}:{ollamaEndpoint.Port}";
+        void SetVar(string key, object value) => context.EnvironmentVariables[key] = value;
 
-        // Set Qdrant endpoint
-        EndpointReference qdrantGrpcEndpoint = qdrant.GetEndpoint("grpc");
-        context.EnvironmentVariables["DocumentEmbedding__QdrantHost"] = qdrantGrpcEndpoint.Host;
-        context.EnvironmentVariables["DocumentEmbedding__QdrantPort"] = qdrantGrpcEndpoint.Port;
-        context.EnvironmentVariables["ConnectionStrings__qdrant-embeddings"] =
-            qdrant.Resource.ConnectionStringExpression;
-
-        // Set Qdrant API key (use the parameter value)
-        context.EnvironmentVariables["qdrant-api-key"] = qdrantApiKey.Resource.ValueExpression;
+        SetQdrantEnvironmentVariables(SetVar, "DocumentEmbedding", qdrant, qdrantApiKey);
+        SetModelProviderEnvironmentVariables(SetVar, "EmbeddingModel", embedConfig, embedModel, ollama, isEmbedOllama);
+        SetLegacyOllamaEndpoint(SetVar, "DocumentEmbedding__OllamaEndpoint", ollama, embedModel, embedConfig.Endpoint);
     });
 
 DistributedApplication app = builder.Build();
