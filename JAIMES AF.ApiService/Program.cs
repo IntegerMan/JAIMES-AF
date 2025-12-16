@@ -37,17 +37,10 @@ public class Program
         builder.Services.AddSingleton(new ActivitySource(builder.Environment.ApplicationName ?? "Jaimes.ApiService"));
 
         // Configure text generation service (supports Ollama, Azure OpenAI, and OpenAI)
-        // Get Ollama endpoint and model from Aspire connection strings (for default Ollama provider)
-        string? ollamaConnectionString = builder.Configuration.GetConnectionString("chatModel");
-        (string? ollamaEndpoint, string? ollamaModel) =
-            EmbeddingServiceExtensions.ParseOllamaConnectionString(ollamaConnectionString);
-
-        // Register text generation service
+        // Configuration is provided by AppHost via environment variables
         builder.Services.AddChatClient(
             builder.Configuration,
-            "TextGenerationModel",
-            ollamaEndpoint,
-            ollamaModel);
+            "TextGenerationModel");
 
         // Keep JaimesChatOptions for backward compatibility (may be used by other services)
         JaimesChatOptions? chatOptions = builder.Configuration.GetSection("ChatService").Get<JaimesChatOptions>();
@@ -68,17 +61,10 @@ public class Program
         builder.Services.AddSingleton<IQdrantRulesStore, QdrantRulesStore>();
 
         // Register embedding generator for rules (supports Ollama, Azure OpenAI, and OpenAI)
-        // Get Ollama endpoint and model from Aspire connection strings (for default Ollama provider)
-        // Get the embedding model connection string provided by Aspire via .WithReference(embedModel)
-        string? embedConnectionString = builder.Configuration.GetConnectionString("embedModel");
-        (string? embedOllamaEndpoint, string? embedOllamaModel) =
-            EmbeddingServiceExtensions.ParseOllamaConnectionString(embedConnectionString);
-
+        // Configuration is provided by AppHost via environment variables
         builder.Services.AddEmbeddingGenerator(
             builder.Configuration,
-            "EmbeddingModel",
-            embedOllamaEndpoint,
-            embedOllamaModel);
+            "EmbeddingModel");
 
         // Add Jaimes repositories and services
         builder.Services.AddJaimesRepositories(builder.Configuration);
