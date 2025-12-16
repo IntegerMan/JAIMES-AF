@@ -171,12 +171,12 @@ Set the `Provider` property to one of:
    ```
 
 2. **Azure Managed Identity** (for Azure-hosted deployments):
-   - Set `ApiKey` to empty string or `"Identity"`
-   - The application will use Azure Managed Identity automatically
+   - You may omit the `ApiKey` setting, or set it to an empty string (`""`). The value is ignored when using Managed Identity.
+   - The application will use Azure Managed Identity automatically.
    ```bash
    dotnet user-secrets set "ChatService:Provider" "AzureOpenAi"
    dotnet user-secrets set "ChatService:Endpoint" "https://YourResource.openai.azure.com/"
-   dotnet user-secrets set "ChatService:ApiKey" "Identity"
+   dotnet user-secrets set "ChatService:ApiKey" ""
    dotnet user-secrets set "ChatService:Name" "gpt-4o-mini"
    ```
 
