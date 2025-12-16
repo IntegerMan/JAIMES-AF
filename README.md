@@ -209,6 +209,7 @@ dotnet user-secrets set "ChatService:Name" "gpt-4o-mini"
 - `ApiKey`: Typically not needed for local Ollama instances
 
 ```bash
+cd "JAIMES AF.ApiService"
 # Minimal configuration (uses Aspire defaults)
 dotnet user-secrets set "ChatService:Provider" "Ollama"
 
