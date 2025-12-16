@@ -1,8 +1,9 @@
-// Use polling instead of inotify to avoid watcher limits
-
 using Microsoft.Extensions.Configuration;
 using System.Reflection;
+using MattEland.Jaimes.AppHost;
+using static MattEland.Jaimes.AppHost.AppHostHelpers;
 
+// Use polling instead of inotify to avoid watcher limits
 Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER", "1", EnvironmentVariableTarget.Process);
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
@@ -17,28 +18,26 @@ IConfiguration configuration = new ConfigurationBuilder()
     .Build();
 
 // Parse TextGenerationModel configuration
-string? textGenProviderStr = configuration["TextGenerationModel:Provider"] ?? "Ollama";
-string? textGenEndpoint = configuration["TextGenerationModel:Endpoint"];
-string? textGenName = configuration["TextGenerationModel:Name"] ?? "gemma3";
-string? textGenAuthStr = configuration["TextGenerationModel:Auth"] ?? "None";
-string? textGenKey = configuration["TextGenerationModel:Key"];
-bool isTextGenOllama = string.Equals(textGenProviderStr, "Ollama", StringComparison.OrdinalIgnoreCase);
+var textGenConfig = new ModelProviderConfig(
+    Provider: configuration["TextGenerationModel:Provider"] ?? "Ollama",
+    Endpoint: configuration["TextGenerationModel:Endpoint"],
+    Name: configuration["TextGenerationModel:Name"] ?? "gemma3",
+    Auth: configuration["TextGenerationModel:Auth"] ?? "None",
+    Key: configuration["TextGenerationModel:Key"]);
+bool isTextGenOllama = string.Equals(textGenConfig.Provider, "Ollama", StringComparison.OrdinalIgnoreCase);
 
 // Parse EmbeddingModel configuration
-string? embedProviderStr = configuration["EmbeddingModel:Provider"] ?? "Ollama";
-string? embedEndpoint = configuration["EmbeddingModel:Endpoint"];
-string? embedName = configuration["EmbeddingModel:Name"] ?? "nomic-embed-text:v1.5";
-string? embedAuthStr = configuration["EmbeddingModel:Auth"] ?? "None";
-string? embedKey = configuration["EmbeddingModel:Key"];
-bool isEmbedOllama = string.Equals(embedProviderStr, "Ollama", StringComparison.OrdinalIgnoreCase);
+var embedConfig = new ModelProviderConfig(
+    Provider: configuration["EmbeddingModel:Provider"] ?? "Ollama",
+    Endpoint: configuration["EmbeddingModel:Endpoint"],
+    Name: configuration["EmbeddingModel:Name"] ?? "nomic-embed-text:v1.5",
+    Auth: configuration["EmbeddingModel:Auth"] ?? "None",
+    Key: configuration["EmbeddingModel:Key"]);
+bool isEmbedOllama = string.Equals(embedConfig.Provider, "Ollama", StringComparison.OrdinalIgnoreCase);
 
-// Determine if we need Ollama container (only if Provider is Ollama and Endpoint is empty/external)
-bool needsOllamaContainer = (isTextGenOllama && string.IsNullOrWhiteSpace(textGenEndpoint)) ||
-                             (isEmbedOllama && string.IsNullOrWhiteSpace(embedEndpoint));
-
-// Determine if using external Ollama (Endpoint is set and not empty)
-bool usingExternalOllamaForTextGen = isTextGenOllama && !string.IsNullOrWhiteSpace(textGenEndpoint);
-bool usingExternalOllamaForEmbed = isEmbedOllama && !string.IsNullOrWhiteSpace(embedEndpoint);
+// Determine if we need Ollama container (only if Provider is Ollama and Endpoint is empty)
+bool needsOllamaContainer = (isTextGenOllama && string.IsNullOrWhiteSpace(textGenConfig.Endpoint)) ||
+                             (isEmbedOllama && string.IsNullOrWhiteSpace(embedConfig.Endpoint));
 
 // We'll be consolidating our various datastores into PostgreSQL with JSONB and pgvector in the future,
 IResourceBuilder<PostgresServerResource> postgres = builder.AddPostgres("postgres")
@@ -73,14 +72,14 @@ if (needsOllamaContainer)
         .WithDataVolume();
 
     // Conditionally create models only if Ollama container exists
-    if (isTextGenOllama && string.IsNullOrWhiteSpace(textGenEndpoint))
+    if (isTextGenOllama && string.IsNullOrWhiteSpace(textGenConfig.Endpoint))
     {
-        chatModel = ollama.AddModel("chatModel", textGenName).WithIconName("CommentText");
+        chatModel = ollama.AddModel("chatModel", textGenConfig.Name!).WithIconName("CommentText");
     }
 
-    if (isEmbedOllama && string.IsNullOrWhiteSpace(embedEndpoint))
+    if (isEmbedOllama && string.IsNullOrWhiteSpace(embedConfig.Endpoint))
     {
-        embedModel = ollama.AddModel("embedModel", embedName).WithIconName("CodeTextEdit");
+        embedModel = ollama.AddModel("embedModel", embedConfig.Name!).WithIconName("CodeTextEdit");
     }
 }
 // Add Qdrant for vector embeddings
@@ -134,86 +133,22 @@ IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIME
             DisplayText = "👨‍⚕️ Health"
         });
 
-// Conditionally add Ollama model references
-if (chatModel != null)
-{
-    apiService = apiService.WithReference(chatModel);
-}
-
-if (embedModel != null)
-{
-    apiService = apiService.WithReference(embedModel);
-}
-
 apiService = apiService
+    .WithOllamaReferences(ollama, chatModel, embedModel, needsChatModel: true, needsEmbedModel: true)
     .WithReference(postgresdb)
     .WithReference(qdrant)
     .WithReference(lavinmq)
     .WaitFor(qdrant)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
-    .WaitFor(lavinmq);
+    .WaitFor(lavinmq)
+    .WithEnvironment(context =>
+    {
+        void SetVar(string key, object value) => context.EnvironmentVariables[key] = value;
 
-// Conditionally wait for Ollama if container exists
-if (ollama != null)
-{
-    apiService = apiService.WaitFor(ollama);
-}
-
-// Pass provider configuration via environment variables
-apiService = apiService.WithEnvironment(context =>
-{
-    // TextGenerationModel configuration
-    context.EnvironmentVariables["TextGenerationModel__Provider"] = textGenProviderStr;
-    if (!string.IsNullOrWhiteSpace(textGenEndpoint))
-    {
-        context.EnvironmentVariables["TextGenerationModel__Endpoint"] = textGenEndpoint;
-    }
-    if (!string.IsNullOrWhiteSpace(textGenName))
-    {
-        context.EnvironmentVariables["TextGenerationModel__Name"] = textGenName;
-    }
-    context.EnvironmentVariables["TextGenerationModel__Auth"] = textGenAuthStr;
-    if (!string.IsNullOrWhiteSpace(textGenKey))
-    {
-        context.EnvironmentVariables["TextGenerationModel__Key"] = textGenKey;
-    }
-
-    // EmbeddingModel configuration
-    context.EnvironmentVariables["EmbeddingModel__Provider"] = embedProviderStr;
-    if (!string.IsNullOrWhiteSpace(embedEndpoint))
-    {
-        context.EnvironmentVariables["EmbeddingModel__Endpoint"] = embedEndpoint;
-    }
-    if (!string.IsNullOrWhiteSpace(embedName))
-    {
-        context.EnvironmentVariables["EmbeddingModel__Name"] = embedName;
-    }
-    context.EnvironmentVariables["EmbeddingModel__Auth"] = embedAuthStr;
-    if (!string.IsNullOrWhiteSpace(embedKey))
-    {
-        context.EnvironmentVariables["EmbeddingModel__Key"] = embedKey;
-    }
-
-    // If using Aspire-managed Ollama, set connection strings
-    if (chatModel != null)
-    {
-        context.EnvironmentVariables["ConnectionStrings__chatModel"] = chatModel.Resource.ConnectionStringExpression;
-    }
-    else if (usingExternalOllamaForTextGen && !string.IsNullOrWhiteSpace(textGenEndpoint))
-    {
-        // For external Ollama, we don't set connection string, just endpoint
-    }
-
-    if (embedModel != null)
-    {
-        context.EnvironmentVariables["ConnectionStrings__embedModel"] = embedModel.Resource.ConnectionStringExpression;
-    }
-    else if (usingExternalOllamaForEmbed && !string.IsNullOrWhiteSpace(embedEndpoint))
-    {
-        // For external Ollama, we don't set connection string, just endpoint
-    }
-});
+        SetModelProviderEnvironmentVariables(SetVar, "TextGenerationModel", textGenConfig, chatModel, ollama, isTextGenOllama);
+        SetModelProviderEnvironmentVariables(SetVar, "EmbeddingModel", embedConfig, embedModel, ollama, isEmbedOllama);
+    });
 
 builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")
     .WithIconName("GameChat")
@@ -273,145 +208,39 @@ IResourceBuilder<ProjectResource> documentChunkingWorker = builder.AddProject<Pr
     .WithIconName("DocumentSplit")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
-    .WithReference(qdrant);
-
-// Conditionally add Ollama model reference
-if (embedModel != null)
-{
-    documentChunkingWorker = documentChunkingWorker.WithReference(embedModel);
-}
-
-documentChunkingWorker = documentChunkingWorker
+    .WithReference(qdrant)
+    .WithOllamaReferences(ollama, chatModel, embedModel, needsChatModel: false, needsEmbedModel: true)
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
-    .WaitFor(qdrant);
+    .WaitFor(qdrant)
+    .WithEnvironment(context =>
+    {
+        void SetVar(string key, object value) => context.EnvironmentVariables[key] = value;
 
-// Conditionally wait for Ollama if container exists
-if (ollama != null)
-{
-    documentChunkingWorker = documentChunkingWorker.WaitFor(ollama);
-}
-
-documentChunkingWorker = documentChunkingWorker.WithEnvironment(context =>
-{
-    // Set Qdrant endpoint
-    EndpointReference qdrantGrpcEndpoint = qdrant.GetEndpoint("grpc");
-    context.EnvironmentVariables["DocumentChunking__QdrantHost"] = qdrantGrpcEndpoint.Host;
-    context.EnvironmentVariables["DocumentChunking__QdrantPort"] = qdrantGrpcEndpoint.Port;
-    context.EnvironmentVariables["ConnectionStrings__qdrant-embeddings"] =
-        qdrant.Resource.ConnectionStringExpression;
-
-    // Set Qdrant API key (use the parameter value)
-    context.EnvironmentVariables["qdrant-api-key"] = qdrantApiKey.Resource.ValueExpression;
-
-    // EmbeddingModel configuration
-    context.EnvironmentVariables["EmbeddingModel__Provider"] = embedProviderStr;
-    if (!string.IsNullOrWhiteSpace(embedEndpoint))
-    {
-        context.EnvironmentVariables["EmbeddingModel__Endpoint"] = embedEndpoint;
-    }
-    else if (ollama != null && embedModel != null)
-    {
-        // Set Ollama endpoint for embedding generation (needed for SemanticChunker) when using Aspire-managed Ollama
-        EndpointReference ollamaEndpoint = ollama.GetEndpoint("http");
-        context.EnvironmentVariables["EmbeddingModel__Endpoint"] =
-            $"http://{ollamaEndpoint.Host}:{ollamaEndpoint.Port}";
-    }
-    if (!string.IsNullOrWhiteSpace(embedName))
-    {
-        context.EnvironmentVariables["EmbeddingModel__Name"] = embedName;
-    }
-    context.EnvironmentVariables["EmbeddingModel__Auth"] = embedAuthStr;
-    if (!string.IsNullOrWhiteSpace(embedKey))
-    {
-        context.EnvironmentVariables["EmbeddingModel__Key"] = embedKey;
-    }
-
-    // Legacy DocumentChunking__OllamaEndpoint for backward compatibility
-    if (ollama != null && embedModel != null)
-    {
-        EndpointReference ollamaEndpoint = ollama.GetEndpoint("http");
-        context.EnvironmentVariables["DocumentChunking__OllamaEndpoint"] =
-            $"http://{ollamaEndpoint.Host}:{ollamaEndpoint.Port}";
-    }
-    else if (!string.IsNullOrWhiteSpace(embedEndpoint))
-    {
-        context.EnvironmentVariables["DocumentChunking__OllamaEndpoint"] = embedEndpoint;
-    }
-});
+        SetQdrantEnvironmentVariables(SetVar, "DocumentChunking", qdrant, qdrantApiKey);
+        SetModelProviderEnvironmentVariables(SetVar, "EmbeddingModel", embedConfig, embedModel, ollama, isEmbedOllama);
+        SetLegacyOllamaEndpoint(SetVar, "DocumentChunking__OllamaEndpoint", ollama, embedModel, embedConfig.Endpoint);
+    });
 
 IResourceBuilder<ProjectResource> documentEmbeddingWorker = builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbedding>("document-embedding-worker")
     .WithIconName("DocumentEmbed")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
-    .WithReference(qdrant);
-
-// Conditionally add Ollama model reference
-if (embedModel != null)
-{
-    documentEmbeddingWorker = documentEmbeddingWorker.WithReference(embedModel);
-}
-
-documentEmbeddingWorker = documentEmbeddingWorker
+    .WithReference(qdrant)
+    .WithOllamaReferences(ollama, chatModel, embedModel, needsChatModel: false, needsEmbedModel: true)
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
-    .WaitFor(qdrant);
+    .WaitFor(qdrant)
+    .WithEnvironment(context =>
+    {
+        void SetVar(string key, object value) => context.EnvironmentVariables[key] = value;
 
-// Conditionally wait for Ollama if container exists
-if (ollama != null)
-{
-    documentEmbeddingWorker = documentEmbeddingWorker.WaitFor(ollama);
-}
-
-documentEmbeddingWorker = documentEmbeddingWorker.WithEnvironment(context =>
-{
-    // Set Qdrant endpoint
-    EndpointReference qdrantGrpcEndpoint = qdrant.GetEndpoint("grpc");
-    context.EnvironmentVariables["DocumentEmbedding__QdrantHost"] = qdrantGrpcEndpoint.Host;
-    context.EnvironmentVariables["DocumentEmbedding__QdrantPort"] = qdrantGrpcEndpoint.Port;
-    context.EnvironmentVariables["ConnectionStrings__qdrant-embeddings"] =
-        qdrant.Resource.ConnectionStringExpression;
-
-    // Set Qdrant API key (use the parameter value)
-    context.EnvironmentVariables["qdrant-api-key"] = qdrantApiKey.Resource.ValueExpression;
-
-    // EmbeddingModel configuration
-    context.EnvironmentVariables["EmbeddingModel__Provider"] = embedProviderStr;
-    if (!string.IsNullOrWhiteSpace(embedEndpoint))
-    {
-        context.EnvironmentVariables["EmbeddingModel__Endpoint"] = embedEndpoint;
-    }
-    else if (ollama != null && embedModel != null)
-    {
-        // Set Ollama endpoint for embedding generation when using Aspire-managed Ollama
-        EndpointReference ollamaEndpoint = ollama.GetEndpoint("http");
-        context.EnvironmentVariables["EmbeddingModel__Endpoint"] =
-            $"http://{ollamaEndpoint.Host}:{ollamaEndpoint.Port}";
-    }
-    if (!string.IsNullOrWhiteSpace(embedName))
-    {
-        context.EnvironmentVariables["EmbeddingModel__Name"] = embedName;
-    }
-    context.EnvironmentVariables["EmbeddingModel__Auth"] = embedAuthStr;
-    if (!string.IsNullOrWhiteSpace(embedKey))
-    {
-        context.EnvironmentVariables["EmbeddingModel__Key"] = embedKey;
-    }
-
-    // Legacy DocumentEmbedding__OllamaEndpoint for backward compatibility
-    if (ollama != null && embedModel != null)
-    {
-        EndpointReference ollamaEndpoint = ollama.GetEndpoint("http");
-        context.EnvironmentVariables["DocumentEmbedding__OllamaEndpoint"] =
-            $"http://{ollamaEndpoint.Host}:{ollamaEndpoint.Port}";
-    }
-    else if (!string.IsNullOrWhiteSpace(embedEndpoint))
-    {
-        context.EnvironmentVariables["DocumentEmbedding__OllamaEndpoint"] = embedEndpoint;
-    }
-});
+        SetQdrantEnvironmentVariables(SetVar, "DocumentEmbedding", qdrant, qdrantApiKey);
+        SetModelProviderEnvironmentVariables(SetVar, "EmbeddingModel", embedConfig, embedModel, ollama, isEmbedOllama);
+        SetLegacyOllamaEndpoint(SetVar, "DocumentEmbedding__OllamaEndpoint", ollama, embedModel, embedConfig.Endpoint);
+    });
 
 DistributedApplication app = builder.Build();
 
