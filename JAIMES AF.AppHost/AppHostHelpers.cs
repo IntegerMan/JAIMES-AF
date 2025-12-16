@@ -18,7 +18,7 @@ internal static class AppHostHelpers
         string? Key);
 
     /// <summary>
-    /// Conditionally adds Ollama model references and waits for Ollama container if needed.
+    /// Conditionally adds Ollama model references and waits for Ollama container only if references were actually added.
     /// </summary>
     internal static IResourceBuilder<ProjectResource> WithOllamaReferences(
         this IResourceBuilder<ProjectResource> resource,
@@ -38,7 +38,7 @@ internal static class AppHostHelpers
             resource = resource.WithReference(embedModel);
         }
 
-        if (ollama != null && (needsChatModel || needsEmbedModel))
+        if (ollama != null && ((needsChatModel && chatModel != null) || (needsEmbedModel && embedModel != null)))
         {
             resource = resource.WaitFor(ollama);
         }
@@ -100,7 +100,7 @@ internal static class AppHostHelpers
     {
         var qdrantGrpcEndpoint = qdrant.GetEndpoint("grpc");
         setVariable($"{sectionPrefix}__QdrantHost", qdrantGrpcEndpoint.Host);
-        setVariable($"{sectionPrefix}__QdrantPort", qdrantGrpcEndpoint.Port.ToString());
+        setVariable($"{sectionPrefix}__QdrantPort", qdrantGrpcEndpoint.Port);
         setVariable("ConnectionStrings__qdrant-embeddings", qdrant.Resource.ConnectionStringExpression);
         setVariable("qdrant-api-key", qdrantApiKey.Resource.ValueExpression);
     }
