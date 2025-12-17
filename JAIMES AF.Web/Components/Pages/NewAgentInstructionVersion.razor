@@ -1,0 +1,68 @@
+@page "/agents/{AgentId}/instruction-versions/new"
+@rendermode InteractiveServer
+
+<PageTitle>New Instruction Version</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+	<MudPaper Class="pa-4">
+		<MudText Typo="Typo.h4" Class="mb-4">Create New Instruction Version</MudText>
+
+		@if (!string.IsNullOrEmpty(_errorMessage))
+		{
+			<MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+		}
+
+		<MudForm>
+			<MudTextField @bind-Value="_versionNumber"
+			              Label="Version Number"
+			              Variant="Variant.Outlined"
+			              Class="mb-4"
+			              Disabled="_isSaving"
+			              Required="true"
+			              RequiredError="Version number is required"
+			              HelperText="e.g., v1.0, 2024.01, etc."/>
+
+			<MudTextField @bind-Value="_instructions"
+			              Label="Instructions"
+			              Variant="Variant.Outlined"
+			              Class="mb-4"
+			              Disabled="_isSaving"
+			              Lines="10"
+			              Required="true"
+			              RequiredError="Instructions are required"
+			              HelperText="The complete instruction set for this agent version"/>
+
+			<MudSwitch @bind-Value="_isActive"
+			           Label="Is Active"
+			           Color="Color.Primary"
+			           Disabled="_isSaving"
+			           Class="mb-4"/>
+
+			<div class="d-flex gap-2">
+				<MudButton Variant="Variant.Filled"
+				           Color="Color.Primary"
+				           OnClick="CreateInstructionVersionAsync"
+				           Disabled="_isSaving || !IsFormValid()"
+				           Class="mt-2">
+					@if (_isSaving)
+					{
+						<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+						<span class="ms-2">Creating...</span>
+					}
+					else
+					{
+						<span>Create Version</span>
+					}
+				</MudButton>
+
+				<MudButton Variant="Variant.Text"
+				           Color="Color.Default"
+				           OnClick="Cancel"
+				           Disabled="_isSaving"
+				           Class="mt-2">
+					Cancel
+				</MudButton>
+			</div>
+		</MudForm>
+	</MudPaper>
+</MudContainer>

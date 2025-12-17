@@ -1,41 +1,51 @@
+using MattEland.Jaimes.ServiceDefinitions.Requests;
+using MattEland.Jaimes.ServiceDefinitions.Responses;
+
 namespace MattEland.Jaimes.Web.Components.Pages;
 
-public partial class NewScenario
+public partial class EditAgent
 {
+    [Parameter] public string AgentId { get; set; } = string.Empty;
+
     [Inject] public HttpClient Http { get; set; } = null!;
 
     [Inject] public ILoggerFactory LoggerFactory { get; set; } = null!;
 
     [Inject] public NavigationManager Navigation { get; set; } = null!;
 
-    private RulesetInfoResponse[] _rulesets = [];
-    private string _scenarioId = string.Empty;
-    private string? _selectedRulesetId;
     private string _name = string.Empty;
-    private string? _description;
-    private string? _initialGreeting;
+    private string _role = string.Empty;
     private bool _isLoading = true;
     private bool _isSaving = false;
     private string? _errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadRulesetsAsync();
+        await LoadAgentAsync();
     }
 
-    private async Task LoadRulesetsAsync()
+    private async Task LoadAgentAsync()
     {
         _isLoading = true;
         _errorMessage = null;
         try
         {
-            RulesetListResponse? response = await Http.GetFromJsonAsync<RulesetListResponse>("/rulesets");
-            _rulesets = response?.Rulesets ?? [];
+            var agent = await Http.GetFromJsonAsync<AgentResponse>($"/agents/{AgentId}");
+            if (agent == null)
+            {
+                _errorMessage = $"Agent with ID '{AgentId}' not found.";
+                _isLoading = false;
+                StateHasChanged();
+                return;
+            }
+
+            _name = agent.Name;
+            _role = agent.Role;
         }
         catch (Exception ex)
         {
-            LoggerFactory.CreateLogger("NewScenario").LogError(ex, "Failed to load rulesets from API");
-            _errorMessage = "Failed to load rulesets: " + ex.Message;
+            LoggerFactory.CreateLogger("EditAgent").LogError(ex, "Failed to load agent from API");
+            _errorMessage = "Failed to load agent: " + ex.Message;
         }
         finally
         {
@@ -46,12 +56,11 @@ public partial class NewScenario
 
     private bool IsFormValid()
     {
-        return !string.IsNullOrWhiteSpace(_scenarioId) &&
-               !string.IsNullOrWhiteSpace(_selectedRulesetId) &&
-               !string.IsNullOrWhiteSpace(_name);
+        return !string.IsNullOrWhiteSpace(_name) &&
+               !string.IsNullOrWhiteSpace(_role);
     }
 
-    private async Task CreateScenarioAsync()
+    private async Task UpdateAgentAsync()
     {
         if (!IsFormValid())
         {
@@ -64,20 +73,17 @@ public partial class NewScenario
         _errorMessage = null;
         try
         {
-            CreateScenarioRequest request = new()
+            UpdateAgentRequest request = new()
             {
-                Id = _scenarioId,
-                RulesetId = _selectedRulesetId!,
-                Description = _description,
                 Name = _name,
-                InitialGreeting = _initialGreeting
+                Role = _role
             };
 
-            HttpResponseMessage response = await Http.PostAsJsonAsync("/scenarios", request);
+            HttpResponseMessage response = await Http.PutAsJsonAsync($"/agents/{AgentId}", request);
 
             if (response.IsSuccessStatusCode)
             {
-                Navigation.NavigateTo("/scenarios");
+                Navigation.NavigateTo("/agents");
             }
             else
             {
@@ -92,14 +98,14 @@ public partial class NewScenario
                 }
 
                 _errorMessage =
-                    $"Failed to create scenario: {response.ReasonPhrase}{(string.IsNullOrEmpty(body) ? string.Empty : " - " + body)}";
+                    $"Failed to update agent: {response.ReasonPhrase}{(string.IsNullOrEmpty(body) ? string.Empty : " - " + body)}";
                 StateHasChanged();
             }
         }
         catch (Exception ex)
         {
-            LoggerFactory.CreateLogger("NewScenario").LogError(ex, "Failed to create scenario");
-            _errorMessage = "Failed to create scenario: " + ex.Message;
+            LoggerFactory.CreateLogger("EditAgent").LogError(ex, "Failed to update agent");
+            _errorMessage = "Failed to update agent: " + ex.Message;
             StateHasChanged();
         }
         finally
@@ -111,6 +117,6 @@ public partial class NewScenario
 
     private void Cancel()
     {
-        Navigation.NavigateTo("/scenarios");
+        Navigation.NavigateTo("/agents");
     }
 }

@@ -41,10 +41,13 @@ public class GameAwareAgentFactory
         }
 
         IChatClient instrumentedChatClient = _chatClient.WrapWithInstrumentation(_logger);
+        // Use scenario instructions as the system prompt
+        string systemPrompt = gameDto.Scenario.ScenarioInstructions ?? "You are a helpful game master.";
+
         return instrumentedChatClient.CreateJaimesAgent(
             _logger,
             $"JaimesAgent-{gameId}",
-            gameDto.Scenario.SystemPrompt,
+            systemPrompt,
             CreateTools(gameDto));
     }
 

@@ -60,7 +60,6 @@ public class PlayerInfoToolTests
             {
                 Id = "test-scenario",
                 Name = "Test Scenario",
-                SystemPrompt = "Test system prompt",
                 RulesetId = "test-ruleset"
             },
             Ruleset = new RulesetDto
