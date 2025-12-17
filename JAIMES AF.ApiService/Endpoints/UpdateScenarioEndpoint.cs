@@ -35,6 +35,12 @@ public class UpdateScenarioEndpoint : Endpoint<UpdateScenarioRequest, ScenarioRe
                 req.InitialGreeting,
                 ct);
 
+            // Update ScenarioInstructions
+            await ScenariosService.UpdateScenarioInstructionsAsync(id, req.ScenarioInstructions, ct);
+            
+            // Reload to get updated ScenarioInstructions
+            scenario = await ScenariosService.GetScenarioAsync(id, ct);
+
             ScenarioResponse response = new()
             {
                 Id = scenario.Id,
@@ -42,6 +48,7 @@ public class UpdateScenarioEndpoint : Endpoint<UpdateScenarioRequest, ScenarioRe
                 Description = scenario.Description,
                 Name = scenario.Name,
                 SystemPrompt = scenario.SystemPrompt,
+                ScenarioInstructions = scenario.ScenarioInstructions,
                 InitialGreeting = scenario.InitialGreeting
             };
 

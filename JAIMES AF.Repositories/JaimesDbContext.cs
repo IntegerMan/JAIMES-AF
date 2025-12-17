@@ -8,6 +8,11 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
     public DbSet<Scenario> Scenarios { get; set; } = null!;
     public DbSet<Ruleset> Rulesets { get; set; } = null!;
     public DbSet<ChatHistory> ChatHistories { get; set; } = null!;
+    
+    // Agent instruction system entities
+    public DbSet<Agent> Agents { get; set; } = null!;
+    public DbSet<AgentInstructionVersion> AgentInstructionVersions { get; set; } = null!;
+    public DbSet<ScenarioAgent> ScenarioAgents { get; set; } = null!;
 
     // Document storage entities (replacing MongoDB)
     public DbSet<DocumentMetadata> DocumentMetadata { get; set; } = null!;
@@ -61,6 +66,53 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
+        modelBuilder.Entity<Agent>(entity =>
+        {
+            entity.HasKey(a => a.Id);
+            entity.Property(a => a.Id).IsRequired();
+            entity.Property(a => a.Name).IsRequired();
+            entity.Property(a => a.Role).IsRequired();
+        });
+
+        modelBuilder.Entity<AgentInstructionVersion>(entity =>
+        {
+            entity.HasKey(iv => iv.Id);
+            entity.Property(iv => iv.AgentId).IsRequired();
+            entity.Property(iv => iv.VersionNumber).IsRequired();
+            entity.Property(iv => iv.Instructions).IsRequired();
+            entity.Property(iv => iv.CreatedAt).IsRequired();
+
+            entity.HasOne(iv => iv.Agent)
+                .WithMany(a => a.InstructionVersions)
+                .HasForeignKey(iv => iv.AgentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(iv => new { iv.AgentId, iv.VersionNumber }).IsUnique();
+        });
+
+        modelBuilder.Entity<ScenarioAgent>(entity =>
+        {
+            entity.HasKey(sa => new { sa.ScenarioId, sa.AgentId });
+            entity.Property(sa => sa.ScenarioId).IsRequired();
+            entity.Property(sa => sa.AgentId).IsRequired();
+            entity.Property(sa => sa.InstructionVersionId).IsRequired();
+
+            entity.HasOne(sa => sa.Scenario)
+                .WithMany(s => s.ScenarioAgents)
+                .HasForeignKey(sa => sa.ScenarioId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(sa => sa.Agent)
+                .WithMany(a => a.ScenarioAgents)
+                .HasForeignKey(sa => sa.AgentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(sa => sa.InstructionVersion)
+                .WithMany(iv => iv.ScenarioAgents)
+                .HasForeignKey(sa => sa.InstructionVersionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         modelBuilder.Entity<Game>(entity =>
         {
             entity.HasKey(g => g.Id);
@@ -105,6 +157,16 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.HasOne(m => m.ChatHistory)
                 .WithMany()
                 .HasForeignKey(m => m.ChatHistoryId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(m => m.Agent)
+                .WithMany(a => a.Messages)
+                .HasForeignKey(m => m.AgentId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(m => m.InstructionVersion)
+                .WithMany(iv => iv.Messages)
+                .HasForeignKey(m => m.InstructionVersionId)
                 .OnDelete(DeleteBehavior.NoAction);
         });
 

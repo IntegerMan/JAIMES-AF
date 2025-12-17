@@ -8,6 +8,8 @@ public static partial class MessageResponseMapper
     [MapProperty(nameof(MessageDto.PlayerId), nameof(MessageResponse.PlayerId))]
     [MapProperty(nameof(MessageDto.Text), nameof(MessageResponse.Text))]
     [MapProperty(nameof(MessageDto.CreatedAt), nameof(MessageResponse.CreatedAt))]
+    [MapProperty(nameof(MessageDto.AgentId), nameof(MessageResponse.AgentId))]
+    [MapProperty(nameof(MessageDto.InstructionVersionId), nameof(MessageResponse.InstructionVersionId))]
     [MapProperty(nameof(MessageDto.PlayerId),
         nameof(MessageResponse.Participant),
         Use = nameof(MapParticipantFromPlayerId))]

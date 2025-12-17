@@ -20,4 +20,6 @@ public interface IScenariosService
         string systemPrompt,
         string? initialGreeting,
         CancellationToken cancellationToken = default);
+    
+    Task UpdateScenarioInstructionsAsync(string id, string? scenarioInstructions, CancellationToken cancellationToken = default);
 }

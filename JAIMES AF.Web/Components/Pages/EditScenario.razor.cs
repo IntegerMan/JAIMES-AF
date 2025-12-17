@@ -15,7 +15,9 @@ public partial class EditScenario
     private string _name = string.Empty;
     private string? _description;
     private string _systemPrompt = string.Empty;
+    private string? _scenarioInstructions;
     private string? _initialGreeting;
+    private ScenarioAgentResponse? _scenarioAgent;
     private bool _isLoading = true;
     private bool _isSaving = false;
     private string? _errorMessage;
@@ -33,11 +35,13 @@ public partial class EditScenario
         {
             Task<RulesetListResponse?> rulesetsTask = Http.GetFromJsonAsync<RulesetListResponse>("/rulesets");
             Task<ScenarioResponse?> scenarioTask = Http.GetFromJsonAsync<ScenarioResponse>($"/scenarios/{ScenarioId}");
+            Task<ScenarioAgentListResponse?> scenarioAgentsTask = Http.GetFromJsonAsync<ScenarioAgentListResponse>($"/scenarios/{ScenarioId}/agents");
 
-            await Task.WhenAll(rulesetsTask, scenarioTask);
+            await Task.WhenAll(rulesetsTask, scenarioTask, scenarioAgentsTask);
 
             RulesetListResponse? rulesetsResponse = await rulesetsTask;
             ScenarioResponse? scenarioResponse = await scenarioTask;
+            ScenarioAgentListResponse? scenarioAgentsResponse = await scenarioAgentsTask;
 
             if (scenarioResponse == null)
             {
@@ -52,7 +56,9 @@ public partial class EditScenario
             _name = scenarioResponse.Name;
             _description = scenarioResponse.Description;
             _systemPrompt = scenarioResponse.SystemPrompt;
+            _scenarioInstructions = scenarioResponse.ScenarioInstructions;
             _initialGreeting = scenarioResponse.InitialGreeting;
+            _scenarioAgent = scenarioAgentsResponse?.ScenarioAgents?.FirstOrDefault();
         }
         catch (Exception ex)
         {
@@ -71,6 +77,7 @@ public partial class EditScenario
         return !string.IsNullOrWhiteSpace(_selectedRulesetId) &&
                !string.IsNullOrWhiteSpace(_name) &&
                !string.IsNullOrWhiteSpace(_systemPrompt);
+        // ScenarioInstructions is optional
     }
 
     private async Task UpdateScenarioAsync()
@@ -92,6 +99,7 @@ public partial class EditScenario
                 Description = _description,
                 Name = _name,
                 SystemPrompt = _systemPrompt,
+                ScenarioInstructions = _scenarioInstructions,
                 InitialGreeting = _initialGreeting
             };
 

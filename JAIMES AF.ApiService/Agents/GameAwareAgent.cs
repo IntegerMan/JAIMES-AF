@@ -1,6 +1,10 @@
 using System.Text.Json;
 using MattEland.Jaimes.Agents.Helpers;
+using MattEland.Jaimes.Repositories;
+using MattEland.Jaimes.Repositories.Entities;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Tools;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 
 namespace MattEland.Jaimes.ApiService.Agents;
@@ -189,6 +193,7 @@ public class GameAwareAgent(
         // Get scoped services
         using IServiceScope scope = _serviceProvider.CreateScope();
         IGameService gameService = scope.ServiceProvider.GetRequiredService<IGameService>();
+        IInstructionService instructionService = scope.ServiceProvider.GetRequiredService<IInstructionService>();
         IChatClient chatClient = scope.ServiceProvider.GetRequiredService<IChatClient>();
         ILogger scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<GameAwareAgent>>();
 
@@ -203,15 +208,17 @@ public class GameAwareAgent(
 
         _logger.LogInformation("Game found: {GameId}, Scenario: {ScenarioName}, Player: {PlayerName}",
             gameId, gameDto.Scenario.Name, gameDto.Player.Name);
-        _logger.LogDebug("System prompt length: {Length} characters", gameDto.Scenario.SystemPrompt?.Length ?? 0);
 
-        // Create agent with game context
-        // Handle null SystemPrompt
-        string systemPrompt = gameDto.Scenario.SystemPrompt ?? string.Empty;
+        // Get instructions from InstructionService
+        string? systemPrompt = await instructionService.GetInstructionsAsync(gameDto.Scenario.Id, cancellationToken);
         if (string.IsNullOrWhiteSpace(systemPrompt))
         {
-            _logger.LogWarning("Game {GameId} has empty SystemPrompt, using default", gameId);
+            _logger.LogWarning("Game {GameId} has no instructions configured, using default", gameId);
             systemPrompt = "You are a helpful game master assistant.";
+        }
+        else
+        {
+            _logger.LogDebug("System prompt length: {Length} characters", systemPrompt.Length);
         }
 
         // Create tools once and reuse for both agent creation and logging
@@ -350,13 +357,23 @@ public class GameAwareAgent(
         // Persist messages to database
         await using JaimesDbContext dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
 
+        // Get the scenario's agent and instruction version for linking messages
+        ScenarioAgent? scenarioAgent = await dbContext.ScenarioAgents
+            .AsNoTracking()
+            .FirstOrDefaultAsync(sa => sa.ScenarioId == gameDto.Scenario.Id, cancellationToken);
+
+        string? agentId = scenarioAgent?.AgentId;
+        int? instructionVersionId = scenarioAgent?.InstructionVersionId;
+
         // Save user message
         Message userMessageEntity = new()
         {
             GameId = gameId,
             Text = newUserMessage.Text ?? string.Empty,
             PlayerId = gameDto.Player.Id,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            AgentId = agentId,
+            InstructionVersionId = instructionVersionId
         };
         dbContext.Messages.Add(userMessageEntity);
         _logger.LogDebug("Added user message entity for game {GameId}", gameId);
@@ -369,7 +386,9 @@ public class GameAwareAgent(
                 GameId = gameId,
                 Text = m.Text ?? string.Empty,
                 PlayerId = null,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                AgentId = agentId,
+                InstructionVersionId = instructionVersionId
             })
             .ToList();
         dbContext.Messages.AddRange(aiMessageEntities);
