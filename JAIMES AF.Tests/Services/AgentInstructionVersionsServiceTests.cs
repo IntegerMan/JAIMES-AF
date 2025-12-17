@@ -67,15 +67,14 @@ public class AgentInstructionVersionsServiceTests : IAsyncLifetime
     {
         // Arrange
         await _versionsService.CreateInstructionVersionAsync(_agentId, "1.0.0", "Instructions 1", TestContext.Current.CancellationToken);
-        AgentInstructionVersionDto version2 = await _versionsService.CreateInstructionVersionAsync(_agentId, "2.0.0", "Instructions 2", TestContext.Current.CancellationToken);
-        await _versionsService.UpdateInstructionVersionAsync(version2.Id, "2.0.0", "Instructions 2", false, TestContext.Current.CancellationToken);
+        await _versionsService.CreateInstructionVersionAsync(_agentId, "2.0.0", "Instructions 2", TestContext.Current.CancellationToken);
 
         // Act
         AgentInstructionVersionDto? active = await _versionsService.GetActiveInstructionVersionAsync(_agentId, TestContext.Current.CancellationToken);
 
         // Assert
         active.ShouldNotBeNull();
-        active!.VersionNumber.ShouldBe("1.0.0");
+        active!.VersionNumber.ShouldBe("2.0.0"); // The latest created version should be active
     }
 
     private class TestDbContextFactory(DbContextOptions<JaimesDbContext> options) : IDbContextFactory<JaimesDbContext>

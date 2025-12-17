@@ -28,8 +28,7 @@ public class InstructionServiceTests : IAsyncLifetime
         {
             Id = "test-scenario",
             RulesetId = "test-ruleset",
-            Name = "Test Scenario",
-            SystemPrompt = "Test Prompt"
+            Name = "Test Scenario"
         });
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 

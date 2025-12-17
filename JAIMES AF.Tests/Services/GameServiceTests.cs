@@ -26,7 +26,6 @@ public class GameServiceTests : IAsyncLifetime
             Id = "test-scenario",
             RulesetId = "test-ruleset",
             Name = "Unspecified",
-            SystemPrompt = "Test System Prompt",
             InitialGreeting = null
         });
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -290,7 +289,6 @@ public class GameServiceTests : IAsyncLifetime
             Id = "scenario-with-greeting",
             RulesetId = "test-ruleset",
             Name = "Test Scenario",
-            SystemPrompt = "Test System Prompt",
             InitialGreeting = customGreeting
         });
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);

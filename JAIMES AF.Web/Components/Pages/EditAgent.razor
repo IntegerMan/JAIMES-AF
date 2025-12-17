@@ -49,6 +49,16 @@
 				              Required="true"
 				              RequiredError="Role is required"/>
 
+				<MudTextField @bind-Value="_instructions"
+				              Label="Instructions"
+				              Variant="Variant.Outlined"
+				              Class="mb-4"
+				              Disabled="_isSaving"
+				              Lines="8"
+				              Required="true"
+				              RequiredError="Instructions are required"
+				              HelperText="Agent instructions that define how this agent behaves. Changes will create a new instruction version."/>
+
 				<div class="d-flex gap-2">
 					<MudButton Variant="Variant.Filled"
 					           Color="Color.Primary"

@@ -6,7 +6,6 @@ public class Scenario
     public required string RulesetId { get; set; }
     public string? Description { get; set; }
     public required string Name { get; set; }
-    public string? SystemPrompt { get; set; } // Deprecated - will be removed in future migration
     public string? ScenarioInstructions { get; set; } // Scenario-specific context (tone, plot, GM notes, etc.)
     public string? InitialGreeting { get; set; }
     public Ruleset? Ruleset { get; set; }

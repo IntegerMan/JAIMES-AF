@@ -42,18 +42,15 @@
 					<MudTh>Created</MudTh>
 					<MudTh>Active</MudTh>
 					<MudTh>Instructions Preview</MudTh>
-					<MudTh align="Align.Right">Actions</MudTh>
 				</HeaderContent>
 				<RowTemplate>
 					<MudTd>@context.VersionNumber</MudTd>
 					<MudTd>@context.CreatedAt.ToString("yyyy-MM-dd")</MudTd>
 					<MudTd>@(context.IsActive ? "Yes" : "No")</MudTd>
-					<MudTd>@(context.Instructions.Length > 50 ? context.Instructions.Substring(0, 50) + "..." : context.Instructions)</MudTd>
-					<MudTd align="Align.Right">
-						<MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-						           Href="@($"/agents/{_agentId}/instruction-versions/{context.Id}/edit")" Class="me-2">
-							Edit
-						</MudButton>
+					<MudTd>
+						<MudTooltip Text="@context.Instructions">
+							<span>@(context.Instructions.Length > 50 ? context.Instructions.Substring(0, 50) + "..." : context.Instructions)</span>
+						</MudTooltip>
 					</MudTd>
 				</RowTemplate>
 			</MudTable>

@@ -178,8 +178,7 @@ public abstract class EndpointTestBase : IAsyncLifetime
         {
             Id = "test-scenario",
             RulesetId = "test-ruleset",
-            Name = "Unspecified",
-            SystemPrompt = "UPDATE ME"
+            Name = "Unspecified"
         });
         await context.SaveChangesAsync(cancellationToken);
     }

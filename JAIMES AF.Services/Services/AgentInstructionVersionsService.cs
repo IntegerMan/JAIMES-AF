@@ -62,32 +62,6 @@ public class AgentInstructionVersionsService(IDbContextFactory<JaimesDbContext> 
         return version.ToDto();
     }
 
-    public async Task<AgentInstructionVersionDto> UpdateInstructionVersionAsync(int id, string versionNumber, string instructions, bool? isActive, CancellationToken cancellationToken = default)
-    {
-        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
-
-        AgentInstructionVersion? version = await context.AgentInstructionVersions.FindAsync([id], cancellationToken);
-        if (version == null)
-            throw new ArgumentException($"Instruction version '{id}' does not exist.", nameof(id));
-
-        // Check if version number conflicts with another version
-        if (version.VersionNumber != versionNumber)
-        {
-            bool versionExists = await context.AgentInstructionVersions
-                .AnyAsync(iv => iv.AgentId == version.AgentId && iv.VersionNumber == versionNumber && iv.Id != id, cancellationToken);
-            if (versionExists)
-                throw new ArgumentException($"Version '{versionNumber}' already exists for agent '{version.AgentId}'.", nameof(versionNumber));
-        }
-
-        version.VersionNumber = versionNumber;
-        version.Instructions = instructions;
-        if (isActive.HasValue)
-            version.IsActive = isActive.Value;
-
-        await context.SaveChangesAsync(cancellationToken);
-
-        return version.ToDto();
-    }
 
     public async Task<AgentInstructionVersionDto?> GetActiveInstructionVersionAsync(string agentId, CancellationToken cancellationToken = default)
     {

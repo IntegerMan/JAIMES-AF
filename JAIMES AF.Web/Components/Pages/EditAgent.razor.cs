@@ -15,6 +15,8 @@ public partial class EditAgent
 
     private string _name = string.Empty;
     private string _role = string.Empty;
+    private string _instructions = string.Empty;
+    private string _originalInstructions = string.Empty;
     private bool _isLoading = true;
     private bool _isSaving = false;
     private string? _errorMessage;
@@ -41,6 +43,14 @@ public partial class EditAgent
 
             _name = agent.Name;
             _role = agent.Role;
+
+            // Load the active instruction version for editing
+            var activeVersion = await Http.GetFromJsonAsync<AgentInstructionVersionResponse>($"/agents/{AgentId}/instruction-versions/active");
+            if (activeVersion != null)
+            {
+                _instructions = activeVersion.Instructions;
+                _originalInstructions = activeVersion.Instructions;
+            }
         }
         catch (Exception ex)
         {
@@ -57,7 +67,8 @@ public partial class EditAgent
     private bool IsFormValid()
     {
         return !string.IsNullOrWhiteSpace(_name) &&
-               !string.IsNullOrWhiteSpace(_role);
+               !string.IsNullOrWhiteSpace(_role) &&
+               !string.IsNullOrWhiteSpace(_instructions);
     }
 
     private async Task UpdateAgentAsync()
@@ -73,6 +84,29 @@ public partial class EditAgent
         _errorMessage = null;
         try
         {
+            // Check if instructions changed
+            bool instructionsChanged = _instructions != _originalInstructions;
+
+            // If instructions changed, create a new instruction version
+            if (instructionsChanged)
+            {
+                string versionNumber = $"v{DateTime.Now:yyyy.MM.dd.HH.mm}";
+                CreateAgentInstructionVersionRequest versionRequest = new()
+                {
+                    VersionNumber = versionNumber,
+                    Instructions = _instructions
+                };
+
+                HttpResponseMessage versionResponse = await Http.PostAsJsonAsync($"/agents/{AgentId}/instruction-versions", versionRequest);
+                if (!versionResponse.IsSuccessStatusCode)
+                {
+                    _errorMessage = "Failed to create new instruction version.";
+                    StateHasChanged();
+                    return;
+                }
+            }
+
+            // Update agent basic info
             UpdateAgentRequest request = new()
             {
                 Name = _name,
