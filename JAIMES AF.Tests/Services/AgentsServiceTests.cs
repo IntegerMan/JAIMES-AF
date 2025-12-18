@@ -1,4 +1,5 @@
 using MattEland.Jaimes.ServiceLayer.Services;
+using Shouldly;
 
 namespace MattEland.Jaimes.Tests.Services;
 
@@ -90,6 +91,34 @@ public class AgentsServiceTests : IAsyncLifetime
         // Assert
         AgentDto? retrieved = await _agentsService.GetAgentAsync(created.Id, TestContext.Current.CancellationToken);
         retrieved.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task CreateAgentAsync_ThrowsException_WhenAgentWithSameIdAlreadyExists()
+    {
+        // Arrange
+        await _agentsService.CreateAgentAsync("Test Agent", "GameMaster", "Test instructions", TestContext.Current.CancellationToken);
+
+        // Act & Assert - Different name that normalizes to same ID
+        ArgumentException exception = await Should.ThrowAsync<ArgumentException>(async () =>
+            await _agentsService.CreateAgentAsync("test agent", "GameMaster", "Test instructions", TestContext.Current.CancellationToken)
+        );
+        exception.Message.ShouldContain("already exists");
+        exception.ParamName.ShouldBe("name");
+    }
+
+    [Fact]
+    public async Task CreateAgentAsync_ThrowsException_WhenAgentWithSameIdAlreadyExists_NoSpaces()
+    {
+        // Arrange
+        await _agentsService.CreateAgentAsync("Test Agent", "GameMaster", "Test instructions", TestContext.Current.CancellationToken);
+
+        // Act & Assert - Name without spaces that normalizes to same ID
+        ArgumentException exception = await Should.ThrowAsync<ArgumentException>(async () =>
+            await _agentsService.CreateAgentAsync("TestAgent", "GameMaster", "Test instructions", TestContext.Current.CancellationToken)
+        );
+        exception.Message.ShouldContain("already exists");
+        exception.ParamName.ShouldBe("name");
     }
 
     private class TestDbContextFactory(DbContextOptions<JaimesDbContext> options) : IDbContextFactory<JaimesDbContext>

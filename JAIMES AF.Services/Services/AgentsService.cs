@@ -35,6 +35,13 @@ public class AgentsService(IDbContextFactory<JaimesDbContext> contextFactory) : 
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
         string id = name.ToLowerInvariant().Replace(" ", "");
+        
+        // Check if agent already exists
+        bool exists = await context.Agents
+            .AnyAsync(a => a.Id == id, cancellationToken);
+        
+        if (exists) throw new ArgumentException($"Agent with id '{id}' already exists.", nameof(name));
+        
         Agent agent = new()
         {
             Id = id,
