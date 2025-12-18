@@ -9,7 +9,6 @@ public interface IScenariosService
         string rulesetId,
         string? description,
         string name,
-        string systemPrompt,
         string? initialGreeting,
         CancellationToken cancellationToken = default);
 
@@ -17,7 +16,9 @@ public interface IScenariosService
         string rulesetId,
         string? description,
         string name,
-        string systemPrompt,
         string? initialGreeting,
+        string? scenarioInstructions,
         CancellationToken cancellationToken = default);
+    
+    Task UpdateScenarioInstructionsAsync(string id, string? scenarioInstructions, CancellationToken cancellationToken = default);
 }

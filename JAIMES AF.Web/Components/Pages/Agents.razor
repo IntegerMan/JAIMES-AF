@@ -1,0 +1,69 @@
+@page "/agents"
+@rendermode InteractiveServer
+
+@inject HttpClient Http
+@inject ILoggerFactory LoggerFactory
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+
+<PageTitle>Agents</PageTitle>
+
+<MudPaper Class="pa-4">
+	<MudText Typo="Typo.h4">Agents</MudText>
+
+	<MudText Class="mb-4">Manage AI agents and their instruction versions.</MudText>
+
+	<MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/agents/new" Class="mb-4">
+		New Agent
+	</MudButton>
+
+	<div style="position: relative; min-height: 200px;">
+		@if (_isLoading)
+		{
+			<div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+				<MudProgressCircular Indeterminate="true"/>
+			</div>
+		}
+
+		@if (!_isLoading && !string.IsNullOrEmpty(_errorMessage))
+		{
+			<MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
+		}
+
+		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && (_agents is null || _agents.Length == 0))
+		{
+			<MudText Class="mb-4">No agents yet.
+				<MudLink Href="/agents/new">Create a new agent</MudLink>
+			</MudText>
+		}
+
+		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && _agents is not null && _agents.Length > 0)
+		{
+			<MudTable Items="_agents" Dense="true" Hover="true">
+				<HeaderContent>
+					<MudTh>Name</MudTh>
+					<MudTh>Role</MudTh>
+					<MudTh align="Align.Right">Actions</MudTh>
+				</HeaderContent>
+				<RowTemplate>
+					<MudTd>@context.Name</MudTd>
+					<MudTd>@context.Role</MudTd>
+					<MudTd align="Align.Right">
+						<MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+						           Href="@($"/agents/{context.Id}/instruction-versions")" Class="me-2">
+							Instruction Versions
+						</MudButton>
+						<MudButton Variant="Variant.Filled" Color="Color.Secondary" Size="Size.Small"
+						           Href="@($"/agents/{context.Id}/edit")" Class="me-2">
+							Edit
+						</MudButton>
+						<MudButton Variant="Variant.Filled" Color="Color.Error" Size="Size.Small"
+						           OnClick="@(() => DeleteAgent(context))">
+							Delete
+						</MudButton>
+					</MudTd>
+				</RowTemplate>
+			</MudTable>
+		}
+	</div>
+</MudPaper>

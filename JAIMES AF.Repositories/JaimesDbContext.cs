@@ -8,6 +8,11 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
     public DbSet<Scenario> Scenarios { get; set; } = null!;
     public DbSet<Ruleset> Rulesets { get; set; } = null!;
     public DbSet<ChatHistory> ChatHistories { get; set; } = null!;
+    
+    // Agent instruction system entities
+    public DbSet<Agent> Agents { get; set; } = null!;
+    public DbSet<AgentInstructionVersion> AgentInstructionVersions { get; set; } = null!;
+    public DbSet<ScenarioAgent> ScenarioAgents { get; set; } = null!;
 
     // Document storage entities (replacing MongoDB)
     public DbSet<DocumentMetadata> DocumentMetadata { get; set; } = null!;
@@ -53,11 +58,57 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.Property(s => s.Id).IsRequired();
             entity.Property(s => s.RulesetId).IsRequired();
             entity.Property(s => s.Name).IsRequired();
-            entity.Property(s => s.SystemPrompt).IsRequired().HasDefaultValue("UPDATE ME");
 
             entity.HasOne(s => s.Ruleset)
                 .WithMany(r => r.Scenarios)
                 .HasForeignKey(s => s.RulesetId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Agent>(entity =>
+        {
+            entity.HasKey(a => a.Id);
+            entity.Property(a => a.Id).IsRequired();
+            entity.Property(a => a.Name).IsRequired();
+            entity.Property(a => a.Role).IsRequired();
+        });
+
+        modelBuilder.Entity<AgentInstructionVersion>(entity =>
+        {
+            entity.HasKey(iv => iv.Id);
+            entity.Property(iv => iv.AgentId).IsRequired();
+            entity.Property(iv => iv.VersionNumber).IsRequired();
+            entity.Property(iv => iv.Instructions).IsRequired();
+            entity.Property(iv => iv.CreatedAt).IsRequired();
+
+            entity.HasOne(iv => iv.Agent)
+                .WithMany(a => a.InstructionVersions)
+                .HasForeignKey(iv => iv.AgentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(iv => new { iv.AgentId, iv.VersionNumber }).IsUnique();
+        });
+
+        modelBuilder.Entity<ScenarioAgent>(entity =>
+        {
+            entity.HasKey(sa => new { sa.ScenarioId, sa.AgentId });
+            entity.Property(sa => sa.ScenarioId).IsRequired();
+            entity.Property(sa => sa.AgentId).IsRequired();
+            entity.Property(sa => sa.InstructionVersionId).IsRequired();
+
+            entity.HasOne(sa => sa.Scenario)
+                .WithMany(s => s.ScenarioAgents)
+                .HasForeignKey(sa => sa.ScenarioId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(sa => sa.Agent)
+                .WithMany(a => a.ScenarioAgents)
+                .HasForeignKey(sa => sa.AgentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(sa => sa.InstructionVersion)
+                .WithMany(iv => iv.ScenarioAgents)
+                .HasForeignKey(sa => sa.InstructionVersionId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -105,6 +156,16 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.HasOne(m => m.ChatHistory)
                 .WithMany()
                 .HasForeignKey(m => m.ChatHistoryId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(m => m.Agent)
+                .WithMany(a => a.Messages)
+                .HasForeignKey(m => m.AgentId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(m => m.InstructionVersion)
+                .WithMany(iv => iv.Messages)
+                .HasForeignKey(m => m.InstructionVersionId)
                 .OnDelete(DeleteBehavior.NoAction);
         });
 
@@ -251,7 +312,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
         });
 
         // Seed data - use lowercase ids for new defaults
-        // IMPORTANT: When modifying any seed data values (e.g., SystemPrompt, InitialGreeting, or any HasData() values),
+        // IMPORTANT: When modifying any seed data values (e.g., ScenarioInstructions, InitialGreeting, or any HasData() values),
         // you MUST create a new EF Core migration. See AGENTS.md for the migration command.
         modelBuilder.Entity<Ruleset>()
             .HasData(
@@ -265,6 +326,9 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 new Player { Id = "glim", RulesetId = "dnd5e", Description = "A small frog wizard with bright, curious eyes and a penchant for collecting strange spell components. They speak in a croaky voice and are always eager to learn new magic.", Name = "Glim the Frog Wizard" }
             );
 
+        // Agents and instruction versions will be created programmatically during application startup
+        // to avoid issues with auto-generated keys in EF migrations
+
         modelBuilder.Entity<Scenario>()
             .HasData(
                 new Scenario
@@ -273,8 +337,8 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                     RulesetId = "dnd5e",
                     Description = "Island test scenario",
                     Name = "Island Test",
-                    SystemPrompt =
-                        "You are a Dungeon Master running a solo D&D 5th Edition adventure on a mysterious tropical island. Use D&D 5e rules for combat and skill checks. CRITICAL GUIDELINES: Keep every response to ONE short paragraph maximum—be concise and easy to read. NEVER assume the player's actions, feelings, or decisions; only describe what the player observes. End each response with a simple prompt like 'What do you do?' to let the player drive the action. You may use markdown bold (**text**) and italic (*text*) but never use headers.",
+                    ScenarioInstructions =
+                        "This tropical island scenario features mysterious jungles, ancient ruins, and hidden dangers. The atmosphere is one of discovery and survival - players encounter exotic wildlife, tribal inhabitants, and forgotten treasures. Maintain a sense of wonder and exploration while keeping the tone adventurous and slightly perilous. The island has a rich history of shipwrecks, pirate legends, and ancient civilizations.",
                     InitialGreeting =
                         "You wake on a white sand beach, waves lapping at your boots. Jungle drums echo from the treeline ahead, and your scattered gear lies within reach. What do you do?"
                 },
@@ -284,8 +348,8 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                     RulesetId = "dnd5e",
                     Description = "A whimsical fantasy adventure set in a LEGO-themed conference center",
                     Name = "CodeMash Kalahari: The LEGO Realm",
-                    SystemPrompt =
-                        "You are a Dungeon Master running a solo D&D 5th Edition adventure set at the Kalahari Resort in Sandusky, Ohio during the CodeMash conference. Strange magic has transformed the entire resort into a whimsical LEGO-themed fantasy realm where everything is made of colorful bricks. Draw inspiration from LEGO sets and themes when describing the world. The player has stepped from reality into this fantastical brick world. CRITICAL GUIDELINES: Keep every response to ONE short paragraph maximum—be concise and easy to read. NEVER assume the player's actions, feelings, or decisions; only describe what the player observes. End each response with a simple prompt like 'What do you do?' to let the player drive the action. You may use markdown bold (**text**) and italic (*text*) but never use headers.",
+                    ScenarioInstructions =
+                        "The entire Kalahari Resort has been magically transformed into a LEGO-themed fantasy realm. Everything is made of colorful bricks - buildings, furniture, even the people are minifigures. Conference attendees have become adventurers on quests involving programming puzzles, LEGO building challenges, and whimsical brick-based combat. The tone is lighthearted and creative, with opportunities for clever problem-solving and LEGO-inspired humor. Players can build, rebuild, and explore this vibrant, colorful world.",
                     InitialGreeting =
                         "Welcome to CodeMash! The Kalahari Resort stretches before you, but something is wonderfully strange—everything is made of LEGO bricks. Colorful minifigures bustle past carrying tiny laptops, and the waterpark slides gleam in bright plastic hues. Tell me about your character: who are you and what kind of adventure do you seek?"
                 }

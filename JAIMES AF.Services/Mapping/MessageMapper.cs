@@ -10,6 +10,8 @@ public static partial class MessageMapper
     [MapperIgnoreSource(nameof(Message.Game))]
     [MapperIgnoreSource(nameof(Message.ChatHistoryId))]
     [MapperIgnoreSource(nameof(Message.ChatHistory))]
+    [MapperIgnoreSource(nameof(Message.Agent))]
+    [MapperIgnoreSource(nameof(Message.InstructionVersion))]
     public static partial MessageDto ToDto(this Message message);
 
     public static partial MessageDto[] ToDto(this IEnumerable<Message> messages);

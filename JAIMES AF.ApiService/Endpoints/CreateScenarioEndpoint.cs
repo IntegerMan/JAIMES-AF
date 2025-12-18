@@ -23,7 +23,6 @@ public class CreateScenarioEndpoint : Endpoint<CreateScenarioRequest, ScenarioRe
                 req.RulesetId,
                 req.Description,
                 req.Name,
-                req.SystemPrompt,
                 req.InitialGreeting,
                 ct);
 
@@ -33,7 +32,7 @@ public class CreateScenarioEndpoint : Endpoint<CreateScenarioRequest, ScenarioRe
                 RulesetId = scenario.RulesetId,
                 Description = scenario.Description,
                 Name = scenario.Name,
-                SystemPrompt = scenario.SystemPrompt,
+                ScenarioInstructions = scenario.ScenarioInstructions,
                 InitialGreeting = scenario.InitialGreeting
             };
 

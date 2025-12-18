@@ -62,15 +62,13 @@
 				              Disabled="_isSaving"
 				              Lines="2"/>
 
-				<MudTextField @bind-Value="_systemPrompt"
-				              Label="System Prompt"
+				<MudTextField @bind-Value="_scenarioInstructions"
+				              Label="Scenario Instructions"
 				              Variant="Variant.Outlined"
 				              Class="mb-4"
 				              Disabled="_isSaving"
-				              Required="true"
-				              RequiredError="System Prompt is required"
 				              Lines="5"
-				              HelperText="Instructions for the AI game master on how to run this scenario"/>
+				              HelperText="Scenario-specific context (tone, plot, GM notes, etc.) that will be appended to the base agent instructions"/>
 
 				<MudTextField @bind-Value="_initialGreeting"
 				              Label="Initial Greeting"
@@ -79,6 +77,70 @@
 				              Disabled="_isSaving"
 				              Lines="5"
 				              HelperText="The initial message shown to players when starting a new game with this scenario (optional)"/>
+
+				<MudDivider Class="my-4"/>
+
+				<MudText Typo="Typo.h6" Class="mb-3">Agent Configuration</MudText>
+				<MudText Typo="Typo.body2" Class="mb-4">Configure which agents and their instruction versions this scenario uses.</MudText>
+
+				@if (_scenarioAgents.Length > 0)
+				{
+					<MudTable Items="_scenarioAgents" Dense="true" Hover="true" Class="mb-4">
+						<HeaderContent>
+							<MudTh>Agent Name</MudTh>
+							<MudTh>Role</MudTh>
+							<MudTh>Version</MudTh>
+							<MudTh>Instructions Preview</MudTh>
+							<MudTh align="Align.Right">Actions</MudTh>
+						</HeaderContent>
+						<RowTemplate>
+							<MudTd>@context.AgentName</MudTd>
+							<MudTd>@context.AgentRole</MudTd>
+							<MudTd>
+								<MudSelect T="int"
+								           Value="@context.InstructionVersionId"
+								           ValueChanged="@((int newVersionId) => ChangeAgentVersion(context, newVersionId))"
+								           Dense="true"
+								           Disabled="_isSaving">
+									@foreach (var version in GetAgentInstructionVersions(context.AgentId))
+									{
+										<MudSelectItem Value="@version.Id">@version.VersionNumber</MudSelectItem>
+									}
+								</MudSelect>
+							</MudTd>
+							<MudTd>
+								<MudTooltip Text="@context.Instructions" Placement="Placement.Top">
+									<span>@(context.Instructions.Length > 50 ? context.Instructions.Substring(0, 50) + "..." : context.Instructions)</span>
+								</MudTooltip>
+							</MudTd>
+							<MudTd align="Align.Right">
+								<MudButton Variant="Variant.Filled" Color="Color.Error" Size="Size.Small"
+								           OnClick="@(() => RemoveAgentAsync(context))"
+								           Disabled="_isSaving">
+									Remove
+								</MudButton>
+							</MudTd>
+						</RowTemplate>
+					</MudTable>
+				}
+				else
+				{
+					<MudAlert Severity="Severity.Info" Class="mb-4">No agents configured for this scenario.</MudAlert>
+				}
+
+				@if (_allAgents.Length > _scenarioAgents.Length)
+				{
+					<MudButton Variant="Variant.Filled" Color="Color.Secondary" Size="Size.Small"
+					           OnClick="AddAgentAsync"
+					           Disabled="_isSaving"
+					           Class="mb-4">
+						Add Agent
+					</MudButton>
+				}
+				else
+				{
+					<MudText Typo="Typo.body2" Class="mb-4 text-secondary">All available agents are already assigned to this scenario.</MudText>
+				}
 
 				<div class="d-flex gap-2">
 					<MudButton Variant="Variant.Filled"

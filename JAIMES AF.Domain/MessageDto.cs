@@ -7,4 +7,6 @@ public class MessageDto
     public string? PlayerId { get; init; }
     public required string ParticipantName { get; init; }
     public DateTime CreatedAt { get; init; }
+    public string? AgentId { get; init; }
+    public int? InstructionVersionId { get; init; }
 }

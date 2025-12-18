@@ -16,7 +16,7 @@ public class ScenariosService(IDbContextFactory<JaimesDbContext> contextFactory)
             RulesetId = s.RulesetId,
             Description = s.Description,
             Name = s.Name,
-            SystemPrompt = s.SystemPrompt,
+            ScenarioInstructions = s.ScenarioInstructions,
             InitialGreeting = s.InitialGreeting
         })
             .ToArray();
@@ -38,7 +38,7 @@ public class ScenariosService(IDbContextFactory<JaimesDbContext> contextFactory)
             RulesetId = scenario.RulesetId,
             Description = scenario.Description,
             Name = scenario.Name,
-            SystemPrompt = scenario.SystemPrompt,
+            ScenarioInstructions = scenario.ScenarioInstructions,
             InitialGreeting = scenario.InitialGreeting
         };
     }
@@ -47,7 +47,6 @@ public class ScenariosService(IDbContextFactory<JaimesDbContext> contextFactory)
         string rulesetId,
         string? description,
         string name,
-        string systemPrompt,
         string? initialGreeting,
         CancellationToken cancellationToken = default)
     {
@@ -71,7 +70,6 @@ public class ScenariosService(IDbContextFactory<JaimesDbContext> contextFactory)
             RulesetId = rulesetId,
             Description = description,
             Name = name,
-            SystemPrompt = systemPrompt,
             InitialGreeting = initialGreeting
         };
 
@@ -84,7 +82,7 @@ public class ScenariosService(IDbContextFactory<JaimesDbContext> contextFactory)
             RulesetId = newScenario.RulesetId,
             Description = newScenario.Description,
             Name = newScenario.Name,
-            SystemPrompt = newScenario.SystemPrompt,
+            ScenarioInstructions = newScenario.ScenarioInstructions,
             InitialGreeting = newScenario.InitialGreeting
         };
     }
@@ -93,8 +91,8 @@ public class ScenariosService(IDbContextFactory<JaimesDbContext> contextFactory)
         string rulesetId,
         string? description,
         string name,
-        string systemPrompt,
         string? initialGreeting,
+        string? scenarioInstructions,
         CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -113,8 +111,8 @@ public class ScenariosService(IDbContextFactory<JaimesDbContext> contextFactory)
         scenario.RulesetId = rulesetId;
         scenario.Description = description;
         scenario.Name = name;
-        scenario.SystemPrompt = systemPrompt;
         scenario.InitialGreeting = initialGreeting;
+        scenario.ScenarioInstructions = scenarioInstructions;
 
         await context.SaveChangesAsync(cancellationToken);
 
@@ -124,8 +122,21 @@ public class ScenariosService(IDbContextFactory<JaimesDbContext> contextFactory)
             RulesetId = scenario.RulesetId,
             Description = scenario.Description,
             Name = scenario.Name,
-            SystemPrompt = scenario.SystemPrompt,
+            ScenarioInstructions = scenario.ScenarioInstructions,
             InitialGreeting = scenario.InitialGreeting
         };
+    }
+
+    public async Task UpdateScenarioInstructionsAsync(string id, string? scenarioInstructions, CancellationToken cancellationToken = default)
+    {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        Scenario? scenario = await context.Scenarios
+            .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+
+        if (scenario == null) throw new ArgumentException($"Scenario with id '{id}' not found.", nameof(id));
+
+        scenario.ScenarioInstructions = scenarioInstructions;
+        await context.SaveChangesAsync(cancellationToken);
     }
 }

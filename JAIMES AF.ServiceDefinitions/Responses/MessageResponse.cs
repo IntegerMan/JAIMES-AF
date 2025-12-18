@@ -8,4 +8,6 @@ public record MessageResponse
     public string? PlayerId { get; set; }
     public required string ParticipantName { get; set; }
     public DateTime CreatedAt { get; set; }
+    public string? AgentId { get; set; }
+    public int? InstructionVersionId { get; set; }
 }

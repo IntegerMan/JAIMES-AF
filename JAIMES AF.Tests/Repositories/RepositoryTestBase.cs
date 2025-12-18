@@ -23,8 +23,7 @@ public abstract class RepositoryTestBase : IAsyncLifetime
         {
             Id = "test-scenario",
             RulesetId = "test-ruleset",
-            Name = "Unspecified",
-            SystemPrompt = "UPDATE ME"
+            Name = "Unspecified"
         });
         await Context.SaveChangesAsync(ct);
         Context.ChangeTracker.Clear();

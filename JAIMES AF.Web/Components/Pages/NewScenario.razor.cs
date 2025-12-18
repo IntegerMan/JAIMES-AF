@@ -13,7 +13,6 @@ public partial class NewScenario
     private string? _selectedRulesetId;
     private string _name = string.Empty;
     private string? _description;
-    private string _systemPrompt = string.Empty;
     private string? _initialGreeting;
     private bool _isLoading = true;
     private bool _isSaving = false;
@@ -49,8 +48,7 @@ public partial class NewScenario
     {
         return !string.IsNullOrWhiteSpace(_scenarioId) &&
                !string.IsNullOrWhiteSpace(_selectedRulesetId) &&
-               !string.IsNullOrWhiteSpace(_name) &&
-               !string.IsNullOrWhiteSpace(_systemPrompt);
+               !string.IsNullOrWhiteSpace(_name);
     }
 
     private async Task CreateScenarioAsync()
@@ -72,7 +70,6 @@ public partial class NewScenario
                 RulesetId = _selectedRulesetId!,
                 Description = _description,
                 Name = _name,
-                SystemPrompt = _systemPrompt,
                 InitialGreeting = _initialGreeting
             };
 

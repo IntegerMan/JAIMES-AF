@@ -121,7 +121,6 @@ public class ChatService(
             {
                 Id = string.Empty, // Not available in request
                 Name = string.Empty,
-                SystemPrompt = request.SystemPrompt,
                 InitialGreeting = request.InitialGreeting,
                 RulesetId = string.Empty
             },

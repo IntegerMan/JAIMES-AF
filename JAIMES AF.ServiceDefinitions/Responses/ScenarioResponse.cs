@@ -6,6 +6,6 @@ public record ScenarioResponse
     public required string RulesetId { get; init; }
     public string? Description { get; init; }
     public required string Name { get; init; }
-    public required string SystemPrompt { get; init; }
+    public string? ScenarioInstructions { get; init; }
     public string? InitialGreeting { get; init; }
 }

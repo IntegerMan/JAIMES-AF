@@ -24,6 +24,58 @@ namespace MattEland.Jaimes.Repositories.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "vector");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Agent", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Agents");
+                });
+
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.AgentInstructionVersion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AgentId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Instructions")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("VersionNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgentId", "VersionNumber")
+                        .IsUnique();
+
+                    b.ToTable("AgentInstructionVersions");
+                });
+
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.ChatHistory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -247,6 +299,9 @@ namespace MattEland.Jaimes.Repositories.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AgentId")
+                        .HasColumnType("text");
+
                     b.Property<Guid?>("ChatHistoryId")
                         .HasColumnType("uuid");
 
@@ -255,6 +310,9 @@ namespace MattEland.Jaimes.Repositories.Migrations
 
                     b.Property<Guid>("GameId")
                         .HasColumnType("uuid");
+
+                    b.Property<int?>("InstructionVersionId")
+                        .HasColumnType("integer");
 
                     b.Property<string>("PlayerId")
                         .HasColumnType("text");
@@ -265,9 +323,13 @@ namespace MattEland.Jaimes.Repositories.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AgentId");
+
                     b.HasIndex("ChatHistoryId");
 
                     b.HasIndex("GameId");
+
+                    b.HasIndex("InstructionVersionId");
 
                     b.HasIndex("PlayerId");
 
@@ -435,11 +497,8 @@ namespace MattEland.Jaimes.Repositories.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("SystemPrompt")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("text")
-                        .HasDefaultValue("UPDATE ME");
+                    b.Property<string>("ScenarioInstructions")
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -455,7 +514,7 @@ namespace MattEland.Jaimes.Repositories.Migrations
                             InitialGreeting = "You wake on a white sand beach, waves lapping at your boots. Jungle drums echo from the treeline ahead, and your scattered gear lies within reach. What do you do?",
                             Name = "Island Test",
                             RulesetId = "dnd5e",
-                            SystemPrompt = "You are a Dungeon Master running a solo D&D 5th Edition adventure on a mysterious tropical island. Use D&D 5e rules for combat and skill checks. CRITICAL GUIDELINES: Keep every response to ONE short paragraph maximum—be concise and easy to read. NEVER assume the player's actions, feelings, or decisions; only describe what the player observes. End each response with a simple prompt like 'What do you do?' to let the player drive the action. You may use markdown bold (**text**) and italic (*text*) but never use headers."
+                            ScenarioInstructions = "This tropical island scenario features mysterious jungles, ancient ruins, and hidden dangers. The atmosphere is one of discovery and survival - players encounter exotic wildlife, tribal inhabitants, and forgotten treasures. Maintain a sense of wonder and exploration while keeping the tone adventurous and slightly perilous. The island has a rich history of shipwrecks, pirate legends, and ancient civilizations."
                         },
                         new
                         {
@@ -464,8 +523,39 @@ namespace MattEland.Jaimes.Repositories.Migrations
                             InitialGreeting = "Welcome to CodeMash! The Kalahari Resort stretches before you, but something is wonderfully strange—everything is made of LEGO bricks. Colorful minifigures bustle past carrying tiny laptops, and the waterpark slides gleam in bright plastic hues. Tell me about your character: who are you and what kind of adventure do you seek?",
                             Name = "CodeMash Kalahari: The LEGO Realm",
                             RulesetId = "dnd5e",
-                            SystemPrompt = "You are a Dungeon Master running a solo D&D 5th Edition adventure set at the Kalahari Resort in Sandusky, Ohio during the CodeMash conference. Strange magic has transformed the entire resort into a whimsical LEGO-themed fantasy realm where everything is made of colorful bricks. Draw inspiration from LEGO sets and themes when describing the world. The player has stepped from reality into this fantastical brick world. CRITICAL GUIDELINES: Keep every response to ONE short paragraph maximum—be concise and easy to read. NEVER assume the player's actions, feelings, or decisions; only describe what the player observes. End each response with a simple prompt like 'What do you do?' to let the player drive the action. You may use markdown bold (**text**) and italic (*text*) but never use headers."
+                            ScenarioInstructions = "The entire Kalahari Resort has been magically transformed into a LEGO-themed fantasy realm. Everything is made of colorful bricks - buildings, furniture, even the people are minifigures. Conference attendees have become adventurers on quests involving programming puzzles, LEGO building challenges, and whimsical brick-based combat. The tone is lighthearted and creative, with opportunities for clever problem-solving and LEGO-inspired humor. Players can build, rebuild, and explore this vibrant, colorful world."
                         });
+                });
+
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.ScenarioAgent", b =>
+                {
+                    b.Property<string>("ScenarioId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AgentId")
+                        .HasColumnType("text");
+
+                    b.Property<int>("InstructionVersionId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("ScenarioId", "AgentId");
+
+                    b.HasIndex("AgentId");
+
+                    b.HasIndex("InstructionVersionId");
+
+                    b.ToTable("ScenarioAgents");
+                });
+
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.AgentInstructionVersion", b =>
+                {
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.Agent", "Agent")
+                        .WithMany("InstructionVersions")
+                        .HasForeignKey("AgentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Agent");
                 });
 
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.ChatHistory", b =>
@@ -540,6 +630,11 @@ namespace MattEland.Jaimes.Repositories.Migrations
 
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Message", b =>
                 {
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.Agent", "Agent")
+                        .WithMany("Messages")
+                        .HasForeignKey("AgentId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("MattEland.Jaimes.Repositories.Entities.ChatHistory", "ChatHistory")
                         .WithMany()
                         .HasForeignKey("ChatHistoryId")
@@ -551,13 +646,22 @@ namespace MattEland.Jaimes.Repositories.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.AgentInstructionVersion", "InstructionVersion")
+                        .WithMany("Messages")
+                        .HasForeignKey("InstructionVersionId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("MattEland.Jaimes.Repositories.Entities.Player", "Player")
                         .WithMany()
                         .HasForeignKey("PlayerId");
 
+                    b.Navigation("Agent");
+
                     b.Navigation("ChatHistory");
 
                     b.Navigation("Game");
+
+                    b.Navigation("InstructionVersion");
 
                     b.Navigation("Player");
                 });
@@ -595,6 +699,49 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.Navigation("Ruleset");
                 });
 
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.ScenarioAgent", b =>
+                {
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.Agent", "Agent")
+                        .WithMany("ScenarioAgents")
+                        .HasForeignKey("AgentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.AgentInstructionVersion", "InstructionVersion")
+                        .WithMany("ScenarioAgents")
+                        .HasForeignKey("InstructionVersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.Scenario", "Scenario")
+                        .WithMany("ScenarioAgents")
+                        .HasForeignKey("ScenarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Agent");
+
+                    b.Navigation("InstructionVersion");
+
+                    b.Navigation("Scenario");
+                });
+
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Agent", b =>
+                {
+                    b.Navigation("InstructionVersions");
+
+                    b.Navigation("Messages");
+
+                    b.Navigation("ScenarioAgents");
+                });
+
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.AgentInstructionVersion", b =>
+                {
+                    b.Navigation("Messages");
+
+                    b.Navigation("ScenarioAgents");
+                });
+
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Game", b =>
                 {
                     b.Navigation("Messages");
@@ -622,6 +769,8 @@ namespace MattEland.Jaimes.Repositories.Migrations
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Scenario", b =>
                 {
                     b.Navigation("Games");
+
+                    b.Navigation("ScenarioAgents");
                 });
 #pragma warning restore 612, 618
         }

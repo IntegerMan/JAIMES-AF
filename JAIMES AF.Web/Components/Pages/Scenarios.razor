@@ -44,12 +44,26 @@
 					<MudTh>Name</MudTh>
 					<MudTh>Description</MudTh>
 					<MudTh>Ruleset ID</MudTh>
+					<MudTh>Agents</MudTh>
 					<MudTh align="Align.Right">Actions</MudTh>
 				</HeaderContent>
 				<RowTemplate>
 					<MudTd>@context.Name</MudTd>
 					<MudTd>@(context.Description ?? "-")</MudTd>
 					<MudTd>@context.RulesetId</MudTd>
+					<MudTd>
+						@if (GetScenarioAgentsDisplay(context.Id).Any())
+						{
+							@foreach (var agentInfo in GetScenarioAgentsDisplay(context.Id))
+							{
+								<span class="me-2">@agentInfo</span>
+							}
+						}
+						else
+						{
+							<span class="text-muted">No agents</span>
+						}
+					</MudTd>
 					<MudTd align="Align.Right">
 						<MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
 						           Href="@($"/scenarios/{context.Id}/edit")" Class="me-2">

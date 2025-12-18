@@ -1,0 +1,90 @@
+@page "/agents/{AgentId}/edit"
+@rendermode InteractiveServer
+
+<PageTitle>Edit Agent</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+	<MudPaper Class="pa-4">
+		<MudText Typo="Typo.h4" Class="mb-4">Edit Agent</MudText>
+
+		@if (_isLoading)
+		{
+			<MudProgressCircular Indeterminate="true" Class="my-4"/>
+		}
+		else if (!string.IsNullOrEmpty(_errorMessage))
+		{
+			<MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+		}
+
+		@if (!_isLoading && !string.IsNullOrEmpty(_errorMessage) && _errorMessage.Contains("not found"))
+		{
+			<MudButton Variant="Variant.Text" Color="Color.Primary" Href="/agents" Class="mt-2">
+				Back to Agents
+			</MudButton>
+		}
+
+		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage))
+		{
+			<MudForm>
+				<MudTextField Value="@AgentId"
+				              Label="Agent ID"
+				              Variant="Variant.Outlined"
+				              Class="mb-4"
+				              Disabled="true"
+				              HelperText="Agent ID cannot be changed"/>
+
+				<MudTextField @bind-Value="_name"
+				              Label="Name"
+				              Variant="Variant.Outlined"
+				              Class="mb-4"
+				              Disabled="_isSaving"
+				              Required="true"
+				              RequiredError="Name is required"/>
+
+				<MudTextField @bind-Value="_role"
+				              Label="Role"
+				              Variant="Variant.Outlined"
+				              Class="mb-4"
+				              Disabled="_isSaving"
+				              Required="true"
+				              RequiredError="Role is required"/>
+
+				<MudTextField @bind-Value="_instructions"
+				              Label="Instructions"
+				              Variant="Variant.Outlined"
+				              Class="mb-4"
+				              Disabled="_isSaving"
+				              Lines="8"
+				              Required="true"
+				              RequiredError="Instructions are required"
+				              HelperText="Agent instructions that define how this agent behaves. Changes will create a new instruction version."/>
+
+				<div class="d-flex gap-2">
+					<MudButton Variant="Variant.Filled"
+					           Color="Color.Primary"
+					           OnClick="UpdateAgentAsync"
+					           Disabled="_isSaving || !IsFormValid()"
+					           Class="mt-2">
+						@if (_isSaving)
+						{
+							<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+							<span class="ms-2">Saving...</span>
+						}
+						else
+						{
+							<span>Save Changes</span>
+						}
+					</MudButton>
+
+					<MudButton Variant="Variant.Text"
+					           Color="Color.Default"
+					           OnClick="Cancel"
+					           Disabled="_isSaving"
+					           Class="mt-2">
+						Cancel
+					</MudButton>
+				</div>
+			</MudForm>
+		}
+	</MudPaper>
+</MudContainer>

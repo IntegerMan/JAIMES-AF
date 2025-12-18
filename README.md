@@ -7,7 +7,7 @@ document-processing workers, and Azure OpenAI-powered assistants to help groups 
 rich observability and testing.
 
 The documentation below highlights the core moving pieces, how information flows through the system, and how to get
-productive quickly. Refer to `TECHNICAL_OVERVIEW.md` for deeper architectural notes.
+productive quickly. Refer to `TECHNICAL_OVERVIEW.md` for deeper architectural notes and `SCHEMA.md` for database schema details.
 
 ## Solution Topology
 

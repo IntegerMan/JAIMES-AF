@@ -11,6 +11,12 @@ public class Message
     public string? PlayerId { get; set; }
     public Player? Player { get; set; }
 
+    // Reference to the agent and instruction version used to generate this message
+    public string? AgentId { get; set; }
+    public Agent? Agent { get; set; }
+    public int? InstructionVersionId { get; set; }
+    public AgentInstructionVersion? InstructionVersion { get; set; }
+
     public Game? Game { get; set; }
     public Guid? ChatHistoryId { get; set; }
     public ChatHistory? ChatHistory { get; set; }

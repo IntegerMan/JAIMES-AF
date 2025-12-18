@@ -33,7 +33,7 @@ public class GetScenarioEndpoint : EndpointWithoutRequest<ScenarioResponse>
                 RulesetId = scenario.RulesetId,
                 Description = scenario.Description,
                 Name = scenario.Name,
-                SystemPrompt = scenario.SystemPrompt,
+                ScenarioInstructions = scenario.ScenarioInstructions,
                 InitialGreeting = scenario.InitialGreeting
             };
 
