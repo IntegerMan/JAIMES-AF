@@ -15,7 +15,7 @@ erDiagram
     Agent ||--o{ Message : "generates"
 
     AgentInstructionVersion ||--o{ ScenarioAgent : "used by"
-    AgentInstructionVersion ||--o{ Message : "generates"
+    AgentInstructionVersion ||--o{ Message : "generates (optional)"
 
     Game ||--o{ Message : "produces"
     Game }o--|| Player : "played by"
@@ -88,7 +88,7 @@ erDiagram
         string ParticipantName
         string PlayerId FK
         string AgentId FK
-        int InstructionVersionId FK
+        int InstructionVersionId FK "nullable"
         datetime CreatedAt
     }
 
@@ -191,11 +191,11 @@ A conversation thread within a game.
 
 1. **Agent Instructions are Immutable**: Once created, `AgentInstructionVersion` records cannot be modified. Changes to agent behavior require creating new versions.
 
-2. **Active Instruction Versions**: Each agent should have exactly one active instruction version at any time, though multiple versions can exist for historical reference.
+2. **Active Instruction Versions**: Each agent should have exactly one active instruction version at any time, though multiple versions can exist for historical reference. This is currently a soft recommendation and not enforced by database constraints. Consider adding a unique constraint on `(AgentId, IsActive)` where `IsActive = true` if strict enforcement is required.
 
 3. **Scenario-Agent Relationships**: Scenarios can have multiple agents assigned, each with a specific instruction version. This allows the same agent to behave differently in different scenarios.
 
-4. **Message Attribution**: Messages can be attributed to either players or agents, but not both. Agent-generated messages include a reference to the specific instruction version used.
+4. **Message Attribution**: Messages can be attributed to either players or agents, but not both. Exactly one of `AgentId` or `PlayerId` must be non-null for each message. Agent-generated messages include a reference to the specific instruction version used (via nullable `InstructionVersionId`), while player messages will have `InstructionVersionId` as null.
 
 5. **Scenario Isolation**: Each game is based on exactly one scenario and uses the agents assigned to that scenario at game creation time.
 
