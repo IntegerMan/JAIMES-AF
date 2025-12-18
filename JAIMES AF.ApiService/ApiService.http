@@ -29,6 +29,28 @@ Accept: application/json
 GET {{ApiService_HostAddress}}/players
 Accept: application/json
 
+### GET All Agents
+GET {{ApiService_HostAddress}}/agents
+Accept: application/json
+
+### Create Agent
+# @name CreateAgent
+POST {{ApiService_HostAddress}}/agents
+Content-Type: application/json
+
+{
+  "name": "Test Agent",
+  "role": "GameMaster",
+  "instructions": "You are a helpful game master who guides players through adventures."
+}
+
+### Get Agent by ID
+GET {{ApiService_HostAddress}}/agents/testagent
+Accept: application/json
+
+### Delete Agent
+DELETE {{ApiService_HostAddress}}/agents/testagent
+
 ### Get the specific game
 GET {{ApiService_HostAddress}}/games/{{gameId}}
 Content-Type: application/json
