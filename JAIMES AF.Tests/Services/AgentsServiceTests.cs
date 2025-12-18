@@ -1,3 +1,5 @@
+using MattEland.Jaimes.Repositories;
+using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceLayer.Services;
 using Shouldly;
 
@@ -91,6 +93,52 @@ public class AgentsServiceTests : IAsyncLifetime
         // Assert
         AgentDto? retrieved = await _agentsService.GetAgentAsync(created.Id, TestContext.Current.CancellationToken);
         retrieved.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task DeleteAgentAsync_DeletesAgentWithRelatedRecords()
+    {
+        // Arrange - Create agent (which automatically creates an initial instruction version)
+        AgentDto created = await _agentsService.CreateAgentAsync("Test Agent", "GameMaster", "Test instructions", TestContext.Current.CancellationToken);
+
+        // Add a scenario and scenario agent association
+        await _context.Scenarios.AddAsync(new Scenario
+        {
+            Id = "test-scenario",
+            RulesetId = "dnd5e",
+            Name = "Test Scenario"
+        }, TestContext.Current.CancellationToken);
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Get the initial instruction version that was created
+        AgentInstructionVersion? initialVersion = await _context.AgentInstructionVersions
+            .FirstOrDefaultAsync(iv => iv.AgentId == created.Id, TestContext.Current.CancellationToken);
+        initialVersion.ShouldNotBeNull();
+
+        // Create a scenario agent association
+        await _context.ScenarioAgents.AddAsync(new ScenarioAgent
+        {
+            ScenarioId = "test-scenario",
+            AgentId = created.Id,
+            InstructionVersionId = initialVersion.Id
+        }, TestContext.Current.CancellationToken);
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Act - Should successfully delete agent and all related records
+        await _agentsService.DeleteAgentAsync(created.Id, TestContext.Current.CancellationToken);
+
+        // Assert - Agent should be deleted
+        AgentDto? retrieved = await _agentsService.GetAgentAsync(created.Id, TestContext.Current.CancellationToken);
+        retrieved.ShouldBeNull();
+
+        // Assert - Related records should also be deleted
+        bool instructionVersionExists = await _context.AgentInstructionVersions
+            .AnyAsync(iv => iv.AgentId == created.Id, TestContext.Current.CancellationToken);
+        instructionVersionExists.ShouldBeFalse();
+
+        bool scenarioAgentExists = await _context.ScenarioAgents
+            .AnyAsync(sa => sa.AgentId == created.Id, TestContext.Current.CancellationToken);
+        scenarioAgentExists.ShouldBeFalse();
     }
 
     [Fact]

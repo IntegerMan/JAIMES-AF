@@ -91,6 +91,19 @@ public class AgentsService(IDbContextFactory<JaimesDbContext> contextFactory) : 
         if (agent == null)
             throw new ArgumentException($"Agent '{id}' does not exist.", nameof(id));
 
+        // Delete associated instruction versions first (DeleteBehavior.Restrict prevents deletion otherwise)
+        AgentInstructionVersion[] instructionVersions = await context.AgentInstructionVersions
+            .Where(iv => iv.AgentId == id)
+            .ToArrayAsync(cancellationToken);
+        context.AgentInstructionVersions.RemoveRange(instructionVersions);
+
+        // Delete any scenario agent associations (DeleteBehavior.Restrict prevents deletion otherwise)
+        ScenarioAgent[] scenarioAgents = await context.ScenarioAgents
+            .Where(sa => sa.AgentId == id)
+            .ToArrayAsync(cancellationToken);
+        context.ScenarioAgents.RemoveRange(scenarioAgents);
+
+        // Now safe to delete the agent
         context.Agents.Remove(agent);
         await context.SaveChangesAsync(cancellationToken);
     }
