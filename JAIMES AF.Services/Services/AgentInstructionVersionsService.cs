@@ -47,6 +47,16 @@ public class AgentInstructionVersionsService(IDbContextFactory<JaimesDbContext> 
         if (versionExists)
             throw new ArgumentException($"Version '{versionNumber}' already exists for agent '{agentId}'.", nameof(versionNumber));
 
+        // Deactivate all other active versions for this agent
+        AgentInstructionVersion[] otherActiveVersions = await context.AgentInstructionVersions
+            .Where(iv => iv.AgentId == agentId && iv.IsActive)
+            .ToArrayAsync(cancellationToken);
+
+        foreach (AgentInstructionVersion otherVersion in otherActiveVersions)
+        {
+            otherVersion.IsActive = false;
+        }
+
         AgentInstructionVersion version = new()
         {
             AgentId = agentId,

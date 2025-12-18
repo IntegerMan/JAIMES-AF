@@ -79,6 +79,30 @@ public class AgentInstructionVersionsServiceTests : IAsyncLifetime
         active!.VersionNumber.ShouldBe("2.0.0"); // The latest created version should be active
     }
 
+    [Fact]
+    public async Task CreateInstructionVersionAsync_DeactivatesOtherActiveVersions()
+    {
+        // Arrange
+        AgentInstructionVersionDto version1 = await _versionsService.CreateInstructionVersionAsync(_agentId, "1.0.0", "Instructions 1", TestContext.Current.CancellationToken);
+        AgentInstructionVersionDto version2 = await _versionsService.CreateInstructionVersionAsync(_agentId, "2.0.0", "Instructions 2", TestContext.Current.CancellationToken);
+
+        // Act - Create a third version, which should deactivate version2
+        AgentInstructionVersionDto version3 = await _versionsService.CreateInstructionVersionAsync(_agentId, "3.0.0", "Instructions 3", TestContext.Current.CancellationToken);
+
+        // Assert - Only version3 should be active
+        AgentInstructionVersionDto[] allVersions = await _versionsService.GetInstructionVersionsAsync(_agentId, TestContext.Current.CancellationToken);
+        AgentInstructionVersionDto[] activeVersions = allVersions.Where(v => v.IsActive).ToArray();
+        
+        activeVersions.Length.ShouldBe(1);
+        activeVersions[0].Id.ShouldBe(version3.Id);
+        activeVersions[0].VersionNumber.ShouldBe("3.0.0");
+        
+        // Verify version2 is no longer active
+        AgentInstructionVersionDto? version2Updated = allVersions.FirstOrDefault(v => v.Id == version2.Id);
+        version2Updated.ShouldNotBeNull();
+        version2Updated!.IsActive.ShouldBeFalse();
+    }
+
     private class TestDbContextFactory(DbContextOptions<JaimesDbContext> options) : IDbContextFactory<JaimesDbContext>
     {
         public JaimesDbContext CreateDbContext()

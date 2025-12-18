@@ -1,4 +1,5 @@
 using MattEland.Jaimes.Agents.Helpers;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Tools;
 using Microsoft.Agents.AI;
 using Microsoft.AspNetCore.Http;
@@ -40,9 +41,19 @@ public class GameAwareAgentFactory
             throw new ArgumentException($"Game '{gameId}' does not exist.", nameof(gameId));
         }
 
+        // Get instructions from InstructionService (combines base agent instructions with scenario instructions)
+        // This ensures consistency with GameAwareAgent.GetOrCreateGameAgentAsync
+        using IServiceScope scope = _serviceProvider.CreateScope();
+        IInstructionService instructionService = scope.ServiceProvider.GetRequiredService<IInstructionService>();
+        
+        string? systemPrompt = await instructionService.GetInstructionsAsync(gameDto.Scenario.Id, cancellationToken);
+        if (string.IsNullOrWhiteSpace(systemPrompt))
+        {
+            _logger.LogWarning("Game {GameId} has no instructions configured, using default", gameId);
+            systemPrompt = "You are a helpful game master assistant.";
+        }
+
         IChatClient instrumentedChatClient = _chatClient.WrapWithInstrumentation(_logger);
-        // Use scenario instructions as the system prompt
-        string systemPrompt = gameDto.Scenario.ScenarioInstructions ?? "You are a helpful game master.";
 
         return instrumentedChatClient.CreateJaimesAgent(
             _logger,
