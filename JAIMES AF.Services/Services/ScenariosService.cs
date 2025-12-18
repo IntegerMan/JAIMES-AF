@@ -92,6 +92,7 @@ public class ScenariosService(IDbContextFactory<JaimesDbContext> contextFactory)
         string? description,
         string name,
         string? initialGreeting,
+        string? scenarioInstructions,
         CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -111,6 +112,7 @@ public class ScenariosService(IDbContextFactory<JaimesDbContext> contextFactory)
         scenario.Description = description;
         scenario.Name = name;
         scenario.InitialGreeting = initialGreeting;
+        scenario.ScenarioInstructions = scenarioInstructions;
 
         await context.SaveChangesAsync(cancellationToken);
 

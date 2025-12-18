@@ -75,4 +75,47 @@ public class AgentInstructionVersionsService(IDbContextFactory<JaimesDbContext> 
 
         return version?.ToDto();
     }
+
+    public async Task<AgentInstructionVersionDto> UpdateInstructionVersionAsync(int id, string versionNumber, string instructions, bool? isActive, CancellationToken cancellationToken = default)
+    {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        AgentInstructionVersion? version = await context.AgentInstructionVersions
+            .FirstOrDefaultAsync(iv => iv.Id == id, cancellationToken);
+
+        if (version == null)
+            throw new ArgumentException($"Instruction version with id '{id}' not found.", nameof(id));
+
+        // Check if version number already exists for this agent (excluding current version)
+        bool versionExists = await context.AgentInstructionVersions
+            .AnyAsync(iv => iv.AgentId == version.AgentId && iv.VersionNumber == versionNumber && iv.Id != id, cancellationToken);
+        if (versionExists)
+            throw new ArgumentException($"Version '{versionNumber}' already exists for agent '{version.AgentId}'.", nameof(versionNumber));
+
+        version.VersionNumber = versionNumber;
+        version.Instructions = instructions;
+
+        // Handle IsActive flag
+        if (isActive.HasValue)
+        {
+            // If setting to active, deactivate all other versions for this agent
+            if (isActive.Value)
+            {
+                AgentInstructionVersion[] otherVersions = await context.AgentInstructionVersions
+                    .Where(iv => iv.AgentId == version.AgentId && iv.Id != id && iv.IsActive)
+                    .ToArrayAsync(cancellationToken);
+
+                foreach (AgentInstructionVersion otherVersion in otherVersions)
+                {
+                    otherVersion.IsActive = false;
+                }
+            }
+
+            version.IsActive = isActive.Value;
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+
+        return version.ToDto();
+    }
 }

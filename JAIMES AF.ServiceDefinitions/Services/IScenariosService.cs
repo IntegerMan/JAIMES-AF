@@ -17,6 +17,7 @@ public interface IScenariosService
         string? description,
         string name,
         string? initialGreeting,
+        string? scenarioInstructions,
         CancellationToken cancellationToken = default);
     
     Task UpdateScenarioInstructionsAsync(string id, string? scenarioInstructions, CancellationToken cancellationToken = default);

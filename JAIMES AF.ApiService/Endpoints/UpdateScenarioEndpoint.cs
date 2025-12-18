@@ -32,13 +32,8 @@ public class UpdateScenarioEndpoint : Endpoint<UpdateScenarioRequest, ScenarioRe
                 req.Description,
                 req.Name,
                 req.InitialGreeting,
+                req.ScenarioInstructions,
                 ct);
-
-            // Update ScenarioInstructions
-            await ScenariosService.UpdateScenarioInstructionsAsync(id, req.ScenarioInstructions, ct);
-            
-            // Reload to get updated ScenarioInstructions
-            scenario = await ScenariosService.GetScenarioAsync(id, ct);
 
             ScenarioResponse response = new()
             {
