@@ -52,6 +52,7 @@ public class AgentInstructionVersionsServiceTests : IAsyncLifetime
     public async Task GetInstructionVersionsAsync_ReturnsVersions()
     {
         // Arrange
+        // Note: Agent creation automatically creates a v1.0 version, so we expect 3 total versions
         await _versionsService.CreateInstructionVersionAsync(_agentId, "1.0.0", "Instructions 1", TestContext.Current.CancellationToken);
         await _versionsService.CreateInstructionVersionAsync(_agentId, "2.0.0", "Instructions 2", TestContext.Current.CancellationToken);
 
@@ -59,7 +60,8 @@ public class AgentInstructionVersionsServiceTests : IAsyncLifetime
         AgentInstructionVersionDto[] versions = await _versionsService.GetInstructionVersionsAsync(_agentId, TestContext.Current.CancellationToken);
 
         // Assert
-        versions.Length.ShouldBe(2);
+        // v1.0 (from agent creation) + 1.0.0 + 2.0.0 = 3 versions
+        versions.Length.ShouldBe(3);
     }
 
     [Fact]
