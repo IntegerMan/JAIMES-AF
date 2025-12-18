@@ -40,7 +40,7 @@ public class AgentsServiceTests : IAsyncLifetime
     public async Task CreateAgentAsync_CreatesAgent()
     {
         // Act
-        AgentDto agent = await _agentsService.CreateAgentAsync("Test Agent", "GameMaster", TestContext.Current.CancellationToken);
+        AgentDto agent = await _agentsService.CreateAgentAsync("Test Agent", "GameMaster", "Test instructions", TestContext.Current.CancellationToken);
 
         // Assert
         agent.ShouldNotBeNull();
@@ -53,7 +53,7 @@ public class AgentsServiceTests : IAsyncLifetime
     public async Task GetAgentAsync_ReturnsAgent_WhenExists()
     {
         // Arrange
-        AgentDto created = await _agentsService.CreateAgentAsync("Test Agent", "GameMaster", TestContext.Current.CancellationToken);
+        AgentDto created = await _agentsService.CreateAgentAsync("Test Agent", "GameMaster", "Test instructions", TestContext.Current.CancellationToken);
 
         // Act
         AgentDto? retrieved = await _agentsService.GetAgentAsync(created.Id, TestContext.Current.CancellationToken);
@@ -68,7 +68,7 @@ public class AgentsServiceTests : IAsyncLifetime
     public async Task UpdateAgentAsync_UpdatesAgent()
     {
         // Arrange
-        AgentDto created = await _agentsService.CreateAgentAsync("Test Agent", "GameMaster", TestContext.Current.CancellationToken);
+        AgentDto created = await _agentsService.CreateAgentAsync("Test Agent", "GameMaster", "Test instructions", TestContext.Current.CancellationToken);
 
         // Act
         AgentDto updated = await _agentsService.UpdateAgentAsync(created.Id, "Updated Agent", "GameMaster", TestContext.Current.CancellationToken);
@@ -82,7 +82,7 @@ public class AgentsServiceTests : IAsyncLifetime
     public async Task DeleteAgentAsync_DeletesAgent()
     {
         // Arrange
-        AgentDto created = await _agentsService.CreateAgentAsync("Test Agent", "GameMaster", TestContext.Current.CancellationToken);
+        AgentDto created = await _agentsService.CreateAgentAsync("Test Agent", "GameMaster", "Test instructions", TestContext.Current.CancellationToken);
 
         // Act
         await _agentsService.DeleteAgentAsync(created.Id, TestContext.Current.CancellationToken);

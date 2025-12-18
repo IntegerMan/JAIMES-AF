@@ -30,7 +30,7 @@ public class AgentsService(IDbContextFactory<JaimesDbContext> contextFactory) : 
         return agent?.ToDto();
     }
 
-    public async Task<AgentDto> CreateAgentAsync(string name, string role, CancellationToken cancellationToken = default)
+    public async Task<AgentDto> CreateAgentAsync(string name, string role, string instructions, CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -49,7 +49,7 @@ public class AgentsService(IDbContextFactory<JaimesDbContext> contextFactory) : 
         {
             AgentId = id,
             VersionNumber = "v1.0",
-            Instructions = $"You are {name}, a {role}. Provide helpful and engaging responses.",
+            Instructions = instructions,
             CreatedAt = DateTime.UtcNow,
             IsActive = true
         };

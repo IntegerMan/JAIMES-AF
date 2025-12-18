@@ -21,7 +21,7 @@ public class CreateAgentEndpoint : Endpoint<CreateAgentRequest, AgentResponse>
     {
         try
         {
-            AgentDto agent = await AgentsService.CreateAgentAsync(req.Name, req.Role, ct);
+            AgentDto agent = await AgentsService.CreateAgentAsync(req.Name, req.Role, req.Instructions, ct);
 
             AgentResponse response = new()
             {

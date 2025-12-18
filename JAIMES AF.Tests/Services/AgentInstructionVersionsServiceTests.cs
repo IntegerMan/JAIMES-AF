@@ -24,7 +24,7 @@ public class AgentInstructionVersionsServiceTests : IAsyncLifetime
         _versionsService = new AgentInstructionVersionsService(_contextFactory);
 
         // Create a test agent
-        AgentDto agent = await _agentsService.CreateAgentAsync("Test Agent", "GameMaster", TestContext.Current.CancellationToken);
+        AgentDto agent = await _agentsService.CreateAgentAsync("Test Agent", "GameMaster", "Test instructions", TestContext.Current.CancellationToken);
         _agentId = agent.Id;
     }
 
