@@ -326,6 +326,9 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 new Player { Id = "glim", RulesetId = "dnd5e", Description = "A small frog wizard with bright, curious eyes and a penchant for collecting strange spell components. They speak in a croaky voice and are always eager to learn new magic.", Name = "Glim the Frog Wizard" }
             );
 
+        // Agents and instruction versions will be created programmatically during application startup
+        // to avoid issues with auto-generated keys in EF migrations
+
         modelBuilder.Entity<Scenario>()
             .HasData(
                 new Scenario

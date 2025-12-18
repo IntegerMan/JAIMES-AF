@@ -43,6 +43,18 @@ public class AgentsService(IDbContextFactory<JaimesDbContext> contextFactory) : 
         };
 
         context.Agents.Add(agent);
+        
+        // Always create an initial instruction version when creating an agent
+        AgentInstructionVersion initialVersion = new()
+        {
+            AgentId = id,
+            VersionNumber = "v1.0",
+            Instructions = $"You are {name}, a {role}. Provide helpful and engaging responses.",
+            CreatedAt = DateTime.UtcNow,
+            IsActive = true
+        };
+        
+        context.AgentInstructionVersions.Add(initialVersion);
         await context.SaveChangesAsync(cancellationToken);
 
         return agent.ToDto();

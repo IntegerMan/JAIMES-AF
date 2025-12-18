@@ -45,11 +45,42 @@ public partial class EditAgent
             _role = agent.Role;
 
             // Load the active instruction version for editing
-            var activeVersion = await Http.GetFromJsonAsync<AgentInstructionVersionResponse>($"/agents/{AgentId}/instruction-versions/active");
-            if (activeVersion != null)
+            try
             {
-                _instructions = activeVersion.Instructions;
-                _originalInstructions = activeVersion.Instructions;
+                var activeVersion = await Http.GetFromJsonAsync<AgentInstructionVersionResponse>($"/agents/{AgentId}/instruction-versions/active");
+                if (activeVersion != null)
+                {
+                    _instructions = activeVersion.Instructions;
+                    _originalInstructions = activeVersion.Instructions;
+                }
+            }
+            catch (HttpRequestException ex) when (ex.Message.Contains("404"))
+            {
+                // Agent has no active instruction version - create a default one
+                var logger = LoggerFactory.CreateLogger("EditAgent");
+                logger.LogWarning("Agent {AgentId} has no active instruction version, creating default one", AgentId);
+                
+                var defaultInstructions = $"You are {agent.Name}, a {agent.Role}. Provide helpful and engaging responses.";
+                var createVersionRequest = new CreateAgentInstructionVersionRequest
+                {
+                    VersionNumber = "v1.0",
+                    Instructions = defaultInstructions
+                };
+                
+                var createResponse = await Http.PostAsJsonAsync($"/agents/{AgentId}/instruction-versions", createVersionRequest);
+                if (createResponse.IsSuccessStatusCode)
+                {
+                    var createdVersion = await createResponse.Content.ReadFromJsonAsync<AgentInstructionVersionResponse>();
+                    if (createdVersion != null)
+                    {
+                        _instructions = createdVersion.Instructions;
+                        _originalInstructions = createdVersion.Instructions;
+                    }
+                }
+                else
+                {
+                    _errorMessage = "Agent has no instruction versions and failed to create a default one. Please create an instruction version manually.";
+                }
             }
         }
         catch (Exception ex)
