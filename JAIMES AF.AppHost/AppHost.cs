@@ -39,6 +39,8 @@ bool isEmbedOllama = string.Equals(embedConfig.Provider, "Ollama", StringCompari
 bool needsOllamaContainer = (isTextGenOllama && string.IsNullOrWhiteSpace(textGenConfig.Endpoint)) ||
                              (isEmbedOllama && string.IsNullOrWhiteSpace(embedConfig.Endpoint));
 
+// See https://storybooks.fluentui.dev/react/?path=/docs/icons-catalog--docs for available icons. Icon names should not end in "Regular", "Filled", etc.
+
 // We'll be consolidating our various datastores into PostgreSQL with JSONB and pgvector in the future,
 IResourceBuilder<PostgresServerResource> postgres = builder.AddPostgres("postgres")
     .WithImage("pgvector/pgvector", "pg17-trixie")
@@ -94,8 +96,8 @@ IResourceBuilder<QdrantServerResource> qdrant = builder.AddQdrant("qdrant-embedd
     .WithDataVolume();
 
 // Add LavinMQ for messaging (wire-compatible with RabbitMQ)
-IResourceBuilder<LavinMQContainerResource> lavinmq = builder.AddLavinMQ("messaging")
-    .WithIconName("DocumentQueue")
+IResourceBuilder<LavinMQContainerResource> lavinmq = builder.AddLavinMQ("LavinMQ-Messaging")
+    .WithIconName("PeopleQueue")
     .WithLifetime(ContainerLifetime.Persistent)
     .WithUrls(u =>
     {
@@ -188,24 +190,32 @@ builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")
     .WithReference(apiService)
     .WaitFor(apiService);
 
-builder.AddProject<Projects.JAIMES_AF_Workers_DocumentCrackerWorker>("document-cracker-worker")
+// Group all workers under a parent resource for better UI organization
+IResourceBuilder<ContainerResource> workersGroup = builder.AddContainer("workers", "mcr.microsoft.com/dotnet/runtime-deps", "10.0")
+    .WithIconName("PeopleTeam")
+    .WithEnvironment("DOTNET_RUNNING_IN_CONTAINER", "true")
+    .ExcludeFromManifest();
+
+IResourceBuilder<ProjectResource> documentCrackerWorker = builder.AddProject<Projects.JAIMES_AF_Workers_DocumentCrackerWorker>("document-cracker-worker")
     .WithIconName("DocumentTextExtract")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
     .WaitFor(lavinmq)
     .WaitFor(postgres)
-    .WaitFor(postgresdb);
+    .WaitFor(postgresdb)
+    .WithParentRelationship(workersGroup);
 
-builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChangeDetector>("document-change-detector")
+IResourceBuilder<ProjectResource> documentChangeDetector = builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChangeDetector>("document-change-detector")
     .WithIconName("DocumentSearch")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
     .WaitFor(lavinmq)
     .WaitFor(postgres)
-    .WaitFor(postgresdb);
+    .WaitFor(postgresdb)
+    .WithParentRelationship(workersGroup);
 
 IResourceBuilder<ProjectResource> documentChunkingWorker = builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChunking>("document-chunking-worker")
-    .WithIconName("DocumentSplit")
+    .WithIconName("DocumentPageBreak")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
     .WithReference(qdrant)
@@ -214,6 +224,7 @@ IResourceBuilder<ProjectResource> documentChunkingWorker = builder.AddProject<Pr
     .WaitFor(postgres)
     .WaitFor(postgresdb)
     .WaitFor(qdrant)
+    .WithParentRelationship(workersGroup)
     .WithEnvironment(context =>
     {
         void SetVar(string key, object value) => context.EnvironmentVariables[key] = value;
@@ -224,7 +235,7 @@ IResourceBuilder<ProjectResource> documentChunkingWorker = builder.AddProject<Pr
     });
 
 IResourceBuilder<ProjectResource> documentEmbeddingWorker = builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbedding>("document-embedding-worker")
-    .WithIconName("DocumentEmbed")
+    .WithIconName("DocumentBulletListMultiple")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
     .WithReference(qdrant)
@@ -233,6 +244,7 @@ IResourceBuilder<ProjectResource> documentEmbeddingWorker = builder.AddProject<P
     .WaitFor(postgres)
     .WaitFor(postgresdb)
     .WaitFor(qdrant)
+    .WithParentRelationship(workersGroup)
     .WithEnvironment(context =>
     {
         void SetVar(string key, object value) => context.EnvironmentVariables[key] = value;
@@ -241,6 +253,24 @@ IResourceBuilder<ProjectResource> documentEmbeddingWorker = builder.AddProject<P
         SetModelProviderEnvironmentVariables(SetVar, "EmbeddingModel", embedConfig, embedModel, ollama, isEmbedOllama);
         SetLegacyOllamaEndpoint(SetVar, "DocumentEmbedding__OllamaEndpoint", ollama, embedModel, embedConfig.Endpoint);
     });
+
+IResourceBuilder<ProjectResource> userMessageWorker = builder.AddProject<Projects.JAIMES_AF_Workers_UserMessageWorker>("user-message-worker")
+    .WithIconName("PersonChat")
+    .WithReference(lavinmq)
+    .WithReference(postgresdb)
+    .WaitFor(lavinmq)
+    .WaitFor(postgres)
+    .WaitFor(postgresdb)
+    .WithParentRelationship(workersGroup);
+
+IResourceBuilder<ProjectResource> assistantMessageWorker = builder.AddProject<Projects.JAIMES_AF_Workers_AssistantMessageWorker>("assistant-message-worker")
+    .WithIconName("SettingsChat")
+    .WithReference(lavinmq)
+    .WithReference(postgresdb)
+    .WaitFor(lavinmq)
+    .WaitFor(postgres)
+    .WaitFor(postgresdb)
+    .WithParentRelationship(workersGroup);
 
 DistributedApplication app = builder.Build();
 
