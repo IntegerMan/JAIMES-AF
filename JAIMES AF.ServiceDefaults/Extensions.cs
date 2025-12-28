@@ -76,28 +76,45 @@ public static class Extensions
             })
             .WithTracing(tracing =>
             {
-                // Register the default activity source(s) so activities created elsewhere are captured.
-                // Include the application name, an explicit default name, and the agent-framework source.
+                // Register activity sources - prioritize application name for reliability
+                // Use explicit registrations instead of wildcards for better trace capture
                 tracing
-                    .AddSource(
-                        builder.Environment.ApplicationName,
-                        DefaultActivitySourceName,
-                        "*Microsoft.Extensions.AI",
-                        "*Microsoft.Extensions.Agents*",
-                        "agent-framework-source",
-                        "MattEland.*",
-                        "Jaimes.*",
-                        // Explicitly add known ActivitySources to ensure they're registered
-                        // (wildcards should match, but explicit registration is more reliable)
-                        "Jaimes.DocumentCracker")
+                    .AddSource(builder.Environment.ApplicationName)
+                    .AddSource(DefaultActivitySourceName)
+                    // Explicit registrations for known ActivitySources
+                    // Workers register their own sources in Program.cs, but include common patterns
+                    .AddSource("Jaimes.DocumentCracker")
+                    .AddSource("Jaimes.Workers.*")
+                    .AddSource("Jaimes.Agents.*")
+                    // Agent framework sources (explicit patterns for reliability)
+                    .AddSource("Microsoft.Extensions.AI")
+                    .AddSource("Microsoft.Agents.AI")
                     .AddAspNetCoreInstrumentation(options =>
-                        // Exclude health check requests from tracing
+                    {
+                        // Filter out health checks and Blazor/SignalR render events
                         options.Filter = context =>
-                            !context.Request.Path.StartsWithSegments(HealthEndpointPath,
-                                StringComparison.OrdinalIgnoreCase)
-                            && !context.Request.Path.StartsWithSegments(AlivenessEndpointPath,
-                                StringComparison.OrdinalIgnoreCase)
-                    )
+                        {
+                            // Exclude health check requests
+                            if (context.Request.Path.StartsWithSegments(HealthEndpointPath,
+                                    StringComparison.OrdinalIgnoreCase) ||
+                                context.Request.Path.StartsWithSegments(AlivenessEndpointPath,
+                                    StringComparison.OrdinalIgnoreCase))
+                                return false;
+
+                            // Exclude Blazor/SignalR render events to reduce noise
+                            string? path = context.Request.Path.Value;
+                            if (!string.IsNullOrEmpty(path))
+                            {
+                                // Filter out Blazor framework requests
+                                if (path.StartsWith("/_blazor", StringComparison.OrdinalIgnoreCase) ||
+                                    path.StartsWith("/_framework", StringComparison.OrdinalIgnoreCase) ||
+                                    path.Contains("/hub", StringComparison.OrdinalIgnoreCase))
+                                    return false;
+                            }
+
+                            return true;
+                        };
+                    })
                     .AddEntityFrameworkCoreInstrumentation(options =>
                     {
                         options.EnrichWithIDbCommand = (activity, command) =>
