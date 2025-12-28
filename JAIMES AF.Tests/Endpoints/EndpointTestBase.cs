@@ -4,12 +4,17 @@ public abstract class EndpointTestBase : IAsyncLifetime
 {
     protected WebApplicationFactory<ApiServiceProgram> Factory = null!;
     protected HttpClient Client = null!;
+    private Mock<IMessagePublisher>? _mockMessagePublisher;
+    protected Mock<IMessagePublisher> MockMessagePublisher => _mockMessagePublisher 
+        ?? throw new InvalidOperationException("MockMessagePublisher not initialized. Ensure InitializeAsync has completed.");
 
     public virtual async ValueTask InitializeAsync()
     {
         // Use a unique database name per test instance
         string dbName = $"TestDb_{Guid.NewGuid()}";
         CancellationToken ct = TestContext.Current.CancellationToken;
+
+        Mock<IMessagePublisher>? capturedMock = null;
 
         Factory = new WebApplicationFactory<ApiServiceProgram>()
             .WithWebHostBuilder(builder =>
@@ -105,6 +110,7 @@ public abstract class EndpointTestBase : IAsyncLifetime
 
                     Mock<IMessagePublisher> mockMessagePublisher = new();
                     services.AddSingleton(mockMessagePublisher.Object);
+                    capturedMock = mockMessagePublisher;
 
                     // Replace IChatService with a mock
                     ServiceDescriptor? chatServiceDescriptor =
@@ -159,6 +165,9 @@ public abstract class EndpointTestBase : IAsyncLifetime
             });
 
         Client = Factory.CreateClient();
+
+        // Store reference to mock for test verification
+        _mockMessagePublisher = capturedMock ?? throw new InvalidOperationException("Mock IMessagePublisher was not created during factory setup");
 
         // Seed test data after initialization
         using (IServiceScope scope = Factory.Services.CreateScope())
