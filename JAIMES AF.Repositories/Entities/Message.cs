@@ -32,26 +32,4 @@ public class Message
 
     // Sentiment analysis result: -1 (negative), 0 (neutral), 1 (positive), null (not analyzed)
     public int? Sentiment { get; set; }
-
-    // Model information for AI-generated messages (null for user messages)
-    /// <summary>
-    /// Gets or sets the name of the AI model used to generate this message (e.g., "gpt-4o-mini", "gemma3").
-    /// Null for user messages.
-    /// </summary>
-    [MaxLength(200)]
-    public string? ModelName { get; set; }
-
-    /// <summary>
-    /// Gets or sets the provider type used to generate this message (e.g., "Ollama", "AzureOpenAI", "OpenAI").
-    /// Null for user messages.
-    /// </summary>
-    [MaxLength(50)]
-    public string? ModelProvider { get; set; }
-
-    /// <summary>
-    /// Gets or sets the endpoint URL of the model service used to generate this message.
-    /// Null for user messages or when not applicable.
-    /// </summary>
-    [MaxLength(500)]
-    public string? ModelEndpoint { get; set; }
 }

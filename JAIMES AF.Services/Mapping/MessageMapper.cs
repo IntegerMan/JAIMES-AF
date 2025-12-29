@@ -6,12 +6,20 @@ public static partial class MessageMapper
     [MapProperty(nameof(Message.Player),
         nameof(MessageDto.ParticipantName),
         Use = nameof(MapParticipantNameFromPlayer))]
+    [MapProperty(nameof(Message.InstructionVersion),
+        nameof(MessageDto.ModelName),
+        Use = nameof(MapModelNameFromInstructionVersion))]
+    [MapProperty(nameof(Message.InstructionVersion),
+        nameof(MessageDto.ModelProvider),
+        Use = nameof(MapModelProviderFromInstructionVersion))]
+    [MapProperty(nameof(Message.InstructionVersion),
+        nameof(MessageDto.ModelEndpoint),
+        Use = nameof(MapModelEndpointFromInstructionVersion))]
     [MapperIgnoreSource(nameof(Message.GameId))]
     [MapperIgnoreSource(nameof(Message.Game))]
     [MapperIgnoreSource(nameof(Message.ChatHistoryId))]
     [MapperIgnoreSource(nameof(Message.ChatHistory))]
     [MapperIgnoreSource(nameof(Message.Agent))]
-    [MapperIgnoreSource(nameof(Message.InstructionVersion))]
     [MapperIgnoreSource(nameof(Message.MessageEmbedding))]
     [MapperIgnoreSource(nameof(Message.PreviousMessageId))]
     [MapperIgnoreSource(nameof(Message.PreviousMessage))]
@@ -24,5 +32,20 @@ public static partial class MessageMapper
     private static string MapParticipantNameFromPlayer(Player? player)
     {
         return player?.Name ?? "Game Master";
+    }
+
+    private static string? MapModelNameFromInstructionVersion(AgentInstructionVersion? instructionVersion)
+    {
+        return instructionVersion?.Model?.Name;
+    }
+
+    private static string? MapModelProviderFromInstructionVersion(AgentInstructionVersion? instructionVersion)
+    {
+        return instructionVersion?.Model?.Provider;
+    }
+
+    private static string? MapModelEndpointFromInstructionVersion(AgentInstructionVersion? instructionVersion)
+    {
+        return instructionVersion?.Model?.Endpoint;
     }
 }

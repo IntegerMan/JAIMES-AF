@@ -6,6 +6,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
     public DbSet<Message> Messages { get; set; } = null!;
     public DbSet<MessageEmbedding> MessageEmbeddings { get; set; } = null!;
     public DbSet<MessageEvaluationMetric> MessageEvaluationMetrics { get; set; } = null!;
+    public DbSet<Model> Models { get; set; } = null!;
     public DbSet<Player> Players { get; set; } = null!;
     public DbSet<Scenario> Scenarios { get; set; } = null!;
     public DbSet<Ruleset> Rulesets { get; set; } = null!;
@@ -94,6 +95,11 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 .HasForeignKey(iv => iv.AgentId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            entity.HasOne(iv => iv.Model)
+                .WithMany()
+                .HasForeignKey(iv => iv.ModelId)
+                .OnDelete(DeleteBehavior.NoAction);
+
             entity.HasIndex(iv => new { iv.AgentId, iv.VersionNumber }).IsUnique();
         });
 
@@ -155,9 +161,6 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.Property(m => m.GameId).IsRequired();
             entity.Property(m => m.Text).IsRequired();
             entity.Property(m => m.CreatedAt).IsRequired();
-            entity.Property(m => m.ModelName).HasMaxLength(200);
-            entity.Property(m => m.ModelProvider).HasMaxLength(50);
-            entity.Property(m => m.ModelEndpoint).HasMaxLength(500);
 
             entity.HasOne(m => m.Game)
                 .WithMany(g => g.Messages)
@@ -429,6 +432,19 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.HasIndex(mtc => mtc.InstructionVersionId);
         });
 
+        // Model entity configuration
+        modelBuilder.Entity<Model>(entity =>
+        {
+            entity.HasKey(m => m.Id);
+            entity.Property(m => m.Name).IsRequired().HasMaxLength(200);
+            entity.Property(m => m.Provider).IsRequired().HasMaxLength(50);
+            entity.Property(m => m.Endpoint).HasMaxLength(500);
+            entity.Property(m => m.CreatedAt).IsRequired();
+
+            // Create unique index on Name + Provider + Endpoint to prevent duplicates
+            entity.HasIndex(m => new { m.Name, m.Provider, m.Endpoint })
+                .IsUnique();
+        });
         // Message evaluation metric entity configuration
         modelBuilder.Entity<MessageEvaluationMetric>(entity =>
         {
@@ -437,9 +453,6 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.Property(mem => mem.MetricName).IsRequired();
             entity.Property(mem => mem.Score).IsRequired();
             entity.Property(mem => mem.EvaluatedAt).IsRequired();
-            entity.Property(mem => mem.EvaluationModelName).HasMaxLength(200);
-            entity.Property(mem => mem.EvaluationModelProvider).HasMaxLength(50);
-            entity.Property(mem => mem.EvaluationModelEndpoint).HasMaxLength(500);
 
             // Configure Diagnostics as JSONB for PostgreSQL
             string providerName;
@@ -473,6 +486,11 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 .WithMany()
                 .HasForeignKey(mem => mem.MessageId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(mem => mem.EvaluationModel)
+                .WithMany(model => model.EvaluationMetrics)
+                .HasForeignKey(mem => mem.EvaluationModelId)
+                .OnDelete(DeleteBehavior.NoAction);
         });
         // Seed data - use lowercase ids for new defaults
         // IMPORTANT: When modifying any seed data values (e.g., ScenarioInstructions, InitialGreeting, or any HasData() values),

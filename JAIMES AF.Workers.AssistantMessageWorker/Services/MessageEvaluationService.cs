@@ -69,6 +69,13 @@ public class MessageEvaluationService(
             // Store metrics in database
             await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
+            // Get or create the model for evaluation
+            Model? evaluationModel = await context.GetOrCreateModelAsync(
+                modelOptions.Name,
+                modelOptions.Provider.ToString(),
+                modelOptions.Endpoint,
+                cancellationToken);
+
             DateTime evaluatedAt = DateTime.UtcNow;
 
             // Extract and store each metric using the metric names from the evaluator
@@ -109,9 +116,7 @@ public class MessageEvaluationService(
                         Remarks = null, // NumericMetric doesn't expose reasoning/remarks directly
                         EvaluatedAt = evaluatedAt,
                         Diagnostics = diagnosticsJson,
-                        EvaluationModelName = modelOptions.Name,
-                        EvaluationModelProvider = modelOptions.Provider.ToString(),
-                        EvaluationModelEndpoint = modelOptions.Endpoint
+                        EvaluationModelId = evaluationModel?.Id
                     };
 
                     context.MessageEvaluationMetrics.Add(evaluationMetric);

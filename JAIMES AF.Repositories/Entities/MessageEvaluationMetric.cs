@@ -56,22 +56,15 @@ public class MessageEvaluationMetric
     public string? Diagnostics { get; set; }
 
     /// <summary>
-    /// Gets or sets the name of the AI model used to perform this evaluation (e.g., "gpt-4o-mini", "gemma3").
+    /// Gets or sets the ID of the model used to perform this evaluation.
     /// </summary>
-    [MaxLength(200)]
-    public string? EvaluationModelName { get; set; }
+    public int? EvaluationModelId { get; set; }
 
     /// <summary>
-    /// Gets or sets the provider type used to perform this evaluation (e.g., "Ollama", "AzureOpenAI", "OpenAI").
+    /// Navigation property to the model used to perform this evaluation.
     /// </summary>
-    [MaxLength(50)]
-    public string? EvaluationModelProvider { get; set; }
-
-    /// <summary>
-    /// Gets or sets the endpoint URL of the model service used to perform this evaluation.
-    /// </summary>
-    [MaxLength(500)]
-    public string? EvaluationModelEndpoint { get; set; }
+    [ForeignKey(nameof(EvaluationModelId))]
+    public Model? EvaluationModel { get; set; }
 
     /// <summary>
     /// Navigation property to the message this evaluation metric belongs to.

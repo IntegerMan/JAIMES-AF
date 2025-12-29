@@ -1,5 +1,6 @@
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
+using MattEland.Jaimes.ServiceDefaults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MattEland.Jaimes.ApiService;
@@ -58,6 +59,18 @@ public class DatabaseInitializer(ActivitySource activitySource, ILogger<Database
             using var scope = app.Services.CreateScope();
             var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<JaimesDbContext>>();
             await using var context = await contextFactory.CreateDbContextAsync(CancellationToken.None);
+            
+            // Get model options to associate with instruction versions
+            TextGenerationModelOptions? modelOptions = scope.ServiceProvider.GetService<TextGenerationModelOptions>();
+            Model? defaultModel = null;
+            if (modelOptions != null)
+            {
+                defaultModel = await context.GetOrCreateModelAsync(
+                    modelOptions.Name,
+                    modelOptions.Provider.ToString(),
+                    modelOptions.Endpoint,
+                    CancellationToken.None);
+            }
 
             // First, clean up any duplicate agents (keep the one with the expected ID, delete others)
             await CleanupDuplicateAgentsAsync(context);
@@ -113,10 +126,11 @@ public class DatabaseInitializer(ActivitySource activitySource, ILogger<Database
                                 VersionNumber = "v1.0",
                                 Instructions = instructions,
                                 CreatedAt = DateTime.UtcNow,
-                                IsActive = true
+                                IsActive = true,
+                                ModelId = defaultModel?.Id
                             };
                             context.AgentInstructionVersions.Add(version);
-                            logger?.LogInformation("Created default instruction version for agent: {AgentId}", id);
+                            logger?.LogInformation("Created default instruction version for agent: {AgentId} with model: {ModelId}", id, defaultModel?.Id);
                         }
                         else
                         {
@@ -138,7 +152,8 @@ public class DatabaseInitializer(ActivitySource activitySource, ILogger<Database
                                     VersionNumber = "v1.0",
                                     Instructions = instructions,
                                     CreatedAt = DateTime.UtcNow,
-                                    IsActive = true
+                                    IsActive = true,
+                                    ModelId = defaultModel?.Id
                                 };
                                 context.AgentInstructionVersions.Add(version);
                                 logger?.LogInformation("Created missing instruction version for existing agent: {AgentId}", id);
@@ -176,7 +191,8 @@ public class DatabaseInitializer(ActivitySource activitySource, ILogger<Database
                                 VersionNumber = "v1.0",
                                 Instructions = instructions,
                                 CreatedAt = DateTime.UtcNow,
-                                IsActive = true
+                                IsActive = true,
+                                ModelId = defaultModel?.Id
                             };
                             context.AgentInstructionVersions.Add(version);
                             logger?.LogInformation("Created missing instruction version for existing agent: {AgentId}", existingAgent.Id);

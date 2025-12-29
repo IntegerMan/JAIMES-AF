@@ -73,6 +73,22 @@ namespace MattEland.Jaimes.Repositories.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Models",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    Provider = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    Endpoint = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Models", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "RagSearchQueries",
                 columns: table => new
                 {
@@ -101,29 +117,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "AgentInstructionVersions",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    AgentId = table.Column<string>(type: "text", nullable: false),
-                    VersionNumber = table.Column<string>(type: "text", nullable: false),
-                    Instructions = table.Column<string>(type: "text", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_AgentInstructionVersions", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_AgentInstructionVersions_Agents_AgentId",
-                        column: x => x.AgentId,
-                        principalTable: "Agents",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "DocumentChunks",
                 columns: table => new
                 {
@@ -146,6 +139,41 @@ namespace MattEland.Jaimes.Repositories.Migrations
                         principalTable: "CrackedDocuments",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AgentInstructionVersions",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    AgentId = table.Column<string>(type: "text", nullable: false),
+                    VersionNumber = table.Column<string>(type: "text", nullable: false),
+                    Instructions = table.Column<string>(type: "text", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    ModelId = table.Column<int>(type: "integer", nullable: true),
+                    ModelId1 = table.Column<int>(type: "integer", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AgentInstructionVersions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AgentInstructionVersions_Agents_AgentId",
+                        column: x => x.AgentId,
+                        principalTable: "Agents",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_AgentInstructionVersions_Models_ModelId",
+                        column: x => x.ModelId,
+                        principalTable: "Models",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_AgentInstructionVersions_Models_ModelId1",
+                        column: x => x.ModelId1,
+                        principalTable: "Models",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -396,7 +424,8 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     Score = table.Column<double>(type: "double precision", nullable: false),
                     Remarks = table.Column<string>(type: "text", nullable: true),
                     EvaluatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    Diagnostics = table.Column<string>(type: "jsonb", nullable: true)
+                    Diagnostics = table.Column<string>(type: "jsonb", nullable: true),
+                    EvaluationModelId = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -407,6 +436,11 @@ namespace MattEland.Jaimes.Repositories.Migrations
                         principalTable: "Messages",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_MessageEvaluationMetrics_Models_EvaluationModelId",
+                        column: x => x.EvaluationModelId,
+                        principalTable: "Models",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.InsertData(
@@ -438,6 +472,16 @@ namespace MattEland.Jaimes.Repositories.Migrations
                 table: "AgentInstructionVersions",
                 columns: new[] { "AgentId", "VersionNumber" },
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AgentInstructionVersions_ModelId",
+                table: "AgentInstructionVersions",
+                column: "ModelId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AgentInstructionVersions_ModelId1",
+                table: "AgentInstructionVersions",
+                column: "ModelId1");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ChatHistories_GameId",
@@ -509,6 +553,11 @@ namespace MattEland.Jaimes.Repositories.Migrations
                 column: "EvaluatedAt");
 
             migrationBuilder.CreateIndex(
+                name: "IX_MessageEvaluationMetrics_EvaluationModelId",
+                table: "MessageEvaluationMetrics",
+                column: "EvaluationModelId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_MessageEvaluationMetrics_MessageId",
                 table: "MessageEvaluationMetrics",
                 column: "MessageId");
@@ -552,6 +601,12 @@ namespace MattEland.Jaimes.Repositories.Migrations
                 name: "IX_Messages_PreviousMessageId",
                 table: "Messages",
                 column: "PreviousMessageId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Models_Name_Provider_Endpoint",
+                table: "Models",
+                columns: new[] { "Name", "Provider", "Endpoint" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Players_RulesetId",
@@ -626,6 +681,14 @@ namespace MattEland.Jaimes.Repositories.Migrations
                 table: "Messages");
 
             migrationBuilder.DropForeignKey(
+                name: "FK_AgentInstructionVersions_Models_ModelId",
+                table: "AgentInstructionVersions");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_AgentInstructionVersions_Models_ModelId1",
+                table: "AgentInstructionVersions");
+
+            migrationBuilder.DropForeignKey(
                 name: "FK_ChatHistories_Games_GameId",
                 table: "ChatHistories");
 
@@ -663,6 +726,9 @@ namespace MattEland.Jaimes.Repositories.Migrations
 
             migrationBuilder.DropTable(
                 name: "Agents");
+
+            migrationBuilder.DropTable(
+                name: "Models");
 
             migrationBuilder.DropTable(
                 name: "Games");
