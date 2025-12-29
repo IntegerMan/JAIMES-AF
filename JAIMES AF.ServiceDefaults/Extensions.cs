@@ -9,6 +9,7 @@ using Microsoft.Extensions.ServiceDiscovery;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+using System.Diagnostics;
 
 namespace MattEland.Jaimes.ServiceDefaults;
 
@@ -76,7 +77,11 @@ public static class Extensions
             })
             .WithTracing(tracing =>
             {
-                // Register activity sources - prioritize application name for reliability
+                // Ensure we're sampling all activities - use AlwaysOn sampler to capture everything
+                // This helps diagnose if the issue is with sampling or something else
+                tracing.SetSampler(new AlwaysOnSampler());
+
+                // Register activity sources first - prioritize application name for reliability
                 // Use explicit registrations instead of wildcards for better trace capture
                 tracing
                     .AddSource(builder.Environment.ApplicationName)
@@ -88,10 +93,16 @@ public static class Extensions
                     .AddSource("Jaimes.Agents.*")
                     // Agent framework sources (explicit patterns for reliability)
                     .AddSource("Microsoft.Extensions.AI")
-                    .AddSource("Microsoft.Agents.AI")
-                    .AddAspNetCoreInstrumentation(options =>
+                    .AddSource("Microsoft.Agents.AI");
+
+                // Add processor to filter out unwanted Blazor ComponentHub activities and UI events
+                // This keeps routing events and events that trigger POST requests (onkeydown, onclick)
+                tracing.AddProcessor(new BlazorActivityFilteringProcessor());
+
+                // Add ASP.NET Core instrumentation with filtering
+                // Reference: https://github.com/open-telemetry/opentelemetry-dotnet-contrib/blob/main/src/OpenTelemetry.Instrumentation.AspNetCore/README.md
+                tracing.AddAspNetCoreInstrumentation(options =>
                     {
-                        // Filter out health checks and Blazor/SignalR render events
                         options.Filter = context =>
                         {
                             // Exclude health check requests
@@ -101,17 +112,14 @@ public static class Extensions
                                     StringComparison.OrdinalIgnoreCase))
                                 return false;
 
-                            // Exclude Blazor/SignalR render events to reduce noise
-                            string? path = context.Request.Path.Value;
-                            if (!string.IsNullOrEmpty(path))
-                            {
-                                // Filter out Blazor framework requests
-                                if (path.StartsWith("/_blazor", StringComparison.OrdinalIgnoreCase) ||
-                                    path.StartsWith("/_framework", StringComparison.OrdinalIgnoreCase) ||
-                                    path.Contains("/hub", StringComparison.OrdinalIgnoreCase))
-                                    return false;
-                            }
+                            // Exclude Blazor and SignalR HTTP requests (these generate too much noise)
+                            // The processor will handle filtering the actual activities
+                            if (context.Request.Path.StartsWithSegments("/_blazor", StringComparison.OrdinalIgnoreCase) ||
+                                context.Request.Path.StartsWithSegments("/_framework", StringComparison.OrdinalIgnoreCase) ||
+                                context.Request.Path.Value?.Contains("/hub", StringComparison.OrdinalIgnoreCase) == true)
+                                return false;
 
+                            // Allow all other requests
                             return true;
                         };
                     })
@@ -137,24 +145,14 @@ public static class Extensions
         return builder;
     }
 
-    private static TBuilder AddOpenTelemetryExporters<TBuilder>(this TBuilder builder)
-        where TBuilder : IHostApplicationBuilder
+    private static TBuilder AddOpenTelemetryExporters<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
-        // Check both configuration and environment variables for OTLP endpoint
-        // Aspire sets this as an environment variable when services are added via AddProject
-        string? otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]
-                               ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
+        var useOtlpExporter = !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]);
 
-        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
-            builder.Services.AddOpenTelemetry()
-                .UseOtlpExporter();
-
-        // Uncomment the following lines to enable the Azure Monitor exporter (requires the Azure.Monitor.OpenTelemetry.AspNetCore package)
-        //if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
-        //{
-        //    builder.Services.AddOpenTelemetry()
-        //       .UseAzureMonitor();
-        //}
+        if (useOtlpExporter)
+        {
+            builder.Services.AddOpenTelemetry().UseOtlpExporter();
+        }
 
         return builder;
     }
