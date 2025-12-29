@@ -1,12 +1,14 @@
 ﻿<MudNavMenu>
  <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="Icons.Material.Filled.Home">Home</MudNavLink>
  <MudNavLink Href="/games" Icon="Icons.Material.Filled.SportsEsports">Games</MudNavLink>
- <MudNavLink Href="/scenarios" Icon="Icons.Material.Filled.MenuBook">Scenarios</MudNavLink>
- <MudNavLink Href="/players" Icon="Icons.Material.Filled.Person">Players</MudNavLink>
- <MudNavLink Href="/rulesets" Icon="Icons.Material.Filled.Rule">Rulesets</MudNavLink>
- <MudNavLink Href="/agents" Icon="Icons.Material.Filled.SmartToy">Agents</MudNavLink>
+ <MudNavGroup Title="Content" Icon="Icons.Material.Filled.Folder" Expanded="false">
+  <MudNavLink Href="/scenarios" Icon="Icons.Material.Filled.MenuBook">Scenarios</MudNavLink>
+  <MudNavLink Href="/players" Icon="Icons.Material.Filled.Person">Players</MudNavLink>
+ </MudNavGroup>
  <MudNavGroup Title="Admin" Icon="Icons.Material.Filled.AdminPanelSettings" Expanded="false">
   <MudNavLink Href="/admin" Match="NavLinkMatch.All" Icon="Icons.Material.Filled.Dashboard">Admin Dashboard</MudNavLink>
+  <MudNavLink Href="/rulesets" Icon="Icons.Material.Filled.Rule">Rulesets</MudNavLink>
+  <MudNavLink Href="/agents" Icon="Icons.Material.Filled.SmartToy">Agents</MudNavLink>
   <MudNavLink Href="/admin/rules-search-test" Icon="Icons.Material.Filled.Search">Rules Search Test</MudNavLink>
   <MudNavLink Href="/admin/conversation-search-test" Icon="Icons.Material.Filled.Chat">Conversation Search Test</MudNavLink>
  </MudNavGroup>
