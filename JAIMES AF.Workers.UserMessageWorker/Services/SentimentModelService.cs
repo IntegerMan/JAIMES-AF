@@ -64,7 +64,10 @@ public class SentimentModelService(
             SentimentPrediction prediction = predictionEngine.Predict(input);
 
             // Get the highest confidence score
-            float maxScore = prediction.Score?.Max() ?? 0f;
+            // Handle null or empty array to avoid InvalidOperationException from Max() on empty sequence
+            float maxScore = prediction.Score != null && prediction.Score.Length > 0
+                ? prediction.Score.Max()
+                : 0f;
 
             // Map the predicted label to our sentiment values
             return prediction.PredictedLabel?.ToLowerInvariant().Trim() switch
