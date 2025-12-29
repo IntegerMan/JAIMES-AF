@@ -65,7 +65,6 @@
     <PackageVersion Include="Riok.Mapperly" Version="5.0.0-next.0" />
     <PackageVersion Include="Scrutor" Version="7.0.0" />
     <PackageVersion Include="SemanticChunker.NET" Version="1.1.0" />
-    <PackageVersion Include="SentimentAnalyzer" Version="1.0.0" />
     <PackageVersion Include="drittich.SemanticSlicer" Version="1.7.0" />
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageVersion Include="StackExchange.Redis" Version="2.8.16" />
