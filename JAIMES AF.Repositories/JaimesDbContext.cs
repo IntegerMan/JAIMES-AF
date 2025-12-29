@@ -5,6 +5,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
     public DbSet<Game> Games { get; set; } = null!;
     public DbSet<Message> Messages { get; set; } = null!;
     public DbSet<MessageEmbedding> MessageEmbeddings { get; set; } = null!;
+    public DbSet<MessageEvaluationMetric> MessageEvaluationMetrics { get; set; } = null!;
     public DbSet<Player> Players { get; set; } = null!;
     public DbSet<Scenario> Scenarios { get; set; } = null!;
     public DbSet<Ruleset> Rulesets { get; set; } = null!;
@@ -425,6 +426,48 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.HasIndex(mtc => mtc.InstructionVersionId);
         });
 
+        // Message evaluation metric entity configuration
+        modelBuilder.Entity<MessageEvaluationMetric>(entity =>
+        {
+            entity.HasKey(mem => mem.Id);
+            entity.Property(mem => mem.MessageId).IsRequired();
+            entity.Property(mem => mem.MetricName).IsRequired();
+            entity.Property(mem => mem.Score).IsRequired();
+            entity.Property(mem => mem.EvaluatedAt).IsRequired();
+
+            // Configure Diagnostics as JSONB for PostgreSQL
+            string providerName;
+            try
+            {
+                providerName = Database.ProviderName ?? "Npgsql.EntityFrameworkCore.PostgreSQL";
+            }
+            catch
+            {
+                // At design-time or when database is not initialized, assume PostgreSQL
+                providerName = "Npgsql.EntityFrameworkCore.PostgreSQL";
+            }
+
+            if (string.Equals(providerName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
+            {
+                // For PostgreSQL, use jsonb type for Diagnostics
+                entity.Property(mem => mem.Diagnostics)
+                    .HasColumnType("jsonb");
+            }
+
+            // Create index on MessageId for efficient queries by message
+            entity.HasIndex(mem => mem.MessageId);
+
+            // Create index on EvaluatedAt for time-based queries
+            entity.HasIndex(mem => mem.EvaluatedAt);
+
+            // Create index on MetricName for filtering by metric type
+            entity.HasIndex(mem => mem.MetricName);
+
+            entity.HasOne(mem => mem.Message)
+                .WithMany()
+                .HasForeignKey(mem => mem.MessageId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
         // Seed data - use lowercase ids for new defaults
         // IMPORTANT: When modifying any seed data values (e.g., ScenarioInstructions, InitialGreeting, or any HasData() values),
         // you MUST create a new EF Core migration. See AGENTS.md for the migration command.

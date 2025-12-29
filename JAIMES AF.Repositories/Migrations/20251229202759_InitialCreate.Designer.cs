@@ -13,8 +13,8 @@ using Pgvector;
 namespace MattEland.Jaimes.Repositories.Migrations
 {
     [DbContext(typeof(JaimesDbContext))]
-    [Migration("20251229050251_AddMessageSentiment")]
-    partial class AddMessageSentiment
+    [Migration("20251229202759_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -381,6 +381,45 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.ToTable("MessageEmbeddings");
                 });
 
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.MessageEvaluationMetric", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Diagnostics")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("EvaluatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("MessageId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("MetricName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("text");
+
+                    b.Property<double>("Score")
+                        .HasColumnType("double precision");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EvaluatedAt");
+
+                    b.HasIndex("MessageId");
+
+                    b.HasIndex("MetricName");
+
+                    b.ToTable("MessageEvaluationMetrics");
+                });
+
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Player", b =>
                 {
                     b.Property<string>("Id")
@@ -730,6 +769,17 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.HasOne("MattEland.Jaimes.Repositories.Entities.Message", "Message")
                         .WithOne("MessageEmbedding")
                         .HasForeignKey("MattEland.Jaimes.Repositories.Entities.MessageEmbedding", "MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Message");
+                });
+
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.MessageEvaluationMetric", b =>
+                {
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.Message", "Message")
+                        .WithMany()
+                        .HasForeignKey("MessageId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

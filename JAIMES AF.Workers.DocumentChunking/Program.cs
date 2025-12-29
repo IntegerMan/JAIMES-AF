@@ -149,7 +149,7 @@ using IHost host = builder.Build();
 ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 IQdrantEmbeddingStore qdrantStore = host.Services.GetRequiredService<IQdrantEmbeddingStore>();
 
-await host.InitializeDatabaseAsync();
+await host.WaitForMigrationsAsync();
 
 logger.LogInformation("Starting Document Chunking and Embedding Worker");
 logger.LogInformation("Chunking Strategy: {Strategy}", chunkingStrategy);

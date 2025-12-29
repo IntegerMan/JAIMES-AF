@@ -93,7 +93,7 @@ using IHost host = builder.Build();
 
 ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 
-await host.InitializeDatabaseAsync();
+await host.WaitForMigrationsAsync();
 
 // Load or train sentiment model before starting message processing
 logger.LogInformation("Loading or training sentiment analysis model...");

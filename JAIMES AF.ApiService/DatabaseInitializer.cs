@@ -29,8 +29,8 @@ public class DatabaseInitializer(ActivitySource activitySource, ILogger<Database
 
             try
             {
-                // Use the centralized database initialization method
-                await app.InitializeDatabaseAsync();
+                // Wait for migrations to be applied by the migration worker
+                await app.WaitForMigrationsAsync();
                 migrateActivity?.SetTag("db.migrate.success", true);
 
                 // Seed default agents and instruction versions

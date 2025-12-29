@@ -32,4 +32,5 @@
     <Project Path="JAIMES AF.Workers.DocumentEmbedding/JAIMES AF.Workers.DocumentEmbedding.csproj"/>
     <Project Path="JAIMES AF.Workers.UserMessageWorker/JAIMES AF.Workers.UserMessageWorker.csproj"/>
     <Project Path="JAIMES AF.Workers.AssistantMessageWorker/JAIMES AF.Workers.AssistantMessageWorker.csproj"/>
+    <Project Path="JAIMES AF.Workers.DatabaseMigration/JAIMES AF.Workers.DatabaseMigration.csproj"/>
 </Solution>

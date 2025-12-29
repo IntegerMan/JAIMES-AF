@@ -62,6 +62,20 @@ IResourceBuilder<PostgresServerResource> pgAdmin = postgres.WithPgAdmin(admin =>
 IResourceBuilder<PostgresDatabaseResource> postgresdb = postgres.AddDatabase("postgres-db", "postgres")
     .WithCreationScript("CREATE EXTENSION IF NOT EXISTS vector;");
 
+// Group all workers under a parent resource for better UI organization
+IResourceBuilder<ContainerResource> workersGroup = builder.AddContainer("workers", "mcr.microsoft.com/dotnet/runtime-deps", "10.0")
+    .WithIconName("PeopleTeam")
+    .WithEnvironment("DOTNET_RUNNING_IN_CONTAINER", "true")
+    .ExcludeFromManifest();
+
+// Migration worker must run first and complete before other services start
+IResourceBuilder<ProjectResource> databaseMigrationWorker = builder.AddProject<Projects.JAIMES_AF_Workers_DatabaseMigration>("database-migration-worker")
+    .WithIconName("DatabasePlugConnected")
+    .WithReference(postgresdb)
+    .WaitFor(postgres)
+    .WaitFor(postgresdb)
+    .WithParentRelationship(workersGroup);
+
 // Conditionally create Ollama container only if needed
 IResourceBuilder<OllamaResource>? ollama = null;
 IResourceBuilder<OllamaModelResource>? chatModel = null;
@@ -140,6 +154,7 @@ apiService = apiService
     .WithReference(postgresdb)
     .WithReference(qdrant)
     .WithReference(lavinmq)
+    .WaitFor(databaseMigrationWorker)
     .WaitFor(qdrant)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
@@ -190,16 +205,11 @@ builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")
     .WithReference(apiService)
     .WaitFor(apiService);
 
-// Group all workers under a parent resource for better UI organization
-IResourceBuilder<ContainerResource> workersGroup = builder.AddContainer("workers", "mcr.microsoft.com/dotnet/runtime-deps", "10.0")
-    .WithIconName("PeopleTeam")
-    .WithEnvironment("DOTNET_RUNNING_IN_CONTAINER", "true")
-    .ExcludeFromManifest();
-
 IResourceBuilder<ProjectResource> documentCrackerWorker = builder.AddProject<Projects.JAIMES_AF_Workers_DocumentCrackerWorker>("document-cracker-worker")
     .WithIconName("DocumentTextExtract")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
+    .WaitFor(databaseMigrationWorker)
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
@@ -209,6 +219,7 @@ IResourceBuilder<ProjectResource> documentChangeDetector = builder.AddProject<Pr
     .WithIconName("DocumentSearch")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
+    .WaitFor(databaseMigrationWorker)
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
@@ -220,6 +231,7 @@ IResourceBuilder<ProjectResource> documentChunkingWorker = builder.AddProject<Pr
     .WithReference(postgresdb)
     .WithReference(qdrant)
     .WithOllamaReferences(ollama, chatModel, embedModel, needsChatModel: false, needsEmbedModel: true)
+    .WaitFor(databaseMigrationWorker)
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
@@ -240,6 +252,7 @@ IResourceBuilder<ProjectResource> documentEmbeddingWorker = builder.AddProject<P
     .WithReference(postgresdb)
     .WithReference(qdrant)
     .WithOllamaReferences(ollama, chatModel, embedModel, needsChatModel: false, needsEmbedModel: true)
+    .WaitFor(databaseMigrationWorker)
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
@@ -258,6 +271,7 @@ IResourceBuilder<ProjectResource> userMessageWorker = builder.AddProject<Project
     .WithIconName("PersonChat")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
+    .WaitFor(databaseMigrationWorker)
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
@@ -267,6 +281,7 @@ IResourceBuilder<ProjectResource> assistantMessageWorker = builder.AddProject<Pr
     .WithIconName("SettingsChat")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
+    .WaitFor(databaseMigrationWorker)
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
@@ -278,6 +293,7 @@ IResourceBuilder<ProjectResource> conversationEmbeddingWorker = builder.AddProje
     .WithReference(postgresdb)
     .WithReference(qdrant)
     .WithOllamaReferences(ollama, chatModel, embedModel, needsChatModel: false, needsEmbedModel: true)
+    .WaitFor(databaseMigrationWorker)
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
