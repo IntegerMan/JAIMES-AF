@@ -1,19 +1,25 @@
 using System.Text.Json;
+using MattEland.Jaimes.ServiceDefinitions.Requests;
+using MattEland.Jaimes.ServiceDefinitions.Responses;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.AGUI;
 using Microsoft.Extensions.AI;
+using MudBlazor;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 
-public partial class GameDetails
+public partial class GameDetails : IDisposable
 {
     [Inject] public IHttpClientFactory HttpClientFactory { get; set; } = null!;
     [Inject] public ILoggerFactory LoggerFactory { get; set; } = null!;
     [Inject] public IJSRuntime JsRuntime { get; set; } = null!;
+    [Inject] public IDialogService DialogService { get; set; } = null!;
 
     [Parameter] public Guid GameId { get; set; }
 
     private List<ChatMessage> _messages = [];
+    private List<int?> _messageIds = []; // Parallel list to track message IDs
+    private Dictionary<int, MessageFeedbackInfo> _messageFeedback = new();
     private AIAgent? _agent;
 
     private GameStateResponse? _game;
@@ -32,6 +38,18 @@ public partial class GameDetails
     private bool _isSending = false;
     private bool _shouldScrollToBottom = false;
     private ILogger? _logger;
+
+    // Hover state tracking for feedback buttons
+    private int? _hoveredMessageId;
+
+    private bool IsHovering => _hoveredMessageId.HasValue;
+
+    public record MessageFeedbackInfo
+    {
+        public required int MessageId { get; init; }
+        public required bool IsPositive { get; init; }
+        public string? Comment { get; init; }
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -58,9 +76,16 @@ public partial class GameDetails
         {
             HttpClient httpClient = HttpClientFactory.CreateClient("Api");
             _game = await httpClient.GetFromJsonAsync<GameStateResponse>($"/games/{GameId}");
-            _messages = _game?.Messages.OrderBy(m => m.Id)
+            
+            // Build messages and track IDs
+            var orderedMessages = _game?.Messages.OrderBy(m => m.Id).ToList() ?? [];
+            _messages = orderedMessages
                 .Select(m => new ChatMessage(m.Participant == ChatParticipant.Player ? ChatRole.User : ChatRole.Assistant, m.Text))
-                .ToList() ?? [];
+                .ToList();
+            _messageIds = orderedMessages.Select(m => (int?)m.Id).ToList();
+
+            // Load existing feedback for assistant messages
+            await LoadFeedbackForMessagesAsync(orderedMessages.Where(m => m.Participant == ChatParticipant.GameMaster).Select(m => m.Id).ToList());
 
             // Create AG-UI client for this game
             HttpClient aguiHttpClient = HttpClientFactory.CreateClient("AGUI");
@@ -202,6 +227,9 @@ public partial class GameDetails
 
                 _logger?.LogInformation("Received message '{Text}' from {Role}", message.Text, normalizedRole);
                 _messages.Add(normalizedMessage);
+                // Note: New messages from AGUI don't have database IDs yet, so we track as null
+                // They will get IDs when saved to the database, but we can't provide feedback until they're saved
+                _messageIds.Add(null);
             }
         }
         catch (Exception ex)
@@ -274,5 +302,184 @@ public partial class GameDetails
             utcTime = DateTime.SpecifyKind(utcTime, DateTimeKind.Utc);
         }
         return utcTime.ToLocalTime();
+    }
+
+    /// <summary>
+    /// Loads existing feedback for the specified message IDs.
+    /// </summary>
+    private async Task LoadFeedbackForMessagesAsync(List<int> messageIds)
+    {
+        if (messageIds.Count == 0) return;
+
+        try
+        {
+            HttpClient httpClient = HttpClientFactory.CreateClient("Api");
+            
+            // Load feedback for each message (could be optimized with a batch endpoint, but this works for now)
+            foreach (int messageId in messageIds)
+            {
+                try
+                {
+                    MessageFeedbackResponse? feedback = await httpClient.GetFromJsonAsync<MessageFeedbackResponse>($"/messages/{messageId}/feedback");
+                    if (feedback != null)
+                    {
+                        _messageFeedback[messageId] = new MessageFeedbackInfo
+                        {
+                            MessageId = feedback.MessageId,
+                            IsPositive = feedback.IsPositive,
+                            Comment = feedback.Comment
+                        };
+                    }
+                }
+                catch (HttpRequestException)
+                {
+                    // Message doesn't have feedback yet, which is fine
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to load feedback for messages");
+        }
+    }
+
+    /// <summary>
+    /// Gets the message ID for a message at the specified index, if available.
+    /// </summary>
+    private int? GetMessageId(int index)
+    {
+        if (index >= 0 && index < _messageIds.Count)
+            return _messageIds[index];
+        return null;
+    }
+
+    /// <summary>
+    /// Handles hover start for a message bubble.
+    /// </summary>
+    private void HoverStart(int? messageId)
+    {
+        if (messageId.HasValue)
+        {
+            _hoveredMessageId = messageId;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Handles hover stop for a message bubble.
+    /// </summary>
+    private void HoverStop(int? messageId)
+    {
+        if (_hoveredMessageId == messageId)
+        {
+            _hoveredMessageId = null;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Shows the feedback dialog and submits feedback for a message.
+    /// </summary>
+    private async Task ShowFeedbackDialogAsync(int messageId, bool? isPositive = null)
+    {
+        // Stop hovering when dialog opens
+        _hoveredMessageId = null;
+        StateHasChanged();
+
+        // Check if feedback already exists
+        if (_messageFeedback.ContainsKey(messageId))
+        {
+            // Show existing feedback info
+            MessageFeedbackInfo existing = _messageFeedback[messageId];
+            await DialogService.ShowMessageBox(
+                "Feedback Already Submitted",
+                $"You have already submitted {(existing.IsPositive ? "positive" : "negative")} feedback for this message." +
+                (string.IsNullOrWhiteSpace(existing.Comment) ? "" : $"\n\nYour comment: {existing.Comment}"),
+                "OK");
+            return;
+        }
+
+        // Show feedback dialog
+        // If isPositive is provided (direct click from popover), pre-select it in the dialog
+        IDialogReference? dialogRef = null;
+        var parameters = new DialogParameters<FeedbackDialog>
+        {
+            { nameof(FeedbackDialog.MessageId), messageId },
+            { nameof(FeedbackDialog.PreSelectedFeedback), isPositive },
+            { nameof(FeedbackDialog.OnFeedbackSubmitted), EventCallback.Factory.Create<MessageFeedbackInfo?>(this, async (MessageFeedbackInfo? feedback) =>
+            {
+                if (feedback != null)
+                {
+                    await SubmitFeedbackAsync(feedback.MessageId, feedback.IsPositive, feedback.Comment);
+                    // Close the dialog after submitting
+                    if (dialogRef != null)
+                    {
+                        dialogRef.Close(DialogResult.Ok(true));
+                    }
+                }
+            })}
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        dialogRef = await DialogService.ShowAsync<FeedbackDialog>("Provide Feedback", parameters, options);
+        
+        // Also handle cancellation
+        var result = await dialogRef.Result;
+    }
+
+    /// <summary>
+    /// Submits feedback to the API.
+    /// </summary>
+    private async Task SubmitFeedbackAsync(int messageId, bool isPositive, string? comment)
+    {
+        try
+        {
+            HttpClient httpClient = HttpClientFactory.CreateClient("Api");
+            
+            SubmitMessageFeedbackRequest request = new()
+            {
+                IsPositive = isPositive,
+                Comment = comment
+            };
+
+            HttpResponseMessage response = await httpClient.PostAsJsonAsync($"/messages/{messageId}/feedback", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                MessageFeedbackResponse? feedback = await response.Content.ReadFromJsonAsync<MessageFeedbackResponse>();
+                if (feedback != null)
+                {
+                    _messageFeedback[messageId] = new MessageFeedbackInfo
+                    {
+                        MessageId = feedback.MessageId,
+                        IsPositive = feedback.IsPositive,
+                        Comment = feedback.Comment
+                    };
+                    StateHasChanged();
+                }
+            }
+            else
+            {
+                string errorMessage = await response.Content.ReadAsStringAsync();
+                _logger?.LogError("Failed to submit feedback: {Error}", errorMessage);
+                await DialogService.ShowMessageBox("Error", $"Failed to submit feedback: {errorMessage}", "OK");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to submit feedback");
+            await DialogService.ShowMessageBox("Error", $"Failed to submit feedback: {ex.Message}", "OK");
+        }
+    }
+
+    public void Dispose()
+    {
+        // No resources to dispose
     }
 }

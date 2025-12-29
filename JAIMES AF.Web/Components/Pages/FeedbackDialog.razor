@@ -1,0 +1,27 @@
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6" Class="mb-4">Provide Feedback</MudText>
+        <MudText Typo="Typo.body2" Class="mb-4">How would you rate this message?</MudText>
+        
+        <MudRadioGroup T="bool?" @bind-Value="_selectedFeedback">
+            <MudRadio T="bool?" Value="@true" Color="Color.Success">Thumbs Up</MudRadio>
+            <MudRadio T="bool?" Value="@false" Color="Color.Error">Thumbs Down</MudRadio>
+        </MudRadioGroup>
+
+        <MudTextField @bind-Value="_comment" 
+                      Label="Additional Comments (Optional)" 
+                      Placeholder="Share your thoughts..."
+                      Lines="4"
+                      Class="mt-4"
+                      FullWidth="true"
+                      Variant="Variant.Outlined"/>
+
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Submit</MudButton>
+    </DialogActions>
+</MudDialog>
+

@@ -42,12 +42,25 @@
 			</div>
 
 			<div id="chat-scroll-container" class="chat-scroll">
-				@foreach (var m in _messages ?? [])
+				@for (int msgIndex = 0; msgIndex < (_messages?.Count ?? 0); msgIndex++)
 				{
+					var m = _messages![msgIndex];
+					
+					// Skip empty messages
+					if (string.IsNullOrWhiteSpace(m.Text))
+					{
+						continue;
+					}
+					
+					int? messageId = GetMessageId(msgIndex);
+					bool hasFeedback = messageId.HasValue && _messageFeedback.ContainsKey(messageId.Value);
+					MessageFeedbackInfo? feedback = messageId.HasValue && _messageFeedback.TryGetValue(messageId.Value, out var fb) ? fb : null;
+					
 					List<string> paragraphs = ChatHelpers.SplitIntoParagraphs(m.Text).ToList();
 					@foreach ((string paragraph, int index) in paragraphs.Select((p, i) => (p, i)))
 					{
 						bool isFirstParagraph = index == 0;
+						bool isLastParagraph = index == paragraphs.Count - 1;
 						@if (m.Role == ChatRole.User)
 						{
 							<MudChat ChatPosition="ChatBubblePosition.End"
@@ -64,17 +77,59 @@
 						}
 						else
 						{
-							<MudChat ChatPosition="ChatBubblePosition.Start"
-							         Variant="Variant.Filled"
-							         Color="Color.Default">
-								@if (isFirstParagraph)
-								{
-									<MudChatHeader Name="Game Master"/>
-								}
-								<MudChatBubble>
-									@((MarkupString) ChatHelpers.RenderMarkdown(paragraph))
-								</MudChatBubble>
-							</MudChat>
+							@if (!string.IsNullOrWhiteSpace(paragraph))
+							{
+								<MudChat ChatPosition="ChatBubblePosition.Start"
+								         Variant="Variant.Filled"
+								         Color="Color.Default"
+								         @onmouseenter="@(() => HoverStart(messageId))"
+								         @onmouseleave="@(() => HoverStop(messageId))">
+									@if (isFirstParagraph)
+									{
+										<MudChatHeader Name="Game Master"/>
+									}
+									<MudChatBubble>
+										@((MarkupString) ChatHelpers.RenderMarkdown(paragraph))
+									</MudChatBubble>
+									@if (isLastParagraph && messageId.HasValue)
+									{
+										<MudChatFooter Class="feedback-footer">
+											@if (hasFeedback && feedback != null)
+											{
+												<MudTooltip Text="@(string.IsNullOrWhiteSpace(feedback.Comment) ? $"You provided {(feedback.IsPositive ? "positive" : "negative")} feedback" : feedback.Comment)">
+													<div class="d-flex align-items-center gap-1">
+														<MudIcon Icon="@(feedback.IsPositive ? Icons.Material.Filled.ThumbUp : Icons.Material.Filled.ThumbDown)"
+														         Color="Color.Default"
+														         Size="Size.Small"
+														         Class="feedback-icon-existing"/>
+													</div>
+												</MudTooltip>
+											}
+											else if (IsHovering && _hoveredMessageId == messageId)
+											{
+												<div class="d-flex align-items-center gap-1">
+													<MudIconButton Icon="@Icons.Material.Filled.ThumbUp"
+													               Color="Color.Default"
+													               Size="Size.Small"
+													               Variant="Variant.Text"
+													               Class="feedback-button"
+													               OnClick="@(() => ShowFeedbackDialogAsync(messageId.Value, true))"/>
+													<MudIconButton Icon="@Icons.Material.Filled.ThumbDown"
+													               Color="Color.Default"
+													               Size="Size.Small"
+													               Variant="Variant.Text"
+													               Class="feedback-button"
+													               OnClick="@(() => ShowFeedbackDialogAsync(messageId.Value, false))"/>
+												</div>
+											}
+											else
+											{
+												<div class="feedback-spacer"></div>
+											}
+										</MudChatFooter>
+									}
+								</MudChat>
+							}
 						}
 					}
 				}
@@ -111,3 +166,24 @@
 		}
 	</MudContainer>
 </div>
+
+<style>
+	.feedback-footer {
+		min-height: 25px;
+		display: flex;
+		align-items: center;
+	}
+
+	.feedback-spacer {
+		min-height: 25px;
+		width: 1px;
+	}
+
+	.feedback-button {
+		color: var(--mud-palette-text-primary) !important;
+	}
+
+	.feedback-icon-existing {
+		color: var(--mud-palette-text-primary) !important;
+	}
+</style>

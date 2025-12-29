@@ -24,6 +24,9 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
     public DbSet<RagSearchQuery> RagSearchQueries { get; set; } = null!;
     public DbSet<RagSearchResultChunk> RagSearchResultChunks { get; set; } = null!;
 
+    // Message feedback entity
+    public DbSet<MessageFeedback> MessageFeedbacks { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -369,6 +372,30 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
 
             // Create index on Relevancy for analysis queries
             entity.HasIndex(rsc => rsc.Relevancy);
+        });
+
+        modelBuilder.Entity<MessageFeedback>(entity =>
+        {
+            entity.HasKey(mf => mf.Id);
+            entity.Property(mf => mf.MessageId).IsRequired();
+            entity.Property(mf => mf.IsPositive).IsRequired();
+            entity.Property(mf => mf.CreatedAt).IsRequired();
+
+            entity.HasOne(mf => mf.Message)
+                .WithMany()
+                .HasForeignKey(mf => mf.MessageId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(mf => mf.InstructionVersion)
+                .WithMany()
+                .HasForeignKey(mf => mf.InstructionVersionId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // Create unique index on MessageId to ensure one feedback per message
+            entity.HasIndex(mf => mf.MessageId).IsUnique();
+
+            // Create index on InstructionVersionId for tracking feedback by version
+            entity.HasIndex(mf => mf.InstructionVersionId);
         });
 
         // Seed data - use lowercase ids for new defaults
