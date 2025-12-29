@@ -83,11 +83,14 @@ public class UserMessageConsumer(
             await messagePublisher.PublishAsync(embeddingMessage, cancellationToken);
             logger.LogDebug("Enqueued user message {MessageId} for embedding", messageEntity.Id);
 
+            bool sentimentAnalysisSucceeded = await AnalyzeSentimentAsync(messageEntity, activity, context, cancellationToken);
 
-            await AnalyzeSentimentAsync(messageEntity, activity, context, cancellationToken);
-
-
-            activity?.SetStatus(ActivityStatusCode.Ok);
+            // Only set status to Ok if sentiment analysis succeeded or wasn't attempted
+            // If sentiment analysis failed, the activity status was already set to Error in AnalyzeSentimentAsync
+            if (sentimentAnalysisSucceeded)
+            {
+                activity?.SetStatus(ActivityStatusCode.Ok);
+            }
         }
         catch (Exception ex)
         {
@@ -99,7 +102,7 @@ public class UserMessageConsumer(
         }
     }
 
-    private async Task AnalyzeSentimentAsync(Message messageEntity, Activity? activity, JaimesDbContext context,
+    private async Task<bool> AnalyzeSentimentAsync(Message messageEntity, Activity? activity, JaimesDbContext context,
         CancellationToken cancellationToken)
     {
         // Perform sentiment analysis
@@ -130,6 +133,10 @@ public class UserMessageConsumer(
                     sentiment,
                     confidence,
                     confidenceThreshold);
+
+                // Save sentiment to database
+                await context.SaveChangesAsync(cancellationToken);
+                return true;
             }
             catch (Exception ex)
             {
@@ -137,11 +144,14 @@ public class UserMessageConsumer(
                 activity?.SetTag("sentiment.error", ex.Message);
                 activity?.SetStatus(ActivityStatusCode.Error, $"Sentiment analysis failed: {ex.Message}");
                 // Continue processing even if sentiment analysis fails
+                // Save any pending changes (though sentiment won't be set)
+                await context.SaveChangesAsync(cancellationToken);
+                return false;
             }
         }
 
-        // Save sentiment to database
-        await context.SaveChangesAsync(cancellationToken);
+        // No text to analyze - this is not an error, just skip sentiment analysis
+        return true;
     }
 }
 
