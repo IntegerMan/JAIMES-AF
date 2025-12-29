@@ -45,17 +45,20 @@
 				@for (int msgIndex = 0; msgIndex < (_messages?.Count ?? 0); msgIndex++)
 				{
 					var m = _messages![msgIndex];
-					
+
 					// Skip empty messages
 					if (string.IsNullOrWhiteSpace(m.Text))
 					{
 						continue;
 					}
-					
+
 					int? messageId = GetMessageId(msgIndex);
 					bool hasFeedback = messageId.HasValue && _messageFeedback.ContainsKey(messageId.Value);
 					MessageFeedbackInfo? feedback = messageId.HasValue && _messageFeedback.TryGetValue(messageId.Value, out var fb) ? fb : null;
-					
+					bool hasToolCalls = messageId.HasValue && _messageToolCalls.ContainsKey(messageId.Value);
+					List<MessageToolCallInfo>? toolCalls = messageId.HasValue && _messageToolCalls.TryGetValue(messageId.Value, out var tc) ? tc : null;
+					string toolNames = toolCalls != null ? string.Join(", ", toolCalls.Select(t => t.ToolName)) : string.Empty;
+
 					List<string> paragraphs = ChatHelpers.SplitIntoParagraphs(m.Text).ToList();
 					@foreach ((string paragraph, int index) in paragraphs.Select((p, i) => (p, i)))
 					{
@@ -89,43 +92,60 @@
 										<MudChatHeader Name="Game Master"/>
 									}
 									<MudChatBubble>
-										@((MarkupString) ChatHelpers.RenderMarkdown(paragraph))
+										@((MarkupString)ChatHelpers.RenderMarkdown(paragraph))
 									</MudChatBubble>
 									@if (isLastParagraph && messageId.HasValue)
 									{
 										<MudChatFooter Class="feedback-footer">
-											@if (hasFeedback && feedback != null)
-											{
-												<MudTooltip Text="@(string.IsNullOrWhiteSpace(feedback.Comment) ? $"You provided {(feedback.IsPositive ? "positive" : "negative")} feedback" : feedback.Comment)">
+											<div class="d-flex align-items-center gap-2">
+												@if (hasToolCalls && toolCalls != null)
+												{
+													<MudTooltip Text="@($"Tools used: {toolNames}")">
+														<MudIconButton Icon="@Icons.Material.Filled.Build"
+														               Color="Color.Default"
+														               Size="Size.Small"
+														               Variant="Variant.Text"
+														               Class="tool-call-button"
+														               OnClick="@(() => ShowToolCallsDialogAsync(messageId.Value))"/>
+													</MudTooltip>
+												}
+												@if (hasFeedback && feedback != null)
+												{
+													<MudTooltip Text="@(string.IsNullOrWhiteSpace(feedback.Comment) ? $"You provided {(feedback.IsPositive ? "positive" : "negative")} feedback" : feedback.Comment)">
+														<div class="d-flex align-items-center gap-1">
+															<MudIcon Icon="@(feedback.IsPositive ? Icons.Material.Filled.ThumbUp : Icons.Material.Filled.ThumbDown)"
+															         Color="Color.Default"
+															         Size="Size.Small"
+															         Class="feedback-icon-existing"/>
+														</div>
+													</MudTooltip>
+												}
+												else if (IsHovering && _hoveredMessageId == messageId)
+												{
 													<div class="d-flex align-items-center gap-1">
-														<MudIcon Icon="@(feedback.IsPositive ? Icons.Material.Filled.ThumbUp : Icons.Material.Filled.ThumbDown)"
-														         Color="Color.Default"
-														         Size="Size.Small"
-														         Class="feedback-icon-existing"/>
+														<MudTooltip Text="Mark as good and provide feedback">
+															<MudIconButton Icon="@Icons.Material.Filled.ThumbUp"
+															               Color="Color.Default"
+															               Size="Size.Small"
+															               Variant="Variant.Text"
+															               Class="feedback-button"
+															               OnClick="@(() => ShowFeedbackDialogAsync(messageId.Value, true))"/>
+														</MudTooltip>
+														<MudTooltip Text="Mark as bad and provide feedback">
+															<MudIconButton Icon="@Icons.Material.Filled.ThumbDown"
+															               Color="Color.Default"
+															               Size="Size.Small"
+															               Variant="Variant.Text"
+															               Class="feedback-button"
+															               OnClick="@(() => ShowFeedbackDialogAsync(messageId.Value, false))"/>
+														</MudTooltip>
 													</div>
-												</MudTooltip>
-											}
-											else if (IsHovering && ((messageId.HasValue && _hoveredMessageId == messageId) || (!messageId.HasValue && _hoveredMessageIndex == msgIndex)))
-											{
-												<div class="d-flex align-items-center gap-1">
-													<MudIconButton Icon="@Icons.Material.Filled.ThumbUp"
-													               Color="Color.Default"
-													               Size="Size.Small"
-													               Variant="Variant.Text"
-													               Class="feedback-button"
-													               OnClick="@(() => ShowFeedbackDialogAsync(messageId.Value, true))"/>
-													<MudIconButton Icon="@Icons.Material.Filled.ThumbDown"
-													               Color="Color.Default"
-													               Size="Size.Small"
-													               Variant="Variant.Text"
-													               Class="feedback-button"
-													               OnClick="@(() => ShowFeedbackDialogAsync(messageId.Value, false))"/>
-												</div>
-											}
-											else
-											{
-												<div class="feedback-spacer"></div>
-											}
+												}
+												else
+												{
+													<div class="feedback-spacer"></div>
+												}
+											</div>
 										</MudChatFooter>
 									}
 								</MudChat>
@@ -158,7 +178,8 @@
 						              FullWidth="true" Immediate="true" OnKeyDown="OnKeyDown"/>
 					</MudItem>
 					<MudItem xs="2" sm="1" Class="d-flex justify-end">
-						<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SendMessageAsync">Send
+						<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SendMessageAsync">
+							Send
 						</MudButton>
 					</MudItem>
 				</MudGrid>
@@ -184,6 +205,10 @@
 	}
 
 	.feedback-icon-existing {
+		color: var(--mud-palette-text-primary) !important;
+	}
+
+	.tool-call-button {
 		color: var(--mud-palette-text-primary) !important;
 	}
 </style>

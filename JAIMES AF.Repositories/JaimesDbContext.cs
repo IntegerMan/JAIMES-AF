@@ -27,6 +27,9 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
     // Message feedback entity
     public DbSet<MessageFeedback> MessageFeedbacks { get; set; } = null!;
 
+    // Message tool call entity
+    public DbSet<MessageToolCall> MessageToolCalls { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -396,6 +399,30 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
 
             // Create index on InstructionVersionId for tracking feedback by version
             entity.HasIndex(mf => mf.InstructionVersionId);
+        });
+
+        modelBuilder.Entity<MessageToolCall>(entity =>
+        {
+            entity.HasKey(mtc => mtc.Id);
+            entity.Property(mtc => mtc.MessageId).IsRequired();
+            entity.Property(mtc => mtc.ToolName).IsRequired().HasMaxLength(200);
+            entity.Property(mtc => mtc.CreatedAt).IsRequired();
+
+            entity.HasOne(mtc => mtc.Message)
+                .WithMany()
+                .HasForeignKey(mtc => mtc.MessageId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(mtc => mtc.InstructionVersion)
+                .WithMany()
+                .HasForeignKey(mtc => mtc.InstructionVersionId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // Create index on MessageId for efficient queries
+            entity.HasIndex(mtc => mtc.MessageId);
+
+            // Create index on InstructionVersionId for analytics
+            entity.HasIndex(mtc => mtc.InstructionVersionId);
         });
 
         // Seed data - use lowercase ids for new defaults

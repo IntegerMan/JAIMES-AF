@@ -23,14 +23,14 @@ public static class AgentExtensions
             .Build();
     }
 
-    public static AIAgent CreateJaimesAgent(this IChatClient client, ILogger logger, string name, string prompt, IList<AITool>? tools = null)
+    public static AIAgent CreateJaimesAgent(this IChatClient client, ILogger logger, string name, string prompt, IList<AITool>? tools = null, Func<IServiceProvider?>? getServiceProvider = null)
     {
         return new ChatClientAgent(client, name: name, instructions: prompt, tools: tools)
             .AsBuilder()
             .UseOpenTelemetry(DefaultActivitySourceName,
                 cfg => cfg.EnableSensitiveData = true)
             .Use(AgentRunMiddleware.CreateRunFunc(logger), null)
-            .Use(ToolInvocationMiddleware.Create(logger))
+            .Use(ToolInvocationMiddleware.Create(logger, getServiceProvider))
             .Build();
     }
 }

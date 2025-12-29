@@ -14,7 +14,7 @@ public class GetMessageFeedbackEndpoint : EndpointWithoutRequest<MessageFeedback
         AllowAnonymous();
         Description(b => b
             .Produces<MessageFeedbackResponse>(StatusCodes.Status200OK)
-            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status204NoContent)
             .WithTags("Messages"));
     }
 
@@ -33,7 +33,7 @@ public class GetMessageFeedbackEndpoint : EndpointWithoutRequest<MessageFeedback
 
             if (feedback == null)
             {
-                await Send.NotFoundAsync(ct);
+                await Send.NoContentAsync(ct);
                 return;
             }
 

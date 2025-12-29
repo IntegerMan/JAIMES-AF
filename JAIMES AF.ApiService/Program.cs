@@ -1,5 +1,6 @@
 using MattEland.Jaimes.Agents.Services;
 using MattEland.Jaimes.ApiService.Agents;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceLayer;
 using MattEland.Jaimes.Workers.Services;
 
@@ -102,6 +103,9 @@ public class Program
         builder.Services.AddScoped<IRulesSearchService, RulesSearchService>();
         builder.Services.AddScoped<IConversationSearchService, ConversationSearchService>();
         builder.Services.AddScoped<GameConversationMemoryProviderFactory>();
+        
+        // Register tool call tracking service (scoped per request)
+        builder.Services.AddScoped<IToolCallTracker, ToolCallTracker>();
 
         // Register HttpContextAccessor for GameAwareAgent
         builder.Services.AddHttpContextAccessor();

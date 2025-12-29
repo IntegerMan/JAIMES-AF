@@ -230,7 +230,8 @@ public class GameAwareAgent(
             scopedLogger,
             $"JaimesAgent-{gameId}",
             systemPrompt,
-            tools);
+            tools,
+            () => _httpContextAccessor.HttpContext?.RequestServices);
 
         _logger.LogInformation("Agent created for game {GameId} with {ToolCount} tool(s)",
             gameId, tools?.Count ?? 0);
@@ -400,6 +401,53 @@ public class GameAwareAgent(
         _logger.LogInformation("Saved {TotalMessageCount} message(s) to database for game {GameId}",
             1 + aiMessageEntities.Count, gameId);
 
+        // Save tool calls associated with the last assistant message
+        // Get tracker from request services (not from the new scope) since it's scoped per request
+        if (aiMessageEntities.Count > 0)
+        {
+            Message lastAiMessage = aiMessageEntities.Last();
+            
+            // Get tracker from the current request's service provider, not from the new scope
+            IToolCallTracker? toolCallTracker = context?.RequestServices?.GetService<IToolCallTracker>();
+            if (toolCallTracker != null)
+            {
+                IReadOnlyList<ToolCallRecord> toolCalls = await toolCallTracker.GetToolCallsAsync();
+                _logger.LogInformation("Retrieved {ToolCallCount} tool call(s) from tracker for message {MessageId} in game {GameId}",
+                    toolCalls.Count, lastAiMessage.Id, gameId);
+                
+                if (toolCalls.Count > 0)
+                {
+                    _logger.LogInformation("Saving {ToolCallCount} tool call(s) for message {MessageId} in game {GameId}",
+                        toolCalls.Count, lastAiMessage.Id, gameId);
+
+                    List<MessageToolCall> toolCallEntities = toolCalls.Select(tc => new MessageToolCall
+                    {
+                        MessageId = lastAiMessage.Id,
+                        ToolName = tc.ToolName,
+                        InputJson = tc.InputJson,
+                        OutputJson = tc.OutputJson,
+                        CreatedAt = tc.CreatedAt,
+                        InstructionVersionId = instructionVersionId
+                    }).ToList();
+
+                    dbContext.MessageToolCalls.AddRange(toolCallEntities);
+                    await dbContext.SaveChangesAsync(cancellationToken);
+                    _logger.LogInformation("Saved {ToolCallCount} tool call(s) for message {MessageId}", toolCalls.Count, lastAiMessage.Id);
+
+                    // Clear the tracker after persistence
+                    await toolCallTracker.ClearAsync();
+                }
+                else
+                {
+                    _logger.LogDebug("No tool calls found in tracker for message {MessageId} in game {GameId}", lastAiMessage.Id, gameId);
+                }
+            }
+            else
+            {
+                _logger.LogWarning("IToolCallTracker not found in request services for message {MessageId} in game {GameId}", lastAiMessage.Id, gameId);
+            }
+        }
+
         // Link messages in chronological order (PreviousMessageId/NextMessageId)
         // Query all messages for the game, ordered by CreatedAt then Id to ensure consistent ordering
         List<Message> allMessages = await dbContext.Messages
@@ -466,7 +514,7 @@ public class GameAwareAgent(
         // Use memory provider to persist thread state
         // The memory provider provides a consistent interface for thread persistence
         string memoryProviderKey = $"MemoryProvider_{gameId}";
-        if (context.Items.TryGetValue(memoryProviderKey, out object? providerObj) && providerObj is GameConversationMemoryProvider memoryProvider)
+        if (context != null && context.Items.TryGetValue(memoryProviderKey, out object? providerObj) && providerObj is GameConversationMemoryProvider memoryProvider)
         {
             // Update thread reference in case it changed
             memoryProvider.SetThread(thread);
