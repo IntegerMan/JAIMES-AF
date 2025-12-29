@@ -11,6 +11,7 @@ namespace MattEland.Jaimes.Agents.Services;
 public class ToolCallTracker : IToolCallTracker
 {
     private readonly ConcurrentBag<ToolCallRecord> _toolCalls = new();
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = false,
@@ -68,9 +69,7 @@ public class ToolCallTracker : IToolCallTracker
 
     public Task ClearAsync()
     {
-        // ConcurrentBag doesn't have a Clear method, so we need to create a new one
-        // However, since this is a scoped service, it will be disposed after the request
-        // For now, we'll just return - the service will be recreated for the next request
+        _toolCalls.Clear();
         return Task.CompletedTask;
     }
 }
