@@ -10,5 +10,11 @@ public class SentimentAnalysisOptions
     /// Default: 0.65 (65%)
     /// </summary>
     public double ConfidenceThreshold { get; set; } = 0.65;
+
+    /// <summary>
+    /// Whether to reclassify the sentiment of all user messages in the Messages table on startup.
+    /// Default: true
+    /// </summary>
+    public bool ReclassifyAllUserMessagesOnStartup { get; set; } = true;
 }
 

@@ -1,4 +1,5 @@
-// Training data source: https://www.kaggle.com/datasets/mdismielhossenabir/sentiment-analysis
+using MattEland.Jaimes.Workers.UserMessageWorker.Options;
+using Microsoft.Extensions.Options;
 using Microsoft.ML;
 using Microsoft.ML.AutoML;
 using Microsoft.ML.Data;
@@ -9,7 +10,10 @@ namespace MattEland.Jaimes.Workers.UserMessageWorker.Services;
 /// Service for training and loading sentiment analysis models using ML.NET AutoML.
 /// Training data sourced from: https://www.kaggle.com/datasets/mdismielhossenabir/sentiment-analysis
 /// </summary>
-public class SentimentModelService(ILogger<SentimentModelService> logger)
+public class SentimentModelService(
+    ILogger<SentimentModelService> logger,
+    IDbContextFactory<JaimesDbContext>? contextFactory = null,
+    IOptions<SentimentAnalysisOptions>? sentimentOptions = null)
 {
     private const string ModelFileName = "Result/SentimentModel.zip";
     private const string TrainingDataFileName = "sentiment_analysis.csv";
@@ -64,6 +68,108 @@ public class SentimentModelService(ILogger<SentimentModelService> logger)
             "neutral" => (0, maxScore),
             _ => (0, maxScore) // Default to neutral if label is unexpected
         };
+    }
+
+    /// <summary>
+    /// Analyzes sentiment with confidence threshold applied.
+    /// Returns the final sentiment value (after applying threshold) and the confidence score.
+    /// </summary>
+    public (int FinalSentiment, double Confidence) AnalyzeSentimentWithThreshold(string text, double confidenceThreshold)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(text);
+        
+        (int sentiment, double confidence) = PredictSentiment(text);
+
+        // Apply confidence threshold: if below threshold, set to neutral
+        if (confidence < confidenceThreshold)
+        {
+            sentiment = 0; // Neutral if below threshold
+        }
+
+        return (sentiment, confidence);
+    }
+
+    /// <summary>
+    /// Reclassifies the sentiment of all user messages in the Messages table.
+    /// </summary>
+    public async Task ReclassifyAllUserMessagesAsync(CancellationToken cancellationToken = default)
+    {
+        if (contextFactory == null)
+        {
+            throw new InvalidOperationException("DbContextFactory is required for reclassification. Ensure it is provided in the constructor.");
+        }
+
+        if (sentimentOptions == null)
+        {
+            throw new InvalidOperationException("SentimentAnalysisOptions is required for reclassification. Ensure it is provided in the constructor.");
+        }
+
+        _logger.LogInformation("Starting reclassification of all user messages");
+
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        // Query all user messages (messages where PlayerId is not null)
+        List<Message> userMessages = await context.Messages
+            .Where(m => m.PlayerId != null && !string.IsNullOrWhiteSpace(m.Text))
+            .ToListAsync(cancellationToken);
+
+        _logger.LogInformation("Found {Count} user messages to reclassify", userMessages.Count);
+
+        if (userMessages.Count == 0)
+        {
+            _logger.LogInformation("No user messages found to reclassify");
+            return;
+        }
+
+        double confidenceThreshold = sentimentOptions.Value.ConfidenceThreshold;
+        int processedCount = 0;
+        int updatedCount = 0;
+        int errorCount = 0;
+
+        foreach (Message message in userMessages)
+        {
+            try
+            {
+                int finalSentiment = AnalyzeSentimentWithThreshold(message.Text, confidenceThreshold).FinalSentiment;
+
+                // Only update if sentiment has changed
+                if (message.Sentiment != finalSentiment)
+                {
+                    message.Sentiment = finalSentiment;
+                    updatedCount++;
+                }
+
+                processedCount++;
+
+                // Log progress every 100 messages
+                if (processedCount % 100 == 0)
+                {
+                    _logger.LogInformation(
+                        "Reclassification progress: {Processed}/{Total} messages processed, {Updated} updated",
+                        processedCount,
+                        userMessages.Count,
+                        updatedCount);
+                }
+            }
+            catch (Exception ex)
+            {
+                errorCount++;
+                _logger.LogError(ex, "Failed to reclassify sentiment for message {MessageId}", message.Id);
+            }
+        }
+
+        // Save all changes in a single transaction
+        if (updatedCount > 0)
+        {
+            _logger.LogInformation("Saving {UpdatedCount} sentiment updates to database", updatedCount);
+            await context.SaveChangesAsync(cancellationToken);
+        }
+
+        _logger.LogInformation(
+            "Reclassification completed: {Processed} processed, {Updated} updated, {Errors} errors",
+            processedCount,
+            updatedCount,
+            errorCount);
     }
 
     private async Task LoadModelAsync(string modelPath, CancellationToken cancellationToken)

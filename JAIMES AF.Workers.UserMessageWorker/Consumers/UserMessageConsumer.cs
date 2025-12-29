@@ -71,8 +71,6 @@ public class UserMessageConsumer(
                 messageEntity.CreatedAt,
                 textPreview);
 
-            await AnalyzeSentimentAsync(messageEntity, activity, context, cancellationToken);
-
             // Enqueue message for embedding
             ConversationMessageReadyForEmbeddingMessage embeddingMessage = new()
             {
@@ -84,6 +82,10 @@ public class UserMessageConsumer(
             };
             await messagePublisher.PublishAsync(embeddingMessage, cancellationToken);
             logger.LogDebug("Enqueued user message {MessageId} for embedding", messageEntity.Id);
+
+
+            await AnalyzeSentimentAsync(messageEntity, activity, context, cancellationToken);
+
 
             activity?.SetStatus(ActivityStatusCode.Ok);
         }
@@ -106,7 +108,9 @@ public class UserMessageConsumer(
             try
             {
                 double confidenceThreshold = sentimentOptions.Value.ConfidenceThreshold;
-                (int sentiment, double confidence) = sentimentModelService.PredictSentiment(messageEntity.Text);
+                (int sentiment, double confidence) = sentimentModelService.AnalyzeSentimentWithThreshold(
+                    messageEntity.Text,
+                    confidenceThreshold);
 
                 activity?.SetTag("sentiment.value", sentiment);
                 activity?.SetTag("sentiment.confidence", confidence);
@@ -114,8 +118,8 @@ public class UserMessageConsumer(
 
                 if (confidence < confidenceThreshold)
                 {
-                    sentiment = 0; // Neutral if below threshold
                     activity?.AddEvent(new ActivityEvent("Sentiment confidence below threshold; setting to neutral"));
+                    sentiment = 0;
                 }
 
                 messageEntity.Sentiment = sentiment;
