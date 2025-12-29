@@ -46,6 +46,8 @@
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.1" />
     <PackageVersion Include="Microsoft.ML" Version="4.0.1" />
     <PackageVersion Include="Microsoft.ML.AutoML" Version="0.22.0" />
+    <PackageVersion Include="Microsoft.Extensions.ML" Version="4.0.1" />
+    <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="10.0.1" />
     <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.1.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageVersion Include="Moq" Version="4.20.72" />

@@ -1,4 +1,5 @@
 using MattEland.Jaimes.Workers.UserMessageWorker.Options;
+using Microsoft.Extensions.ObjectPool;
 using Microsoft.Extensions.Options;
 using Microsoft.ML;
 using Microsoft.ML.AutoML;
@@ -18,7 +19,8 @@ public class SentimentModelService(
     private const string ModelFileName = "Result/SentimentModel.zip";
     private const string TrainingDataFileName = "sentiment_analysis.csv";
     private readonly ILogger<SentimentModelService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    private PredictionEngine<SentimentData, SentimentPrediction>? _predictionEngine;
+    private ObjectPool<PredictionEngine<SentimentData, SentimentPrediction>>? _predictionEnginePool;
+    private ITransformer? _trainedModel;
     private readonly MLContext _mlContext = new(seed: 0);
 
     /// <summary>
@@ -48,26 +50,36 @@ public class SentimentModelService(
     public (int Prediction, double Confidence) PredictSentiment(string text)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(text);
-        if (_predictionEngine == null)
+        if (_predictionEnginePool == null)
         {
             throw new InvalidOperationException("Model has not been loaded. Call LoadOrTrainModelAsync first.");
         }
 
         SentimentData input = new() { Text = text };
-        SentimentPrediction prediction = _predictionEngine.Predict(input);
-
-        // Get the highest confidence score
-        float maxScore = prediction.Score?.Max() ?? 0f;
-
-
-        // Map the predicted label to our sentiment values
-        return prediction.PredictedLabel?.ToLowerInvariant().Trim() switch
+        
+        // Get a prediction engine from the thread-safe pool
+        PredictionEngine<SentimentData, SentimentPrediction> predictionEngine = _predictionEnginePool.Get();
+        try
         {
-            "positive" => (1, maxScore),
-            "negative" => (-1, maxScore),
-            "neutral" => (0, maxScore),
-            _ => (0, maxScore) // Default to neutral if label is unexpected
-        };
+            SentimentPrediction prediction = predictionEngine.Predict(input);
+
+            // Get the highest confidence score
+            float maxScore = prediction.Score?.Max() ?? 0f;
+
+            // Map the predicted label to our sentiment values
+            return prediction.PredictedLabel?.ToLowerInvariant().Trim() switch
+            {
+                "positive" => (1, maxScore),
+                "negative" => (-1, maxScore),
+                "neutral" => (0, maxScore),
+                _ => (0, maxScore) // Default to neutral if label is unexpected
+            };
+        }
+        finally
+        {
+            // Return the engine to the pool
+            _predictionEnginePool.Return(predictionEngine);
+        }
     }
 
     /// <summary>
@@ -176,9 +188,13 @@ public class SentimentModelService(
     {
         await Task.Run(() =>
         {
-            ITransformer trainedModel = _mlContext.Model.Load(modelPath, out _);
-            _predictionEngine = _mlContext.Model.CreatePredictionEngine<SentimentData, SentimentPrediction>(trainedModel);
-            _logger.LogInformation("Successfully loaded sentiment model from {ModelPath}", modelPath);
+            _trainedModel = _mlContext.Model.Load(modelPath, out _);
+            
+            // Create a thread-safe prediction engine pool using ObjectPool
+            DefaultObjectPoolProvider poolProvider = new();
+            _predictionEnginePool = poolProvider.Create(new PredictionEnginePooledObjectPolicy(_mlContext, _trainedModel));
+            
+            _logger.LogInformation("Successfully loaded sentiment model from {ModelPath} with thread-safe pool", modelPath);
         }, cancellationToken);
     }
 
@@ -258,8 +274,12 @@ public class SentimentModelService(
             _mlContext.Model.Save(combinedModel, trainingData.Schema, modelPath);
             _logger.LogInformation("Trained model saved to {ModelPath}", modelPath);
 
-            // Create prediction engine for immediate use (using combined model)
-            _predictionEngine = _mlContext.Model.CreatePredictionEngine<SentimentData, SentimentPrediction>(combinedModel);
+            // Store the model for pool creation
+            _trainedModel = combinedModel;
+            
+            // Create a thread-safe prediction engine pool for immediate use (using combined model)
+            DefaultObjectPoolProvider poolProvider = new();
+            _predictionEnginePool = poolProvider.Create(new PredictionEnginePooledObjectPolicy(_mlContext, _trainedModel));
         }, cancellationToken);
     }
 
@@ -286,6 +306,34 @@ public class SentimentModelService(
 
         [ColumnName("Score")]
         public float[]? Score { get; set; }
+    }
+
+    /// <summary>
+    /// Pooled object policy for PredictionEngine instances.
+    /// This enables thread-safe reuse of PredictionEngine objects.
+    /// </summary>
+    private class PredictionEnginePooledObjectPolicy : IPooledObjectPolicy<PredictionEngine<SentimentData, SentimentPrediction>>
+    {
+        private readonly MLContext _mlContext;
+        private readonly ITransformer _model;
+
+        public PredictionEnginePooledObjectPolicy(MLContext mlContext, ITransformer model)
+        {
+            _mlContext = mlContext ?? throw new ArgumentNullException(nameof(mlContext));
+            _model = model ?? throw new ArgumentNullException(nameof(model));
+        }
+
+        public PredictionEngine<SentimentData, SentimentPrediction> Create()
+        {
+            return _mlContext.Model.CreatePredictionEngine<SentimentData, SentimentPrediction>(_model);
+        }
+
+        public bool Return(PredictionEngine<SentimentData, SentimentPrediction> obj)
+        {
+            // Always return true to indicate the object can be reused
+            // PredictionEngine instances are reusable and don't need to be disposed when returned to the pool
+            return true;
+        }
     }
 }
 
