@@ -82,8 +82,8 @@
 								<MudChat ChatPosition="ChatBubblePosition.Start"
 								         Variant="Variant.Filled"
 								         Color="Color.Default"
-								         @onmouseenter="@(() => HoverStart(messageId))"
-								         @onmouseleave="@(() => HoverStop(messageId))">
+								         @onmouseenter="@(() => HoverStart(messageId, messageId.HasValue ? null : msgIndex))"
+								         @onmouseleave="@(() => HoverStop(messageId, messageId.HasValue ? null : msgIndex))">
 									@if (isFirstParagraph)
 									{
 										<MudChatHeader Name="Game Master"/>
@@ -105,7 +105,7 @@
 													</div>
 												</MudTooltip>
 											}
-											else if (IsHovering && _hoveredMessageId == messageId)
+											else if (IsHovering && ((messageId.HasValue && _hoveredMessageId == messageId) || (!messageId.HasValue && _hoveredMessageIndex == msgIndex)))
 											{
 												<div class="d-flex align-items-center gap-1">
 													<MudIconButton Icon="@Icons.Material.Filled.ThumbUp"
