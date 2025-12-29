@@ -3,9 +3,8 @@
 
 <MudDialog>
     <DialogContent>
-        <MudText Typo="Typo.h6" Class="mb-4">Tool Calls</MudText>
         <MudText Typo="Typo.body2" Class="mb-4">This message used @(_toolCalls?.Count ?? 0) tool call(s).</MudText>
-        
+
         @if (_toolCalls != null && _toolCalls.Count > 0)
         {
             @foreach (var toolCall in _toolCalls)
@@ -19,7 +18,7 @@
                                     @FormatJson(toolCall.InputJson)
                                 </MudText>
                             </MudPaper>
-                            
+
                             <MudText Typo="Typo.subtitle2" Class="mt-2 mb-1">Output:</MudText>
                             <MudPaper Elevation="1" Class="pa-2">
                                 <MudText Typo="Typo.body2" Class="font-family-monospace" Style="white-space: pre-wrap; font-size: 0.875rem;">
@@ -33,19 +32,22 @@
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="() => { }">Close</MudButton>
+        <MudButton OnClick="Cancel">Close</MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
     [Parameter] public List<GameDetails.MessageToolCallInfo>? ToolCalls { get; set; }
-    
+
     private List<GameDetails.MessageToolCallInfo>? _toolCalls;
 
     protected override void OnParametersSet()
     {
         _toolCalls = ToolCalls;
     }
+
+    private void Cancel() => MudDialog.Cancel();
 
     private string FormatJson(string? json)
     {
@@ -65,6 +67,7 @@
             return json;
         }
     }
+
 }
 
 <style>
