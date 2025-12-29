@@ -9,3 +9,4 @@ public record AgentInstructionVersionResponse
     public DateTime CreatedAt { get; init; }
     public bool IsActive { get; init; }
 }
+

@@ -42,33 +42,6 @@ public class GameAwareAgentTests : EndpointTestBase
     }
 
     [Fact]
-    public async Task UserMessage_IsEnqueued_AfterPersistence()
-    {
-        // Note: This test would require setting up the chat endpoint (AGUI) to send messages through GameAwareAgent.
-        // GameAwareAgent enqueues messages in PersistGameStateAsync, which is called after RunAsync.
-        // Testing this requires:
-        // 1. Setting up HttpContext with route values (gameId)
-        // 2. Setting up AGUI chat endpoint
-        // 3. Sending messages through the endpoint
-        
-        // For now, this test verifies the structure is correct.
-        // Full integration testing would require the complete AGUI setup.
-        MockMessagePublisher.VerifyNoOtherCalls();
-    }
-
-    [Fact]
-    public async Task AssistantMessage_IsEnqueued_AfterPersistence()
-    {
-        // Note: This test would require setting up the chat endpoint (AGUI) to send messages through GameAwareAgent.
-        // GameAwareAgent enqueues assistant messages in PersistGameStateAsync after they are persisted.
-        // Testing this requires the complete AGUI setup.
-        
-        // For now, this test verifies the structure is correct.
-        // Full integration testing would require the complete AGUI setup.
-        MockMessagePublisher.VerifyNoOtherCalls();
-    }
-
-    [Fact]
     public async Task ToolCallMessage_IsNotEnqueued()
     {
         // Arrange
@@ -93,19 +66,6 @@ public class GameAwareAgentTests : EndpointTestBase
                 It.Is<ConversationMessageQueuedMessage>(m => m.Role == ChatRole.Tool),
                 It.IsAny<CancellationToken>()),
             Times.Never);
-    }
-
-    [Fact]
-    public async Task MultipleAssistantMessages_AllEnqueued()
-    {
-        // Note: This test would require setting up the chat endpoint (AGUI) to send messages through GameAwareAgent.
-        // When multiple assistant messages are generated in a single response, GameAwareAgent.PersistGameStateAsync
-        // should enqueue each one separately with unique MessageIds.
-        
-        // For now, this test verifies the structure is correct.
-        // Full integration testing would require the complete AGUI setup and sending messages that generate
-        // multiple assistant responses.
-        MockMessagePublisher.VerifyNoOtherCalls();
     }
 }
 

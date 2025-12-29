@@ -20,3 +20,4 @@ public static class ScenarioAgentMapper
         return scenarioAgents.Select(ToDto).ToArray();
     }
 }
+

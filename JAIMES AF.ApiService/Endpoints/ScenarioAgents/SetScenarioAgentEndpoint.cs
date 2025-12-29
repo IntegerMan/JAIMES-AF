@@ -47,3 +47,4 @@ public class SetScenarioAgentEndpoint : Endpoint<SetScenarioAgentRequest, Scenar
         }
     }
 }
+

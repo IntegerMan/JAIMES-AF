@@ -4,3 +4,4 @@ public interface IInstructionService
 {
     Task<string?> GetInstructionsAsync(string scenarioId, CancellationToken cancellationToken = default);
 }
+

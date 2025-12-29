@@ -50,3 +50,4 @@ public class InstructionService(IDbContextFactory<JaimesDbContext> contextFactor
         return $"{baseInstructions}\n\n---\n\n{scenarioInstructions}";
     }
 }
+

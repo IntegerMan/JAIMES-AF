@@ -4,3 +4,4 @@ public record ScenarioAgentListResponse
 {
     public required ScenarioAgentResponse[] ScenarioAgents { get; init; }
 }
+

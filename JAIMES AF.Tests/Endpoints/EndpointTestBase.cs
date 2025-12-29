@@ -26,7 +26,7 @@ public abstract class EndpointTestBase : IAsyncLifetime
                 builder.UseSetting("ConnectionStrings:postgres-db",
                     "Host=localhost;Database=test;Username=test;Password=test");
                 // Provide a mock messaging connection string for RabbitMQ
-                builder.UseSetting("ConnectionStrings:messaging", "amqp://guest:guest@localhost:5672/");
+                builder.UseSetting("ConnectionStrings:LavinMQ-Messaging", "amqp://guest:guest@localhost:5672/");
                 // Provide default Ollama configuration for text generation and embeddings
                 builder.UseSetting("TextGenerationModel:Provider", "Ollama");
                 builder.UseSetting("TextGenerationModel:Endpoint", "http://localhost:11434");

@@ -4,3 +4,4 @@ public record AgentListResponse
 {
     public required AgentResponse[] Agents { get; init; }
 }
+

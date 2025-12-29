@@ -13,3 +13,4 @@ public class AgentInstructionVersion
     public ICollection<Message> Messages { get; set; } = new List<Message>();
     public ICollection<ScenarioAgent> ScenarioAgents { get; set; } = new List<ScenarioAgent>();
 }
+

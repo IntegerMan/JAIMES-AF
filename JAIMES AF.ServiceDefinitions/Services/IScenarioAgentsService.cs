@@ -8,3 +8,4 @@ public interface IScenarioAgentsService
     Task<ScenarioAgentDto> SetScenarioAgentAsync(string scenarioId, string agentId, int instructionVersionId, CancellationToken cancellationToken = default);
     Task RemoveScenarioAgentAsync(string scenarioId, string agentId, CancellationToken cancellationToken = default);
 }
+
