@@ -281,11 +281,18 @@ IResourceBuilder<ProjectResource> assistantMessageWorker = builder.AddProject<Pr
     .WithIconName("SettingsChat")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
+    .WithOllamaReferences(ollama, chatModel, embedModel, needsChatModel: true, needsEmbedModel: false)
     .WaitFor(databaseMigrationWorker)
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
-    .WithParentRelationship(workersGroup);
+    .WithParentRelationship(workersGroup)
+    .WithEnvironment(context =>
+    {
+        void SetVar(string key, object value) => context.EnvironmentVariables[key] = value;
+
+        SetModelProviderEnvironmentVariables(SetVar, "TextGenerationModel", textGenConfig, chatModel, ollama, isTextGenOllama);
+    });
 
 IResourceBuilder<ProjectResource> conversationEmbeddingWorker = builder.AddProject<Projects.JAIMES_AF_Workers_ConversationEmbeddingWorker>("conversation-embedding-worker")
     .WithIconName("ChatBubblesQuestion")
