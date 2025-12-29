@@ -262,4 +262,17 @@ public partial class GameDetails
             .Select(m => m.Text)
             .FirstOrDefault();
     }
+
+    /// <summary>
+    /// Converts a UTC DateTime to local time for display.
+    /// </summary>
+    private DateTime ToLocalTime(DateTime utcTime)
+    {
+        // Ensure the DateTime is treated as UTC, then convert to local time
+        if (utcTime.Kind == DateTimeKind.Unspecified)
+        {
+            utcTime = DateTime.SpecifyKind(utcTime, DateTimeKind.Utc);
+        }
+        return utcTime.ToLocalTime();
+    }
 }

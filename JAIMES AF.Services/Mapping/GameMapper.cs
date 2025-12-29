@@ -6,9 +6,20 @@ public static partial class GameMapper
     [UserMapping]
     public static GameDto ToDto(this Game game)
     {
+        MessageDto[]? messages = game.Messages?
+            .OrderBy(m => m.Id)
+            .Select(m => m.ToDto())
+            .ToArray();
+        
+        DateTime? lastPlayedAt = messages?.Length > 0
+            ? messages.Max(m => m.CreatedAt)
+            : null;
+
         return new GameDto
         {
             GameId = game.Id,
+            CreatedAt = game.CreatedAt,
+            LastPlayedAt = lastPlayedAt,
             Ruleset = game.Ruleset?.ToDto() ?? new RulesetDto
             {
                 Id = game.RulesetId,
@@ -26,10 +37,7 @@ public static partial class GameMapper
                 RulesetId = game.RulesetId,
                 Name = game.PlayerId
             },
-            Messages = game.Messages?
-                .OrderBy(m => m.Id)
-                .Select(m => m.ToDto())
-                .ToArray()
+            Messages = messages
         };
     }
 

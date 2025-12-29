@@ -19,17 +19,21 @@ public class ListGamesEndpoint : Ep.NoReq.Res<ListGamesResponse>
 
         await Send.OkAsync(new ListGamesResponse
         {
-            Games = games.Select(g => new GameInfoResponse
-            {
-                GameId = g.GameId,
-                ScenarioId = g.Scenario.Id,
-                ScenarioName = g.Scenario.Name,
-                RulesetId = g.Ruleset.Id,
-                RulesetName = g.Ruleset.Name,
-                PlayerId = g.Player.Id,
-                PlayerName = g.Player.Name
-            })
-                    .ToArray()
+            Games = games
+                .OrderByDescending(g => g.LastPlayedAt ?? g.CreatedAt)
+                .Select(g => new GameInfoResponse
+                {
+                    GameId = g.GameId,
+                    ScenarioId = g.Scenario.Id,
+                    ScenarioName = g.Scenario.Name,
+                    RulesetId = g.Ruleset.Id,
+                    RulesetName = g.Ruleset.Name,
+                    PlayerId = g.Player.Id,
+                    PlayerName = g.Player.Name,
+                    CreatedAt = g.CreatedAt,
+                    LastPlayedAt = g.LastPlayedAt
+                })
+                .ToArray()
         },
             ct);
     }

@@ -114,6 +114,7 @@ public class GameService(
             .Include(g => g.Scenario)
             .Include(g => g.Player)
             .Include(g => g.Ruleset)
+            .Include(g => g.Messages)
             .ToArrayAsync(cancellationToken);
 
         return games.ToDto();

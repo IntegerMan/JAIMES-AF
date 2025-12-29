@@ -15,4 +15,8 @@ public record GameInfoResponse
     // Player
     public required string PlayerId { get; init; }
     public required string PlayerName { get; init; }
+
+    // Dates
+    public DateTime CreatedAt { get; init; }
+    public DateTime? LastPlayedAt { get; init; }
 }

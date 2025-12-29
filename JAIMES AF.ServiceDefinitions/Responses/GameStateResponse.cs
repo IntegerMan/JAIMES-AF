@@ -13,6 +13,10 @@ public record GameStateResponse
     public required string RulesetName { get; init; }
     public required string PlayerName { get; init; }
 
+    // Dates
+    public DateTime CreatedAt { get; init; }
+    public DateTime? LastPlayedAt { get; init; }
+
     // Thread JSON for restoring AgentThread state
     public string? ThreadJson { get; init; }
 }
