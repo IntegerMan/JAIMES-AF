@@ -1,0 +1,136 @@
+@page "/admin/conversation-search-test"
+@rendermode InteractiveServer
+
+<PageTitle>Conversation Search Test</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+	<MudPaper Class="pa-8" Elevation="2">
+		<MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">Conversation Search Test</MudText>
+		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">Test and debug conversation search
+			capabilities
+		</MudText>
+
+		<MudText Typo="Typo.body1" Class="mb-6" Style="line-height: 1.75;">
+			Use this tool to test the conversation search functionality. Select a game and enter a query to search across
+			conversation history and view matching messages with context.
+		</MudText>
+
+		<MudDivider Class="my-6"/>
+
+		<MudPaper Class="pa-4" Elevation="1">
+			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-4">Search Query</MudText>
+
+			<MudForm>
+				<MudSelect @bind-Value="_selectedGameId"
+				           Label="Game"
+				           Variant="Variant.Outlined"
+				           Class="mb-4"
+				           FullWidth="true"
+				           HelperText="Select a game to search conversation history">
+					<MudSelectItem Value="@((Guid?) null)">Select a game...</MudSelectItem>
+					@foreach (GameInfoResponse game in _games)
+					{
+						<MudSelectItem Value="@((Guid?) game.GameId)">@FormatGameDisplay(game)</MudSelectItem>
+					}
+				</MudSelect>
+
+				<MudTextField @bind-Value="_searchQuery"
+				              Label="Search Query"
+				              Variant="Variant.Outlined"
+				              Class="mb-4"
+				              FullWidth="true"
+				              Placeholder="Enter your search query here..."
+				              HelperText="Enter a natural language question about past conversations (press Enter to search)"
+				              OnKeyDown="HandleSearchQueryKeyDown"/>
+
+				<MudNumericField @bind-Value="_limit"
+				                 Label="Result Limit"
+				                 Variant="Variant.Outlined"
+				                 Class="mb-4"
+				                 FullWidth="true"
+				                 Min="1"
+				                 Max="20"
+				                 HelperText="Maximum number of results to return (1-20)"/>
+
+				<MudButton Variant="Variant.Filled"
+				           Color="Color.Primary"
+				           OnClick="SearchConversationsAsync"
+				           Disabled="@(_isSearching || !_selectedGameId.HasValue)"
+				           Class="mb-4">
+					@if (_isSearching)
+					{
+						<MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2"/>
+					}
+					Search
+				</MudButton>
+			</MudForm>
+		</MudPaper>
+
+		@if (!string.IsNullOrEmpty(_errorMessage))
+		{
+			<MudAlert Severity="Severity.Error" Class="mt-4">@_errorMessage</MudAlert>
+		}
+
+		@if (_searchResult != null)
+		{
+			<MudDivider Class="my-6"/>
+
+			<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Search Results (@_searchResult.Results.Length)
+			</MudText>
+
+			@if (_searchResult.Results.Length > 0)
+			{
+				@foreach (ConversationSearchResult result in _searchResult.Results)
+				{
+					<MudPaper Class="pa-4 mb-4" Elevation="1">
+						<MudExpansionPanels>
+							<MudExpansionPanel
+								Text="@($"{result.MatchedMessage.ParticipantName} - Relevancy: {result.Relevancy:P2}")">
+								@if (result.PreviousMessage != null)
+								{
+									<MudText Typo="Typo.body2" Class="mb-2"><strong>[Previous]</strong></MudText>
+									<MudText Typo="Typo.body2" Class="mb-1">
+										<strong>@result.PreviousMessage.ParticipantName</strong>
+										(@result.PreviousMessage.CreatedAt.ToString("g"))
+									</MudText>
+									<MudText Typo="Typo.body1" Style="white-space: pre-wrap;"
+									         Class="mb-4 text-muted">@result.PreviousMessage.Text</MudText>
+								}
+
+								<MudText Typo="Typo.body2" Class="mb-2"><strong>[Matched]</strong></MudText>
+								<MudText Typo="Typo.body2" Class="mb-1">
+									<strong>@result.MatchedMessage.ParticipantName</strong>
+									(@result.MatchedMessage.CreatedAt.ToString("g"))
+								</MudText>
+								<MudText Typo="Typo.body1" Style="white-space: pre-wrap;"
+								         Class="mb-4">@result.MatchedMessage.Text</MudText>
+
+								@if (result.NextMessage != null)
+								{
+									<MudText Typo="Typo.body2" Class="mb-2"><strong>[Next]</strong></MudText>
+									<MudText Typo="Typo.body2" Class="mb-1">
+										<strong>@result.NextMessage.ParticipantName</strong>
+										(@result.NextMessage.CreatedAt.ToString("g"))
+									</MudText>
+									<MudText Typo="Typo.body1" Style="white-space: pre-wrap;"
+									         Class="mb-4 text-muted">@result.NextMessage.Text</MudText>
+								}
+
+								<MudDivider Class="my-3"/>
+								<MudText Typo="Typo.body2" Class="mb-2">
+									<strong>Relevancy:</strong> @result.Relevancy.ToString("P4")</MudText>
+								<MudText Typo="Typo.body2" Class="mb-2">
+									<strong>Message ID:</strong> @result.MatchedMessage.Id</MudText>
+							</MudExpansionPanel>
+						</MudExpansionPanels>
+					</MudPaper>
+				}
+			}
+			else
+			{
+				<MudAlert Severity="Severity.Info" Class="mb-4">No results were found for this search query.</MudAlert>
+			}
+		}
+	</MudPaper>
+</MudContainer>
+

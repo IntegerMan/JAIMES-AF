@@ -6,9 +6,29 @@ public static partial class GameMapper
     [UserMapping]
     public static GameDto ToDto(this Game game)
     {
+        MessageDto[]? messages = game.Messages?
+            .OrderBy(m => m.Id)
+            .Select(m => m.ToDto())
+            .ToArray();
+        
+        DateTime? lastPlayedAt = messages?.Length > 0
+            ? messages.Max(m => m.CreatedAt)
+            : null;
+
+        return ToDto(game, lastPlayedAt, messages);
+    }
+
+    /// <summary>
+    /// Maps a Game to GameDto with optional LastPlayedAt and Messages.
+    /// Used for efficient list queries where messages are not loaded.
+    /// </summary>
+    public static GameDto ToDto(this Game game, DateTime? lastPlayedAt, MessageDto[]? messages = null)
+    {
         return new GameDto
         {
             GameId = game.Id,
+            CreatedAt = game.CreatedAt,
+            LastPlayedAt = lastPlayedAt,
             Ruleset = game.Ruleset?.ToDto() ?? new RulesetDto
             {
                 Id = game.RulesetId,
@@ -26,12 +46,12 @@ public static partial class GameMapper
                 RulesetId = game.RulesetId,
                 Name = game.PlayerId
             },
-            Messages = game.Messages?
-                .OrderBy(m => m.Id)
-                .Select(m => m.ToDto())
-                .ToArray()
+            Messages = messages
         };
     }
 
-    public static partial GameDto[] ToDto(this IEnumerable<Game> games);
+    public static GameDto[] ToDto(this IEnumerable<Game> games)
+    {
+        return games.Select(g => g.ToDto()).ToArray();
+    }
 }

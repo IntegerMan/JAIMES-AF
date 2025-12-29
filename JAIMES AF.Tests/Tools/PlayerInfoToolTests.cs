@@ -49,6 +49,8 @@ public class PlayerInfoToolTests
         return new GameDto
         {
             GameId = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+            LastPlayedAt = null,
             Player = new PlayerDto
             {
                 Id = playerId,

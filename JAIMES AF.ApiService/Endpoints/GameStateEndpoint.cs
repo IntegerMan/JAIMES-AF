@@ -40,6 +40,8 @@ public class GameStateEndpoint : EndpointWithoutRequest<GameStateResponse>
             ScenarioName = gameDto.Scenario.Name,
             PlayerId = gameDto.Player.Id,
             PlayerName = gameDto.Player.Name,
+            CreatedAt = gameDto.CreatedAt,
+            LastPlayedAt = gameDto.LastPlayedAt,
             ThreadJson = threadJson
         };
         await Send.OkAsync(gameState, ct);

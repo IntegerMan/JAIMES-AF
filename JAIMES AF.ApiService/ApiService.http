@@ -102,3 +102,34 @@ Content-Type: application/json
 {
   "query": ""
 }
+
+### Search Conversations - Basic query
+# @name SearchConversationsBasic
+POST {{ApiService_HostAddress}}/conversations/search
+Content-Type: application/json
+
+{
+  "gameId": "95d26a53-5b62-43f2-bc19-3c64ff013c4f",
+  "query": "What did the player say about the adventure?",
+  "limit": 5
+}
+
+### Search Conversations - Another query
+# @name SearchConversationsAnother
+POST {{ApiService_HostAddress}}/conversations/search
+Content-Type: application/json
+
+{
+  "gameId": "95d26a53-5b62-43f2-bc19-3c64ff013c4f",
+  "query": "treasure",
+  "limit": 10
+}
+
+### Search Conversations - Empty query (should fail)
+POST {{ApiService_HostAddress}}/conversations/search
+Content-Type: application/json
+
+{
+  "gameId": "95d26a53-5b62-43f2-bc19-3c64ff013c4f",
+  "query": ""
+}

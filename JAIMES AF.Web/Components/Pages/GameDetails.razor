@@ -26,7 +26,17 @@
 			<div class="game-header">
 				<MudText Typo="Typo.h5" Class="mb-0">Game details</MudText>
 				<MudText Typo="Typo.body2" Class="text-muted">
-					<strong>@_game.PlayerName</strong> playing <strong>@_game.ScenarioName</strong> (@_game.RulesetId)
+					<strong>@_game.PlayerName</strong> playing <strong>@_game.ScenarioName</strong>
+				</MudText>
+				<MudText Typo="Typo.body2" Class="text-muted">
+					Ruleset: <strong>@_game.RulesetName</strong> (@_game.RulesetId)
+				</MudText>
+				<MudText Typo="Typo.body2" Class="text-muted">
+					Created: @ToLocalTime(_game.CreatedAt).ToString("g")
+					@if (_game.LastPlayedAt.HasValue)
+					{
+						<span> | Last played: @ToLocalTime(_game.LastPlayedAt.Value).ToString("g")</span>
+					}
 				</MudText>
 				<MudText Typo="Typo.body2" Class="text-muted">Game @_game.GameId</MudText>
 			</div>

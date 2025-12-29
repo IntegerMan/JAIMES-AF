@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.Extensions.AI;
@@ -109,6 +110,7 @@ public class GameService(
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
+        // Query games without loading all messages (more efficient)
         Game[] games = await context.Games
             .AsNoTracking()
             .Include(g => g.Scenario)
@@ -116,7 +118,22 @@ public class GameService(
             .Include(g => g.Ruleset)
             .ToArrayAsync(cancellationToken);
 
-        return games.ToDto();
+        // Query max CreatedAt per game directly from Messages table (efficient database query)
+        Dictionary<Guid, DateTime> lastPlayedAtByGameId = await context.Messages
+            .AsNoTracking()
+            .GroupBy(m => m.GameId)
+            .Select(g => new { GameId = g.Key, LastPlayedAt = g.Max(m => m.CreatedAt) })
+            .ToDictionaryAsync(x => x.GameId, x => x.LastPlayedAt, cancellationToken);
+
+        // Map games to DTOs, using the pre-calculated LastPlayedAt values
+        return games.Select(game =>
+            {
+                DateTime? lastPlayedAt = lastPlayedAtByGameId.TryGetValue(game.Id, out DateTime value)
+                    ? value
+                    : null;
+                return game.ToDto(lastPlayedAt);
+            })
+            .ToArray();
     }
 
 
