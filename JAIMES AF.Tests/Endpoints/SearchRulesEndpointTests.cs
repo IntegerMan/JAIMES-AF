@@ -22,7 +22,7 @@ public class SearchRulesEndpointTests : EndpointTestBase
                 // This will be replaced with InMemory in ConfigureServices
                 builder.UseSetting("ConnectionStrings:postgres-db",
                     "Host=localhost;Database=test;Username=test;Password=test");
-                builder.UseSetting("ConnectionStrings:messaging", "amqp://guest:guest@localhost:5672/");
+                builder.UseSetting("ConnectionStrings:LavinMQ-Messaging", "amqp://guest:guest@localhost:5672/");
                 builder.UseSetting("TextGenerationModel:Provider", "Ollama");
                 builder.UseSetting("TextGenerationModel:Endpoint", "http://localhost:11434");
                 builder.UseSetting("TextGenerationModel:Name", "gemma3");

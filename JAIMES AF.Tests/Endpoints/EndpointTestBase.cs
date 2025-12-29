@@ -4,12 +4,17 @@ public abstract class EndpointTestBase : IAsyncLifetime
 {
     protected WebApplicationFactory<ApiServiceProgram> Factory = null!;
     protected HttpClient Client = null!;
+    private Mock<IMessagePublisher>? _mockMessagePublisher;
+    protected Mock<IMessagePublisher> MockMessagePublisher => _mockMessagePublisher 
+        ?? throw new InvalidOperationException("MockMessagePublisher not initialized. Ensure InitializeAsync has completed.");
 
     public virtual async ValueTask InitializeAsync()
     {
         // Use a unique database name per test instance
         string dbName = $"TestDb_{Guid.NewGuid()}";
         CancellationToken ct = TestContext.Current.CancellationToken;
+
+        Mock<IMessagePublisher>? capturedMock = null;
 
         Factory = new WebApplicationFactory<ApiServiceProgram>()
             .WithWebHostBuilder(builder =>
@@ -21,7 +26,7 @@ public abstract class EndpointTestBase : IAsyncLifetime
                 builder.UseSetting("ConnectionStrings:postgres-db",
                     "Host=localhost;Database=test;Username=test;Password=test");
                 // Provide a mock messaging connection string for RabbitMQ
-                builder.UseSetting("ConnectionStrings:messaging", "amqp://guest:guest@localhost:5672/");
+                builder.UseSetting("ConnectionStrings:LavinMQ-Messaging", "amqp://guest:guest@localhost:5672/");
                 // Provide default Ollama configuration for text generation and embeddings
                 builder.UseSetting("TextGenerationModel:Provider", "Ollama");
                 builder.UseSetting("TextGenerationModel:Endpoint", "http://localhost:11434");
@@ -105,6 +110,7 @@ public abstract class EndpointTestBase : IAsyncLifetime
 
                     Mock<IMessagePublisher> mockMessagePublisher = new();
                     services.AddSingleton(mockMessagePublisher.Object);
+                    capturedMock = mockMessagePublisher;
 
                     // Replace IChatService with a mock
                     ServiceDescriptor? chatServiceDescriptor =
@@ -159,6 +165,9 @@ public abstract class EndpointTestBase : IAsyncLifetime
             });
 
         Client = Factory.CreateClient();
+
+        // Store reference to mock for test verification
+        _mockMessagePublisher = capturedMock ?? throw new InvalidOperationException("Mock IMessagePublisher was not created during factory setup");
 
         // Seed test data after initialization
         using (IServiceScope scope = Factory.Services.CreateScope())

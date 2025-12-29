@@ -20,3 +20,4 @@ public static class AgentMapper
         return agents.Select(ToDto).ToArray();
     }
 }
+

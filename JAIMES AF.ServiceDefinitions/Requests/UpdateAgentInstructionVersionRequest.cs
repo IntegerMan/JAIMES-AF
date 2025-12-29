@@ -6,3 +6,4 @@ public record UpdateAgentInstructionVersionRequest
     public required string Instructions { get; init; }
     public bool? IsActive { get; init; }
 }
+

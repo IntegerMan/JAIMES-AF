@@ -142,7 +142,7 @@ public class ApiServiceDependencyInjectionTests
             {
                 // Connection strings
                 {"ConnectionStrings:postgres-db", "Host=localhost;Database=test;Username=test;Password=test"},
-                {"ConnectionStrings:messaging", "amqp://guest:guest@localhost:5672/"},
+                {"ConnectionStrings:LavinMQ-Messaging", "amqp://guest:guest@localhost:5672/"},
                 {"ConnectionStrings:chatModel", "http://localhost:11434|gemma3"},
                 {"ConnectionStrings:embedModel", "http://localhost:11434|nomic-embed-text"},
                 {"ConnectionStrings:qdrant-embeddings", "http://localhost:6334"},

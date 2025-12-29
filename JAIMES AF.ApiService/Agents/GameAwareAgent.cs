@@ -2,6 +2,7 @@ using System.Text.Json;
 using MattEland.Jaimes.Agents.Helpers;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
+using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Tools;
 using Microsoft.EntityFrameworkCore;
@@ -398,6 +399,37 @@ public class GameAwareAgent(
         await dbContext.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Saved {TotalMessageCount} message(s) to database for game {GameId}",
             1 + aiMessageEntities.Count, gameId);
+
+        // Enqueue messages for asynchronous processing (quality control, sentiment analysis)
+        IMessagePublisher messagePublisher = scope.ServiceProvider.GetRequiredService<IMessagePublisher>();
+        
+        // Enqueue user message (defensive check: ensure it's not a tool call)
+        // Note: newUserMessage is already filtered to ChatRole.User, but this is a safety check
+        if (newUserMessage.Role != ChatRole.Tool)
+        {
+            ConversationMessageQueuedMessage userQueueMessage = new()
+            {
+                MessageId = userMessageEntity.Id,
+                GameId = gameId,
+                Role = ChatRole.User
+            };
+            await messagePublisher.PublishAsync(userQueueMessage, cancellationToken);
+            _logger.LogDebug("Enqueued user message {MessageId} for game {GameId}", userMessageEntity.Id, gameId);
+        }
+
+        // Enqueue assistant messages
+        // Note: aiMessageEntities are already filtered to ChatRole.Assistant (tool calls excluded by the Where clause above)
+        foreach (Message aiMessage in aiMessageEntities)
+        {
+            ConversationMessageQueuedMessage assistantQueueMessage = new()
+            {
+                MessageId = aiMessage.Id,
+                GameId = gameId,
+                Role = ChatRole.Assistant
+            };
+            await messagePublisher.PublishAsync(assistantQueueMessage, cancellationToken);
+            _logger.LogDebug("Enqueued assistant message {MessageId} for game {GameId}", aiMessage.Id, gameId);
+        }
 
         // Get the last AI message ID for thread association
         int? lastAiMessageId = aiMessageEntities.LastOrDefault()?.Id;

@@ -1,3 +1,5 @@
+using MattEland.Jaimes.ServiceDefinitions.Messages;
+
 namespace MattEland.Jaimes.ServiceDefinitions.Services;
 
 /// <summary>
@@ -52,8 +54,18 @@ public class MessagePublisher : IMessagePublisher, IDisposable
                 MessageId = Guid.NewGuid().ToString()
             };
 
-            // Publish to exchange with routing key = message type name
+            // Determine routing key based on message type
+            // For ConversationMessageQueuedMessage, use role-based routing keys
             string routingKey = messageTypeName;
+            if (message is ConversationMessageQueuedMessage conversationMessage)
+            {
+                string roleSuffix = conversationMessage.Role.ToString().ToLowerInvariant();
+                routingKey = $"{messageTypeName}.{roleSuffix}";
+                _logger.LogDebug("Using role-based routing key {RoutingKey} for {Role} message",
+                    routingKey,
+                    conversationMessage.Role);
+            }
+
             await _channel.BasicPublishAsync(
                 exchangeName,
                 routingKey,
@@ -62,9 +74,10 @@ public class MessagePublisher : IMessagePublisher, IDisposable
                 body,
                 cancellationToken);
 
-            _logger.LogDebug("Published message of type {MessageType} to exchange {Exchange}",
+            _logger.LogDebug("Published message of type {MessageType} to exchange {Exchange} with routing key {RoutingKey}",
                 messageTypeName,
-                exchangeName);
+                exchangeName,
+                routingKey);
         }
         catch (Exception ex)
         {

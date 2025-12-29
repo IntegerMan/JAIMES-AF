@@ -10,3 +10,4 @@ public class ScenarioAgent
     public Agent? Agent { get; set; }
     public AgentInstructionVersion? InstructionVersion { get; set; }
 }
+

@@ -10,17 +10,14 @@ public static class RabbitMqConnectionFactory
     /// </summary>
     public static IConnectionFactory CreateConnectionFactory(IConfiguration configuration, ILogger? logger = null)
     {
-        string? connectionString = configuration.GetConnectionString("messaging")
-                                   ?? configuration["ConnectionStrings:messaging"]
-                                   ?? configuration["ConnectionStrings__messaging"]
-                                   ?? configuration.GetConnectionString("lavinmq")
-                                   ?? configuration["ConnectionStrings:lavinmq"]
-                                   ?? configuration["ConnectionStrings__lavinmq"];
+        string? connectionString = configuration.GetConnectionString("LavinMQ-Messaging")
+                                   ?? configuration["ConnectionStrings:LavinMQ-Messaging"]
+                                   ?? configuration["ConnectionStrings__LavinMQ-Messaging"];
 
         if (string.IsNullOrWhiteSpace(connectionString))
             throw new InvalidOperationException(
                 "Messaging connection string is not configured. " +
-                "Expected connection string 'messaging' or 'lavinmq' from Aspire.");
+                "Expected connection string 'LavinMQ-Messaging' from Aspire.");
 
         // Parse connection string (format: amqp://username:password@host:port/vhost)
         Uri rabbitUri = new(connectionString);

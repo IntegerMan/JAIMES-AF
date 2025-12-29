@@ -9,6 +9,7 @@ using Microsoft.Extensions.ServiceDiscovery;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+using System.Diagnostics;
 
 namespace MattEland.Jaimes.ServiceDefaults;
 
@@ -76,28 +77,53 @@ public static class Extensions
             })
             .WithTracing(tracing =>
             {
-                // Register the default activity source(s) so activities created elsewhere are captured.
-                // Include the application name, an explicit default name, and the agent-framework source.
+                // Ensure we're sampling all activities - use AlwaysOn sampler to capture everything
+                // This helps diagnose if the issue is with sampling or something else
+                tracing.SetSampler(new AlwaysOnSampler());
+
+                // Register activity sources first - prioritize application name for reliability
+                // Use explicit registrations and wildcards to ensure we capture all activities
                 tracing
-                    .AddSource(
-                        builder.Environment.ApplicationName,
-                        DefaultActivitySourceName,
-                        "*Microsoft.Extensions.AI",
-                        "*Microsoft.Extensions.Agents*",
-                        "agent-framework-source",
-                        "MattEland.*",
-                        "Jaimes.*",
-                        // Explicitly add known ActivitySources to ensure they're registered
-                        // (wildcards should match, but explicit registration is more reliable)
-                        "Jaimes.DocumentCracker")
-                    .AddAspNetCoreInstrumentation(options =>
-                        // Exclude health check requests from tracing
+                    .AddSource(builder.Environment.ApplicationName)
+                    .AddSource(DefaultActivitySourceName)
+                    // Add wildcard pattern for application name to catch all activities from this app
+                    .AddSource($"{builder.Environment.ApplicationName}*")
+                    // Explicit registrations for known ActivitySources
+                    // Workers register their own sources in Program.cs, but include common patterns
+                    .AddSource("Jaimes.DocumentCracker")
+                    .AddSource("Jaimes.Workers.*")
+                    .AddSource("Jaimes.Agents.*")
+                    // Agent framework sources (explicit patterns for reliability)
+                    .AddSource("Microsoft.Extensions.AI")
+                    .AddSource("Microsoft.Agents.AI");
+
+                // Processor disabled - it's filtering out all traces
+                // Need to investigate why the processor is too aggressive
+                // tracing.AddProcessor(new BlazorActivityFilteringProcessor());
+
+                // Add ASP.NET Core instrumentation with minimal filtering
+                // Temporarily only filtering health checks to diagnose trace capture issues
+                // Reference: https://github.com/open-telemetry/opentelemetry-dotnet-contrib/blob/main/src/OpenTelemetry.Instrumentation.AspNetCore/README.md
+                tracing.AddAspNetCoreInstrumentation(options =>
+                    {
                         options.Filter = context =>
-                            !context.Request.Path.StartsWithSegments(HealthEndpointPath,
-                                StringComparison.OrdinalIgnoreCase)
-                            && !context.Request.Path.StartsWithSegments(AlivenessEndpointPath,
-                                StringComparison.OrdinalIgnoreCase)
-                    )
+                        {
+                            // Exclude health check requests only
+                            if (context.Request.Path.StartsWithSegments(HealthEndpointPath,
+                                    StringComparison.OrdinalIgnoreCase) ||
+                                context.Request.Path.StartsWithSegments(AlivenessEndpointPath,
+                                    StringComparison.OrdinalIgnoreCase))
+                                return false;
+
+                            if (context.Request.Path.StartsWithSegments("/_blazor",
+                                    StringComparison.OrdinalIgnoreCase))
+                                return false;
+
+                            // Allow all other requests for now (including Blazor/SignalR)
+                            // We'll add back filtering once we confirm traces are working
+                            return true;
+                        };
+                    })
                     .AddEntityFrameworkCoreInstrumentation(options =>
                     {
                         options.EnrichWithIDbCommand = (activity, command) =>
@@ -120,24 +146,14 @@ public static class Extensions
         return builder;
     }
 
-    private static TBuilder AddOpenTelemetryExporters<TBuilder>(this TBuilder builder)
-        where TBuilder : IHostApplicationBuilder
+    private static TBuilder AddOpenTelemetryExporters<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
-        // Check both configuration and environment variables for OTLP endpoint
-        // Aspire sets this as an environment variable when services are added via AddProject
-        string? otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]
-                               ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
+        var useOtlpExporter = !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]);
 
-        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
-            builder.Services.AddOpenTelemetry()
-                .UseOtlpExporter();
-
-        // Uncomment the following lines to enable the Azure Monitor exporter (requires the Azure.Monitor.OpenTelemetry.AspNetCore package)
-        //if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
-        //{
-        //    builder.Services.AddOpenTelemetry()
-        //       .UseAzureMonitor();
-        //}
+        if (useOtlpExporter)
+        {
+            builder.Services.AddOpenTelemetry().UseOtlpExporter();
+        }
 
         return builder;
     }

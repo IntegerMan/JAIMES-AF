@@ -44,3 +44,4 @@ public class GetAgentEndpoint : EndpointWithoutRequest<AgentResponse>
         await Send.OkAsync(response, ct);
     }
 }
+

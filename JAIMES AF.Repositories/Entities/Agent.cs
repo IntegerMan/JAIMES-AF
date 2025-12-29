@@ -10,3 +10,4 @@ public class Agent
     public ICollection<ScenarioAgent> ScenarioAgents { get; set; } = new List<ScenarioAgent>();
     public ICollection<Message> Messages { get; set; } = new List<Message>();
 }
+
