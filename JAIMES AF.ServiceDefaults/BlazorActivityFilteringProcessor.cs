@@ -12,8 +12,8 @@ public sealed class BlazorActivityFilteringProcessor : BaseProcessor<Activity>
 {
     public override void OnEnd(Activity activity)
     {
-        // Get activity properties
-        string? sourceName = activity.Source.Name;
+        // Get activity properties - be defensive about null checks
+        string? sourceName = activity.Source?.Name;
         string? operationName = activity.OperationName;
         string? displayName = activity.DisplayName;
 
@@ -26,18 +26,31 @@ public sealed class BlazorActivityFilteringProcessor : BaseProcessor<Activity>
             return;
         }
 
-        // Filter ComponentHub activities - ONLY filter if source name explicitly contains ComponentHub
-        // This is the most reliable check - ComponentHub activities come from "Microsoft.AspNetCore.Components.Server.ComponentHub"
-        if (!string.IsNullOrEmpty(sourceName) && sourceName.Contains("ComponentHub", StringComparison.OrdinalIgnoreCase))
+        // Filter ComponentHub activities - be very specific to avoid false positives
+        // ComponentHub activities can appear in different properties:
+        // - Source name: "Microsoft.AspNetCore.Components.Server.ComponentHub"
+        // - Operation name: "Microsoft.AspNetCore.Components.Server.ComponentHub/OnRenderCompleted"
+        // - Display name: "Microsoft.AspNetCore.Components.Server.ComponentHub/OnRenderCompleted"
+        
+        // Check source name first (most reliable) - must be exact ComponentHub source
+        if (!string.IsNullOrEmpty(sourceName) && 
+            sourceName.Equals("Microsoft.AspNetCore.Components.Server.ComponentHub", StringComparison.OrdinalIgnoreCase))
         {
             // Don't call base.OnEnd() - this filters out the activity
             return;
         }
 
-        // Check display name for ComponentHub patterns (backup check)
-        // ComponentHub activities appear as "Microsoft.AspNetCore.Components.Server.ComponentHub/OnRenderCompleted"
-        // Only filter if we see the full ComponentHub path in the display name
-        if (!string.IsNullOrEmpty(displayName) && displayName.Contains("ComponentHub/", StringComparison.OrdinalIgnoreCase))
+        // Check operation name for ComponentHub patterns - must contain the full path
+        if (!string.IsNullOrEmpty(operationName) && 
+            operationName.Contains("Microsoft.AspNetCore.Components.Server.ComponentHub/", StringComparison.OrdinalIgnoreCase))
+        {
+            // Don't call base.OnEnd() - this filters out the activity
+            return;
+        }
+
+        // Check display name for ComponentHub patterns - must contain the full path
+        if (!string.IsNullOrEmpty(displayName) && 
+            displayName.Contains("Microsoft.AspNetCore.Components.Server.ComponentHub/", StringComparison.OrdinalIgnoreCase))
         {
             // Don't call base.OnEnd() - this filters out the activity
             return;

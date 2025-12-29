@@ -82,10 +82,12 @@ public static class Extensions
                 tracing.SetSampler(new AlwaysOnSampler());
 
                 // Register activity sources first - prioritize application name for reliability
-                // Use explicit registrations instead of wildcards for better trace capture
+                // Use explicit registrations and wildcards to ensure we capture all activities
                 tracing
                     .AddSource(builder.Environment.ApplicationName)
                     .AddSource(DefaultActivitySourceName)
+                    // Add wildcard pattern for application name to catch all activities from this app
+                    .AddSource($"{builder.Environment.ApplicationName}*")
                     // Explicit registrations for known ActivitySources
                     // Workers register their own sources in Program.cs, but include common patterns
                     .AddSource("Jaimes.DocumentCracker")
@@ -95,31 +97,30 @@ public static class Extensions
                     .AddSource("Microsoft.Extensions.AI")
                     .AddSource("Microsoft.Agents.AI");
 
-                // Add processor to filter out unwanted Blazor ComponentHub activities and UI events
-                // This keeps routing events and events that trigger POST requests (onkeydown, onclick)
-                tracing.AddProcessor(new BlazorActivityFilteringProcessor());
+                // Processor disabled - it's filtering out all traces
+                // Need to investigate why the processor is too aggressive
+                // tracing.AddProcessor(new BlazorActivityFilteringProcessor());
 
-                // Add ASP.NET Core instrumentation with filtering
+                // Add ASP.NET Core instrumentation with minimal filtering
+                // Temporarily only filtering health checks to diagnose trace capture issues
                 // Reference: https://github.com/open-telemetry/opentelemetry-dotnet-contrib/blob/main/src/OpenTelemetry.Instrumentation.AspNetCore/README.md
                 tracing.AddAspNetCoreInstrumentation(options =>
                     {
                         options.Filter = context =>
                         {
-                            // Exclude health check requests
+                            // Exclude health check requests only
                             if (context.Request.Path.StartsWithSegments(HealthEndpointPath,
                                     StringComparison.OrdinalIgnoreCase) ||
                                 context.Request.Path.StartsWithSegments(AlivenessEndpointPath,
                                     StringComparison.OrdinalIgnoreCase))
                                 return false;
 
-                            // Exclude Blazor and SignalR HTTP requests (these generate too much noise)
-                            // The processor will handle filtering the actual activities
-                            if (context.Request.Path.StartsWithSegments("/_blazor", StringComparison.OrdinalIgnoreCase) ||
-                                context.Request.Path.StartsWithSegments("/_framework", StringComparison.OrdinalIgnoreCase) ||
-                                context.Request.Path.Value?.Contains("/hub", StringComparison.OrdinalIgnoreCase) == true)
+                            if (context.Request.Path.StartsWithSegments("/_blazor",
+                                    StringComparison.OrdinalIgnoreCase))
                                 return false;
 
-                            // Allow all other requests
+                            // Allow all other requests for now (including Blazor/SignalR)
+                            // We'll add back filtering once we confirm traces are working
                             return true;
                         };
                     })
