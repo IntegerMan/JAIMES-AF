@@ -42,8 +42,9 @@ public partial class GameDetails : IDisposable
 
     // Hover state tracking for feedback buttons
     private int? _hoveredMessageId;
+    private int? _hoveredMessageIndex; // For messages without IDs yet
 
-    private bool IsHovering => _hoveredMessageId.HasValue;
+    private bool IsHovering => _hoveredMessageId.HasValue || _hoveredMessageIndex.HasValue;
 
     public record MessageFeedbackInfo
     {
@@ -145,6 +146,7 @@ public partial class GameDetails : IDisposable
 
             // Indicate message is being sent
             _messages.Add(new(ChatRole.User, messageText));
+            _messageIds.Add(null); // User messages don't have database IDs yet
             _logger?.LogInformation("Sending message {Text} from User (first message: {IsFirst})", messageText, isFirstPlayerMessage);
 
             // Scroll to bottom after adding user message and showing typing indicator
@@ -254,6 +256,9 @@ public partial class GameDetails : IDisposable
         finally
         {
             _isSending = false;
+
+            // Refresh game state to get updated message IDs for feedback functionality
+            await LoadGameAsync();
 
             // Scroll after typing indicator disappears
             _shouldScrollToBottom = true;
@@ -370,23 +375,31 @@ public partial class GameDetails : IDisposable
     /// <summary>
     /// Handles hover start for a message bubble.
     /// </summary>
-    private void HoverStart(int? messageId)
+    private void HoverStart(int? messageId, int? messageIndex = null)
     {
         if (messageId.HasValue)
         {
             _hoveredMessageId = messageId;
-            StateHasChanged();
+            _hoveredMessageIndex = null; // Clear index when using ID
         }
+        else if (messageIndex.HasValue)
+        {
+            _hoveredMessageIndex = messageIndex;
+            _hoveredMessageId = null; // Clear ID when using index
+        }
+        StateHasChanged();
     }
 
     /// <summary>
     /// Handles hover stop for a message bubble.
     /// </summary>
-    private void HoverStop(int? messageId)
+    private void HoverStop(int? messageId, int? messageIndex = null)
     {
-        if (_hoveredMessageId == messageId)
+        if ((messageId.HasValue && _hoveredMessageId == messageId) ||
+            (messageIndex.HasValue && _hoveredMessageIndex == messageIndex))
         {
             _hoveredMessageId = null;
+            _hoveredMessageIndex = null;
             StateHasChanged();
         }
     }

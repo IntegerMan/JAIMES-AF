@@ -85,8 +85,8 @@
 								<MudChat ChatPosition="ChatBubblePosition.Start"
 								         Variant="Variant.Filled"
 								         Color="Color.Default"
-								         @onmouseenter="@(() => HoverStart(messageId))"
-								         @onmouseleave="@(() => HoverStop(messageId))">
+								         @onmouseenter="@(() => HoverStart(messageId, messageId.HasValue ? null : msgIndex))"
+								         @onmouseleave="@(() => HoverStop(messageId, messageId.HasValue ? null : msgIndex))">
 									@if (isFirstParagraph)
 									{
 										<MudChatHeader Name="Game Master"/>
@@ -136,12 +136,29 @@
 														               Class="feedback-button"
 														               OnClick="@(() => ShowFeedbackDialogAsync(messageId.Value, false))"/>
 													</div>
-												}
-												else if (!hasToolCalls)
-												{
-													<div class="feedback-spacer"></div>
-												}
-											</div>
+												</MudTooltip>
+											}
+											else if (IsHovering && ((messageId.HasValue && _hoveredMessageId == messageId) || (!messageId.HasValue && _hoveredMessageIndex == msgIndex)))
+											{
+												<div class="d-flex align-items-center gap-1">
+													<MudIconButton Icon="@Icons.Material.Filled.ThumbUp"
+													               Color="Color.Default"
+													               Size="Size.Small"
+													               Variant="Variant.Text"
+													               Class="feedback-button"
+													               OnClick="@(() => ShowFeedbackDialogAsync(messageId.Value, true))"/>
+													<MudIconButton Icon="@Icons.Material.Filled.ThumbDown"
+													               Color="Color.Default"
+													               Size="Size.Small"
+													               Variant="Variant.Text"
+													               Class="feedback-button"
+													               OnClick="@(() => ShowFeedbackDialogAsync(messageId.Value, false))"/>
+												</div>
+											}
+											else
+											{
+												<div class="feedback-spacer"></div>
+											}
 										</MudChatFooter>
 									}
 								</MudChat>

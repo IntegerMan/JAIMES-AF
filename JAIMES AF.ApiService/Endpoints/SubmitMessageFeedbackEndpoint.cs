@@ -47,7 +47,7 @@ public class SubmitMessageFeedbackEndpoint : Endpoint<SubmitMessageFeedbackReque
                 InstructionVersionId = feedback.InstructionVersionId
             };
 
-            await Send.CreatedAtAsync<SubmitMessageFeedbackEndpoint>(response, response, Http.POST, cancellation: ct);
+            await Send.OkAsync(response, cancellation: ct);
         }
         catch (ArgumentException ex)
         {

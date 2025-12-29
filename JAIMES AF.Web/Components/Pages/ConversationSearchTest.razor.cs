@@ -16,6 +16,7 @@ public partial class ConversationSearchTest
     private bool _isSearching = false;
     private string? _errorMessage;
     private ConversationSearchResponse? _searchResult;
+    private string? _toolOutput;
 
     protected override async Task OnInitializedAsync()
     {
@@ -76,6 +77,39 @@ public partial class ConversationSearchTest
             if (response.IsSuccessStatusCode)
             {
                 _searchResult = await response.Content.ReadFromJsonAsync<ConversationSearchResponse>();
+                
+                // Format the output as the tool would return it
+                if (_searchResult != null && _searchResult.Results.Length > 0)
+                {
+                    List<string> resultTexts = new();
+                    foreach (ConversationSearchResult result in _searchResult.Results)
+                    {
+                        List<string> messageParts = new();
+
+                        // Add previous message if available
+                        if (result.PreviousMessage != null)
+                        {
+                            messageParts.Add($"[Previous] {result.PreviousMessage.ParticipantName}: {result.PreviousMessage.Text}");
+                        }
+
+                        // Add matched message
+                        messageParts.Add($"[Matched - Relevancy: {result.Relevancy:F2}] {result.MatchedMessage.ParticipantName}: {result.MatchedMessage.Text}");
+
+                        // Add next message if available
+                        if (result.NextMessage != null)
+                        {
+                            messageParts.Add($"[Next] {result.NextMessage.ParticipantName}: {result.NextMessage.Text}");
+                        }
+
+                        resultTexts.Add(string.Join("\n", messageParts));
+                    }
+
+                    _toolOutput = string.Join("\n\n---\n\n", resultTexts);
+                }
+                else
+                {
+                    _toolOutput = "No relevant conversation history found for your query.";
+                }
             }
             else
             {

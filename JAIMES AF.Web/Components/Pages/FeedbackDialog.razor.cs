@@ -5,10 +5,12 @@ namespace MattEland.Jaimes.Web.Components.Pages;
 
 public partial class FeedbackDialog : ComponentBase
 {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
     [Parameter] public int MessageId { get; set; }
     [Parameter] public bool? PreSelectedFeedback { get; set; }
     [Parameter] public EventCallback<GameDetails.MessageFeedbackInfo?> OnFeedbackSubmitted { get; set; }
-    
+
     private bool? _selectedFeedback;
     private string? _comment;
 
@@ -22,7 +24,7 @@ public partial class FeedbackDialog : ComponentBase
 
     private void Cancel()
     {
-        // Dialog will be closed by parent when result is canceled
+        MudDialog.Cancel();
     }
 
     private async Task Submit()
