@@ -1,0 +1,67 @@
+@page "/tools/player-sentiment"
+@rendermode InteractiveServer
+
+<PageTitle>Player Sentiment Test</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+	<MudPaper Class="pa-8" Elevation="2">
+		<MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">Player Sentiment Test</MudText>
+		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">Test the PlayerSentimentTool functionality
+		</MudText>
+
+		<MudText Typo="Typo.body1" Class="mb-6" Style="line-height: 1.75;">
+			Use this tool to test the player sentiment analysis functionality. Select a game to view the most recent sentiment
+			analysis results for the player in that game.
+		</MudText>
+
+		<MudDivider Class="my-6"/>
+
+		<MudPaper Class="pa-4" Elevation="1">
+			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-4">Game Selection</MudText>
+
+			<MudForm>
+				<MudSelect @bind-Value="_selectedGameId"
+				           Label="Game"
+				           Variant="Variant.Outlined"
+				           Class="mb-4"
+				           FullWidth="true"
+				           HelperText="Select a game to view player sentiment">
+					<MudSelectItem Value="@((Guid?) null)">Select a game...</MudSelectItem>
+					@foreach (GameInfoResponse game in _games)
+					{
+						<MudSelectItem Value="@((Guid?) game.GameId)">@FormatGameDisplay(game)</MudSelectItem>
+					}
+				</MudSelect>
+
+				<MudButton Variant="Variant.Filled"
+				           Color="Color.Primary"
+				           OnClick="GetSentimentAsync"
+				           Disabled="@(_isLoading || !_selectedGameId.HasValue)"
+				           Class="mb-4">
+					@if (_isLoading)
+					{
+						<MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2"/>
+					}
+					Get Sentiment
+				</MudButton>
+			</MudForm>
+		</MudPaper>
+
+		@if (!string.IsNullOrEmpty(_errorMessage))
+		{
+			<MudAlert Severity="Severity.Error" Class="mt-4">@_errorMessage</MudAlert>
+		}
+
+		@if (!string.IsNullOrEmpty(_toolOutput))
+		{
+			<MudDivider Class="my-6"/>
+
+			<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Tool Output</MudText>
+			<MudText Typo="Typo.body2" Class="mb-4 text-muted">This is the formatted output that the PlayerSentimentTool returns to AI agents:</MudText>
+			<MudPaper Class="pa-4 mb-6" Elevation="1">
+				<MudText Typo="Typo.body1" Style="white-space: pre-wrap; font-family: monospace;">@_toolOutput</MudText>
+			</MudPaper>
+		}
+	</MudPaper>
+</MudContainer>
+

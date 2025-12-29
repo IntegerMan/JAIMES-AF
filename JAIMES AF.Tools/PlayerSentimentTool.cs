@@ -56,8 +56,22 @@ public class PlayerSentimentTool(GameDto game, IServiceProvider serviceProvider)
             return "No sentiment analysis results available for this player in the current game.";
         }
 
+        // Calculate average sentiment
+        double averageSentiment = messagesWithSentiment.Average(m => m.Sentiment!.Value);
+        string averageLabel = averageSentiment switch
+        {
+            > 0.33 => "Positive",
+            < -0.33 => "Negative",
+            _ => "Neutral"
+        };
+
         // Format results
         List<string> resultTexts = new();
+        
+        // Add average sentiment at the beginning
+        resultTexts.Add($"Average Sentiment: {averageLabel} ({averageSentiment:F2})");
+        resultTexts.Add(string.Empty); // Empty line separator
+        
         foreach (Message message in messagesWithSentiment)
         {
             string sentimentLabel = message.Sentiment switch
