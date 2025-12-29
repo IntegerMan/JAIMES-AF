@@ -29,7 +29,8 @@ public class GetMessageToolCallsEndpoint : EndpointWithoutRequest<IEnumerable<Me
 
         try
         {
-            IReadOnlyList<MessageToolCallDto> toolCalls = await MessageToolCallService.GetToolCallsForMessageAsync(messageId, ct);
+            IReadOnlyList<MessageToolCallDto> toolCalls =
+                await MessageToolCallService.GetToolCallsForMessageAsync(messageId, ct);
 
             List<MessageToolCallResponse> responses = toolCalls.Select(tc => new MessageToolCallResponse
             {
@@ -44,9 +45,9 @@ public class GetMessageToolCallsEndpoint : EndpointWithoutRequest<IEnumerable<Me
 
             await Send.OkAsync(responses, ct);
         }
-        catch (ArgumentException ex)
+        catch (ArgumentException)
         {
-            ThrowError(ex.Message);
+            await Send.NotFoundAsync(ct);
         }
     }
 }
