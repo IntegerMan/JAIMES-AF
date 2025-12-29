@@ -1,6 +1,7 @@
 using System.Text.Json;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
+using MattEland.Jaimes.ServiceDefaults;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
 using Microsoft.Extensions.AI.Evaluation.Quality;
@@ -14,6 +15,7 @@ public class MessageEvaluationService(
     IDbContextFactory<JaimesDbContext> contextFactory,
     RelevanceTruthAndCompletenessEvaluator evaluator,
     IChatClient chatClient,
+    TextGenerationModelOptions modelOptions,
     ILogger<MessageEvaluationService> logger) : IMessageEvaluationService
 {
     public async Task EvaluateMessageAsync(
@@ -106,7 +108,10 @@ public class MessageEvaluationService(
                         Score = metric.Value.Value,
                         Remarks = null, // NumericMetric doesn't expose reasoning/remarks directly
                         EvaluatedAt = evaluatedAt,
-                        Diagnostics = diagnosticsJson
+                        Diagnostics = diagnosticsJson,
+                        EvaluationModelName = modelOptions.Name,
+                        EvaluationModelProvider = modelOptions.Provider.ToString(),
+                        EvaluationModelEndpoint = modelOptions.Endpoint
                     };
 
                     context.MessageEvaluationMetrics.Add(evaluationMetric);

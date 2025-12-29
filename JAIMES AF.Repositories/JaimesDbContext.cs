@@ -155,6 +155,9 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.Property(m => m.GameId).IsRequired();
             entity.Property(m => m.Text).IsRequired();
             entity.Property(m => m.CreatedAt).IsRequired();
+            entity.Property(m => m.ModelName).HasMaxLength(200);
+            entity.Property(m => m.ModelProvider).HasMaxLength(50);
+            entity.Property(m => m.ModelEndpoint).HasMaxLength(500);
 
             entity.HasOne(m => m.Game)
                 .WithMany(g => g.Messages)
@@ -434,6 +437,9 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.Property(mem => mem.MetricName).IsRequired();
             entity.Property(mem => mem.Score).IsRequired();
             entity.Property(mem => mem.EvaluatedAt).IsRequired();
+            entity.Property(mem => mem.EvaluationModelName).HasMaxLength(200);
+            entity.Property(mem => mem.EvaluationModelProvider).HasMaxLength(50);
+            entity.Property(mem => mem.EvaluationModelEndpoint).HasMaxLength(500);
 
             // Configure Diagnostics as JSONB for PostgreSQL
             string providerName;

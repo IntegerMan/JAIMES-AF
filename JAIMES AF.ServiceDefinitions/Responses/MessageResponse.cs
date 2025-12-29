@@ -12,4 +12,7 @@ public record MessageResponse
     public int? InstructionVersionId { get; set; }
     // Sentiment analysis result: -1 (negative), 0 (neutral), 1 (positive), null (not analyzed)
     public int? Sentiment { get; set; }
+    public string? ModelName { get; set; }
+    public string? ModelProvider { get; set; }
+    public string? ModelEndpoint { get; set; }
 }
