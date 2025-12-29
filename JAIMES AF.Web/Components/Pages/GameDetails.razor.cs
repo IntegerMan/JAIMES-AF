@@ -131,6 +131,7 @@ public partial class GameDetails : IDisposable
 
             // Indicate message is being sent
             _messages.Add(new(ChatRole.User, messageText));
+            _messageIds.Add(null); // User messages don't have database IDs yet
             _logger?.LogInformation("Sending message {Text} from User (first message: {IsFirst})", messageText, isFirstPlayerMessage);
 
             // Scroll to bottom after adding user message and showing typing indicator
