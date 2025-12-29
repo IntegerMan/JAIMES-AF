@@ -1,3 +1,6 @@
+using MattEland.Jaimes.ServiceDefinitions.Services;
+using Microsoft.Extensions.DependencyInjection;
+
 namespace MattEland.Jaimes.Agents.Middleware;
 
 /// <summary>
@@ -12,10 +15,11 @@ public static class ToolInvocationMiddleware
     /// Creates a function calling middleware that tracks tool invocations.
     /// </summary>
     /// <param name="logger">The logger to use for logging tool invocations.</param>
+    /// <param name="getServiceProvider">A function that returns the current request's service provider when called.</param>
     /// <returns>A middleware function that can be used with the agent builder.</returns>
     public static
         Func<AIAgent, FunctionInvocationContext, Func<FunctionInvocationContext, CancellationToken, ValueTask<object?>>,
-            CancellationToken, ValueTask<object?>> Create(ILogger logger)
+            CancellationToken, ValueTask<object?>> Create(ILogger logger, Func<IServiceProvider?>? getServiceProvider = null)
     {
         // Log that middleware is being created/registered
         logger.LogInformation("ToolInvocationMiddleware created and registered");
@@ -68,6 +72,43 @@ public static class ToolInvocationMiddleware
                 {
                     activity.SetTag("tool.result_type", result?.GetType().Name ?? "null");
                     activity.SetStatus(ActivityStatusCode.Ok);
+                }
+
+                // Record tool call in tracker if available
+                // Get service provider from delegate to avoid disposed scope issues
+                if (getServiceProvider != null)
+                {
+                    try
+                    {
+                        IServiceProvider? requestServices = getServiceProvider();
+                        if (requestServices != null)
+                        {
+                            IToolCallTracker? tracker = requestServices.GetService<IToolCallTracker>();
+                            if (tracker != null)
+                            {
+                                logger.LogInformation("Recording tool call '{ToolName}' in tracker", functionName);
+                                await tracker.RecordToolCallAsync(functionName, context.Arguments, result);
+                                logger.LogInformation("Successfully recorded tool call '{ToolName}' in tracker", functionName);
+                            }
+                            else
+                            {
+                                logger.LogWarning("IToolCallTracker not found in service provider for tool '{ToolName}'", functionName);
+                            }
+                        }
+                        else
+                        {
+                            logger.LogWarning("Service provider is null, cannot record tool call '{ToolName}'", functionName);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log but don't fail the tool call if tracking fails
+                        logger.LogWarning(ex, "Failed to record tool call in tracker: {FunctionName}", functionName);
+                    }
+                }
+                else
+                {
+                    logger.LogDebug("getServiceProvider is null, skipping tool call tracking for '{ToolName}'", functionName);
                 }
             }
             catch (Exception ex)

@@ -20,6 +20,7 @@ public partial class GameDetails : IDisposable
     private List<ChatMessage> _messages = [];
     private List<int?> _messageIds = []; // Parallel list to track message IDs
     private Dictionary<int, MessageFeedbackInfo> _messageFeedback = new();
+    private Dictionary<int, List<MessageToolCallInfo>> _messageToolCalls = new();
     private AIAgent? _agent;
 
     private GameStateResponse? _game;
@@ -49,6 +50,16 @@ public partial class GameDetails : IDisposable
         public required int MessageId { get; init; }
         public required bool IsPositive { get; init; }
         public string? Comment { get; init; }
+    }
+
+    public record MessageToolCallInfo
+    {
+        public required int Id { get; init; }
+        public required int MessageId { get; init; }
+        public required string ToolName { get; init; }
+        public string? InputJson { get; init; }
+        public string? OutputJson { get; init; }
+        public required DateTime CreatedAt { get; init; }
     }
 
     protected override async Task OnParametersSetAsync()
@@ -86,6 +97,9 @@ public partial class GameDetails : IDisposable
 
             // Load existing feedback for assistant messages
             await LoadFeedbackForMessagesAsync(orderedMessages.Where(m => m.Participant == ChatParticipant.GameMaster).Select(m => m.Id).ToList());
+
+            // Load tool calls for assistant messages
+            await LoadToolCallsForMessagesAsync(orderedMessages.Where(m => m.Participant == ChatParticipant.GameMaster).Select(m => m.Id).ToList());
 
             // Create AG-UI client for this game
             HttpClient aguiHttpClient = HttpClientFactory.CreateClient("AGUI");
@@ -476,6 +490,75 @@ public partial class GameDetails : IDisposable
             _logger?.LogError(ex, "Failed to submit feedback");
             await DialogService.ShowMessageBox("Error", $"Failed to submit feedback: {ex.Message}", "OK");
         }
+    }
+
+    /// <summary>
+    /// Loads tool calls for the specified message IDs.
+    /// </summary>
+    private async Task LoadToolCallsForMessagesAsync(List<int> messageIds)
+    {
+        if (messageIds.Count == 0) return;
+
+        try
+        {
+            HttpClient httpClient = HttpClientFactory.CreateClient("Api");
+            
+            // Load tool calls for each message
+            foreach (int messageId in messageIds)
+            {
+                try
+                {
+                    List<MessageToolCallResponse>? toolCalls = await httpClient.GetFromJsonAsync<List<MessageToolCallResponse>>($"/messages/{messageId}/tool-calls");
+                    if (toolCalls != null && toolCalls.Count > 0)
+                    {
+                        _messageToolCalls[messageId] = toolCalls.Select(tc => new MessageToolCallInfo
+                        {
+                            Id = tc.Id,
+                            MessageId = tc.MessageId,
+                            ToolName = tc.ToolName,
+                            InputJson = tc.InputJson,
+                            OutputJson = tc.OutputJson,
+                            CreatedAt = tc.CreatedAt
+                        }).ToList();
+                    }
+                }
+                catch (HttpRequestException)
+                {
+                    // Message doesn't have tool calls yet, which is fine
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to load tool calls for messages");
+        }
+    }
+
+    /// <summary>
+    /// Shows the tool calls dialog for a message.
+    /// </summary>
+    private async Task ShowToolCallsDialogAsync(int messageId)
+    {
+        if (!_messageToolCalls.TryGetValue(messageId, out List<MessageToolCallInfo>? toolCalls) || toolCalls == null || toolCalls.Count == 0)
+        {
+            await DialogService.ShowMessageBox("No Tool Calls", "This message has no tool calls.", "OK");
+            return;
+        }
+
+        var parameters = new DialogParameters<ToolCallsDialog>
+        {
+            { nameof(ToolCallsDialog.ToolCalls), toolCalls }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true
+        };
+
+        IDialogReference? dialogRef = await DialogService.ShowAsync<ToolCallsDialog>("Tool Calls", parameters, options);
+        await dialogRef.Result;
     }
 
     public void Dispose()
