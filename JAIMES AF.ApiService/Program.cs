@@ -60,6 +60,11 @@ public class Program
         // Register QdrantRulesStore
         builder.Services.AddSingleton<IQdrantRulesStore, QdrantRulesStore>();
 
+        // Register QdrantConversationsStore
+        ActivitySource qdrantConversationsActivitySource = new("Jaimes.Agents.QdrantConversations");
+        builder.Services.AddSingleton(qdrantConversationsActivitySource);
+        builder.Services.AddSingleton<IQdrantConversationsStore, QdrantConversationsStore>();
+
         // Register embedding generator for rules (supports Ollama, Azure OpenAI, and OpenAI)
         // Configuration is provided by AppHost via environment variables
         builder.Services.AddEmbeddingGenerator(
@@ -95,6 +100,7 @@ public class Program
 
         // Register Agents services explicitly (not auto-registered)
         builder.Services.AddScoped<IRulesSearchService, RulesSearchService>();
+        builder.Services.AddScoped<IConversationSearchService, ConversationSearchService>();
         builder.Services.AddScoped<GameConversationMemoryProviderFactory>();
 
         // Register HttpContextAccessor for GameAwareAgent

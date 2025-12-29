@@ -20,4 +20,13 @@ public class Message
     public Game? Game { get; set; }
     public Guid? ChatHistoryId { get; set; }
     public ChatHistory? ChatHistory { get; set; }
+
+    // Navigation properties for message ordering (linked list structure)
+    public int? PreviousMessageId { get; set; }
+    public Message? PreviousMessage { get; set; }
+    public int? NextMessageId { get; set; }
+    public Message? NextMessage { get; set; }
+
+    // Navigation property for embedding (optional 1:0..1 relationship)
+    public MessageEmbedding? MessageEmbedding { get; set; }
 }

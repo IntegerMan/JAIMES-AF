@@ -1,7 +1,10 @@
+using MattEland.Jaimes.ServiceDefinitions.Messages;
+
 namespace MattEland.Jaimes.Workers.UserMessageWorker.Consumers;
 
 public class UserMessageConsumer(
     IDbContextFactory<JaimesDbContext> contextFactory,
+    IMessagePublisher messagePublisher,
     ILogger<UserMessageConsumer> logger,
     ActivitySource activitySource) : IMessageConsumer<ConversationMessageQueuedMessage>
 {
@@ -62,6 +65,18 @@ public class UserMessageConsumer(
                 messageEntity.Text?.Length ?? 0,
                 messageEntity.CreatedAt,
                 textPreview);
+
+            // Enqueue message for embedding
+            ConversationMessageReadyForEmbeddingMessage embeddingMessage = new()
+            {
+                MessageId = messageEntity.Id,
+                GameId = messageEntity.GameId,
+                Text = messageEntity.Text ?? string.Empty,
+                Role = ChatRole.User,
+                CreatedAt = messageEntity.CreatedAt
+            };
+            await messagePublisher.PublishAsync(embeddingMessage, cancellationToken);
+            logger.LogDebug("Enqueued user message {MessageId} for embedding", messageEntity.Id);
 
             activity?.SetStatus(ActivityStatusCode.Ok);
         }

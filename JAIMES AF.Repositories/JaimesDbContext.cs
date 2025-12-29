@@ -4,6 +4,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
 {
     public DbSet<Game> Games { get; set; } = null!;
     public DbSet<Message> Messages { get; set; } = null!;
+    public DbSet<MessageEmbedding> MessageEmbeddings { get; set; } = null!;
     public DbSet<Player> Players { get; set; } = null!;
     public DbSet<Scenario> Scenarios { get; set; } = null!;
     public DbSet<Ruleset> Rulesets { get; set; } = null!;
@@ -167,6 +168,17 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 .WithMany(iv => iv.Messages)
                 .HasForeignKey(m => m.InstructionVersionId)
                 .OnDelete(DeleteBehavior.NoAction);
+
+            // Self-referencing foreign keys for message ordering (linked list structure)
+            entity.HasOne(m => m.PreviousMessage)
+                .WithMany()
+                .HasForeignKey(m => m.PreviousMessageId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(m => m.NextMessage)
+                .WithMany()
+                .HasForeignKey(m => m.NextMessageId)
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<ChatHistory>(entity =>
@@ -270,6 +282,54 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.HasOne(dc => dc.CrackedDocument)
                 .WithMany()
                 .HasForeignKey(dc => dc.DocumentId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<MessageEmbedding>(entity =>
+        {
+            entity.HasKey(me => me.Id);
+            entity.Property(me => me.MessageId).IsRequired();
+            entity.Property(me => me.EmbeddedAt).IsRequired();
+
+            // Configure Embedding property for different database providers
+            // For PostgreSQL: pgvector extension handles Vector natively via the [Column(TypeName = "vector")] attribute
+            // For other providers (like in-memory): use a value converter to store as byte array
+            // Check if database is available (may not be at design-time)
+            string providerName;
+            try
+            {
+                providerName = Database.ProviderName ?? "Npgsql.EntityFrameworkCore.PostgreSQL";
+            }
+            catch
+            {
+                // At design-time or when database is not initialized, assume PostgreSQL
+                providerName = "Npgsql.EntityFrameworkCore.PostgreSQL";
+            }
+
+            if (!string.Equals(providerName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
+            {
+                // For non-PostgreSQL providers (like in-memory), convert Vector to/from byte array
+                // Override the column type from the attribute to allow in-memory database to work
+                entity.Property(me => me.Embedding)
+                    .HasConversion(
+                        v => v == null ? null : ConvertVectorToBytes(v),
+                        b => b == null ? null : ConvertBytesToVector(b))
+                    .HasColumnType("varbinary(max)"); // Use varbinary for in-memory database compatibility
+            }
+            else
+            {
+                // For PostgreSQL, pgvector.EntityFrameworkCore provides the value converter automatically
+                // when UseVector() is called in the Npgsql configuration
+                // The [Column(TypeName = "vector")] attribute ensures the correct database type
+                // No explicit configuration needed - pgvector handles it
+            }
+
+            // Create unique index on MessageId to ensure one embedding per message
+            entity.HasIndex(me => me.MessageId).IsUnique();
+
+            entity.HasOne(me => me.Message)
+                .WithOne(m => m.MessageEmbedding)
+                .HasForeignKey<MessageEmbedding>(me => me.MessageId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

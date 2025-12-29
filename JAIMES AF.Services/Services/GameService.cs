@@ -1,7 +1,12 @@
+using MattEland.Jaimes.ServiceDefinitions.Messages;
+using MattEland.Jaimes.ServiceDefinitions.Services;
+using Microsoft.Extensions.AI;
+
 namespace MattEland.Jaimes.ServiceLayer.Services;
 
 public class GameService(
-    IDbContextFactory<JaimesDbContext> contextFactory) : IGameService
+    IDbContextFactory<JaimesDbContext> contextFactory,
+    IMessagePublisher messagePublisher) : IGameService
 {
     public async Task<GameDto> CreateGameAsync(string scenarioId,
         string playerId,
@@ -58,6 +63,17 @@ public class GameService(
 
         context.Messages.Add(message);
         await context.SaveChangesAsync(cancellationToken);
+
+        // Enqueue initial message for embedding
+        ConversationMessageReadyForEmbeddingMessage embeddingMessage = new()
+        {
+            MessageId = message.Id,
+            GameId = game.Id,
+            Text = message.Text,
+            Role = ChatRole.Assistant, // Initial greeting is from the system/assistant
+            CreatedAt = message.CreatedAt
+        };
+        await messagePublisher.PublishAsync(embeddingMessage, cancellationToken);
 
         // Reload game with navigation properties for mapping
         Game gameWithNav = await context.Games

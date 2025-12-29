@@ -57,6 +57,19 @@ public class ChatService(
                 toolList.Add(rulesSearchFunction);
             }
 
+            // Add conversation search tool if the service is available
+            IConversationSearchService? conversationSearchService = scope.ServiceProvider.GetService<IConversationSearchService>();
+            if (conversationSearchService != null)
+            {
+                ConversationSearchTool conversationSearchTool = new(game, _serviceProvider);
+
+                AIFunction conversationSearchFunction = AIFunctionFactory.Create(
+                    (string query) => conversationSearchTool.SearchConversationsAsync(query),
+                    "SearchConversations",
+                    "Searches the game's conversation history to find relevant past messages. This tool uses semantic search to find conversation messages from the current game that match your query. Results include the matched message along with the previous and next messages for context. Use this tool whenever you need to recall what was said earlier in the conversation, what the player mentioned, or any past events discussed in the game.");
+                toolList.Add(conversationSearchFunction);
+            }
+
             tools = toolList;
 
             // Log detailed information about registered tools for debugging

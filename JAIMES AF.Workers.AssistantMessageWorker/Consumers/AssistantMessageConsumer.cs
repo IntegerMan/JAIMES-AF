@@ -1,7 +1,10 @@
+using MattEland.Jaimes.ServiceDefinitions.Messages;
+
 namespace MattEland.Jaimes.Workers.AssistantMessageWorker.Consumers;
 
 public class AssistantMessageConsumer(
     IDbContextFactory<JaimesDbContext> contextFactory,
+    IMessagePublisher messagePublisher,
     ILogger<AssistantMessageConsumer> logger,
     ActivitySource activitySource) : IMessageConsumer<ConversationMessageQueuedMessage>
 {
@@ -69,6 +72,18 @@ public class AssistantMessageConsumer(
                 messageEntity.Text?.Length ?? 0,
                 messageEntity.CreatedAt,
                 textPreview);
+
+            // Enqueue message for embedding
+            ConversationMessageReadyForEmbeddingMessage embeddingMessage = new()
+            {
+                MessageId = messageEntity.Id,
+                GameId = messageEntity.GameId,
+                Text = messageEntity.Text ?? string.Empty,
+                Role = ChatRole.Assistant,
+                CreatedAt = messageEntity.CreatedAt
+            };
+            await messagePublisher.PublishAsync(embeddingMessage, cancellationToken);
+            logger.LogDebug("Enqueued assistant message {MessageId} for embedding", messageEntity.Id);
 
             activity?.SetStatus(ActivityStatusCode.Ok);
         }
