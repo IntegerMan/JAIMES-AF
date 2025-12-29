@@ -1,3 +1,4 @@
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceLayer.Services;
 
 namespace MattEland.Jaimes.Tests.Services;
@@ -6,6 +7,7 @@ public class GameServiceTests : IAsyncLifetime
 {
     private JaimesDbContext _context = null!;
     private IDbContextFactory<JaimesDbContext> _contextFactory = null!;
+    private IMessagePublisher _messagePublisher = null!;
     private GameService _gameService = null!;
 
     public async ValueTask InitializeAsync()
@@ -33,8 +35,11 @@ public class GameServiceTests : IAsyncLifetime
         // Create a factory that returns the same context (for testing)
         _contextFactory = new TestDbContextFactory(options);
 
-        // GameService now only needs the DbContextFactory - no chat client or thread dependencies
-        _gameService = new GameService(_contextFactory);
+        // Create a mock message publisher (no-op for tests)
+        _messagePublisher = new MockMessagePublisher();
+
+        // GameService now needs the DbContextFactory and IMessagePublisher
+        _gameService = new GameService(_contextFactory, _messagePublisher);
     }
 
     public async ValueTask DisposeAsync()
@@ -315,6 +320,16 @@ public class GameServiceTests : IAsyncLifetime
         {
             await Task.CompletedTask;
             return new JaimesDbContext(options);
+        }
+    }
+
+    // Mock message publisher for testing (no-op implementation)
+    private class MockMessagePublisher : IMessagePublisher
+    {
+        public Task PublishAsync<T>(T message, CancellationToken cancellationToken = default) where T : class
+        {
+            // No-op for tests - just return completed task
+            return Task.CompletedTask;
         }
     }
 }
