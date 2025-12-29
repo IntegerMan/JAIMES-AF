@@ -400,6 +400,35 @@ public class GameAwareAgent(
         _logger.LogInformation("Saved {TotalMessageCount} message(s) to database for game {GameId}",
             1 + aiMessageEntities.Count, gameId);
 
+        // Link messages in chronological order (PreviousMessageId/NextMessageId)
+        // Query all messages for the game, ordered by CreatedAt then Id to ensure consistent ordering
+        List<Message> allMessages = await dbContext.Messages
+            .Where(m => m.GameId == gameId)
+            .OrderBy(m => m.CreatedAt)
+            .ThenBy(m => m.Id)
+            .ToListAsync(cancellationToken);
+
+        // Link messages sequentially
+        for (int i = 0; i < allMessages.Count; i++)
+        {
+            Message currentMessage = allMessages[i];
+            
+            // Set PreviousMessageId to the previous message's Id (if exists)
+            if (i > 0)
+            {
+                currentMessage.PreviousMessageId = allMessages[i - 1].Id;
+            }
+
+            // Set NextMessageId to the next message's Id (if exists)
+            if (i < allMessages.Count - 1)
+            {
+                currentMessage.NextMessageId = allMessages[i + 1].Id;
+            }
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        _logger.LogDebug("Linked {MessageCount} messages in chronological order for game {GameId}", allMessages.Count, gameId);
+
         // Enqueue messages for asynchronous processing (quality control, sentiment analysis)
         IMessagePublisher messagePublisher = scope.ServiceProvider.GetRequiredService<IMessagePublisher>();
         
@@ -480,6 +509,19 @@ public class GameAwareAgent(
                 "SearchRules",
                 "Searches the ruleset's indexed rules to find answers to specific questions or queries. This is a rules search tool that gets answers from rules to specific questions or queries. Use this tool whenever you need to look up game rules, mechanics, or rule clarifications. The tool will search through the indexed rules for the current scenario's ruleset and return relevant information.");
             toolList.Add(rulesSearchFunction);
+        }
+
+        // Add conversation search tool if the service is available
+        IConversationSearchService? conversationSearchService = scope.ServiceProvider.GetService<IConversationSearchService>();
+        if (conversationSearchService != null)
+        {
+            ConversationSearchTool conversationSearchTool = new(game, _serviceProvider);
+
+            AIFunction conversationSearchFunction = AIFunctionFactory.Create(
+                (string query) => conversationSearchTool.SearchConversationsAsync(query),
+                "SearchConversations",
+                "Searches the game's conversation history to find relevant past messages. This tool uses semantic search to find conversation messages from the current game that match your query. Results include the matched message along with the previous and next messages for context. Use this tool whenever you need to recall what was said earlier in the conversation, what the player mentioned, or any past events discussed in the game.");
+            toolList.Add(conversationSearchFunction);
         }
 
         return toolList;

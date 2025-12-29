@@ -27,9 +27,10 @@ builder.Configuration
 // Add PostgreSQL with EF Core
 builder.Services.AddJaimesRepositories(builder.Configuration);
 
-// Configure message consuming using RabbitMQ.Client (LavinMQ compatible)
+// Configure message consuming and publishing using RabbitMQ.Client (LavinMQ compatible)
 IConnectionFactory connectionFactory = RabbitMqConnectionFactory.CreateConnectionFactory(builder.Configuration);
 builder.Services.AddSingleton(connectionFactory);
+builder.Services.AddSingleton<IMessagePublisher, MessagePublisher>();
 
 // Register consumer
 builder.Services.AddSingleton<IMessageConsumer<ConversationMessageQueuedMessage>, UserMessageConsumer>();

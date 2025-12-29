@@ -272,6 +272,25 @@ IResourceBuilder<ProjectResource> assistantMessageWorker = builder.AddProject<Pr
     .WaitFor(postgresdb)
     .WithParentRelationship(workersGroup);
 
+IResourceBuilder<ProjectResource> conversationEmbeddingWorker = builder.AddProject<Projects.JAIMES_AF_Workers_ConversationEmbeddingWorker>("conversation-embedding-worker")
+    .WithIconName("ChatBubblesQuestion")
+    .WithReference(lavinmq)
+    .WithReference(postgresdb)
+    .WithReference(qdrant)
+    .WithOllamaReferences(ollama, chatModel, embedModel, needsChatModel: false, needsEmbedModel: true)
+    .WaitFor(lavinmq)
+    .WaitFor(postgres)
+    .WaitFor(postgresdb)
+    .WaitFor(qdrant)
+    .WithParentRelationship(workersGroup)
+    .WithEnvironment(context =>
+    {
+        void SetVar(string key, object value) => context.EnvironmentVariables[key] = value;
+
+        SetQdrantEnvironmentVariables(SetVar, "ConversationEmbedding", qdrant, qdrantApiKey);
+        SetModelProviderEnvironmentVariables(SetVar, "EmbeddingModel", embedConfig, embedModel, ollama, isEmbedOllama);
+    });
+
 DistributedApplication app = builder.Build();
 
 app.Run();
