@@ -1,5 +1,5 @@
-using MattEland.Jaimes.ServiceDefinitions.Messages;
-using MattEland.Jaimes.ServiceDefinitions.Services;
+using MattEland.Jaimes.Workers.UserMessageWorker.Options;
+using MattEland.Jaimes.Workers.UserMessageWorker.Services;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
@@ -26,6 +26,13 @@ builder.Configuration
 
 // Add PostgreSQL with EF Core
 builder.Services.AddJaimesRepositories(builder.Configuration);
+
+// Configure sentiment analysis options
+builder.Services.Configure<SentimentAnalysisOptions>(
+    builder.Configuration.GetSection(SentimentAnalysisOptions.SectionName));
+
+// Register sentiment model service as singleton
+builder.Services.AddSingleton<SentimentModelService>();
 
 // Configure message consuming and publishing using RabbitMQ.Client (LavinMQ compatible)
 IConnectionFactory connectionFactory = RabbitMqConnectionFactory.CreateConnectionFactory(builder.Configuration);
@@ -78,6 +85,12 @@ using IHost host = builder.Build();
 ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 
 await host.InitializeDatabaseAsync();
+
+// Load or train sentiment model before starting message processing
+logger.LogInformation("Loading or training sentiment analysis model...");
+SentimentModelService sentimentModelService = host.Services.GetRequiredService<SentimentModelService>();
+await sentimentModelService.LoadOrTrainModelAsync();
+logger.LogInformation("Sentiment analysis model ready");
 
 logger.LogInformation("Starting User Message Worker");
 

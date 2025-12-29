@@ -44,6 +44,8 @@
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.1" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.1" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.1" />
+    <PackageVersion Include="Microsoft.ML" Version="4.0.1" />
+    <PackageVersion Include="Microsoft.ML.AutoML" Version="0.22.0" />
     <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.1.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageVersion Include="Moq" Version="4.20.72" />
@@ -61,6 +63,7 @@
     <PackageVersion Include="Riok.Mapperly" Version="5.0.0-next.0" />
     <PackageVersion Include="Scrutor" Version="7.0.0" />
     <PackageVersion Include="SemanticChunker.NET" Version="1.1.0" />
+    <PackageVersion Include="SentimentAnalyzer" Version="1.0.0" />
     <PackageVersion Include="drittich.SemanticSlicer" Version="1.7.0" />
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageVersion Include="StackExchange.Redis" Version="2.8.16" />
@@ -83,6 +86,7 @@
     <PackageVersion Include="Aspire.Hosting.MongoDB" Version="13.0.1" />
     <PackageVersion Include="Aspire.MongoDB.Driver" Version="13.0.1" />
     <PackageVersion Include="MongoDB.Bson" Version="3.1.0" />
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageVersion Include="RabbitMQ.Client" Version="7.2.0" />
     <PackageVersion Include="Qdrant.Client" Version="1.16.1" />
   </ItemGroup>

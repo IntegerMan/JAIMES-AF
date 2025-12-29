@@ -113,6 +113,20 @@ public class GameAwareAgentFactory
             toolList.Add(conversationSearchFunction);
         }
 
+        // Add player sentiment tool if database context factory is available
+        IDbContextFactory<JaimesDbContext>? dbContextFactory =
+            scope.ServiceProvider.GetService<IDbContextFactory<JaimesDbContext>>();
+        if (dbContextFactory != null)
+        {
+            PlayerSentimentTool playerSentimentTool = new(game, _serviceProvider);
+
+            AIFunction playerSentimentFunction = AIFunctionFactory.Create(
+                () => playerSentimentTool.GetRecentSentimentsAsync(),
+                "GetPlayerSentiment",
+                "Retrieves the last 5 most recent sentiment analysis results for the player in the current game. This helps understand the player's frustration level and emotional state. Use this tool when you need to gauge how the player is feeling about the game or recent interactions.");
+            toolList.Add(playerSentimentFunction);
+        }
+
         return toolList;
     }
 }

@@ -17,6 +17,7 @@ public static partial class MessageMapper
     [MapperIgnoreSource(nameof(Message.PreviousMessage))]
     [MapperIgnoreSource(nameof(Message.NextMessageId))]
     [MapperIgnoreSource(nameof(Message.NextMessage))]
+    [MapperIgnoreSource(nameof(Message.Sentiment))]
     public static partial MessageDto ToDto(this Message message);
 
     public static partial MessageDto[] ToDto(this IEnumerable<Message> messages);

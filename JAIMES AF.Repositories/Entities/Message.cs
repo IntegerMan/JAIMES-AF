@@ -29,4 +29,7 @@ public class Message
 
     // Navigation property for embedding (optional 1:0..1 relationship)
     public MessageEmbedding? MessageEmbedding { get; set; }
+
+    // Sentiment analysis result: -1 (negative), 0 (neutral), 1 (positive), null (not analyzed)
+    public int? Sentiment { get; set; }
 }

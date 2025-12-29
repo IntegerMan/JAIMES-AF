@@ -1,4 +1,5 @@
 using MattEland.Jaimes.Agents.Helpers;
+using MattEland.Jaimes.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json;
 
@@ -68,6 +69,20 @@ public class ChatService(
                     "SearchConversations",
                     "Searches the game's conversation history to find relevant past messages. This tool uses semantic search to find conversation messages from the current game that match your query. Results include the matched message along with the previous and next messages for context. Use this tool whenever you need to recall what was said earlier in the conversation, what the player mentioned, or any past events discussed in the game.");
                 toolList.Add(conversationSearchFunction);
+            }
+
+            // Add player sentiment tool if database context factory is available
+            IDbContextFactory<JaimesDbContext>? dbContextFactory =
+                scope.ServiceProvider.GetService<IDbContextFactory<JaimesDbContext>>();
+            if (dbContextFactory != null)
+            {
+                PlayerSentimentTool playerSentimentTool = new(game, _serviceProvider);
+
+                AIFunction playerSentimentFunction = AIFunctionFactory.Create(
+                    () => playerSentimentTool.GetRecentSentimentsAsync(),
+                    "GetPlayerSentiment",
+                    "Retrieves the last 5 most recent sentiment analysis results for the player in the current game. This helps understand the player's frustration level and emotional state. Use this tool when you need to gauge how the player is feeling about the game or recent interactions.");
+                toolList.Add(playerSentimentFunction);
             }
 
             tools = toolList;

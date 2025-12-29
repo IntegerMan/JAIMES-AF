@@ -1,4 +1,7 @@
 using MattEland.Jaimes.ServiceDefinitions.Messages;
+using MattEland.Jaimes.Workers.UserMessageWorker.Options;
+using MattEland.Jaimes.Workers.UserMessageWorker.Services;
+using Microsoft.Extensions.Options;
 
 namespace MattEland.Jaimes.Workers.UserMessageWorker.Consumers;
 
@@ -6,7 +9,9 @@ public class UserMessageConsumer(
     IDbContextFactory<JaimesDbContext> contextFactory,
     IMessagePublisher messagePublisher,
     ILogger<UserMessageConsumer> logger,
-    ActivitySource activitySource) : IMessageConsumer<ConversationMessageQueuedMessage>
+    ActivitySource activitySource,
+    IOptions<SentimentAnalysisOptions> sentimentOptions,
+    SentimentModelService sentimentModelService) : IMessageConsumer<ConversationMessageQueuedMessage>
 {
     public async Task HandleAsync(ConversationMessageQueuedMessage message, CancellationToken cancellationToken = default)
     {
@@ -66,6 +71,8 @@ public class UserMessageConsumer(
                 messageEntity.CreatedAt,
                 textPreview);
 
+            await AnalyzeSentimentAsync(messageEntity, activity, context, cancellationToken);
+
             // Enqueue message for embedding
             ConversationMessageReadyForEmbeddingMessage embeddingMessage = new()
             {
@@ -88,6 +95,49 @@ public class UserMessageConsumer(
             // Re-throw to let message consumer service handle retry logic
             throw;
         }
+    }
+
+    private async Task AnalyzeSentimentAsync(Message messageEntity, Activity? activity, JaimesDbContext context,
+        CancellationToken cancellationToken)
+    {
+        // Perform sentiment analysis
+        if (!string.IsNullOrWhiteSpace(messageEntity.Text))
+        {
+            try
+            {
+                double confidenceThreshold = sentimentOptions.Value.ConfidenceThreshold;
+                (int sentiment, double confidence) = sentimentModelService.PredictSentiment(messageEntity.Text);
+
+                activity?.SetTag("sentiment.value", sentiment);
+                activity?.SetTag("sentiment.confidence", confidence);
+                activity?.SetTag("sentiment.threshold", confidenceThreshold);
+
+                if (confidence < confidenceThreshold)
+                {
+                    sentiment = 0; // Neutral if below threshold
+                    activity?.AddEvent(new ActivityEvent("Sentiment confidence below threshold; setting to neutral"));
+                }
+
+                messageEntity.Sentiment = sentiment;
+
+                logger.LogInformation(
+                    "Sentiment analysis completed - MessageId: {MessageId}, Sentiment: {Sentiment}, Confidence: {Confidence}, Threshold: {Threshold}",
+                    messageEntity.Id,
+                    sentiment,
+                    confidence,
+                    confidenceThreshold);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to perform sentiment analysis for message {MessageId}", messageEntity.Id);
+                activity?.SetTag("sentiment.error", ex.Message);
+                activity?.SetStatus(ActivityStatusCode.Error, $"Sentiment analysis failed: {ex.Message}");
+                // Continue processing even if sentiment analysis fails
+            }
+        }
+
+        // Save sentiment to database
+        await context.SaveChangesAsync(cancellationToken);
     }
 }
 
