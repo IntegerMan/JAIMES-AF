@@ -10,4 +10,6 @@ public record MessageResponse
     public DateTime CreatedAt { get; set; }
     public string? AgentId { get; set; }
     public int? InstructionVersionId { get; set; }
+    // Sentiment analysis result: -1 (negative), 0 (neutral), 1 (positive), null (not analyzed)
+    public int? Sentiment { get; set; }
 }
