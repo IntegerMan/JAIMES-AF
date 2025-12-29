@@ -1,0 +1,25 @@
+# Add directories or file patterns to ignore during indexing (e.g. foo/ or *.csv)
+*.zip
+*.rar
+*.7z
+*.tar
+*.gz
+*.bz2
+*.xz
+*.wim
+*.iso
+*.img
+*.vhdx
+*.vhdl
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+*.ico
+*.webp
+*.svg
+*.eps
+*.pdf
+*.csv

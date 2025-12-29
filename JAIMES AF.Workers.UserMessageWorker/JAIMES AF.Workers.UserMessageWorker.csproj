@@ -21,12 +21,23 @@
         <PackageReference Include="OpenTelemetry.Extensions.Hosting"/>
         <PackageReference Include="OpenTelemetry.Instrumentation.Http"/>
         <PackageReference Include="OpenTelemetry.Instrumentation.Runtime"/>
+        <PackageReference Include="Newtonsoft.Json"/>
+        <PackageReference Include="Microsoft.ML"/>
+        <PackageReference Include="Microsoft.ML.AutoML"/>
+        <PackageReference Include="Microsoft.Extensions.ML"/>
+        <PackageReference Include="Microsoft.Extensions.ObjectPool"/>
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj"/>
         <ProjectReference Include="..\JAIMES AF.ServiceDefinitions\JAIMES AF.ServiceDefinitions.csproj"/>
         <ProjectReference Include="..\JAIMES AF.ServiceDefaults\JAIMES AF.ServiceDefaults.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="sentiment_analysis.csv">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 
 </Project>

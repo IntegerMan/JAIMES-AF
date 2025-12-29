@@ -1,4 +1,7 @@
 using MattEland.Jaimes.ServiceDefinitions.Messages;
+using MattEland.Jaimes.Workers.UserMessageWorker.Options;
+using MattEland.Jaimes.Workers.UserMessageWorker.Services;
+using Microsoft.Extensions.Options;
 
 namespace MattEland.Jaimes.Workers.UserMessageWorker.Consumers;
 
@@ -6,7 +9,9 @@ public class UserMessageConsumer(
     IDbContextFactory<JaimesDbContext> contextFactory,
     IMessagePublisher messagePublisher,
     ILogger<UserMessageConsumer> logger,
-    ActivitySource activitySource) : IMessageConsumer<ConversationMessageQueuedMessage>
+    ActivitySource activitySource,
+    IOptions<SentimentAnalysisOptions> sentimentOptions,
+    SentimentModelService sentimentModelService) : IMessageConsumer<ConversationMessageQueuedMessage>
 {
     public async Task HandleAsync(ConversationMessageQueuedMessage message, CancellationToken cancellationToken = default)
     {
@@ -78,7 +83,14 @@ public class UserMessageConsumer(
             await messagePublisher.PublishAsync(embeddingMessage, cancellationToken);
             logger.LogDebug("Enqueued user message {MessageId} for embedding", messageEntity.Id);
 
-            activity?.SetStatus(ActivityStatusCode.Ok);
+            bool sentimentAnalysisSucceeded = await AnalyzeSentimentAsync(messageEntity, activity, context, cancellationToken);
+
+            // Only set status to Ok if sentiment analysis succeeded or wasn't attempted
+            // If sentiment analysis failed, the activity status was already set to Error in AnalyzeSentimentAsync
+            if (sentimentAnalysisSucceeded)
+            {
+                activity?.SetStatus(ActivityStatusCode.Ok);
+            }
         }
         catch (Exception ex)
         {
@@ -88,6 +100,52 @@ public class UserMessageConsumer(
             // Re-throw to let message consumer service handle retry logic
             throw;
         }
+    }
+
+    private async Task<bool> AnalyzeSentimentAsync(Message messageEntity, Activity? activity, JaimesDbContext context,
+        CancellationToken cancellationToken)
+    {
+        // Perform sentiment analysis
+        if (!string.IsNullOrWhiteSpace(messageEntity.Text))
+        {
+            try
+            {
+                double confidenceThreshold = sentimentOptions.Value.ConfidenceThreshold;
+                (int sentiment, double confidence) = sentimentModelService.AnalyzeSentimentWithThreshold(
+                    messageEntity.Text,
+                    confidenceThreshold);
+
+                activity?.SetTag("sentiment.value", sentiment);
+                activity?.SetTag("sentiment.confidence", confidence);
+                activity?.SetTag("sentiment.threshold", confidenceThreshold);
+
+                messageEntity.Sentiment = sentiment;
+
+                logger.LogInformation(
+                    "Sentiment analysis completed - MessageId: {MessageId}, Sentiment: {Sentiment}, Confidence: {Confidence}, Threshold: {Threshold}",
+                    messageEntity.Id,
+                    sentiment,
+                    confidence,
+                    confidenceThreshold);
+
+                // Save sentiment to database
+                await context.SaveChangesAsync(cancellationToken);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to perform sentiment analysis for message {MessageId}", messageEntity.Id);
+                activity?.SetTag("sentiment.error", ex.Message);
+                activity?.SetStatus(ActivityStatusCode.Error, $"Sentiment analysis failed: {ex.Message}");
+                // Continue processing even if sentiment analysis fails
+                // Save any pending changes (though sentiment won't be set)
+                await context.SaveChangesAsync(cancellationToken);
+                return false;
+            }
+        }
+
+        // No text to analyze - this is not an error, just skip sentiment analysis
+        return true;
     }
 }
 

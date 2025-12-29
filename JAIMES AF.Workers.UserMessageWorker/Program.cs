@@ -1,5 +1,8 @@
-using MattEland.Jaimes.ServiceDefinitions.Messages;
-using MattEland.Jaimes.ServiceDefinitions.Services;
+using MattEland.Jaimes.Repositories;
+using MattEland.Jaimes.Workers.UserMessageWorker.Options;
+using MattEland.Jaimes.Workers.UserMessageWorker.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
@@ -26,6 +29,19 @@ builder.Configuration
 
 // Add PostgreSQL with EF Core
 builder.Services.AddJaimesRepositories(builder.Configuration);
+
+// Configure sentiment analysis options
+builder.Services.Configure<SentimentAnalysisOptions>(
+    builder.Configuration.GetSection(SentimentAnalysisOptions.SectionName));
+
+// Register sentiment model service as singleton with dependencies for reclassification
+builder.Services.AddSingleton<SentimentModelService>(serviceProvider =>
+{
+    ILogger<SentimentModelService> logger = serviceProvider.GetRequiredService<ILogger<SentimentModelService>>();
+    IDbContextFactory<JaimesDbContext> contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<JaimesDbContext>>();
+    IOptions<SentimentAnalysisOptions> options = serviceProvider.GetRequiredService<IOptions<SentimentAnalysisOptions>>();
+    return new SentimentModelService(logger, contextFactory, options);
+});
 
 // Configure message consuming and publishing using RabbitMQ.Client (LavinMQ compatible)
 IConnectionFactory connectionFactory = RabbitMqConnectionFactory.CreateConnectionFactory(builder.Configuration);
@@ -78,6 +94,25 @@ using IHost host = builder.Build();
 ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 
 await host.InitializeDatabaseAsync();
+
+// Load or train sentiment model before starting message processing
+logger.LogInformation("Loading or training sentiment analysis model...");
+SentimentModelService sentimentModelService = host.Services.GetRequiredService<SentimentModelService>();
+await sentimentModelService.LoadOrTrainModelAsync();
+logger.LogInformation("Sentiment analysis model ready");
+
+// Reclassify all user messages on startup if configured
+IOptions<SentimentAnalysisOptions> sentimentOptions = host.Services.GetRequiredService<IOptions<SentimentAnalysisOptions>>();
+if (sentimentOptions.Value.ReclassifyAllUserMessagesOnStartup)
+{
+    logger.LogInformation("ReclassifyAllUserMessagesOnStartup is enabled. Reclassifying all user messages...");
+    await sentimentModelService.ReclassifyAllUserMessagesAsync();
+    logger.LogInformation("User message reclassification completed");
+}
+else
+{
+    logger.LogInformation("ReclassifyAllUserMessagesOnStartup is disabled. Skipping reclassification.");
+}
 
 logger.LogInformation("Starting User Message Worker");
 
