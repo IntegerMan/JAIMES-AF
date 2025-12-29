@@ -1,4 +1,4 @@
-@page "/admin/rules-search-test"
+@page "/tools/rules-search"
 @rendermode InteractiveServer
 
 <PageTitle>Rules Search Test</PageTitle>
@@ -75,7 +75,15 @@
 		{
 			<MudDivider Class="my-6"/>
 
-			<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Search Results (@_searchResult.Results.Length)
+			<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Tool Output</MudText>
+			<MudText Typo="Typo.body2" Class="mb-4 text-muted">This is the formatted output that the RulesSearchTool returns to AI agents:</MudText>
+			<MudPaper Class="pa-4 mb-6" Elevation="1">
+				<MudText Typo="Typo.body1" Style="white-space: pre-wrap; font-family: monospace;">@_toolOutput</MudText>
+			</MudPaper>
+
+			<MudDivider Class="my-6"/>
+
+			<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Detailed Search Results (@_searchResult.Results.Length)
 			</MudText>
 
 			@if (_searchResult.Results.Length > 0)

@@ -13,6 +13,7 @@ public partial class RulesSearchTest
     private bool _isSearching = false;
     private string? _errorMessage;
     private SearchRulesResponse? _searchResult;
+    private string? _toolOutput;
 
     protected override async Task OnInitializedAsync()
     {
@@ -64,6 +65,17 @@ public partial class RulesSearchTest
             if (response.IsSuccessStatusCode)
             {
                 _searchResult = await response.Content.ReadFromJsonAsync<SearchRulesResponse>();
+                
+                // Format the output as the tool would return it
+                if (_searchResult != null && _searchResult.Results.Length > 0)
+                {
+                    List<string> resultTexts = _searchResult.Results.Select(r => r.Text).ToList();
+                    _toolOutput = string.Join("\n\n---\n\n", resultTexts);
+                }
+                else
+                {
+                    _toolOutput = "No relevant rules found for your query.";
+                }
             }
             else
             {

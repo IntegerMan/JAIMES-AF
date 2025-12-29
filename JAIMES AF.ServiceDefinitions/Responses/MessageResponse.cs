@@ -10,4 +10,5 @@ public record MessageResponse
     public DateTime CreatedAt { get; set; }
     public string? AgentId { get; set; }
     public int? InstructionVersionId { get; set; }
+    public int? Sentiment { get; set; }
 }
