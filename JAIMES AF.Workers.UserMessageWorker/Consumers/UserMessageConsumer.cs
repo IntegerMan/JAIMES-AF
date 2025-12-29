@@ -119,12 +119,6 @@ public class UserMessageConsumer(
                 activity?.SetTag("sentiment.confidence", confidence);
                 activity?.SetTag("sentiment.threshold", confidenceThreshold);
 
-                if (confidence < confidenceThreshold)
-                {
-                    activity?.AddEvent(new ActivityEvent("Sentiment confidence below threshold; setting to neutral"));
-                    sentiment = 0;
-                }
-
                 messageEntity.Sentiment = sentiment;
 
                 logger.LogInformation(
