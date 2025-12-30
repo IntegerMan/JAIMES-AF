@@ -15,7 +15,7 @@
         @if (Sentiment.HasValue)
         {
             <MudTooltip Text="@(Sentiment.Value > 0 ? "Positive Sentiment" : Sentiment.Value < 0 ? "Negative Sentiment" : "Neutral Sentiment")" Placement="Placement.Top">
-                <MudIcon Icon="@(Sentiment.Value > 0 ? Icons.Material.Filled.ThumbUp : Sentiment.Value < 0 ? Icons.Material.Filled.ThumbDown : Icons.Material.Filled.Remove)"
+                <MudIcon Icon="@(Sentiment.Value > 0 ? Icons.Material.Filled.ThumbUp : Sentiment.Value < 0 ? Icons.Material.Filled.ThumbDown : Icons.Material.Filled.SentimentNeutral)"
                          Color="@(Sentiment.Value > 0 ? Color.Success : Sentiment.Value < 0 ? Color.Error : Color.Default)"
                          Size="Size.Small" />
             </MudTooltip>
@@ -23,9 +23,10 @@
         else
         {
              <MudTooltip Text="Analyzing Sentiment..." Placement="Placement.Top">
-                <MudIcon Icon="@Icons.Material.Filled.Timer" 
+                <MudIcon Icon="@Icons.Material.Filled.HourglassBottom" 
                          Color="Color.Default" 
-                         Size="Size.Small" />
+                         Size="Size.Small"
+                         Class="spin-icon" />
              </MudTooltip>
         }
     </MudChatFooter>
