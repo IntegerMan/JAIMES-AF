@@ -78,7 +78,7 @@ internal static class AiModelConfiguration
 
         if (auth == AuthenticationType.Identity)
         {
-            DefaultAzureCredential credential = new();
+            AzureCliCredential credential = new();
             return new AzureOpenAIClient(new Uri(endpoint), credential);
         }
 
