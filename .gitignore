@@ -372,5 +372,5 @@ JAIMES AF.DocumentCracker/Output/*
 # Trained sentiment analysis model (excluded from source control)
 JAIMES AF.Workers.UserMessageWorker/Result/SentimentModel.zip
 
-build_output.txt
-test_output.txt
+build_*.txt
+test_*.txt
