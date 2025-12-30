@@ -86,16 +86,42 @@ public static class ModelExtensions
             CreatedAt = DateTime.UtcNow
         };
 
-        context.Models.Add(newModel);
-        await context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            context.Models.Add(newModel);
+            await context.SaveChangesAsync(cancellationToken);
 
-        logger?.LogInformation("Created new Model entity: {Name} (Provider: {Provider}, Endpoint: {Endpoint})",
-            newModel.Name,
-            newModel.Provider,
-            newModel.Endpoint ?? "(none)");
+            logger?.LogInformation("Created new Model entity: {Name} (Provider: {Provider}, Endpoint: {Endpoint})",
+                newModel.Name,
+                newModel.Provider,
+                newModel.Endpoint ?? "(none)");
 
-        ModelCache.TryAdd(cacheKey, newModel.Id);
+            ModelCache.TryAdd(cacheKey, newModel.Id);
 
-        return newModel;
+            return newModel;
+        }
+        catch (DbUpdateException)
+        {
+            // If we get a unique constraint violation, it means another request created the model simultaneously.
+            // Clear the failed entity from the context's change tracker
+            context.Entry(newModel).State = EntityState.Detached;
+
+            // Try one more time to find the existing model
+            existingModel = await context.Models
+                .FirstOrDefaultAsync(
+                    m => m.Name == normalizedName
+                         && m.Provider == normalizedProvider
+                         && m.Endpoint == normalizedEndpoint,
+                    cancellationToken);
+
+            if (existingModel != null)
+            {
+                ModelCache.TryAdd(cacheKey, existingModel.Id);
+                return existingModel;
+            }
+
+            // If we still can't find it, rethrow the original exception
+            throw;
+        }
     }
 }

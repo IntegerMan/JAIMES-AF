@@ -447,8 +447,10 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.Property(m => m.CreatedAt).IsRequired();
 
             // Create unique index on Name + Provider + Endpoint to prevent duplicates
+            // We use AreNullsDistinct(false) to ensure that (Name, Provider, NULL) is treated as a duplicate of (Name, Provider, NULL)
             entity.HasIndex(m => new {m.Name, m.Provider, m.Endpoint})
-                .IsUnique();
+                .IsUnique()
+                .AreNullsDistinct(false);
         });
         // Message evaluation metric entity configuration
         modelBuilder.Entity<MessageEvaluationMetric>(entity =>
