@@ -1,0 +1,136 @@
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Helpers
+@using MattEland.Jaimes.Web.Components.Pages
+@using MudBlazor
+
+@if (!string.IsNullOrWhiteSpace(Text))
+{
+    <MudChat ChatPosition="ChatBubblePosition.Start"
+             Variant="Variant.Filled"
+             Color="@Color"
+             @onmouseenter="OnMouseEnter"
+             @onmouseleave="OnMouseLeave">
+        @if (IsFirstParagraph)
+        {
+            <MudChatHeader Name="Game Master"/>
+        }
+        <MudChatBubble>
+            @((MarkupString)ChatHelpers.RenderMarkdown(Text))
+        </MudChatBubble>
+        @if (IsLastParagraph && MessageId.HasValue)
+        {
+            <MudChatFooter Class="feedback-footer">
+                <div class="d-flex align-items-center gap-2">
+                    @if (ToolCalls != null && ToolCalls.Any())
+                    {
+                        var toolNames = string.Join(", ", ToolCalls.Select(t => t.ToolName));
+                        <MudTooltip Text="@($"Tools used: {toolNames}")">
+                            <MudIconButton Icon="@Icons.Material.Filled.Build"
+                                           Color="Color.Default"
+                                           Size="Size.Small"
+                                           Variant="Variant.Text"
+                                           Class="tool-call-button"
+                                           OnClick="OnToolCallsClicked"/>
+                        </MudTooltip>
+                    }
+                    @if (Feedback != null)
+                    {
+                        <MudTooltip Text="@(string.IsNullOrWhiteSpace(Feedback.Comment) ? $"You provided {(Feedback.IsPositive ? "positive" : "negative")} feedback" : Feedback.Comment)">
+                            <div class="d-flex align-items-center gap-1">
+                                <MudIcon Icon="@(Feedback.IsPositive ? Icons.Material.Filled.ThumbUp : Icons.Material.Filled.ThumbDown)"
+                                         Color="Color.Default"
+                                         Size="Size.Small"
+                                         Class="feedback-icon-existing"/>
+                            </div>
+                        </MudTooltip>
+                    }
+                    else if (_isHovering && !ReadOnly)
+                    {
+                        <div class="d-flex align-items-center gap-1">
+                            <MudTooltip Text="Mark as good and provide feedback">
+                                <MudIconButton Icon="@Icons.Material.Filled.ThumbUp"
+                                               Color="Color.Default"
+                                               Size="Size.Small"
+                                               Variant="Variant.Text"
+                                               Class="feedback-button"
+                                               OnClick="@(() => OnFeedbackClicked(true))"/>
+                            </MudTooltip>
+                            <MudTooltip Text="Mark as bad and provide feedback">
+                                <MudIconButton Icon="@Icons.Material.Filled.ThumbDown"
+                                               Color="Color.Default"
+                                               Size="Size.Small"
+                                               Variant="Variant.Text"
+                                               Class="feedback-button"
+                                               OnClick="@(() => OnFeedbackClicked(false))"/>
+                            </MudTooltip>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="feedback-spacer"></div>
+                    }
+                </div>
+            </MudChatFooter>
+        }
+    </MudChat>
+}
+
+@code {
+    private bool _isHovering;
+
+    [Parameter]
+    public required string Text { get; set; }
+
+    [Parameter]
+    public Color Color { get; set; } = Color.Default;
+    
+    [Parameter]
+    public int? MessageId { get; set; }
+
+    [Parameter]
+    public bool IsFirstParagraph { get; set; }
+
+    [Parameter]
+    public bool IsLastParagraph { get; set; }
+    
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    [Parameter]
+    public List<MessageToolCallInfo>? ToolCalls { get; set; }
+
+    [Parameter]
+    public MessageFeedbackInfo? Feedback { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnToolCallsClick { get; set; }
+
+    [Parameter]
+    public EventCallback<(int MessageId, bool IsPositive)> OnFeedbackClick { get; set; }
+
+    private void OnMouseEnter()
+    {
+        _isHovering = true;
+    }
+
+    private void OnMouseLeave()
+    {
+        _isHovering = false;
+    }
+
+    private async Task OnToolCallsClicked()
+    {
+        if (MessageId.HasValue)
+        {
+            await OnToolCallsClick.InvokeAsync(MessageId.Value);
+        }
+    }
+
+    private async Task OnFeedbackClicked(bool isPositive)
+    {
+        if (MessageId.HasValue)
+        {
+            await OnFeedbackClick.InvokeAsync((MessageId.Value, isPositive));
+        }
+    }
+}

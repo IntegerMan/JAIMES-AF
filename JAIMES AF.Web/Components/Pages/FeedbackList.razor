@@ -1,0 +1,124 @@
+@page "/feedback"
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Pages
+@using MudBlazor
+@inject IDialogService DialogService
+@inject IHttpClientFactory HttpClientFactory
+
+<PageTitle>Feedback Reports</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Feedback Reports</MudText>
+
+    <MudDataGrid T="FeedbackListItemDto"
+                 ServerData="ServerReload"
+                 Filterable="false"
+                 Hover="true"
+                 Dense="true"
+                 Striped="true">
+        <Columns>
+            <PropertyColumn Property="x => x.IsPositive" Title="Type" Sortable="false">
+                <CellTemplate>
+                    @if (context.Item.IsPositive)
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Success" />
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.ThumbDown" Color="Color.Error" />
+                    }
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.Comment" Title="Comment">
+                <CellTemplate>
+                    <MudLink OnClick="@(() => ShowContextAsync(context.Item))" Typo="Typo.body2" Color="Color.Inherit" Underline="Underline.Hover" Style="cursor: pointer;">
+                        @context.Item.Comment
+                    </MudLink>
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.CreatedAt" Title="Date">
+                <CellTemplate>
+                    @context.Item.CreatedAt.ToLocalTime().ToString("g")
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.GamePlayerName" Title="Player" />
+            <PropertyColumn Property="x => x.GameScenarioName" Title="Scenario" />
+            <PropertyColumn Property="x => x.GameRulesetId" Title="Ruleset" />
+            <PropertyColumn Property="x => x.AgentVersion" Title="Agent Version" />
+            <TemplateColumn Title="Actions">
+                <CellTemplate>
+                    <div class="d-flex">
+                        <MudTooltip Text="View Context">
+                            <MudIconButton Icon="@Icons.Material.Filled.Chat" 
+                                           Color="Color.Primary" 
+                                           Size="Size.Small"
+                                           OnClick="@(() => ShowContextAsync(context.Item))" />
+                        </MudTooltip>
+                        <MudTooltip Text="Open Game">
+                            <MudIconButton Icon="@Icons.Material.Filled.OpenInNew" 
+                                           Color="Color.Secondary" 
+                                           Size="Size.Small"
+                                           Href="@($"/games/{context.Item.GameId}")"
+                                           Target="_blank" />
+                        </MudTooltip>
+                    </div>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="FeedbackListItemDto" />
+        </PagerContent>
+    </MudDataGrid>
+</MudContainer>
+
+@code {
+    private async Task<GridData<FeedbackListItemDto>> ServerReload(GridState<FeedbackListItemDto> state)
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient("Api");
+            
+            // MudDataGrid uses 0-based index, API uses 1-based page
+            int page = state.Page + 1;
+            int pageSize = state.PageSize;
+
+            var response = await client.GetFromJsonAsync<FeedbackListResponse>($"/feedback?page={page}&pageSize={pageSize}");
+
+            if (response != null)
+            {
+                return new GridData<FeedbackListItemDto>
+                {
+                    TotalItems = response.TotalCount,
+                    Items = response.Items
+                };
+            }
+        }
+        catch (Exception)
+        {
+            // Handle error (maybe show snackbar)
+        }
+
+        return new GridData<FeedbackListItemDto>
+        {
+            TotalItems = 0,
+            Items = []
+        };
+    }
+
+    private async Task ShowContextAsync(FeedbackListItemDto item)
+    {
+        var parameters = new DialogParameters<FeedbackContextDialog>
+        {
+            { x => x.MessageId, item.MessageId }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        await DialogService.ShowAsync<FeedbackContextDialog>("Feedback Context", parameters, options);
+    }
+}

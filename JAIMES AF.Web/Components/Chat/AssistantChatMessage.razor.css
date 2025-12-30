@@ -1,0 +1,22 @@
+.feedback-footer {
+    min-height: 25px;
+    display: flex;
+    align-items: center;
+}
+
+.feedback-spacer {
+    min-height: 25px;
+    width: 1px;
+}
+
+::deep .feedback-button {
+    color: var(--mud-palette-text-primary) !important;
+}
+
+::deep .feedback-icon-existing {
+    color: var(--mud-palette-text-primary) !important;
+}
+
+::deep .tool-call-button {
+    color: var(--mud-palette-text-primary) !important;
+}
