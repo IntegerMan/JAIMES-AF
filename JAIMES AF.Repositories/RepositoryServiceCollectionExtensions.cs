@@ -86,7 +86,7 @@ public static class RepositoryServiceCollectionExtensions
             try
             {
                 string[] pendingMigrations = context.Database.GetPendingMigrations().ToArray();
-                
+
                 if (pendingMigrations.Length == 0)
                 {
                     string[] appliedMigrations = context.Database.GetAppliedMigrations().ToArray();
@@ -168,24 +168,29 @@ public static class RepositoryServiceCollectionExtensions
         string providerName = context.Database.ProviderName ?? "unknown";
         logger.LogInformation("Applying database migrations. EF provider: {Provider}", providerName);
 
-        IEnumerable<string> appliedMigrations = Enumerable.Empty<string>();
-        IEnumerable<string> pendingMigrations = Enumerable.Empty<string>();
-
         try
         {
-            appliedMigrations = context.Database.GetAppliedMigrations().ToArray();
-            pendingMigrations = context.Database.GetPendingMigrations().ToArray();
-            logger.LogInformation("Applied migrations count: {AppliedCount}", appliedMigrations.Count());
-            logger.LogInformation("Pending migrations count: {PendingCount}", pendingMigrations.Count());
+            logger.LogInformation("Applied migrations count: {AppliedCount}",
+                context.Database.GetAppliedMigrations().Count());
+            logger.LogInformation("Pending migrations count: {PendingCount}",
+                context.Database.GetPendingMigrations().Count());
 
-            foreach (string m in pendingMigrations) logger.LogInformation("Pending migration: {Migration}", m);
+            foreach (string m in context.Database.GetPendingMigrations())
+                logger.LogInformation("Pending migration: {Migration}", m);
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to enumerate applied/pending migrations. Continuing to migration step.");
         }
 
-        if (!pendingMigrations.Any())
+        if (context.Database.IsInMemory())
+        {
+            logger.LogInformation("In-memory database detected; using EnsureCreatedAsync to initialize and seed.");
+            await context.Database.EnsureCreatedAsync();
+            return;
+        }
+
+        if (!context.Database.GetPendingMigrations().Any())
         {
             logger.LogInformation("No pending migrations. Database is up to date.");
             return;
@@ -257,7 +262,8 @@ public static class RepositoryServiceCollectionExtensions
     /// For production code, use WaitForMigrationsAsync instead.
     /// </summary>
     /// <param name="serviceProvider">The service provider to use for database operations.</param>
-    [Obsolete("Use ApplyMigrationsAsync for tests or WaitForMigrationsAsync for production. This method is kept for backward compatibility.")]
+    [Obsolete(
+        "Use ApplyMigrationsAsync for tests or WaitForMigrationsAsync for production. This method is kept for backward compatibility.")]
     public static async Task InitializeDatabaseAsync(this IServiceProvider serviceProvider)
     {
         // For backward compatibility, delegate to ApplyMigrationsAsync (tests need to actually apply migrations)
@@ -271,7 +277,8 @@ public static class RepositoryServiceCollectionExtensions
     /// </summary>
     /// <param name="host">The host instance to initialize the database for.</param>
     /// <exception cref="Exception">Thrown if database initialization fails. The worker should not start in this case.</exception>
-    [Obsolete("Use WaitForMigrationsAsync instead. This method is kept for backward compatibility but will be removed.")]
+    [Obsolete(
+        "Use WaitForMigrationsAsync instead. This method is kept for backward compatibility but will be removed.")]
     public static async Task InitializeDatabaseAsync(this IHost host)
     {
         // For backward compatibility, delegate to WaitForMigrationsAsync

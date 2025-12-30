@@ -447,10 +447,15 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.Property(m => m.CreatedAt).IsRequired();
 
             // Create unique index on Name + Provider + Endpoint to prevent duplicates
-            // We use AreNullsDistinct(false) to ensure that (Name, Provider, NULL) is treated as a duplicate of (Name, Provider, NULL)
-            entity.HasIndex(m => new {m.Name, m.Provider, m.Endpoint})
-                .IsUnique()
-                .AreNullsDistinct(false);
+            var indexBuilder = entity.HasIndex(m => new {m.Name, m.Provider, m.Endpoint})
+                .IsUnique();
+
+            // AreNullsDistinct is a relational-only feature. PostgreSQL 15+ supports it.
+            // We only apply this if we're using a relational provider to avoid issues with In-Memory testing.
+            if (Database.IsRelational())
+            {
+                indexBuilder.AreNullsDistinct(false);
+            }
         });
         // Message evaluation metric entity configuration
         modelBuilder.Entity<MessageEvaluationMetric>(entity =>

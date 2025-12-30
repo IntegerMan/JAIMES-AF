@@ -443,6 +443,63 @@ namespace MattEland.Jaimes.Repositories.Migrations
                         principalColumn: "Id");
                 });
 
+            migrationBuilder.CreateTable(
+                name: "MessageFeedbacks",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    MessageId = table.Column<int>(type: "integer", nullable: false),
+                    IsPositive = table.Column<bool>(type: "boolean", nullable: false),
+                    Comment = table.Column<string>(type: "text", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    InstructionVersionId = table.Column<int>(type: "integer", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_MessageFeedbacks", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_MessageFeedbacks_AgentInstructionVersions_InstructionVersio~",
+                        column: x => x.InstructionVersionId,
+                        principalTable: "AgentInstructionVersions",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_MessageFeedbacks_Messages_MessageId",
+                        column: x => x.MessageId,
+                        principalTable: "Messages",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "MessageToolCalls",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    MessageId = table.Column<int>(type: "integer", nullable: false),
+                    ToolName = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    InputJson = table.Column<string>(type: "text", nullable: true),
+                    OutputJson = table.Column<string>(type: "text", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    InstructionVersionId = table.Column<int>(type: "integer", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_MessageToolCalls", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_MessageToolCalls_AgentInstructionVersions_InstructionVersio~",
+                        column: x => x.InstructionVersionId,
+                        principalTable: "AgentInstructionVersions",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_MessageToolCalls_Messages_MessageId",
+                        column: x => x.MessageId,
+                        principalTable: "Messages",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
             migrationBuilder.InsertData(
                 table: "Rulesets",
                 columns: new[] { "Id", "Name" },
@@ -563,6 +620,17 @@ namespace MattEland.Jaimes.Repositories.Migrations
                 column: "MetricName");
 
             migrationBuilder.CreateIndex(
+                name: "IX_MessageFeedbacks_InstructionVersionId",
+                table: "MessageFeedbacks",
+                column: "InstructionVersionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_MessageFeedbacks_MessageId",
+                table: "MessageFeedbacks",
+                column: "MessageId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Messages_AgentId",
                 table: "Messages",
                 column: "AgentId");
@@ -603,10 +671,21 @@ namespace MattEland.Jaimes.Repositories.Migrations
                 column: "PreviousMessageId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_MessageToolCalls_InstructionVersionId",
+                table: "MessageToolCalls",
+                column: "InstructionVersionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_MessageToolCalls_MessageId",
+                table: "MessageToolCalls",
+                column: "MessageId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Models_Name_Provider_Endpoint",
                 table: "Models",
                 columns: new[] { "Name", "Provider", "Endpoint" },
-                unique: true);
+                unique: true)
+                .Annotation("Npgsql:NullsDistinct", false);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Players_RulesetId",
@@ -711,6 +790,12 @@ namespace MattEland.Jaimes.Repositories.Migrations
 
             migrationBuilder.DropTable(
                 name: "MessageEvaluationMetrics");
+
+            migrationBuilder.DropTable(
+                name: "MessageFeedbacks");
+
+            migrationBuilder.DropTable(
+                name: "MessageToolCalls");
 
             migrationBuilder.DropTable(
                 name: "RagSearchResultChunks");
