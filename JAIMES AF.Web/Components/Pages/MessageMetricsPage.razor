@@ -41,10 +41,6 @@
             </MudText>
         }
         
-        <MudText Typo="Typo.body2" Class="mb-4 text-muted">
-            Message ID: @MessageId
-        </MudText>
-        
         <MudGrid>
             <MudItem xs="12" md="6">
                 <MudText Typo="Typo.h6" Class="mb-3">Evaluation Metrics</MudText>
@@ -113,7 +109,7 @@
             </MudItem>
             
             <MudItem xs="12" md="6">
-                <MudText Typo="Typo.h6" Class="mb-3">Context</MudText>
+                <MudText Typo="Typo.h6" Class="mb-3">Conversation Context</MudText>
                 <div style="max-height: 80vh; overflow-y: auto; padding-right: 8px;">
                     @if (_contextMessages != null)
                     {
@@ -144,7 +140,8 @@
                                         MessageId="@m.Id"
                                         IsFirstParagraph="@isFirstParagraph"
                                         IsLastParagraph="@isLastParagraph"
-                                        ReadOnly="true"
+                                        ReadOnly="false"
+                                        OnMetricsClick="@((id) => NavigationManager.NavigateTo($"/admin/metrics/{id}"))"
                                         Highlighted="@isTargetMessage" />
                                 }
                             }

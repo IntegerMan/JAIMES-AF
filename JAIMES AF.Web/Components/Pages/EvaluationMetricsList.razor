@@ -57,15 +57,16 @@
             </PropertyColumn>
             <PropertyColumn Property="x => x.MessageId" Title="Msg" Groupable="true" Grouping="true">
                 <CellTemplate>
-                    <MudLink Href="@($"/admin/metrics/{context.Item.MessageId}")">@context.Item.MessageId</MudLink>
+                    <MudLink Href="@($"/admin/metrics/{context.Item.MessageId}")">
+                        @(context.Item.MessagePreview ?? $"Message {context.Item.MessageId}")
+                    </MudLink>
                 </CellTemplate>
                 <GroupTemplate>
                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                         <MudIcon Icon="@Icons.Material.Filled.Message" Size="Size.Small" />
-                        <MudText>
-                             <strong>@(context.Grouping.First().MessagePreview ?? $"Message {context.Grouping.Key}")</strong>
-                        </MudText>
-                        <MudLink Href="@($"/admin/metrics/{context.Grouping.Key}")" Class="ml-2">View Details</MudLink>
+                        <MudLink Href="@($"/admin/metrics/{context.Grouping.Key}")" Typo="Typo.body1">
+                            <strong>@(context.Grouping.First().MessagePreview ?? $"Message {context.Grouping.Key}")</strong>
+                        </MudLink>
                     </MudStack>
                 </GroupTemplate>
             </PropertyColumn>
