@@ -7,7 +7,7 @@
 {
     <MudChat ChatPosition="ChatBubblePosition.Start"
              Variant="Variant.Filled"
-             Color="@Color"
+             Color="@(Highlighted ? Color.Info : Color)"
              @onmouseenter="OnMouseEnter"
              @onmouseleave="OnMouseLeave">
         @if (IsFirstParagraph)
@@ -41,6 +41,9 @@
 
     [Parameter]
     public Color Color { get; set; } = Color.Default;
+
+    [Parameter]
+    public bool Highlighted { get; set; }
     
     [Parameter]
     public int? MessageId { get; set; }

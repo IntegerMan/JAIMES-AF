@@ -1,5 +1,7 @@
 @page "/admin/tool-calls/{Id:int}"
 @using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Helpers
+@using MattEland.Jaimes.Web.Components.Chat
 @using System.Text.Json
 @using MudBlazor
 @inject IHttpClientFactory HttpClientFactory
@@ -48,21 +50,31 @@
                       {
                           @foreach(var msg in _toolCall.ContextMessages)
                           {
-                              bool isTarget = msg.Id == _toolCall.MessageId;
-                              var borderStyle = isTarget ? $"border: 2px solid {Colors.DeepPurple.Default};" : "";
-                              var bgStyle = isTarget ? $"background-color: {Colors.DeepPurple.Lighten5};" : "";
-                              
-                              <MudPaper Class="mb-3 pa-3" Style="@($"{borderStyle} {bgStyle}")" Elevation="@(isTarget ? 3 : 1)">
-                                   <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-                                       <MudText Typo="Typo.caption" Class="text-muted">
-                                           <strong>@msg.ParticipantName</strong> - @msg.CreatedAt.ToLocalTime()
-                                       </MudText>
-                                       @if (isTarget) {
-                                           <MudChip T="string" Size="Size.Small" Color="Color.Primary">Tool Called Here</MudChip>
-                                       }
-                                   </MudStack>
-                                   <MudText Class="mt-1" Style="white-space: pre-wrap;">@msg.Text</MudText>
-                              </MudPaper>
+                              List<string> paragraphs = ChatHelpers.SplitIntoParagraphs(msg.Text).ToList();
+                              @foreach ((string paragraph, int index) in paragraphs.Select((p, i) => (p, i)))
+                              {
+                                  bool isFirstParagraph = index == 0;
+                                  bool isLastParagraph = index == paragraphs.Count - 1;
+                                  bool isTarget = msg.Id == _toolCall.MessageId;
+
+                                  @if (msg.Participant == ChatParticipant.Player) // User message
+                                  {
+                                      <UserChatMessage 
+                                          Text="@paragraph" 
+                                          IsFirstParagraph="@isFirstParagraph"
+                                          Highlighted="@isTarget" />
+                                  }
+                                  else // Assistant message
+                                  {
+                                      <AssistantChatMessage
+                                          Text="@paragraph"
+                                          MessageId="@msg.Id"
+                                          IsFirstParagraph="@isFirstParagraph"
+                                          IsLastParagraph="@isLastParagraph"
+                                          ReadOnly="true"
+                                          Highlighted="@isTarget" />
+                                  }
+                              }
                           }
                       }
                       else
