@@ -18,5 +18,10 @@ public enum AuthenticationType
     /// <summary>
     /// Azure Managed Identity authentication (Azure only).
     /// </summary>
-    Identity
+    Identity,
+
+    /// <summary>
+    /// Azure CLI credential authentication (local development only).
+    /// </summary>
+    IdentityCli
 }
