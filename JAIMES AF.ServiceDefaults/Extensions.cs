@@ -81,6 +81,8 @@ public static class Extensions
                     .AddMeter("Jaimes.Agents.ChatClient")
                     .AddMeter("Jaimes.Agents.Run")
                     .AddMeter("Jaimes.Agents.Tools")
+                    .AddMeter("Microsoft.EntityFrameworkCore")
+                    .AddMeter("Npgsql")
                     .AddRuntimeInstrumentation();
             })
             .WithTracing(tracing =>
