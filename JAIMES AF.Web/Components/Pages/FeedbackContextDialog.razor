@@ -30,14 +30,18 @@
 
 						@if (m.PlayerId != null) // User message
 						{
-						    <MattEland.Jaimes.Web.Components.Chat.UserChatMessage 
+						    <UserChatMessage 
                                 Text="@paragraph" 
                                 IsFirstParagraph="@isFirstParagraph"
+                                IsLastParagraph="@isLastParagraph"
+                                MessageId="@m.Id"
+                                Sentiment="@m.Sentiment"
+                                ReadOnly="true"
                                 Highlighted="@isTargetMessage" />
 						}
 						else // Assistant message
 						{
-							<MattEland.Jaimes.Web.Components.Chat.AssistantChatMessage
+							<AssistantChatMessage
                                 Text="@paragraph"
                                 MessageId="@m.Id"
                                 IsFirstParagraph="@isFirstParagraph"

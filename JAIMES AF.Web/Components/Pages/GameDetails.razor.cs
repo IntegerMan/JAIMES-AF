@@ -3,12 +3,13 @@ using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.AGUI;
+using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.AI;
 using MudBlazor;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 
-public partial class GameDetails : IDisposable
+public partial class GameDetails : IAsyncDisposable
 {
     [Inject] public IHttpClientFactory HttpClientFactory { get; set; } = null!;
     [Inject] public ILoggerFactory LoggerFactory { get; set; } = null!;
@@ -21,11 +22,14 @@ public partial class GameDetails : IDisposable
     private List<int?> _messageIds = []; // Parallel list to track message IDs
     private Dictionary<int, MessageFeedbackInfo> _messageFeedback = new();
     private Dictionary<int, List<MessageToolCallInfo>> _messageToolCalls = new();
+    private Dictionary<int, List<MessageEvaluationMetricResponse>> _messageMetrics = new();
+    private Dictionary<int, int?> _messageSentiment = new();
     private AIAgent? _agent;
 
     private GameStateResponse? _game;
     private bool _isLoading = true;
     private string? _errorMessage;
+    private HubConnection? _hubConnection;
 
     private readonly MessageResponse _userMessage = new()
     {
@@ -51,6 +55,9 @@ public partial class GameDetails : IDisposable
     {
         await LoadGameAsync();
         _logger = LoggerFactory.CreateLogger("GameDetails");
+
+        // Connect to SignalR hub for real-time updates
+        await ConnectToSignalRHubAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -82,12 +89,22 @@ public partial class GameDetails : IDisposable
                 .ToList();
             _messageIds = orderedMessages.Select(m => (int?)m.Id).ToList();
 
+            // Store sentiment for user messages
+            orderedMessages.Where(m => m.Participant == ChatParticipant.Player && m.Sentiment.HasValue)
+                .ToList()
+                .ForEach(m => _messageSentiment[m.Id] = m.Sentiment);
+
             // Load existing feedback for assistant messages
             await LoadFeedbackForMessagesAsync(orderedMessages.Where(m => m.Participant == ChatParticipant.GameMaster)
                 .Select(m => m.Id).ToList());
 
             // Load tool calls for assistant messages
             await LoadToolCallsForMessagesAsync(orderedMessages.Where(m => m.Participant == ChatParticipant.GameMaster)
+                .Select(m => m.Id).ToList());
+
+            // Load evaluation metrics for assistant messages
+            await LoadEvaluationMetricsForMessagesAsync(orderedMessages
+                .Where(m => m.Participant == ChatParticipant.GameMaster)
                 .Select(m => m.Id).ToList());
 
             // Create AG-UI client for this game
@@ -596,8 +613,120 @@ public partial class GameDetails : IDisposable
         await dialogRef.Result;
     }
 
-    public void Dispose()
+    /// <summary>
+    /// Loads evaluation metrics for the specified message IDs.
+    /// </summary>
+    private async Task LoadEvaluationMetricsForMessagesAsync(List<int> messageIds)
     {
-        // No resources to dispose
+        if (messageIds.Count == 0) return;
+
+        try
+        {
+            HttpClient httpClient = HttpClientFactory.CreateClient("Api");
+
+            // Load metrics for each message
+            foreach (int messageId in messageIds)
+            {
+                try
+                {
+                    List<MessageEvaluationMetricResponse>? metrics =
+                        await httpClient.GetFromJsonAsync<List<MessageEvaluationMetricResponse>>(
+                            $"/messages/{messageId}/metrics");
+                    if (metrics != null && metrics.Count > 0)
+                    {
+                        _messageMetrics[messageId] = metrics;
+                    }
+                }
+                catch (HttpRequestException)
+                {
+                    // Message doesn't have metrics yet, which is fine
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to load evaluation metrics for messages");
+        }
+    }
+
+    /// <summary>
+    /// Connects to the SignalR hub for real-time message updates.
+    /// </summary>
+    private async Task ConnectToSignalRHubAsync()
+    {
+        try
+        {
+            // Disconnect from previous hub if game changed
+            if (_hubConnection != null)
+            {
+                await _hubConnection.DisposeAsync();
+                _hubConnection = null;
+            }
+
+            // Build hub connection using the API service URL
+            HttpClient apiClient = HttpClientFactory.CreateClient("Api");
+            string hubUrl = new Uri(apiClient.BaseAddress!, "/hubs/messages").ToString();
+
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(hubUrl)
+                .WithAutomaticReconnect()
+                .Build();
+
+            // Handle message updates
+            _hubConnection.On<MessageUpdateNotification>("MessageUpdated", async notification =>
+            {
+                _logger?.LogDebug(
+                    "Received {UpdateType} update for message {MessageId}",
+                    notification.UpdateType,
+                    notification.MessageId);
+
+                await InvokeAsync(() =>
+                {
+                    // Update local state based on update type
+                    if (notification.UpdateType == MessageUpdateType.SentimentAnalyzed &&
+                        notification.Sentiment.HasValue)
+                    {
+                        _messageSentiment[notification.MessageId] = notification.Sentiment.Value;
+                    }
+                    else if (notification.UpdateType == MessageUpdateType.MetricsEvaluated &&
+                             notification.Metrics != null)
+                    {
+                        _messageMetrics[notification.MessageId] = notification.Metrics;
+                    }
+
+                    StateHasChanged();
+                });
+            });
+
+            // Start connection
+            await _hubConnection.StartAsync();
+            _logger?.LogDebug("Connected to SignalR hub");
+
+            // Join the game group to receive updates for this game
+            await _hubConnection.InvokeAsync("JoinGame", GameId);
+            _logger?.LogDebug("Joined game group {GameId}", GameId);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to connect to SignalR hub. Real-time updates will not be available.");
+            // Don't throw - the page should still work, just without real-time updates
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection != null)
+        {
+            try
+            {
+                await _hubConnection.InvokeAsync("LeaveGame", GameId);
+            }
+            catch
+            {
+                // Ignore errors when leaving game group during disposal
+            }
+
+            await _hubConnection.DisposeAsync();
+        }
     }
 }

@@ -147,6 +147,13 @@ Accept: application/json
 GET {{ApiService_HostAddress}}/admin/tools?gameId=95d26a53-5b62-43f2-bc19-3c64ff013c4f
 Accept: application/json
 
+### Get Tool Calls for Message
+GET {{ApiService_HostAddress}}/messages/66/tool-calls
+
+### Get Message Evaluation Metrics
+GET {{ApiService_HostAddress}}/messages/66/metrics
+Accept: application/json
+
 ### Get Tool Call Details for SearchRules
 GET {{ApiService_HostAddress}}/admin/tools/SearchRules
 Accept: application/json

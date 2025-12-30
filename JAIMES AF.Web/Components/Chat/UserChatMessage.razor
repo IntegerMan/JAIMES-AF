@@ -10,6 +10,29 @@
     <MudChatBubble>
         @Text
     </MudChatBubble>
+    
+    @if (IsLastParagraph && MessageId.HasValue)
+    {
+        <MudChatFooter Class="d-flex justify-content-end align-items-center gap-2 mt-1">
+            @if (Sentiment.HasValue)
+            {
+                <MudTooltip Text="@(Sentiment.Value > 0 ? "Positive Sentiment" : Sentiment.Value < 0 ? "Negative Sentiment" : "Neutral Sentiment")" Placement="Placement.Top">
+                    <MudIcon Icon="@(Sentiment.Value > 0 ? Icons.Material.Filled.ThumbUp : Sentiment.Value < 0 ? Icons.Material.Filled.ThumbDown : Icons.Material.Filled.Balance)"
+                             Color="@(Sentiment.Value > 0 ? Color.Success : Sentiment.Value < 0 ? Color.Error : Color.Default)"
+                             Size="Size.Small" />
+                </MudTooltip>
+            }
+            else if (!ReadOnly)
+            {
+                 <MudTooltip Text="Analyzing Sentiment..." Placement="Placement.Top">
+                    <MudIcon Icon="@Icons.Material.Filled.HourglassBottom" 
+                             Color="Color.Default" 
+                             Size="Size.Small"
+                             Class="spin-icon" />
+                 </MudTooltip>
+            }
+        </MudChatFooter>
+    }
 </MudChat>
 
 @code {
@@ -20,8 +43,20 @@
     public bool IsFirstParagraph { get; set; }
 
     [Parameter]
+    public bool IsLastParagraph { get; set; }
+
+    [Parameter]
+    public int? MessageId { get; set; }
+
+    [Parameter]
     public Color Color { get; set; } = Color.Primary;
 
     [Parameter]
     public bool Highlighted { get; set; }
+
+    [Parameter]
+    public int? Sentiment { get; set; }
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
 }

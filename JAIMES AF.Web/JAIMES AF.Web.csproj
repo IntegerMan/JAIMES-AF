@@ -12,6 +12,7 @@
         <PackageReference Include="Microsoft.Agents.AI" />
         <PackageReference Include="Microsoft.Agents.AI.Abstractions" />
         <PackageReference Include="Microsoft.Agents.AI.AGUI" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
         <PackageReference Include="MudBlazor"/>
     </ItemGroup>
 

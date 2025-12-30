@@ -1,12 +1,48 @@
+@using MattEland.Jaimes.ServiceDefinitions.Responses
 @using MattEland.Jaimes.Web.Components.Pages
 @using MudBlazor
 
 @* Reusable component for displaying message feedback and tool call indicators *@
 
 <div class="d-flex align-items-center gap-2">
+    @if (Metrics != null && Metrics.Count > 0)
+    {
+        <MudTooltip Placement="Placement.Top">
+            <TooltipContent>
+                <div class="d-flex flex-column gap-1">
+                    @foreach (var metric in Metrics)
+                    {
+                        <div class="d-flex justify-space-between gap-4">
+                            <strong>@metric.MetricName</strong>
+                            <span>@metric.Score</span>
+                        </div>
+                    }
+                </div>
+            </TooltipContent>
+            <ChildContent>
+                 <div class="d-flex align-center justify-center" style="width:32px; height:32px;">
+                     <MudIcon Icon="@Icons.Material.Filled.PieChart" 
+                              Color="Color.Default" 
+                              Size="Size.Small" />
+                 </div>
+            </ChildContent>
+        </MudTooltip>
+    }
+    else if (!ReadOnly) 
+    {
+         <MudTooltip Text="Analysing Metrics..." Placement="Placement.Top">
+             <div class="d-flex align-center justify-center" style="width:32px; height:32px;">
+                 <MudIcon Icon="@Icons.Material.Filled.HourglassBottom" 
+                          Color="Color.Default" 
+                          Size="Size.Small"
+                          Class="spin-icon" />
+             </div>
+         </MudTooltip>
+    }
+
     @if (ToolCallCount > 0)
     {
-        <MudTooltip Text="@($"{ToolCallCount} tool call(s)")">
+        <MudTooltip Text="@($"{ToolCallCount} tool call(s)")" Placement="Placement.Top">
             @if (ReadOnly)
             {
                 <MudIcon Icon="@Icons.Material.Filled.Build"
@@ -28,7 +64,7 @@
 
     @if (Feedback != null)
     {
-        <MudTooltip Text="@(string.IsNullOrWhiteSpace(Feedback.Comment) ? $"{(Feedback.IsPositive ? "Helpful" : "Unhelpful")} feedback" : Feedback.Comment)">
+        <MudTooltip Text="@(string.IsNullOrWhiteSpace(Feedback.Comment) ? $"{(Feedback.IsPositive ? "Helpful" : "Unhelpful")} feedback" : Feedback.Comment)" Placement="Placement.Top">
             <MudIcon Icon="@(Feedback.IsPositive ? Icons.Material.Filled.ThumbUp : Icons.Material.Filled.ThumbDown)"
                      Color="@(Feedback.IsPositive ? Color.Success : Color.Error)"
                      Size="Size.Small"
@@ -38,7 +74,7 @@
     else if (ShowFeedbackButtons && !ReadOnly)
     {
         <div class="d-flex align-items-center gap-1">
-            <MudTooltip Text="Mark as helpful">
+            <MudTooltip Text="Mark as helpful" Placement="Placement.Top">
                 <MudIconButton Icon="@Icons.Material.Filled.ThumbUp"
                                Color="@(_isHoveringThumbUp ? Color.Success : Color.Default)"
                                Size="Size.Small"
@@ -48,7 +84,7 @@
                                @onmouseleave="() => _isHoveringThumbUp = false"
                                OnClick="@(() => OnFeedbackButtonClicked(true))" />
             </MudTooltip>
-            <MudTooltip Text="Mark as unhelpful">
+            <MudTooltip Text="Mark as unhelpful" Placement="Placement.Top">
                 <MudIconButton Icon="@Icons.Material.Filled.ThumbDown"
                                Color="@(_isHoveringThumbDown ? Color.Error : Color.Default)"
                                Size="Size.Small"
@@ -65,6 +101,12 @@
 @code {
     private bool _isHoveringThumbUp;
     private bool _isHoveringThumbDown;
+
+    /// <summary>
+    /// The evaluation metrics for this message
+    /// </summary>
+    [Parameter]
+    public List<MessageEvaluationMetricResponse>? Metrics { get; set; }
 
     /// <summary>
     /// The feedback for this message, if any.

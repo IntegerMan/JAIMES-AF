@@ -62,6 +62,10 @@
                                       <UserChatMessage 
                                           Text="@paragraph" 
                                           IsFirstParagraph="@isFirstParagraph"
+                                          IsLastParagraph="@isLastParagraph"
+                                          MessageId="@msg.Id"
+                                          Sentiment="@msg.Sentiment"
+                                          ReadOnly="true"
                                           Highlighted="@isTarget" />
                                   }
                                   else // Assistant message
