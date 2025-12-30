@@ -2,6 +2,7 @@
 @using MattEland.Jaimes.ServiceDefinitions.Responses
 @using MattEland.Jaimes.Web.Components.Shared
 @using MudBlazor
+@using System.Text.Json
 @inject IHttpClientFactory HttpClientFactory
 @inject IDialogService DialogService
 @inject NavigationManager NavigationManager
@@ -38,8 +39,31 @@
                  Filterable="false"
                  Hover="true"
                  Dense="true"
-                 Striped="true">
+                 Striped="true"
+                 Groupable="true"
+                 GroupExpanded="true">
         <Columns>
+            <PropertyColumn Property="x => x.GamePlayerName" Title="Game" Groupable="true" Grouping="true">
+                <GroupTemplate>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.SportsEsports" Size="Size.Small" />
+                        <MudText Typo="Typo.subtitle1"><strong>@context.Grouping.Key</strong></MudText>
+                        <MudText Typo="Typo.caption" Class="text-muted">(@context.Grouping.Count() metrics)</MudText>
+                    </MudStack>
+                </GroupTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.MessageId" Title="Msg" Groupable="true">
+                <CellTemplate>
+                    <MudLink Href="@($"/admin/metrics/{context.Item.MessageId}")">@context.Item.MessageId</MudLink>
+                </CellTemplate>
+                <GroupTemplate>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.Message" Size="Size.Small" />
+                        <MudText>Message @context.Grouping.Key</MudText>
+                        <MudLink Href="@($"/admin/metrics/{context.Grouping.Key}")" Class="ml-2">View Details</MudLink>
+                    </MudStack>
+                </GroupTemplate>
+            </PropertyColumn>
             <PropertyColumn Property="x => x.MetricName" Title="Metric">
                 <CellTemplate>
                     <strong>@context.Item.MetricName</strong>
@@ -69,38 +93,36 @@
                     @if (!string.IsNullOrEmpty(context.Item.Remarks))
                     {
                         <MudTooltip Text="@context.Item.Remarks" Placement="Placement.Top">
-                            <MudText Typo="Typo.body2" Style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            <MudText Typo="Typo.body2" Style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                                 @context.Item.Remarks
                             </MudText>
                         </MudTooltip>
                     }
                     else
                     {
-                        <MudText Typo="Typo.caption" Class="text-muted">None</MudText>
+                        <MudText Typo="Typo.caption" Class="text-muted">-</MudText>
                     }
                 </CellTemplate>
             </PropertyColumn>
-            <PropertyColumn Property="x => x.EvaluatedAt" Title="Evaluated">
-                <CellTemplate>
-                    @context.Item.EvaluatedAt.ToLocalTime().ToString("g")
-                </CellTemplate>
-            </PropertyColumn>
-            <PropertyColumn Property="x => x.GamePlayerName" Title="Player" />
-            <PropertyColumn Property="x => x.GameScenarioName" Title="Scenario" />
-            <PropertyColumn Property="x => x.AgentVersion" Title="Agent Version" />
             <TemplateColumn Title="Actions">
                 <CellTemplate>
                     <MudStack Row="true" Spacing="0">
                         @if (!string.IsNullOrEmpty(context.Item.Diagnostics))
                         {
                             <MudTooltip Text="View Diagnostics">
-                                <MudIconButton Icon="@Icons.Material.Filled.BugReport" 
+                                <MudIconButton Icon="@Icons.Material.Filled.Biotech" 
                                                Color="Color.Info" 
                                                Size="Size.Small"
                                                OnClick="@(() => ShowDiagnosticsAsync(context.Item))" />
                             </MudTooltip>
                         }
-                        <MudTooltip Text="View Message">
+                        <MudTooltip Text="View All Message Metrics">
+                            <MudIconButton Icon="@Icons.Material.Filled.PieChart" 
+                                           Color="Color.Secondary" 
+                                           Size="Size.Small"
+                                           Href="@($"/admin/metrics/{context.Item.MessageId}")" />
+                        </MudTooltip>
+                        <MudTooltip Text="View Game">
                             <MudIconButton Icon="@Icons.Material.Filled.Chat" 
                                            Color="Color.Primary" 
                                            Size="Size.Small"
@@ -174,10 +196,13 @@
 
             if (response != null)
             {
+                // Order by MessageId for sequential grouping
+                var orderedItems = response.Items.OrderBy(x => x.MessageId).ToList();
+                
                 return new GridData<EvaluationMetricListItemDto>
                 {
                     TotalItems = response.TotalCount,
-                    Items = response.Items
+                    Items = orderedItems
                 };
             }
         }
@@ -211,9 +236,24 @@
 
     private async Task ShowDiagnosticsAsync(EvaluationMetricListItemDto item)
     {
+        string formattedDiagnostics = FormatDiagnostics(item.Diagnostics ?? "No diagnostics available");
+        
         await DialogService.ShowMessageBox(
             $"Diagnostics - {item.MetricName}",
-            item.Diagnostics ?? "No diagnostics available",
+            formattedDiagnostics,
             "Close");
+    }
+    
+    private static string FormatDiagnostics(string diagnostics)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(diagnostics);
+            return JsonSerializer.Serialize(doc.RootElement, new JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            return diagnostics;
+        }
     }
 }

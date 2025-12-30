@@ -72,11 +72,14 @@ public class MessageEvaluationMetricsService(IDbContextFactory<JaimesDbContext> 
             if (filters.InstructionVersionId.HasValue)
             {
                 query = query.Where(m => m.Message != null &&
-                                          m.Message.InstructionVersionId == filters.InstructionVersionId.Value);
+                                         m.Message.InstructionVersionId == filters.InstructionVersionId.Value);
             }
         }
 
-        query = query.OrderByDescending(m => m.EvaluatedAt);
+        // Order by game (player name), then message ID for sequential grouping
+        query = query.OrderBy(m => m.Message!.Game!.Player!.Name)
+            .ThenBy(m => m.MessageId)
+            .ThenBy(m => m.MetricName);
 
         int totalCount = await query.CountAsync(cancellationToken);
 

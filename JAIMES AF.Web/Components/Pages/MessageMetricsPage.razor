@@ -1,6 +1,7 @@
 @page "/admin/metrics/{MessageId:int}"
 @using MattEland.Jaimes.ServiceDefinitions.Responses
 @using MudBlazor
+@using System.Text.Json
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager NavigationManager
 @rendermode InteractiveServer
@@ -82,10 +83,18 @@
                             @if (!string.IsNullOrEmpty(metric.Diagnostics))
                             {
                                 <MudExpansionPanels Class="mt-3" Elevation="0">
-                                    <MudExpansionPanel Text="Diagnostics" Dense="true">
-                                        <MudText Typo="Typo.caption" Style="font-family: monospace; white-space: pre-wrap; word-break: break-all;">
-                                            @metric.Diagnostics
-                                        </MudText>
+                                    <MudExpansionPanel Dense="true">
+                                        <TitleContent>
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                                <MudIcon Icon="@Icons.Material.Filled.Biotech" Size="Size.Small" />
+                                                <MudText>Diagnostics</MudText>
+                                            </MudStack>
+                                        </TitleContent>
+                                        <ChildContent>
+                                            <MudText Typo="Typo.caption" Style="font-family: monospace; white-space: pre-wrap; word-break: break-all;">
+                                                @FormatDiagnostics(metric.Diagnostics)
+                                            </MudText>
+                                        </ChildContent>
                                     </MudExpansionPanel>
                                 </MudExpansionPanels>
                             }
@@ -172,5 +181,21 @@
     private class MessageMetadataResponse
     {
         public Guid? GameId { get; set; }
+    }
+
+    /// <summary>
+    /// Formats diagnostics as pretty-printed JSON if valid, otherwise returns as-is.
+    /// </summary>
+    private static string FormatDiagnostics(string diagnostics)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(diagnostics);
+            return JsonSerializer.Serialize(doc.RootElement, new JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            return diagnostics;
+        }
     }
 }
