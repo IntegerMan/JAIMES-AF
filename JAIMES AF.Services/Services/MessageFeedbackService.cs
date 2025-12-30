@@ -91,7 +91,7 @@ public class MessageFeedbackService(IDbContextFactory<JaimesDbContext> contextFa
         if (!string.IsNullOrEmpty(toolName))
         {
             query = query.Where(mf => mf.Message != null &&
-                                      mf.Message.ToolCalls.Any(tc => tc.ToolName == toolName));
+                                      mf.Message.ToolCalls.Any(tc => tc.ToolName.ToLower() == toolName.ToLower()));
         }
 
         query = query.OrderByDescending(mf => mf.CreatedAt);
