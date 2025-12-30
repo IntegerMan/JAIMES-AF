@@ -78,11 +78,18 @@ internal static class AiModelConfiguration
 
         if (auth == AuthenticationType.Identity)
         {
+            DefaultAzureCredential credential = new();
+            return new AzureOpenAIClient(new Uri(endpoint), credential);
+        }
+
+        if (auth == AuthenticationType.IdentityCli)
+        {
             AzureCliCredential credential = new();
             return new AzureOpenAIClient(new Uri(endpoint), credential);
         }
 
-        throw new InvalidOperationException($"Authentication type '{auth}' is not supported. Use ApiKey or Identity.");
+        throw new InvalidOperationException(
+            $"Authentication type '{auth}' is not supported. Use ApiKey, Identity, or IdentityCli.");
     }
 
     public static AzureOpenAIClient CreateOpenAiCompatibleClient(
