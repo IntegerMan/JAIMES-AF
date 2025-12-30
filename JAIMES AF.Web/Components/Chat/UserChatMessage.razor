@@ -1,0 +1,21 @@
+@using MudBlazor
+
+<MudChat ChatPosition="ChatBubblePosition.End"
+         Variant="Variant.Filled"
+         Color="Color.Primary">
+    @if (IsFirstParagraph)
+    {
+        <MudChatHeader Name="Player"/>
+    }
+    <MudChatBubble>
+        @Text
+    </MudChatBubble>
+</MudChat>
+
+@code {
+    [Parameter]
+    public required string Text { get; set; }
+
+    [Parameter]
+    public bool IsFirstParagraph { get; set; }
+}
