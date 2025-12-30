@@ -11,19 +11,19 @@
         @Text
     </MudChatBubble>
     
-    <MudChatFooter Class="d-flex justify-content-end gap-2 mt-1">
+    <MudChatFooter Class="d-flex justify-content-end align-items-center gap-2 mt-1">
         @if (Sentiment.HasValue)
         {
             <MudTooltip Text="@(Sentiment.Value > 0 ? "Positive Sentiment" : Sentiment.Value < 0 ? "Negative Sentiment" : "Neutral Sentiment")">
-                <MudIcon Icon="@(Sentiment.Value > 0 ? Icons.Material.Filled.SentimentSatisfied : Sentiment.Value < 0 ? Icons.Material.Filled.SentimentDissatisfied : Icons.Material.Filled.SentimentNeutral)"
-                         Color="@(Sentiment.Value > 0 ? Color.Success : Sentiment.Value < 0 ? Color.Error : Color.Warning)"
+                <MudIcon Icon="@(Sentiment.Value > 0 ? Icons.Material.Filled.ThumbUp : Sentiment.Value < 0 ? Icons.Material.Filled.ThumbDown : Icons.Material.Filled.Remove)"
+                         Color="@(Sentiment.Value > 0 ? Color.Success : Sentiment.Value < 0 ? Color.Error : Color.Default)"
                          Size="Size.Small" />
             </MudTooltip>
         }
         else
         {
              <MudTooltip Text="Analyzing Sentiment...">
-                <MudIcon Icon="@Icons.Material.Filled.HourglassEmpty" 
+                <MudIcon Icon="@Icons.Material.Filled.Timer" 
                          Color="Color.Default" 
                          Size="Size.Small" />
              </MudTooltip>

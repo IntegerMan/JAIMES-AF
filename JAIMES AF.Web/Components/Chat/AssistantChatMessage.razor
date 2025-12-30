@@ -7,9 +7,7 @@
 {
     <MudChat ChatPosition="ChatBubblePosition.Start"
              Variant="Variant.Filled"
-             Color="@(Highlighted ? Color.Info : Color)"
-             @onmouseenter="OnMouseEnter"
-             @onmouseleave="OnMouseLeave">
+             Color="@(Highlighted ? Color.Info : Color)">
         @if (IsFirstParagraph)
         {
             <MudChatHeader Name="Game Master"/>
@@ -25,7 +23,7 @@
                     Metrics="@Metrics"
                     ToolCallCount="@(ToolCalls?.Count ?? 0)"
                     ReadOnly="@ReadOnly"
-                    ShowFeedbackButtons="@_isHovering"
+                    ShowFeedbackButtons="true"
                     MessageId="@MessageId"
                     OnToolCallsClick="OnToolCallsClick"
                     OnFeedbackClick="OnFeedbackClick" />
@@ -35,8 +33,6 @@
 }
 
 @code {
-    private bool _isHovering;
-
     [Parameter]
     public required string Text { get; set; }
 
@@ -72,15 +68,5 @@
 
     [Parameter]
     public EventCallback<(int MessageId, bool IsPositive)> OnFeedbackClick { get; set; }
-
-    private void OnMouseEnter()
-    {
-        _isHovering = true;
-    }
-
-    private void OnMouseLeave()
-    {
-        _isHovering = false;
-    }
 }
 
