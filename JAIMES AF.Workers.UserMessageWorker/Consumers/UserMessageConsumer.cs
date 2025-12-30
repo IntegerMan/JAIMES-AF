@@ -39,6 +39,7 @@ public class UserMessageConsumer(
             Message? messageEntity = await context.Messages
                 .Include(m => m.Game)
                 .Include(m => m.Player)
+                .Include(m => m.MessageSentiment)
                 .FirstOrDefaultAsync(m => m.Id == message.MessageId, cancellationToken);
 
             if (messageEntity == null)
