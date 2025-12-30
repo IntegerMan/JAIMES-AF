@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Threading;
 using Microsoft.Extensions.AI.Evaluation.Reporting;
 
 namespace MattEland.Jaimes.Repositories;
@@ -10,6 +11,7 @@ namespace MattEland.Jaimes.Repositories;
 public class EfEvaluationResultStore(IDbContextFactory<JaimesDbContext> dbContextFactory) : IEvaluationResultStore
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private readonly SemaphoreSlim _writeLock = new(1, 1);
 
     /// <inheritdoc/>
     public async IAsyncEnumerable<ScenarioRunResult> ReadResultsAsync(
@@ -60,50 +62,58 @@ public class EfEvaluationResultStore(IDbContextFactory<JaimesDbContext> dbContex
         IEnumerable<ScenarioRunResult> results,
         CancellationToken cancellationToken = default)
     {
-        await using JaimesDbContext context = dbContextFactory.CreateDbContext();
-
-        foreach (ScenarioRunResult result in results)
+        await _writeLock.WaitAsync(cancellationToken);
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            await using JaimesDbContext context = dbContextFactory.CreateDbContext();
 
-            // Ensure execution exists
-            EvaluationExecution? execution = await context.EvaluationExecutions
-                .FindAsync([result.ExecutionName], cancellationToken);
-
-            if (execution == null)
+            foreach (ScenarioRunResult result in results)
             {
-                execution = new EvaluationExecution
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Ensure execution exists
+                EvaluationExecution? execution = await context.EvaluationExecutions
+                    .FindAsync([result.ExecutionName], cancellationToken);
+
+                if (execution == null)
                 {
-                    ExecutionName = result.ExecutionName,
-                    CreatedAt = DateTime.UtcNow
-                };
-                context.EvaluationExecutions.Add(execution);
-            }
+                    execution = new EvaluationExecution
+                    {
+                        ExecutionName = result.ExecutionName,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    context.EvaluationExecutions.Add(execution);
+                }
 
-            string resultJson = JsonSerializer.Serialize(result, JsonOptions);
+                string resultJson = JsonSerializer.Serialize(result, JsonOptions);
 
-            EvaluationScenarioIteration? iteration = await context.EvaluationScenarioIterations
-                .FindAsync([result.ExecutionName, result.ScenarioName, result.IterationName], cancellationToken);
+                EvaluationScenarioIteration? iteration = await context.EvaluationScenarioIterations
+                    .FindAsync([result.ExecutionName, result.ScenarioName, result.IterationName], cancellationToken);
 
-            if (iteration == null)
-            {
-                iteration = new EvaluationScenarioIteration
+                if (iteration == null)
                 {
-                    ExecutionName = result.ExecutionName,
-                    ScenarioName = result.ScenarioName,
-                    IterationName = result.IterationName,
-                    ResultJson = resultJson
-                };
-                context.EvaluationScenarioIterations.Add(iteration);
+                    iteration = new EvaluationScenarioIteration
+                    {
+                        ExecutionName = result.ExecutionName,
+                        ScenarioName = result.ScenarioName,
+                        IterationName = result.IterationName,
+                        ResultJson = resultJson
+                    };
+                    context.EvaluationScenarioIterations.Add(iteration);
+                }
+                else
+                {
+                    iteration.ResultJson = resultJson;
+                    context.Entry(iteration).State = EntityState.Modified;
+                }
             }
-            else
-            {
-                iteration.ResultJson = resultJson;
-                context.Entry(iteration).State = EntityState.Modified;
-            }
+
+            await context.SaveChangesAsync(cancellationToken);
         }
-
-        await context.SaveChangesAsync(cancellationToken);
+        finally
+        {
+            _writeLock.Release();
+        }
     }
 
     /// <inheritdoc/>

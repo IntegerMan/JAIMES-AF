@@ -90,6 +90,32 @@ public class EfEvaluationResultStoreTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task WriteResultsAsync_ConcurrentCallsWithSameNewExecution_ShouldNotThrow()
+    {
+        // Arrange
+        string executionName = "ConcurrentExecution";
+        var results1 = new List<ScenarioRunResult> {CreateTestResult(executionName, "ScenarioA", "Iter1")};
+        var results2 = new List<ScenarioRunResult> {CreateTestResult(executionName, "ScenarioB", "Iter1")};
+
+        // Act
+        // We start both tasks simultaneously. The semaphore should serialize them.
+        Task task1 = _store.WriteResultsAsync(results1, TestContext.Current.CancellationToken).AsTask();
+        Task task2 = _store.WriteResultsAsync(results2, TestContext.Current.CancellationToken).AsTask();
+
+        await Task.WhenAll(task1, task2);
+
+        // Assert
+        using JaimesDbContext context = new(_options);
+        var executions = await context.EvaluationExecutions.Where(e => e.ExecutionName == executionName)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        executions.Count.ShouldBe(1);
+
+        var iterations = await context.EvaluationScenarioIterations.Where(si => si.ExecutionName == executionName)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        iterations.Count.ShouldBe(2);
+    }
+
+    [Fact]
     public async Task ReadResultsAsync_ShouldReturnPersistedResults()
     {
         // Arrange

@@ -94,8 +94,7 @@ public class MessageEvaluationService(
 
             foreach (string metricName in metricNames)
             {
-                NumericMetric? metric = result.Get<NumericMetric>(metricName);
-                if (metric is {Value: not null})
+                if (result.Get<NumericMetric>(metricName) is {Value: not null} metric)
                 {
                     // Serialize any additional metadata if available
                     string? diagnosticsJson = null;
