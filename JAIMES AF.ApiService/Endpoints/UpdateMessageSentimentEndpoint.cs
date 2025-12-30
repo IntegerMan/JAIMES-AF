@@ -15,11 +15,16 @@ public static class UpdateMessageSentimentEndpoint
     {
         app.MapPut("/messages/{id}/sentiment", async (
                 [FromRoute] int id,
-                [Microsoft.AspNetCore.Mvc.FromBody] UpdateMessageSentimentRequest request,
+                UpdateMessageSentimentRequest request,
                 [FromServices] JaimesDbContext context,
                 [FromServices] IHubContext<MessageHub, IMessageHubClient> hubContext,
                 CancellationToken cancellationToken) =>
             {
+                if (request.Sentiment < -1 || request.Sentiment > 1)
+                {
+                    return Results.BadRequest("Sentiment must be between -1 and 1.");
+                }
+
                 Message? message = await context.Messages
                     .Include(m => m.MessageSentiment)
                     .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
