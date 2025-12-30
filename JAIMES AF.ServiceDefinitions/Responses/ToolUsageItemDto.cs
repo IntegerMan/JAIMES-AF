@@ -22,8 +22,8 @@ public class ToolUsageItemDto
     public int EligibleMessages { get; init; }
 
     /// <summary>
-    /// Percentage of eligible messages that invoked this tool.
-    /// Calculated as (TotalCalls / EligibleMessages) * 100.
+    /// Percentage of eligible messages that invoked this tool at least once.
+    /// Calculated as (DistinctMessagesInvokingTool / EligibleMessages) * 100.
     /// </summary>
     public double UsagePercentage { get; init; }
 

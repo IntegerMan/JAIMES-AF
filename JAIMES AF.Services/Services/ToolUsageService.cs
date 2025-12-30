@@ -78,6 +78,7 @@ public class ToolUsageService(
 
                     return (
                         TotalCalls: grp.Count(),
+                        MessageCount: messageIds.Count,
                         EnabledAgents: grp
                             .Where(mtc => mtc.InstructionVersion?.Agent != null)
                             .Select(mtc =>
@@ -87,7 +88,7 @@ public class ToolUsageService(
                         HelpfulCount: helpfulCount,
                         UnhelpfulCount: unhelpfulCount
                     );
-                });
+                }, StringComparer.OrdinalIgnoreCase);
 
         // Calculate eligible messages count
         // Assistant messages are those where PlayerId is null
@@ -132,8 +133,8 @@ public class ToolUsageService(
                     ToolName = tool.Name,
                     TotalCalls = totalCalls,
                     EligibleMessages = eligibleMessagesCount,
-                    UsagePercentage = eligibleMessagesCount > 0
-                        ? Math.Round((double)totalCalls / eligibleMessagesCount * 100, 2)
+                    UsagePercentage = eligibleMessagesCount > 0 && hasStats
+                        ? Math.Clamp(Math.Round((double)stats.MessageCount / eligibleMessagesCount * 100, 2), 0, 100)
                         : 0,
                     EnabledAgents = enabledAgents,
                     HelpfulCount = helpfulCount,
@@ -156,7 +157,7 @@ public class ToolUsageService(
                     TotalCalls = stats.TotalCalls,
                     EligibleMessages = eligibleMessagesCount,
                     UsagePercentage = eligibleMessagesCount > 0
-                        ? Math.Round((double)stats.TotalCalls / eligibleMessagesCount * 100, 2)
+                        ? Math.Clamp(Math.Round((double)stats.MessageCount / eligibleMessagesCount * 100, 2), 0, 100)
                         : 0,
                     EnabledAgents = stats.EnabledAgents,
                     HelpfulCount = stats.HelpfulCount,
