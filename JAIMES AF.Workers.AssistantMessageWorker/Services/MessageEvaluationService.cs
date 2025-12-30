@@ -74,6 +74,7 @@ public class MessageEvaluationService(
                 modelOptions.Name,
                 modelOptions.Provider.ToString(),
                 modelOptions.Endpoint,
+                logger,
                 cancellationToken);
 
             DateTime evaluatedAt = DateTime.UtcNow;
@@ -98,8 +99,8 @@ public class MessageEvaluationService(
                         // Try to get any additional context from the result
                         var diagnostics = new Dictionary<string, object?>
                         {
-                            { "MetricName", metricName },
-                            { "EvaluatedAt", evaluatedAt }
+                            {"MetricName", metricName},
+                            {"EvaluatedAt", evaluatedAt}
                         };
                         diagnosticsJson = JsonSerializer.Serialize(diagnostics);
                     }

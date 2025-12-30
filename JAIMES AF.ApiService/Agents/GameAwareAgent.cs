@@ -407,6 +407,7 @@ public class GameAwareAgent(
                 modelOptions.Name,
                 modelOptions.Provider.ToString(),
                 modelOptions.Endpoint,
+                _logger,
                 cancellationToken);
         }
 
