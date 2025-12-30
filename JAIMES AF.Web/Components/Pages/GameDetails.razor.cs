@@ -659,6 +659,23 @@ public partial class GameDetails : IAsyncDisposable
                              notification.Metrics != null)
                     {
                         _messageMetrics[notification.MessageId] = notification.Metrics;
+
+                        // If we don't have this message ID yet (it was a pending assistant message),
+                        // find the first pending assistant message and assign this ID to it.
+                        // We search forwards (FIFO) assuming notifications arrive in order of creation.
+                        if (!_messageIds.Contains(notification.MessageId))
+                        {
+                            for (int i = 0; i < _messageIds.Count; i++)
+                            {
+                                if (_messageIds[i] == null && _messages[i].Role == ChatRole.Assistant)
+                                {
+                                    _messageIds[i] = notification.MessageId;
+                                    _logger?.LogDebug("Updated Assistant message ID at index {Index} to {MessageId}", i,
+                                        notification.MessageId);
+                                    break;
+                                }
+                            }
+                        }
                     }
 
                     StateHasChanged();

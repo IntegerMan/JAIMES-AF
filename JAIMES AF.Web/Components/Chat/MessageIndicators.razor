@@ -82,7 +82,6 @@
                                Class="feedback-button"
                                @onmouseenter="() => _isHoveringThumbUp = true"
                                @onmouseleave="() => _isHoveringThumbUp = false"
-                               Disabled="@(!MessageId.HasValue)"
                                OnClick="@(() => OnFeedbackButtonClicked(true))" />
             </MudTooltip>
             <MudTooltip Text="Mark as unhelpful" Placement="Placement.Top">
@@ -93,7 +92,6 @@
                                Class="feedback-button"
                                @onmouseenter="() => _isHoveringThumbDown = true"
                                @onmouseleave="() => _isHoveringThumbDown = false"
-                               Disabled="@(!MessageId.HasValue)"
                                OnClick="@(() => OnFeedbackButtonClicked(false))" />
             </MudTooltip>
         </div>
