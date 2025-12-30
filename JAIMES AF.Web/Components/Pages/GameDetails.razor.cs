@@ -23,7 +23,7 @@ public partial class GameDetails : IAsyncDisposable
     private Dictionary<int, MessageFeedbackInfo> _messageFeedback = new();
     private Dictionary<int, List<MessageToolCallInfo>> _messageToolCalls = new();
     private Dictionary<int, List<MessageEvaluationMetricResponse>> _messageMetrics = new();
-    private Dictionary<int, int?> _messageSentiment = new();
+    private Dictionary<int, MessageSentimentInfo> _messageSentiment = new();
     private AIAgent? _agent;
 
     private GameStateResponse? _game;
@@ -92,7 +92,11 @@ public partial class GameDetails : IAsyncDisposable
             // Store sentiment for user messages
             orderedMessages.Where(m => m.Participant == ChatParticipant.Player && m.Sentiment.HasValue)
                 .ToList()
-                .ForEach(m => _messageSentiment[m.Id] = m.Sentiment);
+                .ForEach(m => _messageSentiment[m.Id] = new MessageSentimentInfo
+                {
+                    Sentiment = m.Sentiment!.Value, // We know it's not null from the Where clause
+                    Confidence = m.SentimentConfidence
+                });
 
             // Load existing feedback for assistant messages
             await LoadFeedbackForMessagesAsync(orderedMessages.Where(m => m.Participant == ChatParticipant.GameMaster)
@@ -686,7 +690,11 @@ public partial class GameDetails : IAsyncDisposable
                     if (notification.UpdateType == MessageUpdateType.SentimentAnalyzed &&
                         notification.Sentiment.HasValue)
                     {
-                        _messageSentiment[notification.MessageId] = notification.Sentiment.Value;
+                        _messageSentiment[notification.MessageId] = new MessageSentimentInfo
+                        {
+                            Sentiment = notification.Sentiment.Value,
+                            Confidence = notification.SentimentConfidence
+                        };
                     }
                     else if (notification.UpdateType == MessageUpdateType.MetricsEvaluated &&
                              notification.Metrics != null)
@@ -729,4 +737,13 @@ public partial class GameDetails : IAsyncDisposable
             await _hubConnection.DisposeAsync();
         }
     }
+}
+
+/// <summary>
+/// Helper class to store sentiment information including confidence.
+/// </summary>
+public class MessageSentimentInfo
+{
+    public int Sentiment { get; set; }
+    public double? Confidence { get; set; }
 }

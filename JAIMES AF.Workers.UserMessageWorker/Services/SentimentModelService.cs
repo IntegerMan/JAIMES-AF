@@ -38,7 +38,8 @@ public class SentimentModelService(
         }
         else
         {
-            _logger.LogInformation("Model not found. Training new sentiment model from {TrainingDataPath}", trainingDataPath);
+            _logger.LogInformation("Model not found. Training new sentiment model from {TrainingDataPath}",
+                trainingDataPath);
             await TrainAndSaveModelAsync(trainingDataPath, modelPath, cancellationToken);
         }
     }
@@ -56,7 +57,7 @@ public class SentimentModelService(
         }
 
         SentimentData input = new() { Text = text };
-        
+
         // Get a prediction engine from the thread-safe pool
         PredictionEngine<SentimentData, SentimentPrediction> predictionEngine = _predictionEnginePool.Get();
         try
@@ -89,10 +90,11 @@ public class SentimentModelService(
     /// Analyzes sentiment with confidence threshold applied.
     /// Returns the final sentiment value (after applying threshold) and the confidence score.
     /// </summary>
-    public (int FinalSentiment, double Confidence) AnalyzeSentimentWithThreshold(string text, double confidenceThreshold)
+    public (int FinalSentiment, double Confidence) AnalyzeSentimentWithThreshold(string text,
+        double confidenceThreshold)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(text);
-        
+
         (int sentiment, double confidence) = PredictSentiment(text);
 
         // Apply confidence threshold: if below threshold, set to neutral
@@ -111,20 +113,23 @@ public class SentimentModelService(
     {
         if (contextFactory == null)
         {
-            throw new InvalidOperationException("DbContextFactory is required for reclassification. Ensure it is provided in the constructor.");
+            throw new InvalidOperationException(
+                "DbContextFactory is required for reclassification. Ensure it is provided in the constructor.");
         }
 
         if (sentimentOptions == null)
         {
-            throw new InvalidOperationException("SentimentAnalysisOptions is required for reclassification. Ensure it is provided in the constructor.");
+            throw new InvalidOperationException(
+                "SentimentAnalysisOptions is required for reclassification. Ensure it is provided in the constructor.");
         }
 
         _logger.LogInformation("Starting reclassification of all user messages");
 
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
-        // Query all user messages (messages where PlayerId is not null)
+        // Query all user messages (messages where PlayerId is not null) and include their sentiment
         List<Message> userMessages = await context.Messages
+            .Include(m => m.MessageSentiment)
             .Where(m => m.PlayerId != null && !string.IsNullOrWhiteSpace(m.Text))
             .ToListAsync(cancellationToken);
 
@@ -140,17 +145,37 @@ public class SentimentModelService(
         int processedCount = 0;
         int updatedCount = 0;
         int errorCount = 0;
+        DateTime now = DateTime.UtcNow;
 
         foreach (Message message in userMessages)
         {
             try
             {
-                int finalSentiment = AnalyzeSentimentWithThreshold(message.Text, confidenceThreshold).FinalSentiment;
+                (int finalSentiment, double confidence) =
+                    AnalyzeSentimentWithThreshold(message.Text, confidenceThreshold);
 
-                // Only update if sentiment has changed
-                if (message.Sentiment != finalSentiment)
+                // Check if sentiment needs to be created or updated
+                if (message.MessageSentiment == null)
                 {
-                    message.Sentiment = finalSentiment;
+                    // Create new sentiment record
+                    MessageSentiment newSentiment = new()
+                    {
+                        MessageId = message.Id,
+                        Sentiment = finalSentiment,
+                        Confidence = confidence,
+                        CreatedAt = now,
+                        UpdatedAt = now
+                    };
+                    context.MessageSentiments.Add(newSentiment);
+                    updatedCount++;
+                }
+                else if (message.MessageSentiment.Sentiment != finalSentiment ||
+                         message.MessageSentiment.Confidence != confidence)
+                {
+                    // Update existing sentiment if changed
+                    message.MessageSentiment.Sentiment = finalSentiment;
+                    message.MessageSentiment.Confidence = confidence;
+                    message.MessageSentiment.UpdatedAt = now;
                     updatedCount++;
                 }
 
@@ -192,16 +217,19 @@ public class SentimentModelService(
         await Task.Run(() =>
         {
             _trainedModel = _mlContext.Model.Load(modelPath, out _);
-            
+
             // Create a thread-safe prediction engine pool using ObjectPool
             DefaultObjectPoolProvider poolProvider = new();
-            _predictionEnginePool = poolProvider.Create(new PredictionEnginePooledObjectPolicy(_mlContext, _trainedModel));
-            
-            _logger.LogInformation("Successfully loaded sentiment model from {ModelPath} with thread-safe pool", modelPath);
+            _predictionEnginePool =
+                poolProvider.Create(new PredictionEnginePooledObjectPolicy(_mlContext, _trainedModel));
+
+            _logger.LogInformation("Successfully loaded sentiment model from {ModelPath} with thread-safe pool",
+                modelPath);
         }, cancellationToken);
     }
 
-    private async Task TrainAndSaveModelAsync(string trainingDataPath, string modelPath, CancellationToken cancellationToken)
+    private async Task TrainAndSaveModelAsync(string trainingDataPath, string modelPath,
+        CancellationToken cancellationToken)
     {
         if (!File.Exists(trainingDataPath))
         {
@@ -224,7 +252,7 @@ public class SentimentModelService(
                 MaxExperimentTimeInSeconds = 60, // 1 minute for training
                 OptimizingMetric = MulticlassClassificationMetric.MacroAccuracy
             };
-            
+
             // Verify the data schema
             var schema = trainingData.Schema;
             _logger.LogInformation("Training data schema - Column count: {ColumnCount}", schema.Count);
@@ -232,15 +260,18 @@ public class SentimentModelService(
             {
                 _logger.LogDebug("Column: {ColumnName}, Type: {ColumnType}", column.Name, column.Type);
             }
-            
+
             // Verify we have the expected columns
             if (schema.GetColumnOrNull(nameof(SentimentData.Text)) == null)
             {
-                throw new InvalidOperationException($"Training data does not contain required column: {nameof(SentimentData.Text)}");
+                throw new InvalidOperationException(
+                    $"Training data does not contain required column: {nameof(SentimentData.Text)}");
             }
+
             if (schema.GetColumnOrNull(nameof(SentimentData.Sentiment)) == null)
             {
-                throw new InvalidOperationException($"Training data does not contain required column: {nameof(SentimentData.Sentiment)}");
+                throw new InvalidOperationException(
+                    $"Training data does not contain required column: {nameof(SentimentData.Sentiment)}");
             }
 
             // Preprocess: Featurize the text column into a Features vector
@@ -248,21 +279,23 @@ public class SentimentModelService(
             _logger.LogInformation("Featurizing text data...");
             IEstimator<ITransformer> textFeaturizer = _mlContext.Transforms.Text
                 .FeaturizeText("Features", nameof(SentimentData.Text));
-            
+
             ITransformer textTransformer = textFeaturizer.Fit(trainingData);
             IDataView featurizedData = textTransformer.Transform(trainingData);
-            
+
             // Update column information - AutoML will automatically use the Features column
             ColumnInformation featurizedColumnInfo = new()
             {
                 LabelColumnName = nameof(SentimentData.Sentiment)
             };
 
-            _logger.LogInformation("Starting AutoML experiment for sentiment classification with timeout of {Timeout} seconds...", experimentSettings.MaxExperimentTimeInSeconds);
+            _logger.LogInformation(
+                "Starting AutoML experiment for sentiment classification with timeout of {Timeout} seconds...",
+                experimentSettings.MaxExperimentTimeInSeconds);
             ExperimentResult<MulticlassClassificationMetrics> experimentResult = _mlContext.Auto()
                 .CreateMulticlassClassificationExperiment(experimentSettings)
                 .Execute(featurizedData, featurizedColumnInfo);
-            
+
             // Combine the text featurizer with the AutoML model
             ITransformer combinedModel = textTransformer.Append(experimentResult.BestRun.Model);
 
@@ -272,17 +305,19 @@ public class SentimentModelService(
                 experimentResult.BestRun.ValidationMetrics?.MacroAccuracy ?? 0);
 
             // Save the combined model (text featurizer + AutoML model)
-            string modelDirectory = Path.GetDirectoryName(modelPath) ?? throw new InvalidOperationException("Invalid model path");
+            string modelDirectory = Path.GetDirectoryName(modelPath) ??
+                                    throw new InvalidOperationException("Invalid model path");
             Directory.CreateDirectory(modelDirectory);
             _mlContext.Model.Save(combinedModel, trainingData.Schema, modelPath);
             _logger.LogInformation("Trained model saved to {ModelPath}", modelPath);
 
             // Store the model for pool creation
             _trainedModel = combinedModel;
-            
+
             // Create a thread-safe prediction engine pool for immediate use (using combined model)
             DefaultObjectPoolProvider poolProvider = new();
-            _predictionEnginePool = poolProvider.Create(new PredictionEnginePooledObjectPolicy(_mlContext, _trainedModel));
+            _predictionEnginePool =
+                poolProvider.Create(new PredictionEnginePooledObjectPolicy(_mlContext, _trainedModel));
         }, cancellationToken);
     }
 
@@ -304,18 +339,17 @@ public class SentimentModelService(
     /// </summary>
     public class SentimentPrediction
     {
-        [ColumnName("PredictedLabel")]
-        public string? PredictedLabel { get; set; }
+        [ColumnName("PredictedLabel")] public string? PredictedLabel { get; set; }
 
-        [ColumnName("Score")]
-        public float[]? Score { get; set; }
+        [ColumnName("Score")] public float[]? Score { get; set; }
     }
 
     /// <summary>
     /// Pooled object policy for PredictionEngine instances.
     /// This enables thread-safe reuse of PredictionEngine objects.
     /// </summary>
-    private class PredictionEnginePooledObjectPolicy : IPooledObjectPolicy<PredictionEngine<SentimentData, SentimentPrediction>>
+    private class
+        PredictionEnginePooledObjectPolicy : IPooledObjectPolicy<PredictionEngine<SentimentData, SentimentPrediction>>
     {
         private readonly MLContext _mlContext;
         private readonly ITransformer _model;

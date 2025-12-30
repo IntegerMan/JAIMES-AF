@@ -10,22 +10,27 @@ public record MessageUpdateNotification
     /// The ID of the message that was updated.
     /// </summary>
     public required int MessageId { get; init; }
-    
+
     /// <summary>
     /// The ID of the game the message belongs to.
     /// </summary>
     public required Guid GameId { get; init; }
-    
+
     /// <summary>
     /// The type of update that occurred.
     /// </summary>
     public required MessageUpdateType UpdateType { get; init; }
-    
+
     /// <summary>
     /// Optional sentiment value for user messages (-1, 0, or 1).
     /// </summary>
     public int? Sentiment { get; init; }
-    
+
+    /// <summary>
+    /// Optional sentiment confidence score (0.0 to 1.0) for user messages.
+    /// </summary>
+    public double? SentimentConfidence { get; init; }
+
     /// <summary>
     /// Optional evaluation metrics for assistant messages.
     /// </summary>
@@ -41,7 +46,7 @@ public enum MessageUpdateType
     /// Sentiment analysis completed for a user message.
     /// </summary>
     SentimentAnalyzed,
-    
+
     /// <summary>
     /// Evaluation metrics calculated for an assistant message.
     /// </summary>

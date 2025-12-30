@@ -30,8 +30,13 @@ public class Message
     // Navigation property for embedding (optional 1:0..1 relationship)
     public MessageEmbedding? MessageEmbedding { get; set; }
 
-    // Sentiment analysis result: -1 (negative), 0 (neutral), 1 (positive), null (not analyzed)
-    public int? Sentiment { get; set; }
+    // Navigation property for sentiment analysis (optional 1:0..1 relationship)
+    public MessageSentiment? MessageSentiment { get; set; }
+
+    // Convenience properties for backward compatibility
+    public int? Sentiment => MessageSentiment?.Sentiment;
+    public double? SentimentConfidence => MessageSentiment?.Confidence;
+
     // Reference to the model used to generate this message
     public int? ModelId { get; set; }
     public Model? Model { get; set; }

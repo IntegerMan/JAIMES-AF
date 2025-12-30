@@ -39,6 +39,7 @@ public class UserMessageConsumer(
             Message? messageEntity = await context.Messages
                 .Include(m => m.Game)
                 .Include(m => m.Player)
+                .Include(m => m.MessageSentiment)
                 .FirstOrDefaultAsync(m => m.Id == message.MessageId, cancellationToken);
 
             if (messageEntity == null)
@@ -123,7 +124,30 @@ public class UserMessageConsumer(
                 activity?.SetTag("sentiment.confidence", confidence);
                 activity?.SetTag("sentiment.threshold", confidenceThreshold);
 
-                messageEntity.Sentiment = sentiment;
+                // Create or update MessageSentiment entity
+                DateTime now = DateTime.UtcNow;
+                MessageSentiment? existingSentiment = messageEntity.MessageSentiment;
+
+                if (existingSentiment == null)
+                {
+                    // Create new sentiment record
+                    MessageSentiment newSentiment = new()
+                    {
+                        MessageId = messageEntity.Id,
+                        Sentiment = sentiment,
+                        Confidence = confidence,
+                        CreatedAt = now,
+                        UpdatedAt = now
+                    };
+                    context.MessageSentiments.Add(newSentiment);
+                }
+                else
+                {
+                    // Update existing sentiment record
+                    existingSentiment.Sentiment = sentiment;
+                    existingSentiment.Confidence = confidence;
+                    existingSentiment.UpdatedAt = now;
+                }
 
                 logger.LogInformation(
                     "Sentiment analysis completed - MessageId: {MessageId}, Sentiment: {Sentiment}, Confidence: {Confidence}, Threshold: {Threshold}",
@@ -140,6 +164,7 @@ public class UserMessageConsumer(
                     messageEntity.Id,
                     messageEntity.GameId,
                     sentiment,
+                    confidence,
                     cancellationToken);
 
                 return true;

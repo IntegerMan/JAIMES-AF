@@ -16,7 +16,7 @@
         <MudChatFooter Class="d-flex justify-content-end align-items-center gap-2 mt-1">
             @if (Sentiment.HasValue)
             {
-                <MudTooltip Text="@(Sentiment.Value > 0 ? "Positive Sentiment" : Sentiment.Value < 0 ? "Negative Sentiment" : "Neutral Sentiment")" Placement="Placement.Top">
+                <MudTooltip Text="@GetSentimentTooltipText()" Placement="Placement.Top">
                     <MudIcon Icon="@(Sentiment.Value > 0 ? Icons.Material.Filled.ThumbUp : Sentiment.Value < 0 ? Icons.Material.Filled.ThumbDown : Icons.Material.Filled.Balance)"
                              Color="@(Sentiment.Value > 0 ? Color.Success : Sentiment.Value < 0 ? Color.Error : Color.Default)"
                              Size="Size.Small" />
@@ -58,5 +58,25 @@
     public int? Sentiment { get; set; }
 
     [Parameter]
+    public double? Confidence { get; set; }
+
+    [Parameter]
     public bool ReadOnly { get; set; }
+
+    private string GetSentimentTooltipText()
+    {
+        if (!Sentiment.HasValue)
+            return "Unknown Sentiment";
+
+        string sentimentLabel = Sentiment.Value > 0 ? "Positive" :
+                                Sentiment.Value < 0 ? "Negative" : "Neutral";
+
+        if (Confidence.HasValue)
+        {
+            int confidencePercent = (int)(Confidence.Value * 100);
+            return $"{sentimentLabel} Sentiment - {confidencePercent}% Confidence";
+        }
+
+        return $"{sentimentLabel} Sentiment";
+    }
 }
