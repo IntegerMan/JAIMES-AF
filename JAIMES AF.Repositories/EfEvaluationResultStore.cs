@@ -11,7 +11,7 @@ namespace MattEland.Jaimes.Repositories;
 public class EfEvaluationResultStore(IDbContextFactory<JaimesDbContext> dbContextFactory) : IEvaluationResultStore
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-    private readonly SemaphoreSlim _writeLock = new(1, 1);
+    private readonly SemaphoreSlim _lock = new(1, 1);
 
     /// <inheritdoc/>
     public async IAsyncEnumerable<ScenarioRunResult> ReadResultsAsync(
@@ -62,7 +62,7 @@ public class EfEvaluationResultStore(IDbContextFactory<JaimesDbContext> dbContex
         IEnumerable<ScenarioRunResult> results,
         CancellationToken cancellationToken = default)
     {
-        await _writeLock.WaitAsync(cancellationToken);
+        await _lock.WaitAsync(cancellationToken);
         try
         {
             await using JaimesDbContext context = dbContextFactory.CreateDbContext();
@@ -112,7 +112,7 @@ public class EfEvaluationResultStore(IDbContextFactory<JaimesDbContext> dbContex
         }
         finally
         {
-            _writeLock.Release();
+            _lock.Release();
         }
     }
 
@@ -123,37 +123,45 @@ public class EfEvaluationResultStore(IDbContextFactory<JaimesDbContext> dbContex
         string? iterationName = null,
         CancellationToken cancellationToken = default)
     {
-        await using JaimesDbContext context = dbContextFactory.CreateDbContext();
-
-        IQueryable<EvaluationScenarioIteration> query = context.EvaluationScenarioIterations;
-
-        if (executionName != null)
+        await _lock.WaitAsync(cancellationToken);
+        try
         {
-            query = query.Where(si => si.ExecutionName == executionName);
-        }
+            await using JaimesDbContext context = dbContextFactory.CreateDbContext();
 
-        if (scenarioName != null)
-        {
-            query = query.Where(si => si.ScenarioName == scenarioName);
-        }
+            IQueryable<EvaluationScenarioIteration> query = context.EvaluationScenarioIterations;
 
-        if (iterationName != null)
-        {
-            query = query.Where(si => si.IterationName == iterationName);
-        }
+            if (executionName != null)
+            {
+                query = query.Where(si => si.ExecutionName == executionName);
+            }
 
-        context.EvaluationScenarioIterations.RemoveRange(query);
-        await context.SaveChangesAsync(cancellationToken);
+            if (scenarioName != null)
+            {
+                query = query.Where(si => si.ScenarioName == scenarioName);
+            }
 
-        // Delete any executions that no longer have any associated results
-        List<EvaluationExecution> orphanedExecutions = await context.EvaluationExecutions
-            .Where(e => !e.ScenarioIterations.Any())
-            .ToListAsync(cancellationToken);
+            if (iterationName != null)
+            {
+                query = query.Where(si => si.IterationName == iterationName);
+            }
 
-        if (orphanedExecutions.Count > 0)
-        {
-            context.EvaluationExecutions.RemoveRange(orphanedExecutions);
+            context.EvaluationScenarioIterations.RemoveRange(query);
             await context.SaveChangesAsync(cancellationToken);
+
+            // Delete any executions that no longer have any associated results
+            List<EvaluationExecution> orphanedExecutions = await context.EvaluationExecutions
+                .Where(e => !e.ScenarioIterations.Any())
+                .ToListAsync(cancellationToken);
+
+            if (orphanedExecutions.Count > 0)
+            {
+                context.EvaluationExecutions.RemoveRange(orphanedExecutions);
+                await context.SaveChangesAsync(cancellationToken);
+            }
+        }
+        finally
+        {
+            _lock.Release();
         }
     }
 

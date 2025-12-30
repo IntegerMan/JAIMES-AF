@@ -34,7 +34,7 @@ public class MessageEvaluationService(
                 .TakeLast(5)
                 .Select(m => new ChatMessage(
                     m.PlayerId == null ? ChatRole.Assistant : ChatRole.User,
-                    m.Text))
+                    m.Text ?? string.Empty))
                 .ToList();
 
             // Add system prompt as the first message
