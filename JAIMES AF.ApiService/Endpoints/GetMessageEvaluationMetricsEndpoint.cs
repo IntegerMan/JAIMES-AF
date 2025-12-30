@@ -28,28 +28,28 @@ public class GetMessageEvaluationMetricsEndpoint : EndpointWithoutRequest<IEnume
             return;
         }
 
-        try
+        // Check if message exists
+        bool messageExists = await DbContext.Messages.AnyAsync(m => m.Id == messageId, ct);
+        if (!messageExists)
         {
-            var metrics = await DbContext.MessageEvaluationMetrics
-                .Where(m => m.MessageId == messageId)
-                .Select(m => new MessageEvaluationMetricResponse
-                {
-                    Id = m.Id,
-                    MessageId = m.MessageId,
-                    MetricName = m.MetricName,
-                    Score = m.Score,
-                    Remarks = m.Remarks,
-                    EvaluatedAt = m.EvaluatedAt,
-                    EvaluationModelId = m.EvaluationModelId
-                })
-                .ToListAsync(ct);
+            await Send.NotFoundAsync(ct);
+            return;
+        }
 
-            await Send.OkAsync(metrics, ct);
-        }
-        catch (Exception ex)
-        {
-            // Log?
-            ThrowError($"Error retrieving metrics: {ex.Message}");
-        }
+        var metrics = await DbContext.MessageEvaluationMetrics
+            .Where(m => m.MessageId == messageId)
+            .Select(m => new MessageEvaluationMetricResponse
+            {
+                Id = m.Id,
+                MessageId = m.MessageId,
+                MetricName = m.MetricName,
+                Score = m.Score,
+                Remarks = m.Remarks,
+                EvaluatedAt = m.EvaluatedAt,
+                EvaluationModelId = m.EvaluationModelId
+            })
+            .ToListAsync(ct);
+
+        await Send.OkAsync(metrics, ct);
     }
 }

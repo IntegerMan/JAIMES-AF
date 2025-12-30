@@ -152,7 +152,6 @@ GET {{ApiService_HostAddress}}/messages/66/tool-calls
 
 ### Get Message Evaluation Metrics
 GET {{ApiService_HostAddress}}/messages/66/metrics
-/SearchRules
 Accept: application/json
 
 ### Get Tool Call Details for SearchRules

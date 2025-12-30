@@ -103,7 +103,7 @@ public class MessageEvaluationService(
 
             foreach (string metricName in metricNames)
             {
-                if (result.Get<NumericMetric>(metricName) is {Value: not null} metric)
+                if (result.Get<NumericMetric>(metricName) is { Value: not null } metric)
                 {
                     // Serialize any additional metadata if available
                     string? diagnosticsJson = null;
@@ -155,7 +155,8 @@ public class MessageEvaluationService(
                         {
                             MessageId = message.Id,
                             MetricName = metricName,
-                            Score = metric.Value.Value
+                            Score = metric.Value.Value,
+                            EvaluatedAt = evaluatedAt
                         }
                         : null;
                 })
