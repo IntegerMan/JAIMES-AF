@@ -7,7 +7,7 @@
 {
     <MudChat ChatPosition="ChatBubblePosition.Start"
              Variant="Variant.Filled"
-             Color="@Color"
+             Color="@(Highlighted ? Color.Info : Color)"
              @onmouseenter="OnMouseEnter"
              @onmouseleave="OnMouseLeave">
         @if (IsFirstParagraph)
@@ -20,56 +20,14 @@
         @if (IsLastParagraph && MessageId.HasValue)
         {
             <MudChatFooter Class="feedback-footer">
-                <div class="d-flex align-items-center gap-2">
-                    @if (ToolCalls != null && ToolCalls.Any())
-                    {
-                        var toolNames = string.Join(", ", ToolCalls.Select(t => t.ToolName));
-                        <MudTooltip Text="@($"Tools used: {toolNames}")">
-                            <MudIconButton Icon="@Icons.Material.Filled.Build"
-                                           Color="Color.Default"
-                                           Size="Size.Small"
-                                           Variant="Variant.Text"
-                                           Class="tool-call-button"
-                                           OnClick="OnToolCallsClicked"/>
-                        </MudTooltip>
-                    }
-                    @if (Feedback != null)
-                    {
-                        <MudTooltip Text="@(string.IsNullOrWhiteSpace(Feedback.Comment) ? $"You provided {(Feedback.IsPositive ? "positive" : "negative")} feedback" : Feedback.Comment)">
-                            <div class="d-flex align-items-center gap-1">
-                                <MudIcon Icon="@(Feedback.IsPositive ? Icons.Material.Filled.ThumbUp : Icons.Material.Filled.ThumbDown)"
-                                         Color="Color.Default"
-                                         Size="Size.Small"
-                                         Class="feedback-icon-existing"/>
-                            </div>
-                        </MudTooltip>
-                    }
-                    else if (_isHovering && !ReadOnly)
-                    {
-                        <div class="d-flex align-items-center gap-1">
-                            <MudTooltip Text="Mark as good and provide feedback">
-                                <MudIconButton Icon="@Icons.Material.Filled.ThumbUp"
-                                               Color="Color.Default"
-                                               Size="Size.Small"
-                                               Variant="Variant.Text"
-                                               Class="feedback-button"
-                                               OnClick="@(() => OnFeedbackClicked(true))"/>
-                            </MudTooltip>
-                            <MudTooltip Text="Mark as bad and provide feedback">
-                                <MudIconButton Icon="@Icons.Material.Filled.ThumbDown"
-                                               Color="Color.Default"
-                                               Size="Size.Small"
-                                               Variant="Variant.Text"
-                                               Class="feedback-button"
-                                               OnClick="@(() => OnFeedbackClicked(false))"/>
-                            </MudTooltip>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="feedback-spacer"></div>
-                    }
-                </div>
+                <MessageIndicators
+                    Feedback="@Feedback"
+                    ToolCallCount="@(ToolCalls?.Count ?? 0)"
+                    ReadOnly="@ReadOnly"
+                    ShowFeedbackButtons="@_isHovering"
+                    MessageId="@MessageId"
+                    OnToolCallsClick="OnToolCallsClick"
+                    OnFeedbackClick="OnFeedbackClick" />
             </MudChatFooter>
         }
     </MudChat>
@@ -83,6 +41,9 @@
 
     [Parameter]
     public Color Color { get; set; } = Color.Default;
+
+    [Parameter]
+    public bool Highlighted { get; set; }
     
     [Parameter]
     public int? MessageId { get; set; }
@@ -117,20 +78,5 @@
     {
         _isHovering = false;
     }
-
-    private async Task OnToolCallsClicked()
-    {
-        if (MessageId.HasValue)
-        {
-            await OnToolCallsClick.InvokeAsync(MessageId.Value);
-        }
-    }
-
-    private async Task OnFeedbackClicked(bool isPositive)
-    {
-        if (MessageId.HasValue)
-        {
-            await OnFeedbackClick.InvokeAsync((MessageId.Value, isPositive));
-        }
-    }
 }
+

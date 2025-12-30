@@ -27,6 +27,7 @@ public static partial class MessageMapper
     [MapperIgnoreSource(nameof(Message.NextMessage))]
     [MapperIgnoreSource(nameof(Message.Model))]
     [MapperIgnoreSource(nameof(Message.ModelId))]
+    [MapperIgnoreSource(nameof(Message.ToolCalls))]
     public static partial MessageDto ToDto(this Message message);
 
     public static partial MessageDto[] ToDto(this IEnumerable<Message> messages);

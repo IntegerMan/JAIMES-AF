@@ -47,7 +47,7 @@ public class ListMessageFeedbackEndpointTests : EndpointTestBase
         feedbackResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
 
         // 4. List Feedback
-        var listResponse = await Client.GetAsync("/feedback", ct);
+        var listResponse = await Client.GetAsync("/admin/feedback", ct);
         listResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         var feedbackList = await listResponse.Content.ReadFromJsonAsync<FeedbackListResponse>(ct);
 
