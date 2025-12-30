@@ -274,8 +274,9 @@ public partial class GameDetails : IAsyncDisposable
         {
             _isSending = false;
 
-            // Refresh game state to get updated message IDs for feedback functionality
-            await LoadGameAsync();
+            // Don't reload game state here - it wipes out messages that were just added locally
+            // The messages are already in _messages from the AGUI response
+            // await LoadGameAsync();
 
             // Scroll after typing indicator disappears
             _shouldScrollToBottom = true;
