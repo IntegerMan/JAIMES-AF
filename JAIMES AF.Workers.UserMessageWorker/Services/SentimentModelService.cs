@@ -164,10 +164,18 @@ public class SentimentModelService(
                         Sentiment = finalSentiment,
                         Confidence = confidence,
                         CreatedAt = now,
-                        UpdatedAt = now
+                        UpdatedAt = now,
+                        SentimentSource = SentimentSource.Model
                     };
                     context.MessageSentiments.Add(newSentiment);
                     updatedCount++;
+                }
+                else if (message.MessageSentiment.SentimentSource == SentimentSource.Player)
+                {
+                    // Skip if manually set by player
+                    _logger.LogDebug(
+                        "Skipping reclassification for message {MessageId} as it was manually set by a player",
+                        message.Id);
                 }
                 else if (message.MessageSentiment.Sentiment != finalSentiment ||
                          message.MessageSentiment.Confidence != confidence)
@@ -176,6 +184,7 @@ public class SentimentModelService(
                     message.MessageSentiment.Sentiment = finalSentiment;
                     message.MessageSentiment.Confidence = confidence;
                     message.MessageSentiment.UpdatedAt = now;
+                    message.MessageSentiment.SentimentSource = SentimentSource.Model;
                     updatedCount++;
                 }
 

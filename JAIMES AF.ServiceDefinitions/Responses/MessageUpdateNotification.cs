@@ -32,9 +32,20 @@ public record MessageUpdateNotification
     public double? SentimentConfidence { get; init; }
 
     /// <summary>
+    /// Optional sentiment source (0 = Model, 1 = Player) for user messages.
+    /// </summary>
+    public int? SentimentSource { get; init; }
+
+    /// <summary>
     /// Optional evaluation metrics for assistant messages.
     /// </summary>
     public List<MessageEvaluationMetricResponse>? Metrics { get; init; }
+
+    /// <summary>
+    /// Optional message text for content-based matching.
+    /// Included to enable correct ID assignment when notifications arrive out-of-order.
+    /// </summary>
+    public string? MessageText { get; init; }
 }
 
 /// <summary>

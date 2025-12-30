@@ -170,6 +170,7 @@ public class MessageEvaluationService(
                     message.Id,
                     message.GameId,
                     metricResponses,
+                    message.Text,
                     cancellationToken);
             }
 

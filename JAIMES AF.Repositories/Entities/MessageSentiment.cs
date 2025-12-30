@@ -30,6 +30,12 @@ public class MessageSentiment
     public int Sentiment { get; set; }
 
     /// <summary>
+    /// Gets or sets the source of the sentiment analysis (Model or Player).
+    /// </summary>
+    [Required]
+    public SentimentSource SentimentSource { get; set; } = SentimentSource.Model;
+
+    /// <summary>
     /// Gets or sets the confidence score for the sentiment prediction (0.0 to 1.0).
     /// Null for legacy records created before confidence tracking was implemented.
     /// </summary>

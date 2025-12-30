@@ -46,6 +46,7 @@
 				@for (int msgIndex = 0; msgIndex < (_messages?.Count ?? 0); msgIndex++)
 				{
 					var m = _messages![msgIndex];
+                    int capturedIndex = msgIndex; // Capture for lambda closure structure below
 
 					// Skip empty messages
 					if (string.IsNullOrWhiteSpace(m.Text))
@@ -75,7 +76,8 @@
 						        IsLastParagraph="@isLastParagraph"
 						        MessageId="@messageId"
                                 Sentiment="@sentimentInfo?.Sentiment"
-                                Confidence="@sentimentInfo?.Confidence" />
+                                Confidence="@sentimentInfo?.Confidence"
+                                SentimentSource="@sentimentInfo?.SentimentSource" />
 						}
 						else
 						{
@@ -95,6 +97,19 @@
 							}
 						}
 					}
+
+                    @if (_failedMessageIndex == msgIndex && !string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <MudChat ChatPosition="ChatBubblePosition.End">
+                            <MudChatBubble Color="Color.Error">
+                                <MudIcon Icon="@Icons.Material.Filled.Error" Class="mr-2" Size="Size.Small"/>
+                                @_errorMessage
+                                <MudButton Size="Size.Small" Color="Color.Inherit" OnClick="@(() => RetryMessageAsync(capturedIndex))" Variant="Variant.Text">
+                                    Retry
+                                </MudButton>
+                            </MudChatBubble>
+                        </MudChat>
+                    }
 				}
 
 				@if (_isSending)

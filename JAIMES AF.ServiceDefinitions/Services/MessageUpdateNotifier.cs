@@ -20,7 +20,7 @@ public class MessageUpdateNotifier : IMessageUpdateNotifier
     }
 
     public async Task NotifySentimentAnalyzedAsync(int messageId, Guid gameId, int sentiment, double? confidence,
-        CancellationToken cancellationToken = default)
+        string messageText, CancellationToken cancellationToken = default)
     {
         MessageUpdateNotification notification = new()
         {
@@ -28,21 +28,25 @@ public class MessageUpdateNotifier : IMessageUpdateNotifier
             GameId = gameId,
             UpdateType = MessageUpdateType.SentimentAnalyzed,
             Sentiment = sentiment,
-            SentimentConfidence = confidence
+            SentimentConfidence = confidence,
+            SentimentSource = 0, // Model source for worker-generated sentiment
+            MessageText = messageText
         };
 
         await SendNotificationAsync(notification, cancellationToken);
     }
 
     public async Task NotifyMetricsEvaluatedAsync(int messageId, Guid gameId,
-        List<MessageEvaluationMetricResponse> metrics, CancellationToken cancellationToken = default)
+        List<MessageEvaluationMetricResponse> metrics, string messageText,
+        CancellationToken cancellationToken = default)
     {
         MessageUpdateNotification notification = new()
         {
             MessageId = messageId,
             GameId = gameId,
             UpdateType = MessageUpdateType.MetricsEvaluated,
-            Metrics = metrics
+            Metrics = metrics,
+            MessageText = messageText
         };
 
         await SendNotificationAsync(notification, cancellationToken);
