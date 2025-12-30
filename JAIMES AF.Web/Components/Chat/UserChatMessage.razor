@@ -57,6 +57,8 @@
     }
 </MudChat>
 
+@inject ISnackbar Snackbar
+
 @code {
     [Parameter]
     public required string Text { get; set; }
@@ -107,9 +109,22 @@
         if (!MessageId.HasValue || ReadOnly) return;
 
         MattEland.Jaimes.ServiceDefinitions.Requests.UpdateMessageSentimentRequest request = new() { Sentiment = newSentiment };
-        await Http.PutAsJsonAsync($"/messages/{MessageId}/sentiment", request);
+        try
+        {
+            var response = await Http.PutAsJsonAsync($"/messages/{MessageId}/sentiment", request);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorMsg = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to update sentiment: {errorMsg}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+             Snackbar.Add($"Failed to update sentiment: {ex.Message}", Severity.Error);
+        }
         
-        // Note: The UI will update automatically via SignalR broadcast from the server
+        // Note: The UI will update automatically via SignalR broadcast from the server if successful
     }
 
     private string GetSentimentTooltipText()
