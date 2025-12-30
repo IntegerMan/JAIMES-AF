@@ -11,7 +11,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
     public DbSet<Scenario> Scenarios { get; set; } = null!;
     public DbSet<Ruleset> Rulesets { get; set; } = null!;
     public DbSet<ChatHistory> ChatHistories { get; set; } = null!;
-    
+
     // Agent instruction system entities
     public DbSet<Agent> Agents { get; set; } = null!;
     public DbSet<AgentInstructionVersion> AgentInstructionVersions { get; set; } = null!;
@@ -96,16 +96,16 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(iv => iv.Model)
-                .WithMany()
+                .WithMany(m => m.AgentInstructionVersions)
                 .HasForeignKey(iv => iv.ModelId)
                 .OnDelete(DeleteBehavior.NoAction);
 
-            entity.HasIndex(iv => new { iv.AgentId, iv.VersionNumber }).IsUnique();
+            entity.HasIndex(iv => new {iv.AgentId, iv.VersionNumber}).IsUnique();
         });
 
         modelBuilder.Entity<ScenarioAgent>(entity =>
         {
-            entity.HasKey(sa => new { sa.ScenarioId, sa.AgentId });
+            entity.HasKey(sa => new {sa.ScenarioId, sa.AgentId});
             entity.Property(sa => sa.ScenarioId).IsRequired();
             entity.Property(sa => sa.AgentId).IsRequired();
             entity.Property(sa => sa.InstructionVersionId).IsRequired();
@@ -191,6 +191,11 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.HasOne(m => m.NextMessage)
                 .WithMany()
                 .HasForeignKey(m => m.NextMessageId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(m => m.Model)
+                .WithMany(mo => mo.Messages)
+                .HasForeignKey(m => m.ModelId)
                 .OnDelete(DeleteBehavior.NoAction);
         });
 
@@ -442,7 +447,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.Property(m => m.CreatedAt).IsRequired();
 
             // Create unique index on Name + Provider + Endpoint to prevent duplicates
-            entity.HasIndex(m => new { m.Name, m.Provider, m.Endpoint })
+            entity.HasIndex(m => new {m.Name, m.Provider, m.Endpoint})
                 .IsUnique();
         });
         // Message evaluation metric entity configuration
@@ -497,14 +502,26 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
         // you MUST create a new EF Core migration. See AGENTS.md for the migration command.
         modelBuilder.Entity<Ruleset>()
             .HasData(
-                new Ruleset { Id = "dnd5e", Name = "Dungeons and Dragons 5th Edition" }
+                new Ruleset {Id = "dnd5e", Name = "Dungeons and Dragons 5th Edition"}
             );
 
         modelBuilder.Entity<Player>()
             .HasData(
-                new Player { Id = "emcee", RulesetId = "dnd5e", Description = "Default player", Name = "Emcee" },
-                new Player { Id = "kigorath", RulesetId = "dnd5e", Description = "A towering goliath druid who communes with the primal spirits of stone and storm. Their skin is marked with tribal patterns that glow faintly when channeling nature magic.", Name = "Kigorath the Goliath Druid" },
-                new Player { Id = "glim", RulesetId = "dnd5e", Description = "A small frog wizard with bright, curious eyes and a penchant for collecting strange spell components. They speak in a croaky voice and are always eager to learn new magic.", Name = "Glim the Frog Wizard" }
+                new Player {Id = "emcee", RulesetId = "dnd5e", Description = "Default player", Name = "Emcee"},
+                new Player
+                {
+                    Id = "kigorath", RulesetId = "dnd5e",
+                    Description =
+                        "A towering goliath druid who communes with the primal spirits of stone and storm. Their skin is marked with tribal patterns that glow faintly when channeling nature magic.",
+                    Name = "Kigorath the Goliath Druid"
+                },
+                new Player
+                {
+                    Id = "glim", RulesetId = "dnd5e",
+                    Description =
+                        "A small frog wizard with bright, curious eyes and a penchant for collecting strange spell components. They speak in a croaky voice and are always eager to learn new magic.",
+                    Name = "Glim the Frog Wizard"
+                }
             );
 
         // Agents and instruction versions will be created programmatically during application startup
