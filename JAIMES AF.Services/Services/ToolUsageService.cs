@@ -280,5 +280,94 @@ public class ToolUsageService(
             ToolDescription = toolMetadata?.Description
         };
     }
+
+    /// <inheritdoc />
+    public async Task<ToolCallFullDetailResponse?> GetToolCallFullDetailsAsync(int toolCallId,
+        CancellationToken cancellationToken = default)
+    {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        // Fetch the tool call
+        MessageToolCall? toolCall = await context.MessageToolCalls
+            .AsNoTracking()
+            .Include(mtc => mtc.Message)
+            .ThenInclude(m => m!.Game)
+            .ThenInclude(g => g!.Scenario)
+            .Include(mtc => mtc.Message)
+            .ThenInclude(m => m!.Game)
+            .ThenInclude(g => g!.Player)
+            .Include(mtc => mtc.InstructionVersion)
+            .ThenInclude(iv => iv!.Agent)
+            .FirstOrDefaultAsync(mtc => mtc.Id == toolCallId, cancellationToken);
+
+        if (toolCall == null || toolCall.Message == null)
+        {
+            return null;
+        }
+
+        // Get feedback
+        MessageFeedback? feedback = await context.MessageFeedbacks
+            .AsNoTracking()
+            .FirstOrDefaultAsync(mf => mf.MessageId == toolCall.MessageId, cancellationToken);
+
+        string? gameName = null;
+        if (toolCall.Message.Game != null)
+        {
+            gameName =
+                $"{toolCall.Message.Game.Scenario?.Name ?? "Unknown Scenario"} - {toolCall.Message.Game.Player?.Name ?? "Unknown Player"}";
+        }
+
+        // Get context messages (last 5 messages leading up to and including the tool call message)
+        List<Message> contextMessages = await context.Messages
+            .AsNoTracking()
+            .Where(m => m.GameId == toolCall.Message.GameId && m.CreatedAt <= toolCall.Message.CreatedAt)
+            .OrderByDescending(m => m.CreatedAt)
+            .Take(5)
+            .Include(m => m.Player)
+            .Include(m => m.Agent)
+            .Include(m => m.InstructionVersion)
+            .ThenInclude(iv => iv!.Agent)
+            .ToListAsync(cancellationToken);
+
+        contextMessages.Reverse();
+
+        List<MessageResponse> messageResponses = contextMessages.Select(m =>
+        {
+            bool isAssistant = m.PlayerId == null;
+            string participantName = isAssistant
+                ? (m.InstructionVersion?.Agent?.Name ?? m.Agent?.Name ?? "Assistant")
+                : (m.Player?.Name ?? "User");
+
+            return new MessageResponse
+            {
+                Id = m.Id,
+                Text = m.Text,
+                Participant = isAssistant ? ChatParticipant.GameMaster : ChatParticipant.Player,
+                ParticipantName = participantName,
+                PlayerId = m.PlayerId,
+                CreatedAt = m.CreatedAt,
+                AgentId = m.AgentId ?? m.InstructionVersion?.AgentId,
+                InstructionVersionId = m.InstructionVersionId,
+                Sentiment = m.Sentiment
+            };
+        }).ToList();
+
+        return new ToolCallFullDetailResponse
+        {
+            Id = toolCall.Id,
+            ToolName = toolCall.ToolName,
+            CreatedAt = toolCall.CreatedAt,
+            MessageId = toolCall.MessageId,
+            GameId = toolCall.Message.GameId,
+            GameName = gameName,
+            AgentName = toolCall.InstructionVersion?.Agent?.Name,
+            AgentVersion = toolCall.InstructionVersion?.VersionNumber,
+            FeedbackIsPositive = feedback?.IsPositive,
+            FeedbackComment = feedback?.Comment,
+            InputJson = toolCall.InputJson,
+            OutputJson = toolCall.OutputJson,
+            ContextMessages = messageResponses
+        };
+    }
 }
 

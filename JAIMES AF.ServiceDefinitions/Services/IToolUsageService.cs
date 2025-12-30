@@ -44,5 +44,14 @@ public interface IToolUsageService
         int? instructionVersionId = null,
         Guid? gameId = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets full details for a specific tool call.
+    /// </summary>
+    /// <param name="toolCallId">The ID of the tool call.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The full details of the tool call, or null if not found.</returns>
+    Task<ToolCallFullDetailResponse?> GetToolCallFullDetailsAsync(int toolCallId,
+        CancellationToken cancellationToken = default);
 }
 

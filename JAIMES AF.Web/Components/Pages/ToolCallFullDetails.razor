@@ -1,0 +1,139 @@
+@page "/admin/tool-calls/{Id:int}"
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using System.Text.Json
+@using MudBlazor
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<PageTitle>Tool Call Details</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudButton Variant="Variant.Text" 
+               Color="Color.Primary" 
+               StartIcon="@Icons.Material.Filled.ArrowBack"
+               OnClick="GoBack"
+               Class="mb-2">
+        Back to Tool List
+    </MudButton>
+
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" Class="d-block mx-auto mt-4" />
+    }
+    else if (_toolCall == null)
+    {
+        <MudAlert Severity="Severity.Error">Tool call not found.</MudAlert>
+    }
+    else
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+            <MudText Typo="Typo.h4">Tool Call: @_toolCall.ToolName</MudText>
+            @if (_toolCall.GameId.HasValue)
+            {
+                <MudButton StartIcon="@Icons.Material.Filled.VideogameAsset" 
+                           Color="Color.Secondary" 
+                           Href="@($"/games/{_toolCall.GameId}")" 
+                           Target="_blank">
+                    View Game
+                </MudButton>
+            }
+        </MudStack>
+        
+        <MudGrid>
+            <MudItem xs="12">
+                 <MudText Typo="Typo.h5" Class="mb-2">Conversation Context</MudText>
+                 <MudPaper Class="pa-4 custom-scroll" Style="max-height: 500px; overflow-y: auto;">
+                      @if (_toolCall.ContextMessages.Any())
+                      {
+                          @foreach(var msg in _toolCall.ContextMessages)
+                          {
+                              bool isTarget = msg.Id == _toolCall.MessageId;
+                              var borderStyle = isTarget ? $"border: 2px solid {Colors.DeepPurple.Default};" : "";
+                              var bgStyle = isTarget ? $"background-color: {Colors.DeepPurple.Lighten5};" : "";
+                              
+                              <MudPaper Class="mb-3 pa-3" Style="@($"{borderStyle} {bgStyle}")" Elevation="@(isTarget ? 3 : 1)">
+                                   <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                       <MudText Typo="Typo.caption" Class="text-muted">
+                                           <strong>@msg.ParticipantName</strong> - @msg.CreatedAt.ToLocalTime()
+                                       </MudText>
+                                       @if (isTarget) {
+                                           <MudChip T="string" Size="Size.Small" Color="Color.Primary">Tool Called Here</MudChip>
+                                       }
+                                   </MudStack>
+                                   <MudText Class="mt-1" Style="white-space: pre-wrap;">@msg.Text</MudText>
+                              </MudPaper>
+                          }
+                      }
+                      else
+                      {
+                          <MudText Typo="Typo.body2" Class="text-muted">No context messages available.</MudText>
+                      }
+                 </MudPaper>
+            </MudItem>
+            
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.h6" Class="mt-4 mb-2">Input Payload</MudText>
+                <MudPaper Class="pa-3" Elevation="2">
+                    <pre style="white-space: pre-wrap; font-family: monospace; font-size: 0.875rem;">@FormatJson(_toolCall.InputJson)</pre>
+                </MudPaper>
+            </MudItem>
+             <MudItem xs="12" md="6">
+                <MudText Typo="Typo.h6" Class="mt-4 mb-2">Output Result</MudText>
+                <MudPaper Class="pa-3" Elevation="2">
+                     <pre style="white-space: pre-wrap; font-family: monospace; font-size: 0.875rem;">@FormatJson(_toolCall.OutputJson)</pre>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private ToolCallFullDetailResponse? _toolCall;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try {
+            var client = HttpClientFactory.CreateClient("Api");
+            _toolCall = await client.GetFromJsonAsync<ToolCallFullDetailResponse>($"/admin/tool-calls/{Id}");
+        }
+        catch (Exception ex) {
+            // Silently fail in UI, leaving _toolCall null to show error
+            Console.WriteLine($"Error loading tool call: {ex}");
+        }
+        finally {
+            _loading = false;
+        }
+    }
+
+    private void GoBack() {
+        if (_toolCall != null) 
+        {
+            NavigationManager.NavigateTo($"/admin/tools/{Uri.EscapeDataString(_toolCall.ToolName)}");
+        }
+        else 
+        {
+            NavigationManager.NavigateTo("/admin/tools");
+        }
+    }
+    
+    private string FormatJson(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return "(empty)";
+        }
+
+        try
+        {
+            using JsonDocument doc = JsonDocument.Parse(json);
+            return JsonSerializer.Serialize(doc, new JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            return json;
+        }
+    }
+}
