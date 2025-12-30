@@ -680,17 +680,22 @@ public partial class GameDetails : IAsyncDisposable
                     notification.UpdateType,
                     notification.MessageId);
 
-                // Update local state based on update type
-                if (notification.UpdateType == MessageUpdateType.SentimentAnalyzed && notification.Sentiment.HasValue)
+                await InvokeAsync(() =>
                 {
-                    _messageSentiment[notification.MessageId] = notification.Sentiment.Value;
-                    await InvokeAsync(StateHasChanged);
-                }
-                else if (notification.UpdateType == MessageUpdateType.MetricsEvaluated && notification.Metrics != null)
-                {
-                    _messageMetrics[notification.MessageId] = notification.Metrics;
-                    await InvokeAsync(StateHasChanged);
-                }
+                    // Update local state based on update type
+                    if (notification.UpdateType == MessageUpdateType.SentimentAnalyzed &&
+                        notification.Sentiment.HasValue)
+                    {
+                        _messageSentiment[notification.MessageId] = notification.Sentiment.Value;
+                    }
+                    else if (notification.UpdateType == MessageUpdateType.MetricsEvaluated &&
+                             notification.Metrics != null)
+                    {
+                        _messageMetrics[notification.MessageId] = notification.Metrics;
+                    }
+
+                    StateHasChanged();
+                });
             });
 
             // Start connection
