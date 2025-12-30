@@ -74,14 +74,17 @@
                 <CellTemplate>
                     @if (context.Item.FeedbackIsPositive.HasValue)
                     {
-                        <MessageIndicators 
-                            Feedback="@(new MessageFeedbackInfo 
-                            { 
-                                MessageId = context.Item.MessageId, 
-                                IsPositive = context.Item.FeedbackIsPositive.Value,
-                                Comment = context.Item.FeedbackComment
-                            })"
-                            ReadOnly="true" />
+                        var isPositive = context.Item.FeedbackIsPositive.Value;
+                        var icon = isPositive ? Icons.Material.Filled.ThumbUp : Icons.Material.Filled.ThumbDown;
+                        var color = isPositive ? Color.Success : Color.Error;
+                        var feedbackUrl = $"/admin/feedback?toolName={Uri.EscapeDataString(ToolName)}&isPositive={isPositive}";
+
+                        <MudTooltip Text="@(context.Item.FeedbackComment ?? (isPositive ? "Helpful" : "Unhelpful"))">
+                            <MudIconButton Icon="@icon"
+                                           Color="@color"
+                                           Size="Size.Small"
+                                           Href="@feedbackUrl" />
+                        </MudTooltip>
                     }
                     else
                     {
