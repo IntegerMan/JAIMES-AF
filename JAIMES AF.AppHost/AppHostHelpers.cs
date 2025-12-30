@@ -1,4 +1,5 @@
 using Aspire.Hosting;
+using Microsoft.Extensions.Configuration;
 
 namespace MattEland.Jaimes.AppHost;
 
@@ -85,7 +86,8 @@ internal static class AppHostHelpers
         if (modelResource != null)
         {
             var connectionStringName = sectionPrefix == "TextGenerationModel" ? "chatModel" : "embedModel";
-            setVariable($"ConnectionStrings__{connectionStringName}", modelResource.Resource.ConnectionStringExpression);
+            setVariable($"ConnectionStrings__{connectionStringName}",
+                modelResource.Resource.ConnectionStringExpression);
         }
     }
 
@@ -124,5 +126,31 @@ internal static class AppHostHelpers
         {
             setVariable(legacyKey, externalEndpoint);
         }
+    }
+
+    /// <summary>
+    /// Configures the OTLP exporter endpoint for a resource to ensure telemetry is collected.
+    /// </summary>
+    internal static IResourceBuilder<T> WithTelemetryEndpoint<T>(
+        this IResourceBuilder<T> resource,
+        IConfiguration configuration) where T : IResourceWithEnvironment
+    {
+        // Try to get the endpoint from the specific environment variable first (if set explicitly)
+        // This takes precedence.
+        string? otlpEndpoint = configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
+
+        // If not set, try the Aspire Dashboard URL env var (which is set by launchSettings.json)
+        // This is the common case for local development.
+        if (string.IsNullOrWhiteSpace(otlpEndpoint))
+        {
+            otlpEndpoint = configuration["ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL"];
+        }
+
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+        {
+            resource.WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", otlpEndpoint);
+        }
+
+        return resource;
     }
 }

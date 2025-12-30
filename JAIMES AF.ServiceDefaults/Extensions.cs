@@ -146,14 +146,26 @@ public static class Extensions
         return builder;
     }
 
-    private static TBuilder AddOpenTelemetryExporters<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    private static TBuilder AddOpenTelemetryExporters<TBuilder>(this TBuilder builder)
+        where TBuilder : IHostApplicationBuilder
     {
-        var useOtlpExporter = !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]);
+        var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
 
-        if (useOtlpExporter)
+        // Log the endpoint being used (or lack thereof) to help debug "all or nothing" telemetry issues
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
         {
-            builder.Services.AddOpenTelemetry().UseOtlpExporter();
+            Console.WriteLine($"[Telemetry] configuring OTLP exporter with endpoint: {otlpEndpoint}");
         }
+        else
+        {
+            Console.WriteLine(
+                "[Telemetry] OTEL_EXPORTER_OTLP_ENDPOINT is not set. Using default OTLP configuration (usually localhost:4317).");
+        }
+
+        // Always add the OTLP exporter. 
+        // If the endpoint is missing, it will use defaults (localhost:4317).
+        // This prevents silent failures where telemetry is just turned off.
+        builder.Services.AddOpenTelemetry().UseOtlpExporter();
 
         return builder;
     }
@@ -214,7 +226,7 @@ public static class Extensions
                 args.Outcome.Result?.StatusCode == System.Net.HttpStatusCode.RequestTimeout ||
                 args.Outcome.Result?.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable ||
                 (args.Outcome.Result?.StatusCode >= System.Net.HttpStatusCode.InternalServerError &&
-                 args.Outcome.Result?.StatusCode <= (System.Net.HttpStatusCode)599));
+                 args.Outcome.Result?.StatusCode <= (System.Net.HttpStatusCode) 599));
         };
     }
 }
