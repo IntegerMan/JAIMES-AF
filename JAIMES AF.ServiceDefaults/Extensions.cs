@@ -184,14 +184,12 @@ public static class Extensions
         }
 
         // If the protocol isn't set, default to HttpProtobuf (HTTP/1.1).
-        // We do this via Configure options to avoid method overload issues.
-        builder.Services.Configure<OtlpExporterOptions>(options =>
+        // We set the environment variable directly because UseOtlpExporter() reads from env vars,
+        // not from Configure<OtlpExporterOptions>.
+        if (string.IsNullOrWhiteSpace(otlpProtocol))
         {
-            if (string.IsNullOrWhiteSpace(otlpProtocol))
-            {
-                options.Protocol = OtlpExportProtocol.HttpProtobuf;
-            }
-        });
+            Environment.SetEnvironmentVariable("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf");
+        }
 
         // Always add the OTLP exporter. 
         // If the endpoint is missing, it will use defaults (localhost:4317).
