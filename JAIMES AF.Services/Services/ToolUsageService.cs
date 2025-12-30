@@ -63,7 +63,7 @@ public class ToolUsageService(
 
         // Group by tool name to get statistics for tools that have been called
         var toolCallStats = allToolCalls
-            .GroupBy(mtc => mtc.ToolName)
+            .GroupBy(mtc => mtc.ToolName, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
                 grp => grp.Key,
                 grp =>
@@ -208,7 +208,7 @@ public class ToolUsageService(
             .ThenInclude(g => g!.Player)
             .Include(mtc => mtc.InstructionVersion)
             .ThenInclude(iv => iv!.Agent)
-            .Where(mtc => mtc.ToolName == toolName);
+            .Where(mtc => mtc.ToolName.ToLower() == toolName.ToLower());
 
         // Apply optional filters
         if (instructionVersionId.HasValue)
