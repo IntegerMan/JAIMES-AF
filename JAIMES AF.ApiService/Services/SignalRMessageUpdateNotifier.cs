@@ -14,7 +14,7 @@ public class SignalRMessageUpdateNotifier(
     ILogger<SignalRMessageUpdateNotifier> logger) : IMessageUpdateNotifier
 {
     public async Task NotifySentimentAnalyzedAsync(int messageId, Guid gameId, int sentiment, double? confidence,
-        CancellationToken cancellationToken = default)
+        string messageText, CancellationToken cancellationToken = default)
     {
         MessageUpdateNotification notification = new()
         {
@@ -23,21 +23,24 @@ public class SignalRMessageUpdateNotifier(
             UpdateType = MessageUpdateType.SentimentAnalyzed,
             Sentiment = sentiment,
             SentimentConfidence = confidence,
-            SentimentSource = 0 // Model
+            SentimentSource = 0, // Model
+            MessageText = messageText
         };
 
         await BroadcastUpdateAsync(notification);
     }
 
     public async Task NotifyMetricsEvaluatedAsync(int messageId, Guid gameId,
-        List<MessageEvaluationMetricResponse> metrics, CancellationToken cancellationToken = default)
+        List<MessageEvaluationMetricResponse> metrics, string messageText,
+        CancellationToken cancellationToken = default)
     {
         MessageUpdateNotification notification = new()
         {
             MessageId = messageId,
             GameId = gameId,
             UpdateType = MessageUpdateType.MetricsEvaluated,
-            Metrics = metrics
+            Metrics = metrics,
+            MessageText = messageText
         };
 
         await BroadcastUpdateAsync(notification);

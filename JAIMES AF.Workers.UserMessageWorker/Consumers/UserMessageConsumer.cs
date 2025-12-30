@@ -176,6 +176,7 @@ public class UserMessageConsumer(
                     messageEntity.GameId,
                     sentiment,
                     confidence,
+                    messageEntity.Text,
                     cancellationToken);
 
                 return true;

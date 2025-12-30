@@ -40,6 +40,12 @@ public record MessageUpdateNotification
     /// Optional evaluation metrics for assistant messages.
     /// </summary>
     public List<MessageEvaluationMetricResponse>? Metrics { get; init; }
+
+    /// <summary>
+    /// Optional message text for content-based matching.
+    /// Included to enable correct ID assignment when notifications arrive out-of-order.
+    /// </summary>
+    public string? MessageText { get; init; }
 }
 
 /// <summary>

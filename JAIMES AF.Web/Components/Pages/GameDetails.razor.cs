@@ -631,7 +631,7 @@ public partial class GameDetails : IAsyncDisposable
                     notification.UpdateType,
                     notification.MessageId);
 
-                await InvokeAsync(() =>
+                await InvokeAsync(async () =>
                 {
                     // Update local state based on update type
                     if (notification.UpdateType == MessageUpdateType.SentimentAnalyzed &&
@@ -645,18 +645,23 @@ public partial class GameDetails : IAsyncDisposable
                             SentimentSource = notification.SentimentSource
                         };
 
-                        // Find the first pending user message (null ID) and assign this ID to it.
-                        // We search forwards (FIFO) assuming notifications arrive in order of creation.
-                        // Only proceed if we don't already have this message ID mapped (avoid re-mapping existing messages)
-                        if (!_messageIds.Contains(notification.MessageId))
+                        // Match by content using text from notification
+                        // Only proceed if we don't already have this message ID mapped
+                        if (!_messageIds.Contains(notification.MessageId) &&
+                            !string.IsNullOrWhiteSpace(notification.MessageText))
                         {
-                            for (int i = 0; i < _messageIds.Count; i++)
+                            string normalizedText = notification.MessageText.Trim();
+
+                            for (int i = 0; i < _messages.Count; i++)
                             {
-                                if (_messageIds[i] == null && _messages[i].Role == ChatRole.User)
+                                if (_messageIds[i] == null &&
+                                    _messages[i].Role == ChatRole.User &&
+                                    _messages[i].Text.Trim().Equals(normalizedText, StringComparison.Ordinal))
                                 {
                                     _messageIds[i] = notification.MessageId;
-                                    _logger?.LogDebug("Updated User message ID at index {Index} to {MessageId}", i,
-                                        notification.MessageId);
+                                    _logger?.LogDebug(
+                                        "Assigned User message ID {MessageId} to index {Index} by content matching",
+                                        notification.MessageId, i);
                                     break;
                                 }
                             }
@@ -667,19 +672,23 @@ public partial class GameDetails : IAsyncDisposable
                     {
                         _messageMetrics[notification.MessageId] = notification.Metrics;
 
-                        // If we don't have this message ID yet (it was a pending assistant message),
-                        // find the first pending assistant message and assign this ID to it.
-                        // We search forwards (FIFO) assuming notifications arrive in order of creation.
-                        if (!_messageIds.Contains(notification.MessageId))
+                        // Match by content using text from notification
+                        // Only proceed if we don't already have this message ID mapped
+                        if (!_messageIds.Contains(notification.MessageId) &&
+                            !string.IsNullOrWhiteSpace(notification.MessageText))
                         {
-                            for (int i = 0; i < _messageIds.Count; i++)
+                            string normalizedText = notification.MessageText.Trim();
+
+                            for (int i = 0; i < _messages.Count; i++)
                             {
-                                if (_messageIds[i] == null && _messages[i].Role == ChatRole.Assistant)
+                                if (_messageIds[i] == null &&
+                                    _messages[i].Role == ChatRole.Assistant &&
+                                    _messages[i].Text.Trim().Equals(normalizedText, StringComparison.Ordinal))
                                 {
                                     _messageIds[i] = notification.MessageId;
                                     _logger?.LogDebug(
-                                        "Updated Assistant message ID at index {Index} to {MessageId}", i,
-                                        notification.MessageId);
+                                        "Assigned Assistant message ID {MessageId} to index {Index} by content matching",
+                                        notification.MessageId, i);
                                     break;
                                 }
                             }
