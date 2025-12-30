@@ -32,8 +32,10 @@ public class Message
 
     // Sentiment analysis result: -1 (negative), 0 (neutral), 1 (positive), null (not analyzed)
     public int? Sentiment { get; set; }
-
     // Reference to the model used to generate this message
     public int? ModelId { get; set; }
     public Model? Model { get; set; }
+
+    // Navigation property for tool calls
+    public ICollection<MessageToolCall> ToolCalls { get; set; } = [];
 }

@@ -35,18 +35,42 @@
             </PropertyColumn>
             <PropertyColumn Property="x => x.HelpfulCount" Title="Helpful" Sortable="true">
                 <CellTemplate>
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                        <MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Success" Size="Size.Small" />
-                        <MudText Typo="Typo.body2">@context.Item.HelpfulCount</MudText>
-                    </MudStack>
+                    @if (context.Item.HelpfulCount > 0)
+                    {
+                        <MudLink Href="@($"/admin/feedback?toolName={Uri.EscapeDataString(context.Item.ToolName)}&isPositive=true")">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Success" Size="Size.Small" />
+                                <MudText Typo="Typo.body2">@context.Item.HelpfulCount</MudText>
+                            </MudStack>
+                        </MudLink>
+                    }
+                    else
+                    {
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Success" Size="Size.Small" />
+                            <MudText Typo="Typo.body2">@context.Item.HelpfulCount</MudText>
+                        </MudStack>
+                    }
                 </CellTemplate>
             </PropertyColumn>
             <PropertyColumn Property="x => x.UnhelpfulCount" Title="Unhelpful" Sortable="true">
                 <CellTemplate>
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                        <MudIcon Icon="@Icons.Material.Filled.ThumbDown" Color="Color.Error" Size="Size.Small" />
-                        <MudText Typo="Typo.body2">@context.Item.UnhelpfulCount</MudText>
-                    </MudStack>
+                    @if (context.Item.UnhelpfulCount > 0)
+                    {
+                        <MudLink Href="@($"/admin/feedback?toolName={Uri.EscapeDataString(context.Item.ToolName)}&isPositive=false")">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.ThumbDown" Color="Color.Error" Size="Size.Small" />
+                                <MudText Typo="Typo.body2">@context.Item.UnhelpfulCount</MudText>
+                            </MudStack>
+                        </MudLink>
+                    }
+                    else
+                    {
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@Icons.Material.Filled.ThumbDown" Color="Color.Error" Size="Size.Small" />
+                            <MudText Typo="Typo.body2">@context.Item.UnhelpfulCount</MudText>
+                        </MudStack>
+                    }
                 </CellTemplate>
             </PropertyColumn>
             <PropertyColumn Property="x => x.EnabledAgents" Title="Enabled Agents" Sortable="false">
