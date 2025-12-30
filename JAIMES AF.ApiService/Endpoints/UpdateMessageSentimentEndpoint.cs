@@ -1,8 +1,10 @@
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
-using MattEland.Jaimes.ServiceDefinitions.Services;
+using MattEland.Jaimes.ServiceDefinitions.Responses;
+using MattEland.Jaimes.ApiService.Hubs;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace MattEland.Jaimes.ApiService.Endpoints;
@@ -15,7 +17,7 @@ public static class UpdateMessageSentimentEndpoint
                 [FromRoute] int id,
                 [Microsoft.AspNetCore.Mvc.FromBody] UpdateMessageSentimentRequest request,
                 [FromServices] JaimesDbContext context,
-                [FromServices] IMessageUpdateNotifier notifier,
+                [FromServices] IHubContext<MessageHub, IMessageHubClient> hubContext,
                 CancellationToken cancellationToken) =>
             {
                 Message? message = await context.Messages
@@ -52,13 +54,18 @@ public static class UpdateMessageSentimentEndpoint
 
                 await context.SaveChangesAsync(cancellationToken);
 
-                // Notify clients about the update
-                await notifier.NotifySentimentAnalyzedAsync(
-                    message.Id,
-                    message.GameId,
-                    request.Sentiment,
-                    1.0,
-                    cancellationToken);
+                // Notify clients via SignalR directly
+                string groupName = MessageHub.GetGameGroupName(message.GameId);
+                MessageUpdateNotification notification = new()
+                {
+                    MessageId = message.Id,
+                    GameId = message.GameId,
+                    UpdateType = MessageUpdateType.SentimentAnalyzed,
+                    Sentiment = request.Sentiment,
+                    SentimentConfidence = 1.0
+                };
+
+                await hubContext.Clients.Group(groupName).MessageUpdated(notification);
 
                 return Results.Ok();
             })
