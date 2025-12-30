@@ -7,8 +7,8 @@ using Microsoft.Extensions.AI.Evaluation.Quality;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
-// Configure OpenTelemetry for Aspire telemetry
-builder.ConfigureOpenTelemetry();
+// Add service defaults (telemetry, health checks, service discovery)
+builder.AddServiceDefaults();
 
 // Configure logging with OpenTelemetry
 builder.Logging.ClearProviders();
@@ -48,6 +48,14 @@ IConnectionFactory connectionFactory = RabbitMqConnectionFactory.CreateConnectio
 builder.Services.AddSingleton(connectionFactory);
 builder.Services.AddSingleton<IMessagePublisher, MessagePublisher>();
 
+// Configure HttpClient for API service (for SignalR notifications)
+builder.Services.AddHttpClient<IMessageUpdateNotifier, MessageUpdateNotifier>(client =>
+{
+    // Use Aspire service discovery - the connection string will be injected by AppHost
+    string baseAddress = builder.Configuration.GetConnectionString("jaimes-api") ?? "http://jaimes-api";
+    client.BaseAddress = new Uri(baseAddress);
+});
+
 // Register consumer
 builder.Services.AddSingleton<IMessageConsumer<ConversationMessageQueuedMessage>, AssistantMessageConsumer>();
 
@@ -55,8 +63,10 @@ builder.Services.AddSingleton<IMessageConsumer<ConversationMessageQueuedMessage>
 builder.Services.AddHostedService(serviceProvider =>
 {
     IConnectionFactory factory = serviceProvider.GetRequiredService<IConnectionFactory>();
-    IMessageConsumer<ConversationMessageQueuedMessage> consumer = serviceProvider.GetRequiredService<IMessageConsumer<ConversationMessageQueuedMessage>>();
-    ILogger<RoleBasedMessageConsumerService<ConversationMessageQueuedMessage>> logger = serviceProvider.GetRequiredService<ILogger<RoleBasedMessageConsumerService<ConversationMessageQueuedMessage>>>();
+    IMessageConsumer<ConversationMessageQueuedMessage> consumer =
+        serviceProvider.GetRequiredService<IMessageConsumer<ConversationMessageQueuedMessage>>();
+    ILogger<RoleBasedMessageConsumerService<ConversationMessageQueuedMessage>> logger = serviceProvider
+        .GetRequiredService<ILogger<RoleBasedMessageConsumerService<ConversationMessageQueuedMessage>>>();
     ActivitySource? activitySource = serviceProvider.GetService<ActivitySource>();
     return new RoleBasedMessageConsumerService<ConversationMessageQueuedMessage>(
         factory,

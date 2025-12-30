@@ -3,12 +3,13 @@ using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.AGUI;
+using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.AI;
 using MudBlazor;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 
-public partial class GameDetails : IDisposable
+public partial class GameDetails : IAsyncDisposable
 {
     [Inject] public IHttpClientFactory HttpClientFactory { get; set; } = null!;
     [Inject] public ILoggerFactory LoggerFactory { get; set; } = null!;
@@ -28,6 +29,7 @@ public partial class GameDetails : IDisposable
     private GameStateResponse? _game;
     private bool _isLoading = true;
     private string? _errorMessage;
+    private HubConnection? _hubConnection;
 
     private readonly MessageResponse _userMessage = new()
     {
@@ -53,6 +55,9 @@ public partial class GameDetails : IDisposable
     {
         await LoadGameAsync();
         _logger = LoggerFactory.CreateLogger("GameDetails");
+
+        // Connect to SignalR hub for real-time updates
+        await ConnectToSignalRHubAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -644,8 +649,79 @@ public partial class GameDetails : IDisposable
         }
     }
 
-    public void Dispose()
+    /// <summary>
+    /// Connects to the SignalR hub for real-time message updates.
+    /// </summary>
+    private async Task ConnectToSignalRHubAsync()
     {
-        // No resources to dispose
+        try
+        {
+            // Disconnect from previous hub if game changed
+            if (_hubConnection != null)
+            {
+                await _hubConnection.DisposeAsync();
+                _hubConnection = null;
+            }
+
+            // Build hub connection using the API service URL
+            HttpClient apiClient = HttpClientFactory.CreateClient("Api");
+            string hubUrl = new Uri(apiClient.BaseAddress!, "/hubs/messages").ToString();
+
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(hubUrl)
+                .WithAutomaticReconnect()
+                .Build();
+
+            // Handle message updates
+            _hubConnection.On<MessageUpdateNotification>("MessageUpdated", async notification =>
+            {
+                _logger?.LogDebug(
+                    "Received {UpdateType} update for message {MessageId}",
+                    notification.UpdateType,
+                    notification.MessageId);
+
+                // Update local state based on update type
+                if (notification.UpdateType == MessageUpdateType.SentimentAnalyzed && notification.Sentiment.HasValue)
+                {
+                    _messageSentiment[notification.MessageId] = notification.Sentiment.Value;
+                    await InvokeAsync(StateHasChanged);
+                }
+                else if (notification.UpdateType == MessageUpdateType.MetricsEvaluated && notification.Metrics != null)
+                {
+                    _messageMetrics[notification.MessageId] = notification.Metrics;
+                    await InvokeAsync(StateHasChanged);
+                }
+            });
+
+            // Start connection
+            await _hubConnection.StartAsync();
+            _logger?.LogDebug("Connected to SignalR hub");
+
+            // Join the game group to receive updates for this game
+            await _hubConnection.InvokeAsync("JoinGame", GameId);
+            _logger?.LogDebug("Joined game group {GameId}", GameId);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to connect to SignalR hub. Real-time updates will not be available.");
+            // Don't throw - the page should still work, just without real-time updates
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection != null)
+        {
+            try
+            {
+                await _hubConnection.InvokeAsync("LeaveGame", GameId);
+            }
+            catch
+            {
+                // Ignore errors when leaving game group during disposal
+            }
+
+            await _hubConnection.DisposeAsync();
+        }
     }
 }

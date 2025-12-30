@@ -1,4 +1,12 @@
 using System.Text.Json;
+using MattEland.Jaimes.Repositories;
+using MattEland.Jaimes.Repositories.Entities;
+using MattEland.Jaimes.ServiceDefaults;
+using MattEland.Jaimes.ServiceDefinitions.Responses;
+using MattEland.Jaimes.ServiceDefinitions.Services;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.AI.Evaluation;
+using Microsoft.Extensions.AI.Evaluation.Quality;
 using Microsoft.Extensions.AI.Evaluation.Reporting;
 
 namespace MattEland.Jaimes.Workers.AssistantMessageWorker.Services;
@@ -12,7 +20,8 @@ public class MessageEvaluationService(
     IChatClient chatClient,
     TextGenerationModelOptions modelOptions,
     IEvaluationResultStore resultStore,
-    ILogger<MessageEvaluationService> logger) : IMessageEvaluationService
+    ILogger<MessageEvaluationService> logger,
+    IMessageUpdateNotifier messageUpdateNotifier) : IMessageEvaluationService
 {
     public async Task EvaluateMessageAsync(
         Message message,
@@ -103,8 +112,8 @@ public class MessageEvaluationService(
                         // Try to get any additional context from the result
                         var diagnostics = new Dictionary<string, object?>
                         {
-                            {"MetricName", metricName},
-                            {"EvaluatedAt", evaluatedAt}
+                            { "MetricName", metricName },
+                            { "EvaluatedAt", evaluatedAt }
                         };
                         diagnosticsJson = JsonSerializer.Serialize(diagnostics);
                     }
@@ -135,6 +144,33 @@ public class MessageEvaluationService(
             }
 
             await context.SaveChangesAsync(cancellationToken);
+
+            // Notify web clients via SignalR
+            List<MessageEvaluationMetricResponse> metricResponses = metricNames
+                .Select(metricName =>
+                {
+                    NumericMetric? metric = result.Get<NumericMetric>(metricName);
+                    return metric != null && metric.Value.HasValue
+                        ? new MessageEvaluationMetricResponse
+                        {
+                            MessageId = message.Id,
+                            MetricName = metricName,
+                            Score = metric.Value.Value
+                        }
+                        : null;
+                })
+                .Where(m => m != null)
+                .Cast<MessageEvaluationMetricResponse>()
+                .ToList();
+
+            if (metricResponses.Count > 0)
+            {
+                await messageUpdateNotifier.NotifyMetricsEvaluatedAsync(
+                    message.Id,
+                    message.GameId,
+                    metricResponses,
+                    cancellationToken);
+            }
 
             logger.LogInformation(
                 "Successfully evaluated message {MessageId} with metrics",

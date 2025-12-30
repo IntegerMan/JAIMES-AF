@@ -1,5 +1,6 @@
 using MattEland.Jaimes.Agents.Services;
 using MattEland.Jaimes.ApiService.Agents;
+using MattEland.Jaimes.ApiService.Hubs;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceLayer;
 using MattEland.Jaimes.Workers.Services;
@@ -92,7 +93,8 @@ public class Program
         builder.Services.AddSingleton<RagSearchStorageService>();
 
         // Register as IHostedService - must be singleton for host to resolve from root provider
-        builder.Services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<RagSearchStorageService>());
+        builder.Services.AddSingleton<IHostedService>(provider =>
+            provider.GetRequiredService<RagSearchStorageService>());
 
         // Register the interface to resolve to the same instance
         builder.Services.RemoveAll(typeof(IRagSearchStorageService));
@@ -103,7 +105,7 @@ public class Program
         builder.Services.AddScoped<IRulesSearchService, RulesSearchService>();
         builder.Services.AddScoped<IConversationSearchService, ConversationSearchService>();
         builder.Services.AddScoped<GameConversationMemoryProviderFactory>();
-        
+
         // Register tool call tracking service (scoped per request)
         builder.Services.AddScoped<IToolCallTracker, ToolCallTracker>();
 
@@ -148,6 +150,9 @@ public class Program
         // Always register QdrantEmbeddingStore - it will handle missing configuration gracefully
         builder.Services.AddSingleton<IQdrantEmbeddingStore, QdrantEmbeddingStore>();
 
+        // Add SignalR for real-time message updates
+        builder.Services.AddSignalR();
+
         WebApplication app = builder.Build();
 
         app.ScheduleDatabaseInitialization();
@@ -159,6 +164,9 @@ public class Program
 
         app.MapDefaultEndpoints();
         app.UseFastEndpoints().UseSwaggerGen();
+
+        // Map SignalR hub for real-time message updates
+        app.MapHub<MessageHub>("/hubs/messages");
 
         // Map AG-UI endpoint for game-specific chat
         // Use GameAwareAgent which creates game-specific agents based on route

@@ -1,4 +1,5 @@
 using MattEland.Jaimes.ServiceDefinitions.Messages;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Workers.UserMessageWorker.Options;
 using MattEland.Jaimes.Workers.UserMessageWorker.Services;
 using Microsoft.Extensions.Options;
@@ -11,9 +12,11 @@ public class UserMessageConsumer(
     ILogger<UserMessageConsumer> logger,
     ActivitySource activitySource,
     IOptions<SentimentAnalysisOptions> sentimentOptions,
-    SentimentModelService sentimentModelService) : IMessageConsumer<ConversationMessageQueuedMessage>
+    SentimentModelService sentimentModelService,
+    IMessageUpdateNotifier messageUpdateNotifier) : IMessageConsumer<ConversationMessageQueuedMessage>
 {
-    public async Task HandleAsync(ConversationMessageQueuedMessage message, CancellationToken cancellationToken = default)
+    public async Task HandleAsync(ConversationMessageQueuedMessage message,
+        CancellationToken cancellationToken = default)
     {
         using Activity? activity = activitySource.StartActivity("UserMessage.Process");
         activity?.SetTag("messaging.message_type", nameof(ConversationMessageQueuedMessage));
@@ -25,7 +28,7 @@ public class UserMessageConsumer(
         {
             // Note: Role-based routing ensures only User messages reach this consumer
             // No need to filter by role here
-            
+
             logger.LogInformation(
                 "Processing user message: MessageId={MessageId}, GameId={GameId}",
                 message.MessageId,
@@ -83,7 +86,8 @@ public class UserMessageConsumer(
             await messagePublisher.PublishAsync(embeddingMessage, cancellationToken);
             logger.LogDebug("Enqueued user message {MessageId} for embedding", messageEntity.Id);
 
-            bool sentimentAnalysisSucceeded = await AnalyzeSentimentAsync(messageEntity, activity, context, cancellationToken);
+            bool sentimentAnalysisSucceeded =
+                await AnalyzeSentimentAsync(messageEntity, activity, context, cancellationToken);
 
             // Only set status to Ok if sentiment analysis succeeded or wasn't attempted
             // If sentiment analysis failed, the activity status was already set to Error in AnalyzeSentimentAsync
@@ -130,6 +134,14 @@ public class UserMessageConsumer(
 
                 // Save sentiment to database
                 await context.SaveChangesAsync(cancellationToken);
+
+                // Notify web clients via SignalR
+                await messageUpdateNotifier.NotifySentimentAnalyzedAsync(
+                    messageEntity.Id,
+                    messageEntity.GameId,
+                    sentiment,
+                    cancellationToken);
+
                 return true;
             }
             catch (Exception ex)

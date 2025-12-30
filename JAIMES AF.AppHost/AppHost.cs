@@ -55,7 +55,7 @@ IResourceBuilder<PostgresServerResource> pgAdmin = postgres.WithPgAdmin(admin =>
     admin.WithUrls(u =>
     {
         u.Urls.Clear();
-        u.Urls.Add(new ResourceUrlAnnotation {Url = "http://localhost:5858", DisplayText = "📋 pgAdmin"});
+        u.Urls.Add(new ResourceUrlAnnotation { Url = "http://localhost:5858", DisplayText = "📋 pgAdmin" });
     });
 });
 
@@ -119,9 +119,10 @@ IResourceBuilder<LavinMQContainerResource> lavinmq = builder.AddLavinMQ("LavinMQ
     .WithUrls(u =>
     {
         u.Urls.Clear();
-        u.Urls.Add(new ResourceUrlAnnotation {Url = "http://localhost:15672", DisplayText = "📋 Management"});
-        u.Urls.Add(new ResourceUrlAnnotation {Url = "http://localhost:15672/queues", DisplayText = "📬 Queues"});
-        u.Urls.Add(new ResourceUrlAnnotation {Url = "http://localhost:15672/consumers", DisplayText = "👥 Consumers"});
+        u.Urls.Add(new ResourceUrlAnnotation { Url = "http://localhost:15672", DisplayText = "📋 Management" });
+        u.Urls.Add(new ResourceUrlAnnotation { Url = "http://localhost:15672/queues", DisplayText = "📬 Queues" });
+        u.Urls.Add(new ResourceUrlAnnotation
+            { Url = "http://localhost:15672/consumers", DisplayText = "👥 Consumers" });
     });
 
 // Note: MongoDB has been replaced with PostgreSQL + JSONB for document storage
@@ -284,6 +285,7 @@ IResourceBuilder<ProjectResource> userMessageWorker = builder
     .WithIconName("PersonChat")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
+    .WithReference(apiService) // For SignalR notification HTTP calls
     .WaitFor(databaseMigrationWorker)
     .WaitFor(lavinmq)
     .WaitFor(postgres)
@@ -295,6 +297,7 @@ IResourceBuilder<ProjectResource> assistantMessageWorker = builder
     .WithIconName("SettingsChat")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
+    .WithReference(apiService) // For SignalR notification HTTP calls
     .WithOllamaReferences(ollama, chatModel, embedModel, needsChatModel: true, needsEmbedModel: false)
     .WaitFor(databaseMigrationWorker)
     .WaitFor(lavinmq)
