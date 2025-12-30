@@ -46,6 +46,7 @@
 				@for (int msgIndex = 0; msgIndex < (_messages?.Count ?? 0); msgIndex++)
 				{
 					var m = _messages![msgIndex];
+                    int capturedIndex = msgIndex; // Capture for lambda closure structure below
 
 					// Skip empty messages
 					if (string.IsNullOrWhiteSpace(m.Text))
@@ -103,7 +104,7 @@
                             <MudChatBubble Color="Color.Error">
                                 <MudIcon Icon="@Icons.Material.Filled.Error" Class="mr-2" Size="Size.Small"/>
                                 @_errorMessage
-                                <MudButton Size="Size.Small" Color="Color.Inherit" OnClick="@(() => RetryMessageAsync(msgIndex))" Variant="Variant.Text">
+                                <MudButton Size="Size.Small" Color="Color.Inherit" OnClick="@(() => RetryMessageAsync(capturedIndex))" Variant="Variant.Text">
                                     Retry
                                 </MudButton>
                             </MudChatBubble>
