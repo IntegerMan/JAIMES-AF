@@ -2,6 +2,7 @@
 @using MattEland.Jaimes.Web.Components.Helpers
 @using Microsoft.Extensions.AI
 @using MudBlazor
+@using MattEland.Jaimes.Web.Components.Chat
 
 @rendermode InteractiveServer
 
@@ -53,102 +54,37 @@
 					}
 
 					int? messageId = GetMessageId(msgIndex);
-					bool hasFeedback = messageId.HasValue && _messageFeedback.ContainsKey(messageId.Value);
+					
+					// Pre-calculate data needed for components (avoiding dictionary lookups in render loop logic where possible)
 					MessageFeedbackInfo? feedback = messageId.HasValue && _messageFeedback.TryGetValue(messageId.Value, out var fb) ? fb : null;
-					bool hasToolCalls = messageId.HasValue && _messageToolCalls.ContainsKey(messageId.Value);
 					List<MessageToolCallInfo>? toolCalls = messageId.HasValue && _messageToolCalls.TryGetValue(messageId.Value, out var tc) ? tc : null;
-					string toolNames = toolCalls != null ? string.Join(", ", toolCalls.Select(t => t.ToolName)) : string.Empty;
 
 					List<string> paragraphs = ChatHelpers.SplitIntoParagraphs(m.Text).ToList();
 					@foreach ((string paragraph, int index) in paragraphs.Select((p, i) => (p, i)))
 					{
 						bool isFirstParagraph = index == 0;
 						bool isLastParagraph = index == paragraphs.Count - 1;
+						
 						@if (m.Role == ChatRole.User)
 						{
-							<MudChat ChatPosition="ChatBubblePosition.End"
-							         Variant="Variant.Filled"
-							         Color="Color.Primary">
-								@if (isFirstParagraph)
-								{
-									<MudChatHeader Name="Player"/>
-								}
-								<MudChatBubble>
-									@paragraph
-								</MudChatBubble>
-							</MudChat>
+						    <UserChatMessage 
+						        Text="@paragraph" 
+						        IsFirstParagraph="@isFirstParagraph" />
 						}
 						else
 						{
 							@if (!string.IsNullOrWhiteSpace(paragraph))
 							{
-								<MudChat ChatPosition="ChatBubblePosition.Start"
-								         Variant="Variant.Filled"
-								         Color="Color.Default"
-								         @onmouseenter="@(() => HoverStart(messageId, messageId.HasValue ? null : msgIndex))"
-								         @onmouseleave="@(() => HoverStop(messageId, messageId.HasValue ? null : msgIndex))">
-									@if (isFirstParagraph)
-									{
-										<MudChatHeader Name="Game Master"/>
-									}
-									<MudChatBubble>
-										@((MarkupString)ChatHelpers.RenderMarkdown(paragraph))
-									</MudChatBubble>
-									@if (isLastParagraph && messageId.HasValue)
-									{
-										<MudChatFooter Class="feedback-footer">
-											<div class="d-flex align-items-center gap-2">
-												@if (hasToolCalls && toolCalls != null)
-												{
-													<MudTooltip Text="@($"Tools used: {toolNames}")">
-														<MudIconButton Icon="@Icons.Material.Filled.Build"
-														               Color="Color.Default"
-														               Size="Size.Small"
-														               Variant="Variant.Text"
-														               Class="tool-call-button"
-														               OnClick="@(() => ShowToolCallsDialogAsync(messageId.Value))"/>
-													</MudTooltip>
-												}
-												@if (hasFeedback && feedback != null)
-												{
-													<MudTooltip Text="@(string.IsNullOrWhiteSpace(feedback.Comment) ? $"You provided {(feedback.IsPositive ? "positive" : "negative")} feedback" : feedback.Comment)">
-														<div class="d-flex align-items-center gap-1">
-															<MudIcon Icon="@(feedback.IsPositive ? Icons.Material.Filled.ThumbUp : Icons.Material.Filled.ThumbDown)"
-															         Color="Color.Default"
-															         Size="Size.Small"
-															         Class="feedback-icon-existing"/>
-														</div>
-													</MudTooltip>
-												}
-												else if (IsHovering && _hoveredMessageId == messageId)
-												{
-													<div class="d-flex align-items-center gap-1">
-														<MudTooltip Text="Mark as good and provide feedback">
-															<MudIconButton Icon="@Icons.Material.Filled.ThumbUp"
-															               Color="Color.Default"
-															               Size="Size.Small"
-															               Variant="Variant.Text"
-															               Class="feedback-button"
-															               OnClick="@(() => ShowFeedbackDialogAsync(messageId.Value, true))"/>
-														</MudTooltip>
-														<MudTooltip Text="Mark as bad and provide feedback">
-															<MudIconButton Icon="@Icons.Material.Filled.ThumbDown"
-															               Color="Color.Default"
-															               Size="Size.Small"
-															               Variant="Variant.Text"
-															               Class="feedback-button"
-															               OnClick="@(() => ShowFeedbackDialogAsync(messageId.Value, false))"/>
-														</MudTooltip>
-													</div>
-												}
-												else
-												{
-													<div class="feedback-spacer"></div>
-												}
-											</div>
-										</MudChatFooter>
-									}
-								</MudChat>
+							    <AssistantChatMessage
+							        Text="@paragraph"
+							        MessageId="@messageId"
+							        IsFirstParagraph="@isFirstParagraph"
+							        IsLastParagraph="@isLastParagraph"
+							        ToolCalls="@toolCalls"
+							        Feedback="@feedback"
+							        OnToolCallsClick="@OnToolCallClicked"
+							        OnFeedbackClick="@OnFeedbackClicked"
+							        ReadOnly="false" />
 							}
 						}
 					}
@@ -188,27 +124,15 @@
 	</MudContainer>
 </div>
 
-<style>
-	.feedback-footer {
-		min-height: 25px;
-		display: flex;
-		align-items: center;
-	}
+@code {
+    private async Task OnToolCallClicked(int messageId)
+    {
+        await ShowToolCallsDialogAsync(messageId);
+    }
+    
+    private async Task OnFeedbackClicked((int MessageId, bool IsPositive) args)
+    {
+        await ShowFeedbackDialogAsync(args.MessageId, args.IsPositive);
+    }
+}
 
-	.feedback-spacer {
-		min-height: 25px;
-		width: 1px;
-	}
-
-	.feedback-button {
-		color: var(--mud-palette-text-primary) !important;
-	}
-
-	.feedback-icon-existing {
-		color: var(--mud-palette-text-primary) !important;
-	}
-
-	.tool-call-button {
-		color: var(--mud-palette-text-primary) !important;
-	}
-</style>

@@ -46,22 +46,6 @@ public partial class GameDetails : IDisposable
 
     private bool IsHovering => _hoveredMessageId.HasValue || _hoveredMessageIndex.HasValue;
 
-    public record MessageFeedbackInfo
-    {
-        public required int MessageId { get; init; }
-        public required bool IsPositive { get; init; }
-        public string? Comment { get; init; }
-    }
-
-    public record MessageToolCallInfo
-    {
-        public required int Id { get; init; }
-        public required int MessageId { get; init; }
-        public required string ToolName { get; init; }
-        public string? InputJson { get; init; }
-        public string? OutputJson { get; init; }
-        public required DateTime CreatedAt { get; init; }
-    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -88,19 +72,23 @@ public partial class GameDetails : IDisposable
         {
             HttpClient httpClient = HttpClientFactory.CreateClient("Api");
             _game = await httpClient.GetFromJsonAsync<GameStateResponse>($"/games/{GameId}");
-            
+
             // Build messages and track IDs
             var orderedMessages = _game?.Messages.OrderBy(m => m.Id).ToList() ?? [];
             _messages = orderedMessages
-                .Select(m => new ChatMessage(m.Participant == ChatParticipant.Player ? ChatRole.User : ChatRole.Assistant, m.Text))
+                .Select(m =>
+                    new ChatMessage(m.Participant == ChatParticipant.Player ? ChatRole.User : ChatRole.Assistant,
+                        m.Text))
                 .ToList();
             _messageIds = orderedMessages.Select(m => (int?)m.Id).ToList();
 
             // Load existing feedback for assistant messages
-            await LoadFeedbackForMessagesAsync(orderedMessages.Where(m => m.Participant == ChatParticipant.GameMaster).Select(m => m.Id).ToList());
+            await LoadFeedbackForMessagesAsync(orderedMessages.Where(m => m.Participant == ChatParticipant.GameMaster)
+                .Select(m => m.Id).ToList());
 
             // Load tool calls for assistant messages
-            await LoadToolCallsForMessagesAsync(orderedMessages.Where(m => m.Participant == ChatParticipant.GameMaster).Select(m => m.Id).ToList());
+            await LoadToolCallsForMessagesAsync(orderedMessages.Where(m => m.Participant == ChatParticipant.GameMaster)
+                .Select(m => m.Id).ToList());
 
             // Create AG-UI client for this game
             HttpClient aguiHttpClient = HttpClientFactory.CreateClient("AGUI");
@@ -147,7 +135,8 @@ public partial class GameDetails : IDisposable
             // Indicate message is being sent
             _messages.Add(new(ChatRole.User, messageText));
             _messageIds.Add(null); // User messages don't have database IDs yet
-            _logger?.LogInformation("Sending message {Text} from User (first message: {IsFirst})", messageText, isFirstPlayerMessage);
+            _logger?.LogInformation("Sending message {Text} from User (first message: {IsFirst})", messageText,
+                isFirstPlayerMessage);
 
             // Scroll to bottom after adding user message and showing typing indicator
             _shouldScrollToBottom = true;
@@ -172,7 +161,8 @@ public partial class GameDetails : IDisposable
                 {
                     // First, add the initial greeting as an Assistant message so the agent knows what was displayed
                     messagesToSend.Add(new ChatMessage(ChatRole.Assistant, initialGreeting));
-                    _logger?.LogInformation("First player message - including initial greeting as Assistant message for agent context");
+                    _logger?.LogInformation(
+                        "First player message - including initial greeting as Assistant message for agent context");
                 }
             }
 
@@ -183,7 +173,9 @@ public partial class GameDetails : IDisposable
             // Don't pass a thread - AGUI will create/manage it via ConversationId to avoid MessageStore conflicts
             // AGUI manages conversation history, so we only need to send the NEW message(s), not all messages
             // Sending all messages causes exponential growth because the server thread already contains history
-            _logger?.LogDebug("Sending {Count} message(s) to AGUI (AGUI manages conversation history via ConversationId)", messagesToSend.Count);
+            _logger?.LogDebug(
+                "Sending {Count} message(s) to AGUI (AGUI manages conversation history via ConversationId)",
+                messagesToSend.Count);
             AgentRunResponse resp = await _agent.RunAsync(messagesToSend, thread: null);
 
             // Only add valid messages with proper roles to the collection
@@ -218,12 +210,15 @@ public partial class GameDetails : IDisposable
                     // Try to infer role from AuthorName or default to Assistant for non-User messages
                     if (!string.IsNullOrWhiteSpace(message.AuthorName))
                     {
-                        _logger?.LogDebug("Message has invalid role '{Role}' but AuthorName '{AuthorName}', inferring Assistant role", roleString, message.AuthorName);
+                        _logger?.LogDebug(
+                            "Message has invalid role '{Role}' but AuthorName '{AuthorName}', inferring Assistant role",
+                            roleString, message.AuthorName);
                         normalizedRole = ChatRole.Assistant;
                     }
                     else
                     {
-                        _logger?.LogWarning("Skipping message with invalid role: '{Role}', Text: '{Text}'", roleString, message.Text);
+                        _logger?.LogWarning("Skipping message with invalid role: '{Role}', Text: '{Text}'", roleString,
+                            message.Text);
                         continue;
                     }
                 }
@@ -320,6 +315,7 @@ public partial class GameDetails : IDisposable
         {
             utcTime = DateTime.SpecifyKind(utcTime, DateTimeKind.Utc);
         }
+
         return utcTime.ToLocalTime();
     }
 
@@ -333,13 +329,14 @@ public partial class GameDetails : IDisposable
         try
         {
             HttpClient httpClient = HttpClientFactory.CreateClient("Api");
-            
+
             // Load feedback for each message (could be optimized with a batch endpoint, but this works for now)
             foreach (int messageId in messageIds)
             {
                 try
                 {
-                    MessageFeedbackResponse? feedback = await httpClient.GetFromJsonAsync<MessageFeedbackResponse>($"/messages/{messageId}/feedback");
+                    MessageFeedbackResponse? feedback =
+                        await httpClient.GetFromJsonAsync<MessageFeedbackResponse>($"/messages/{messageId}/feedback");
                     if (feedback != null)
                     {
                         _messageFeedback[messageId] = new MessageFeedbackInfo
@@ -387,6 +384,7 @@ public partial class GameDetails : IDisposable
             _hoveredMessageIndex = messageIndex;
             _hoveredMessageId = null; // Clear ID when using index
         }
+
         StateHasChanged();
     }
 
@@ -433,18 +431,21 @@ public partial class GameDetails : IDisposable
         {
             { nameof(FeedbackDialog.MessageId), messageId },
             { nameof(FeedbackDialog.PreSelectedFeedback), isPositive },
-            { nameof(FeedbackDialog.OnFeedbackSubmitted), EventCallback.Factory.Create<MessageFeedbackInfo?>(this, async (MessageFeedbackInfo? feedback) =>
             {
-                if (feedback != null)
-                {
-                    await SubmitFeedbackAsync(feedback.MessageId, feedback.IsPositive, feedback.Comment);
-                    // Close the dialog after submitting
-                    if (dialogRef != null)
+                nameof(FeedbackDialog.OnFeedbackSubmitted), EventCallback.Factory.Create<MessageFeedbackInfo?>(this,
+                    async (MessageFeedbackInfo? feedback) =>
                     {
-                        dialogRef.Close(DialogResult.Ok(true));
-                    }
-                }
-            })}
+                        if (feedback != null)
+                        {
+                            await SubmitFeedbackAsync(feedback.MessageId, feedback.IsPositive, feedback.Comment);
+                            // Close the dialog after submitting
+                            if (dialogRef != null)
+                            {
+                                dialogRef.Close(DialogResult.Ok(true));
+                            }
+                        }
+                    })
+            }
         };
 
         var options = new DialogOptions
@@ -455,7 +456,7 @@ public partial class GameDetails : IDisposable
         };
 
         dialogRef = await DialogService.ShowAsync<FeedbackDialog>("Provide Feedback", parameters, options);
-        
+
         // Also handle cancellation
         var result = await dialogRef.Result;
     }
@@ -468,7 +469,7 @@ public partial class GameDetails : IDisposable
         try
         {
             HttpClient httpClient = HttpClientFactory.CreateClient("Api");
-            
+
             SubmitMessageFeedbackRequest request = new()
             {
                 IsPositive = isPositive,
@@ -476,7 +477,7 @@ public partial class GameDetails : IDisposable
             };
 
             HttpResponseMessage response = await httpClient.PostAsJsonAsync($"/messages/{messageId}/feedback", request);
-            
+
             if (response.IsSuccessStatusCode)
             {
                 MessageFeedbackResponse? feedback = await response.Content.ReadFromJsonAsync<MessageFeedbackResponse>();
@@ -515,13 +516,15 @@ public partial class GameDetails : IDisposable
         try
         {
             HttpClient httpClient = HttpClientFactory.CreateClient("Api");
-            
+
             // Load tool calls for each message
             foreach (int messageId in messageIds)
             {
                 try
                 {
-                    List<MessageToolCallResponse>? toolCalls = await httpClient.GetFromJsonAsync<List<MessageToolCallResponse>>($"/messages/{messageId}/tool-calls");
+                    List<MessageToolCallResponse>? toolCalls =
+                        await httpClient.GetFromJsonAsync<List<MessageToolCallResponse>>(
+                            $"/messages/{messageId}/tool-calls");
                     if (toolCalls != null && toolCalls.Count > 0)
                     {
                         _messageToolCalls[messageId] = toolCalls.Select(tc => new MessageToolCallInfo
@@ -552,7 +555,8 @@ public partial class GameDetails : IDisposable
     /// </summary>
     private async Task ShowToolCallsDialogAsync(int messageId)
     {
-        if (!_messageToolCalls.TryGetValue(messageId, out List<MessageToolCallInfo>? toolCalls) || toolCalls == null || toolCalls.Count == 0)
+        if (!_messageToolCalls.TryGetValue(messageId, out List<MessageToolCallInfo>? toolCalls) || toolCalls == null ||
+            toolCalls.Count == 0)
         {
             await DialogService.ShowMessageBox("No Tool Calls", "This message has no tool calls.", "OK");
             return;

@@ -9,7 +9,7 @@ public partial class FeedbackDialog : ComponentBase
 
     [Parameter] public int MessageId { get; set; }
     [Parameter] public bool? PreSelectedFeedback { get; set; }
-    [Parameter] public EventCallback<GameDetails.MessageFeedbackInfo?> OnFeedbackSubmitted { get; set; }
+    [Parameter] public EventCallback<MessageFeedbackInfo?> OnFeedbackSubmitted { get; set; }
 
     private bool? _selectedFeedback;
     private string? _comment;
@@ -31,7 +31,7 @@ public partial class FeedbackDialog : ComponentBase
     {
         if (_selectedFeedback.HasValue)
         {
-            var feedbackInfo = new GameDetails.MessageFeedbackInfo
+            var feedbackInfo = new MessageFeedbackInfo
             {
                 MessageId = MessageId,
                 IsPositive = _selectedFeedback.Value,
