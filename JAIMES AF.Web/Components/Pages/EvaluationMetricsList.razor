@@ -15,6 +15,16 @@
         View AI response evaluation metrics and quality scores across all messages.
     </MudText>
 
+    @if (GameId.HasValue)
+    {
+        <MudAlert Severity="Severity.Info" Class="mb-4">
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudText>Filtering by game:</MudText>
+                <MudLink Href="@($"/games/{GameId}")">View Game</MudLink>
+            </MudStack>
+        </MudAlert>
+    }
+
     <AdminFilters 
         MetricName="@MetricName"
         Passed="@Passed"

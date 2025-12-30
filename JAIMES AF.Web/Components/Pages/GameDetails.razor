@@ -158,9 +158,9 @@
         await ShowFeedbackDialogAsync(args.MessageId, args.IsPositive);
     }
 
-    private async Task OnMetricsClicked(int messageId)
+    private void OnMetricsClicked(int messageId)
     {
-        await ShowMetricsDialogAsync(messageId);
+        ShowMetricsDialogAsync(messageId);
     }
 }
 

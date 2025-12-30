@@ -15,6 +15,7 @@ public partial class GameDetails : IAsyncDisposable
     [Inject] public ILoggerFactory LoggerFactory { get; set; } = null!;
     [Inject] public IJSRuntime JsRuntime { get; set; } = null!;
     [Inject] public IDialogService DialogService { get; set; } = null!;
+    [Inject] public NavigationManager NavigationManager { get; set; } = null!;
 
     [Parameter] public Guid GameId { get; set; }
 
@@ -527,35 +528,12 @@ public partial class GameDetails : IAsyncDisposable
     }
 
     /// <summary>
-    /// Shows the evaluation metrics dialog for a message.
+    /// Shows the evaluation metrics page for a message.
     /// </summary>
-    private async Task ShowMetricsDialogAsync(int messageId)
+    private void ShowMetricsDialogAsync(int messageId)
     {
-        if (!_messageMetrics.TryGetValue(messageId, out List<MessageEvaluationMetricResponse>? metrics) ||
-            metrics == null ||
-            metrics.Count == 0)
-        {
-            await DialogService.ShowMessageBox("No Metrics", "This message has no evaluation metrics.", "OK");
-            return;
-        }
-
-        var parameters = new DialogParameters<EvaluationMetricsDialog>
-        {
-            { nameof(EvaluationMetricsDialog.Metrics), metrics },
-            { nameof(EvaluationMetricsDialog.MessageId), messageId },
-            { nameof(EvaluationMetricsDialog.GameId), GameId }
-        };
-
-        var options = new DialogOptions
-        {
-            CloseOnEscapeKey = true,
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true
-        };
-
-        IDialogReference? dialogRef =
-            await DialogService.ShowAsync<EvaluationMetricsDialog>("Evaluation Metrics", parameters, options);
-        await dialogRef.Result;
+        // Navigate to the dedicated metrics page
+        NavigationManager.NavigateTo($"/admin/metrics/{messageId}");
     }
 
     /// <summary>
