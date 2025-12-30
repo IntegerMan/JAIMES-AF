@@ -1,4 +1,4 @@
-@using MudBlazor
+@inject HttpClient Http
 
 <MudChat ChatPosition="ChatBubblePosition.End"
          Variant="Variant.Filled"
@@ -16,11 +16,33 @@
         <MudChatFooter Class="d-flex justify-content-end align-items-center gap-2 mt-1">
             @if (Sentiment.HasValue)
             {
-                <MudTooltip Text="@GetSentimentTooltipText()" Placement="Placement.Top">
-                    <MudIcon Icon="@(Sentiment.Value > 0 ? Icons.Material.Filled.ThumbUp : Sentiment.Value < 0 ? Icons.Material.Filled.ThumbDown : Icons.Material.Filled.Balance)"
-                             Color="@(Sentiment.Value > 0 ? Color.Success : Sentiment.Value < 0 ? Color.Error : Color.Default)"
-                             Size="Size.Small" />
-                </MudTooltip>
+                if (ReadOnly)
+                {
+                    <MudTooltip Text="@GetSentimentTooltipText()" Placement="Placement.Top">
+                        <MudIcon Icon="@GetSentimentIcon()"
+                                 Color="@GetSentimentColor()"
+                                 Size="Size.Small" />
+                    </MudTooltip>
+                }
+                else
+                {
+                    <MudMenu AnchorOrigin="Origin.TopCenter" TransformOrigin="Origin.BottomCenter" Dense="true">
+                        <ActivatorContent>
+                            <MudTooltip Text="@GetSentimentTooltipText()" Placement="Placement.Top">
+                                <MudIconButton Icon="@GetSentimentIcon()"
+                                               Color="@GetSentimentColor()"
+                                               Size="Size.Small"
+                                               Variant="Variant.Text"
+                                               Class="pa-0" />
+                            </MudTooltip>
+                        </ActivatorContent>
+                        <ChildContent>
+                            <MudMenuItem OnClick="@(() => SetSentimentAsync(1))" Icon="@Icons.Material.Filled.ThumbUp" IconColor="Color.Success">Positive</MudMenuItem>
+                            <MudMenuItem OnClick="@(() => SetSentimentAsync(0))" Icon="@Icons.Material.Filled.Balance" IconColor="Color.Default">Neutral</MudMenuItem>
+                            <MudMenuItem OnClick="@(() => SetSentimentAsync(-1))" Icon="@Icons.Material.Filled.ThumbDown" IconColor="Color.Error">Negative</MudMenuItem>
+                        </ChildContent>
+                    </MudMenu>
+                }
             }
             else if (!ReadOnly)
             {
@@ -62,6 +84,30 @@
 
     [Parameter]
     public bool ReadOnly { get; set; }
+
+    private string GetSentimentIcon() => Sentiment switch
+    {
+        > 0 => Icons.Material.Filled.ThumbUp,
+        < 0 => Icons.Material.Filled.ThumbDown,
+        _ => Icons.Material.Filled.Balance
+    };
+
+    private Color GetSentimentColor() => Sentiment switch
+    {
+        > 0 => Color.Success,
+        < 0 => Color.Error,
+        _ => Color.Default
+    };
+
+    private async Task SetSentimentAsync(int newSentiment)
+    {
+        if (!MessageId.HasValue || ReadOnly) return;
+
+        MattEland.Jaimes.ServiceDefinitions.Requests.UpdateMessageSentimentRequest request = new() { Sentiment = newSentiment };
+        await Http.PutAsJsonAsync($"/messages/{MessageId}/sentiment", request);
+        
+        // Note: The UI will update automatically via SignalR broadcast from the server
+    }
 
     private string GetSentimentTooltipText()
     {

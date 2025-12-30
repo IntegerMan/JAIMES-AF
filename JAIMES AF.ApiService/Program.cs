@@ -1,5 +1,6 @@
 using MattEland.Jaimes.Agents.Services;
 using MattEland.Jaimes.ApiService.Agents;
+using MattEland.Jaimes.ApiService.Endpoints;
 using MattEland.Jaimes.ApiService.Hubs;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceLayer;
@@ -164,6 +165,9 @@ public class Program
 
         app.MapDefaultEndpoints();
         app.UseFastEndpoints().UseSwaggerGen();
+
+        // Map manual sentiment update endpoint
+        app.MapUpdateMessageSentiment();
 
         // Map SignalR hub for real-time message updates
         app.MapHub<MessageHub>("/hubs/messages");

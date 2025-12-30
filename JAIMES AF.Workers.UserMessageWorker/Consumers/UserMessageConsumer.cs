@@ -137,16 +137,27 @@ public class UserMessageConsumer(
                         Sentiment = sentiment,
                         Confidence = confidence,
                         CreatedAt = now,
-                        UpdatedAt = now
+                        UpdatedAt = now,
+                        SentimentSource = SentimentSource.Model
                     };
                     context.MessageSentiments.Add(newSentiment);
                 }
                 else
                 {
+                    // If the sentiment was set by a player, do not overwrite it
+                    if (existingSentiment.SentimentSource == SentimentSource.Player)
+                    {
+                        logger.LogInformation(
+                            "Skipping sentiment update for message {MessageId} as it was manually set by a player.",
+                            messageEntity.Id);
+                        return true;
+                    }
+
                     // Update existing sentiment record
                     existingSentiment.Sentiment = sentiment;
                     existingSentiment.Confidence = confidence;
                     existingSentiment.UpdatedAt = now;
+                    existingSentiment.SentimentSource = SentimentSource.Model;
                 }
 
                 logger.LogInformation(
