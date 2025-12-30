@@ -45,7 +45,7 @@ bool needsOllamaContainer = (isTextGenOllama && string.IsNullOrWhiteSpace(textGe
 IResourceBuilder<PostgresServerResource> postgres = builder.AddPostgres("postgres")
     .WithImage("pgvector/pgvector", "pg17-trixie")
     .WithIconName("DatabaseSwitch")
-    .WithDataVolume("jaimes-pg17-v5", false);
+    .WithDataVolume("jaimes-pg17-v6", false);
 
 IResourceBuilder<PostgresServerResource> pgAdmin = postgres.WithPgAdmin(admin =>
 {
