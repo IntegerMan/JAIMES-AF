@@ -132,6 +132,7 @@ public partial class GameDetails : IAsyncDisposable
         _isSending = true;
         _errorMessage = null;
         _failedMessageIndex = null;
+        int currentMessageIndex = -1;
 
         // Check if this is the first player message (no User messages yet)
         bool isFirstPlayerMessage = IsFirstPlayerMessage();
@@ -141,7 +142,7 @@ public partial class GameDetails : IAsyncDisposable
             // Indicate message is being sent
             _messages.Add(new(ChatRole.User, messageText));
             _messageIds.Add(null); // User messages don't have database IDs yet
-            int currentMessageIndex = _messages.Count - 1;
+            currentMessageIndex = _messages.Count - 1;
 
             _logger?.LogInformation("Sending message {Text} from User (first message: {IsFirst})", messageText,
                 isFirstPlayerMessage);
@@ -256,7 +257,7 @@ public partial class GameDetails : IAsyncDisposable
         {
             _logger?.LogError(ex, "Failed to send chat message");
             _errorMessage = $"Failed to send message: {ex.Message}";
-            _failedMessageIndex = _messages.Count - 1; // Mark the last message as failed
+            _failedMessageIndex = currentMessageIndex != -1 ? currentMessageIndex : _messages.Count - 1;
         }
         finally
         {
@@ -278,9 +279,11 @@ public partial class GameDetails : IAsyncDisposable
         // Get the failed message text
         string messageText = _messages[messageIndex].Text;
 
-        // Remove the failed message from the list
-        _messages.RemoveAt(messageIndex);
-        _messageIds.RemoveAt(messageIndex);
+        // Remove the failed message and any subsequent messages from the list (cleanup failed attempt)
+        int countToRemove = _messages.Count - messageIndex;
+        _messages.RemoveRange(messageIndex, countToRemove);
+        _messageIds.RemoveRange(messageIndex, countToRemove);
+
         _failedMessageIndex = null;
         _errorMessage = null;
 
