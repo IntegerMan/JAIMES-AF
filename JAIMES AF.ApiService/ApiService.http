@@ -133,3 +133,24 @@ Content-Type: application/json
   "gameId": "95d26a53-5b62-43f2-bc19-3c64ff013c4f",
   "query": ""
 }
+
+### Get Tool Usage Statistics
+# @name GetToolUsage
+GET {{ApiService_HostAddress}}/admin/tools
+Accept: application/json
+
+### Get Tool Usage Statistics (with pagination)
+GET {{ApiService_HostAddress}}/admin/tools?page=1&pageSize=10
+Accept: application/json
+
+### Get Tool Usage Statistics (filtered by game)
+GET {{ApiService_HostAddress}}/admin/tools?gameId=95d26a53-5b62-43f2-bc19-3c64ff013c4f
+Accept: application/json
+
+### Get Tool Call Details for SearchRules
+GET {{ApiService_HostAddress}}/admin/tools/SearchRules
+Accept: application/json
+
+### Get Tool Call Details with pagination
+GET {{ApiService_HostAddress}}/admin/tools/SearchRules?page=1&pageSize=10
+Accept: application/json

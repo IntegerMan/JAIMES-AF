@@ -65,7 +65,7 @@ public class MessageFeedbackService(IDbContextFactory<JaimesDbContext> contextFa
     }
 
     public async Task<MattEland.Jaimes.ServiceDefinitions.Responses.FeedbackListResponse> GetFeedbackListAsync(int page,
-        int pageSize, CancellationToken cancellationToken = default)
+        int pageSize, string? toolName = null, bool? isPositive = null, CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -77,8 +77,24 @@ public class MessageFeedbackService(IDbContextFactory<JaimesDbContext> contextFa
             .Include(mf => mf.Message)
             .ThenInclude(m => m!.Game)
             .ThenInclude(g => g!.Scenario)
-            .Include(mf => mf.InstructionVersion)
-            .OrderByDescending(mf => mf.CreatedAt);
+            .Include(mf => mf.Message)
+            .ThenInclude(m => m!.ToolCalls)
+            .Include(mf => mf.InstructionVersion);
+
+        // Apply isPositive filter if specified
+        if (isPositive.HasValue)
+        {
+            query = query.Where(mf => mf.IsPositive == isPositive.Value);
+        }
+
+        // Apply toolName filter if specified - filter by messages that have a tool call with this name
+        if (!string.IsNullOrEmpty(toolName))
+        {
+            query = query.Where(mf => mf.Message != null &&
+                                      mf.Message.ToolCalls.Any(tc => tc.ToolName.ToLower() == toolName.ToLower()));
+        }
+
+        query = query.OrderByDescending(mf => mf.CreatedAt);
 
         int totalCount = await query.CountAsync(cancellationToken);
 
@@ -100,7 +116,8 @@ public class MessageFeedbackService(IDbContextFactory<JaimesDbContext> contextFa
                 GameId = mf.Message?.GameId ?? Guid.Empty,
                 GamePlayerName = mf.Message?.Game?.Player?.Name,
                 GameScenarioName = mf.Message?.Game?.Scenario?.Name,
-                GameRulesetId = mf.Message?.Game?.RulesetId
+                GameRulesetId = mf.Message?.Game?.RulesetId,
+                ToolNames = mf.Message?.ToolCalls?.Select(tc => tc.ToolName).Distinct().ToList()
             });
 
         return new MattEland.Jaimes.ServiceDefinitions.Responses.FeedbackListResponse

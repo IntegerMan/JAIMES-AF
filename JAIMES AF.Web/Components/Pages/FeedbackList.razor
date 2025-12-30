@@ -1,14 +1,35 @@
-@page "/feedback"
+@page "/admin/feedback"
 @using MattEland.Jaimes.ServiceDefinitions.Responses
 @using MattEland.Jaimes.Web.Components.Pages
 @using MudBlazor
 @inject IDialogService DialogService
 @inject IHttpClientFactory HttpClientFactory
+@rendermode InteractiveServer
 
 <PageTitle>Feedback Reports</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <MudText Typo="Typo.h4" Class="mb-4">Feedback Reports</MudText>
+    <MudText Typo="Typo.h4" Class="mb-2">Feedback Reports</MudText>
+    
+    @if (!string.IsNullOrEmpty(ToolName) || IsPositive.HasValue)
+    {
+        <MudText Typo="Typo.body2" Class="mb-4 text-muted">
+            Filtering by:
+            @if (!string.IsNullOrEmpty(ToolName))
+            {
+                <MudChip T="string" Color="Color.Primary" Size="Size.Small" Class="ml-2">Tool: @ToolName</MudChip>
+            }
+            @if (IsPositive.HasValue)
+            {
+                <MudChip T="string" Color="@(IsPositive.Value ? Color.Success : Color.Error)" Size="Size.Small" Class="ml-2">
+                    @(IsPositive.Value ? "Helpful" : "Unhelpful")
+                </MudChip>
+            }
+            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" Href="/admin/feedback" Class="ml-2">
+                Clear Filters
+            </MudButton>
+        </MudText>
+    }
 
     <MudDataGrid T="FeedbackListItemDto"
                  ServerData="ServerReload"
@@ -36,6 +57,29 @@
                     </MudLink>
                 </CellTemplate>
             </PropertyColumn>
+            <TemplateColumn Title="Tools Involved">
+                <CellTemplate>
+                    @if (context.Item.ToolNames != null && context.Item.ToolNames.Any())
+                    {
+                        <MudStack Row="true" Spacing="1">
+                            @foreach (var tool in context.Item.ToolNames.Take(3))
+                            {
+                                <MudLink Href="@($"/admin/tools/{Uri.EscapeDataString(tool)}")" Typo="Typo.body2">
+                                    <MudChip Color="Color.Secondary" Size="Size.Small">@tool</MudChip>
+                                </MudLink>
+                            }
+                            @if (context.Item.ToolNames.Count > 3)
+                            {
+                                <MudChip Color="Color.Default" Size="Size.Small">+@(context.Item.ToolNames.Count - 3) more</MudChip>
+                            }
+                        </MudStack>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Class="text-muted">None</MudText>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
             <PropertyColumn Property="x => x.CreatedAt" Title="Date">
                 <CellTemplate>
                     @context.Item.CreatedAt.ToLocalTime().ToString("g")
@@ -72,6 +116,20 @@
 </MudContainer>
 
 @code {
+    /// <summary>
+    /// Optional tool name to filter feedback by.
+    /// </summary>
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? ToolName { get; set; }
+
+    /// <summary>
+    /// Optional filter for positive (true) or negative (false) feedback.
+    /// </summary>
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public bool? IsPositive { get; set; }
+
     private async Task<GridData<FeedbackListItemDto>> ServerReload(GridState<FeedbackListItemDto> state)
     {
         try
@@ -82,7 +140,20 @@
             int page = state.Page + 1;
             int pageSize = state.PageSize;
 
-            var response = await client.GetFromJsonAsync<FeedbackListResponse>($"/feedback?page={page}&pageSize={pageSize}");
+            // Build query string with optional filters
+            var queryParams = new List<string>
+            {
+                $"page={page}",
+                $"pageSize={pageSize}"
+            };
+
+            if (!string.IsNullOrEmpty(ToolName))
+                queryParams.Add($"toolName={Uri.EscapeDataString(ToolName)}");
+            if (IsPositive.HasValue)
+                queryParams.Add($"isPositive={IsPositive.Value.ToString().ToLower()}");
+
+            string queryString = string.Join("&", queryParams);
+            var response = await client.GetFromJsonAsync<FeedbackListResponse>($"/admin/feedback?{queryString}");
 
             if (response != null)
             {
@@ -122,3 +193,4 @@
         await DialogService.ShowAsync<FeedbackContextDialog>("Feedback Context", parameters, options);
     }
 }
+
