@@ -9,10 +9,15 @@ public class FeedbackListItemDto
     public DateTime CreatedAt { get; set; }
     public int? InstructionVersionId { get; set; }
     public string? AgentVersion { get; set; }
-    
+
     // Context information
     public Guid GameId { get; set; }
     public string? GamePlayerName { get; set; }
     public string? GameScenarioName { get; set; }
     public string? GameRulesetId { get; set; }
+
+    /// <summary>
+    /// List of tool names invoked for this message.
+    /// </summary>
+    public List<string>? ToolNames { get; set; }
 }

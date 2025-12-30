@@ -423,7 +423,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.Property(mtc => mtc.CreatedAt).IsRequired();
 
             entity.HasOne(mtc => mtc.Message)
-                .WithMany()
+                .WithMany(m => m.ToolCalls)
                 .HasForeignKey(mtc => mtc.MessageId)
                 .OnDelete(DeleteBehavior.Cascade);
 
@@ -552,7 +552,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
 
         modelBuilder.Entity<Player>()
             .HasData(
-                new Player {Id = "emcee", RulesetId = "dnd5e", Description = "Default player", Name = "Emcee"},
+                new Player { Id = "emcee", RulesetId = "dnd5e", Description = "Default player", Name = "Emcee" },
                 new Player
                 {
                     Id = "kigorath", RulesetId = "dnd5e",

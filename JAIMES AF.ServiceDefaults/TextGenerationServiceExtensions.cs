@@ -108,12 +108,8 @@ public static class TextGenerationServiceExtensions
                         throw new InvalidOperationException(
                             "OpenAI model name is not configured. Set TextGenerationModel:Name.");
 
-                    if (opts.Auth == AuthenticationType.None)
-                        throw new InvalidOperationException("OpenAI does not support None authentication. Use ApiKey.");
-
-                    if (opts.Auth == AuthenticationType.Identity)
-                        throw new InvalidOperationException(
-                            "Identity authentication is only supported for Azure OpenAI, not OpenAI.");
+                    if (opts.Auth != AuthenticationType.ApiKey)
+                        throw new InvalidOperationException("OpenAI requires ApiKey authentication.");
 
                     if (string.IsNullOrWhiteSpace(opts.Key))
                         throw new InvalidOperationException(
@@ -232,7 +228,8 @@ public static class TextGenerationServiceExtensions
 
         public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages,
             ChatOptions? options = null,
-            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+            [System.Runtime.CompilerServices.EnumeratorCancellation]
+            CancellationToken cancellationToken = default)
         {
             // For streaming, we'd need to handle SSE (Server-Sent Events) from Ollama
             // This is a simplified implementation that falls back to non-streaming

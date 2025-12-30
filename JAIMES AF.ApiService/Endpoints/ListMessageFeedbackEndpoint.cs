@@ -9,7 +9,7 @@ public class ListMessageFeedbackEndpoint : EndpointWithoutRequest<FeedbackListRe
 
     public override void Configure()
     {
-        Get("/feedback");
+        Get("/admin/feedback");
         AllowAnonymous(); // Currently internal tool, so anonymous is effectively "anyone with access to the app"
         Description(b => b
             .Produces<FeedbackListResponse>(StatusCodes.Status200OK)
@@ -20,11 +20,15 @@ public class ListMessageFeedbackEndpoint : EndpointWithoutRequest<FeedbackListRe
     {
         int page = Query<int>("page", false);
         if (page < 1) page = 1;
-        
+
         int pageSize = Query<int>("pageSize", false);
         if (pageSize < 1) pageSize = 20;
 
-        FeedbackListResponse response = await MessageFeedbackService.GetFeedbackListAsync(page, pageSize, ct);
+        string? toolName = Query<string?>("toolName", false);
+        bool? isPositive = Query<bool?>("isPositive", false);
+
+        FeedbackListResponse response =
+            await MessageFeedbackService.GetFeedbackListAsync(page, pageSize, toolName, isPositive, ct);
         await Send.OkAsync(response, ct);
     }
 }

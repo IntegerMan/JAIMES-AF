@@ -31,19 +31,19 @@
 						@if (m.PlayerId != null) // User message
 						{
 						    <MattEland.Jaimes.Web.Components.Chat.UserChatMessage 
-						        Text="@paragraph" 
-						        IsFirstParagraph="@isFirstParagraph"
-                                Color="@(isTargetMessage ? Color.Info : Color.Primary)" />
+                                Text="@paragraph" 
+                                IsFirstParagraph="@isFirstParagraph"
+                                Highlighted="@isTargetMessage" />
 						}
 						else // Assistant message
 						{
 							<MattEland.Jaimes.Web.Components.Chat.AssistantChatMessage
-							    Text="@paragraph"
-							    MessageId="@m.Id"
-							    IsFirstParagraph="@isFirstParagraph"
-							    IsLastParagraph="@isLastParagraph"
-							    ReadOnly="true"
-                                Color="@(isTargetMessage ? Color.Info : Color.Default)" />
+                                Text="@paragraph"
+                                MessageId="@m.Id"
+                                IsFirstParagraph="@isFirstParagraph"
+                                IsLastParagraph="@isLastParagraph"
+                                ReadOnly="true"
+                                Highlighted="@isTargetMessage" />
 						}
 					}
                 }

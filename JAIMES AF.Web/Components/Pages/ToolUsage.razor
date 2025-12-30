@@ -1,0 +1,206 @@
+@page "/admin/tools"
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MudBlazor
+@inject IHttpClientFactory HttpClientFactory
+@rendermode InteractiveServer
+
+<PageTitle>Tool Usage</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Tool Usage Statistics</MudText>
+    <MudText Typo="Typo.body2" Class="mb-4 text-muted">
+        View tool call statistics and usage metrics across all agents. Click a tool name for detailed call history.
+    </MudText>
+
+    <MudDataGrid T="ToolUsageItemDto"
+                 ServerData="ServerReload"
+                 Filterable="false"
+                 Hover="true"
+                 Dense="true"
+                 Striped="true">
+        <Columns>
+            <PropertyColumn Property="x => x.ToolName" Title="Tool Name">
+                <CellTemplate>
+                    <MudLink Href="@($"/admin/tools/{Uri.EscapeDataString(context.Item.ToolName)}")" Typo="Typo.body2">
+                        <strong>@context.Item.ToolName</strong>
+                    </MudLink>
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.TotalCalls" Title="Total Calls">
+                <CellTemplate>
+                    <MudChip Color="Color.Primary" Size="Size.Small">
+                        @context.Item.TotalCalls
+                    </MudChip>
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.HelpfulCount" Title="Helpful" Sortable="true">
+                <CellTemplate>
+                    @if (context.Item.HelpfulCount > 0)
+                    {
+                        <MudLink Href="@($"/admin/feedback?toolName={Uri.EscapeDataString(context.Item.ToolName)}&isPositive=true")">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Success" Size="Size.Small" />
+                                <MudText Typo="Typo.body2">@context.Item.HelpfulCount</MudText>
+                            </MudStack>
+                        </MudLink>
+                    }
+                    else
+                    {
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Success" Size="Size.Small" />
+                            <MudText Typo="Typo.body2">@context.Item.HelpfulCount</MudText>
+                        </MudStack>
+                    }
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.UnhelpfulCount" Title="Unhelpful" Sortable="true">
+                <CellTemplate>
+                    @if (context.Item.UnhelpfulCount > 0)
+                    {
+                        <MudLink Href="@($"/admin/feedback?toolName={Uri.EscapeDataString(context.Item.ToolName)}&isPositive=false")">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.ThumbDown" Color="Color.Error" Size="Size.Small" />
+                                <MudText Typo="Typo.body2">@context.Item.UnhelpfulCount</MudText>
+                            </MudStack>
+                        </MudLink>
+                    }
+                    else
+                    {
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@Icons.Material.Filled.ThumbDown" Color="Color.Error" Size="Size.Small" />
+                            <MudText Typo="Typo.body2">@context.Item.UnhelpfulCount</MudText>
+                        </MudStack>
+                    }
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.EnabledAgents" Title="Enabled Agents" Sortable="false">
+                <CellTemplate>
+                    @if (context.Item.EnabledAgents.Any())
+                    {
+                        <MudStack Row="true" Spacing="1">
+                            @foreach (var agent in context.Item.EnabledAgents.Take(3))
+                            {
+                                <MudChip Color="Color.Secondary" Size="Size.Small">@agent</MudChip>
+                            }
+                            @if (context.Item.EnabledAgents.Count > 3)
+                            {
+                                <MudChip Color="Color.Default" Size="Size.Small">+@(context.Item.EnabledAgents.Count - 3) more</MudChip>
+                            }
+                        </MudStack>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Class="text-muted">None</MudText>
+                    }
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.EligibleMessages" Title="Eligible Messages">
+                <CellTemplate>
+                    @context.Item.EligibleMessages.ToString("N0")
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.UsagePercentage" Title="Usage %" Sortable="true">
+                <CellTemplate>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudProgressLinear Color="@GetUsageColor(context.Item.UsagePercentage)" 
+                                           Value="@context.Item.UsagePercentage" 
+                                           Max="100"
+                                           Style="width: 100px; height: 8px;" />
+                        <MudText Typo="Typo.body2">@context.Item.UsagePercentage.ToString("F1")%</MudText>
+                    </MudStack>
+                </CellTemplate>
+            </PropertyColumn>
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="ToolUsageItemDto" />
+        </PagerContent>
+        <NoRecordsContent>
+            <MudText Typo="Typo.body1" Class="pa-4">
+                No tool usage data available. Tool calls will appear here after agents use tools during gameplay.
+            </MudText>
+        </NoRecordsContent>
+    </MudDataGrid>
+</MudContainer>
+
+@code {
+    /// <summary>
+    /// Optional agent ID to filter results.
+    /// </summary>
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? AgentId { get; set; }
+
+    /// <summary>
+    /// Optional instruction version ID to filter results.
+    /// </summary>
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public int? InstructionVersionId { get; set; }
+
+    /// <summary>
+    /// Optional game ID to filter results.
+    /// </summary>
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public Guid? GameId { get; set; }
+
+    private async Task<GridData<ToolUsageItemDto>> ServerReload(GridState<ToolUsageItemDto> state)
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient("Api");
+
+            // MudDataGrid uses 0-based index, API uses 1-based page
+            int page = state.Page + 1;
+            int pageSize = state.PageSize;
+
+            // Build query string with optional filters
+            var queryParams = new List<string>
+            {
+                $"page={page}",
+                $"pageSize={pageSize}"
+            };
+
+            if (!string.IsNullOrEmpty(AgentId))
+                queryParams.Add($"agentId={Uri.EscapeDataString(AgentId)}");
+            if (InstructionVersionId.HasValue)
+                queryParams.Add($"instructionVersionId={InstructionVersionId.Value}");
+            if (GameId.HasValue)
+                queryParams.Add($"gameId={GameId.Value}");
+
+            string queryString = string.Join("&", queryParams);
+            var response = await client.GetFromJsonAsync<ToolUsageListResponse>($"/admin/tools?{queryString}");
+
+            if (response != null)
+            {
+                return new GridData<ToolUsageItemDto>
+                {
+                    TotalItems = response.TotalCount,
+                    Items = response.Items
+                };
+            }
+        }
+        catch (Exception)
+        {
+            // Handle error (maybe show snackbar)
+        }
+
+        return new GridData<ToolUsageItemDto>
+        {
+            TotalItems = 0,
+            Items = []
+        };
+    }
+
+    private static Color GetUsageColor(double percentage)
+    {
+        return percentage switch
+        {
+            >= 50 => Color.Success,
+            >= 25 => Color.Info,
+            >= 10 => Color.Warning,
+            _ => Color.Default
+        };
+    }
+}
+

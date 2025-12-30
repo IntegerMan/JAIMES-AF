@@ -2,7 +2,7 @@
 
 <MudChat ChatPosition="ChatBubblePosition.End"
          Variant="Variant.Filled"
-         Color="@Color">
+         Color="@(Highlighted ? Color.Info : Color)">
     @if (IsFirstParagraph)
     {
         <MudChatHeader Name="Player"/>
@@ -21,4 +21,7 @@
 
     [Parameter]
     public Color Color { get; set; } = Color.Primary;
+
+    [Parameter]
+    public bool Highlighted { get; set; }
 }

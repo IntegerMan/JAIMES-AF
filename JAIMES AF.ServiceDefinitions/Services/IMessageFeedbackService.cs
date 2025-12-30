@@ -10,6 +10,6 @@ public interface IMessageFeedbackService
     Task<MessageFeedbackDto?> GetFeedbackForMessageAsync(int messageId, CancellationToken cancellationToken = default);
 
     Task<MattEland.Jaimes.ServiceDefinitions.Responses.FeedbackListResponse> GetFeedbackListAsync(int page,
-        int pageSize, CancellationToken cancellationToken = default);
+        int pageSize, string? toolName = null, bool? isPositive = null, CancellationToken cancellationToken = default);
 }
 

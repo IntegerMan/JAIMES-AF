@@ -1,0 +1,127 @@
+@using MattEland.Jaimes.Web.Components.Pages
+@using MudBlazor
+
+@* Reusable component for displaying message feedback and tool call indicators *@
+
+<div class="d-flex align-items-center gap-2">
+    @if (ToolCallCount > 0)
+    {
+        <MudTooltip Text="@($"{ToolCallCount} tool call(s)")">
+            @if (ReadOnly)
+            {
+                <MudIcon Icon="@Icons.Material.Filled.Build"
+                         Color="Color.Default"
+                         Size="Size.Small"
+                         Class="tool-call-icon" />
+            }
+            else
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Build"
+                               Color="Color.Default"
+                               Size="Size.Small"
+                               Variant="Variant.Text"
+                               Class="tool-call-button"
+                               OnClick="OnToolCallsClicked" />
+            }
+        </MudTooltip>
+    }
+
+    @if (Feedback != null)
+    {
+        <MudTooltip Text="@(string.IsNullOrWhiteSpace(Feedback.Comment) ? $"{(Feedback.IsPositive ? "Helpful" : "Unhelpful")} feedback" : Feedback.Comment)">
+            <MudIcon Icon="@(Feedback.IsPositive ? Icons.Material.Filled.ThumbUp : Icons.Material.Filled.ThumbDown)"
+                     Color="@(Feedback.IsPositive ? Color.Success : Color.Error)"
+                     Size="Size.Small"
+                     Class="feedback-icon-existing" />
+        </MudTooltip>
+    }
+    else if (ShowFeedbackButtons && !ReadOnly)
+    {
+        <div class="d-flex align-items-center gap-1">
+            <MudTooltip Text="Mark as helpful">
+                <MudIconButton Icon="@Icons.Material.Filled.ThumbUp"
+                               Color="@(_isHoveringThumbUp ? Color.Success : Color.Default)"
+                               Size="Size.Small"
+                               Variant="Variant.Text"
+                               Class="feedback-button"
+                               @onmouseenter="() => _isHoveringThumbUp = true"
+                               @onmouseleave="() => _isHoveringThumbUp = false"
+                               OnClick="@(() => OnFeedbackButtonClicked(true))" />
+            </MudTooltip>
+            <MudTooltip Text="Mark as unhelpful">
+                <MudIconButton Icon="@Icons.Material.Filled.ThumbDown"
+                               Color="@(_isHoveringThumbDown ? Color.Error : Color.Default)"
+                               Size="Size.Small"
+                               Variant="Variant.Text"
+                               Class="feedback-button"
+                               @onmouseenter="() => _isHoveringThumbDown = true"
+                               @onmouseleave="() => _isHoveringThumbDown = false"
+                               OnClick="@(() => OnFeedbackButtonClicked(false))" />
+            </MudTooltip>
+        </div>
+    }
+</div>
+
+@code {
+    private bool _isHoveringThumbUp;
+    private bool _isHoveringThumbDown;
+
+    /// <summary>
+    /// The feedback for this message, if any.
+    /// </summary>
+    [Parameter]
+    public MessageFeedbackInfo? Feedback { get; set; }
+
+    /// <summary>
+    /// Number of tool calls associated with this message.
+    /// </summary>
+    [Parameter]
+    public int ToolCallCount { get; set; }
+
+    /// <summary>
+    /// Whether to show in read-only mode (no interactive buttons).
+    /// </summary>
+    [Parameter]
+    public bool ReadOnly { get; set; } = true;
+
+    /// <summary>
+    /// Whether to show feedback buttons when no feedback exists.
+    /// Only applies when ReadOnly is false.
+    /// </summary>
+    [Parameter]
+    public bool ShowFeedbackButtons { get; set; }
+
+    /// <summary>
+    /// The message ID for event callbacks.
+    /// </summary>
+    [Parameter]
+    public int? MessageId { get; set; }
+
+    /// <summary>
+    /// Event callback when tool calls icon is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> OnToolCallsClick { get; set; }
+
+    /// <summary>
+    /// Event callback when feedback button is clicked. Passes (MessageId, IsPositive).
+    /// </summary>
+    [Parameter]
+    public EventCallback<(int MessageId, bool IsPositive)> OnFeedbackClick { get; set; }
+
+    private async Task OnToolCallsClicked()
+    {
+        if (MessageId.HasValue)
+        {
+            await OnToolCallsClick.InvokeAsync(MessageId.Value);
+        }
+    }
+
+    private async Task OnFeedbackButtonClicked(bool isPositive)
+    {
+        if (MessageId.HasValue)
+        {
+            await OnFeedbackClick.InvokeAsync((MessageId.Value, isPositive));
+        }
+    }
+}
