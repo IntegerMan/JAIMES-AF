@@ -15,7 +15,7 @@
         <MudChatBubble>
             @((MarkupString)ChatHelpers.RenderMarkdown(Text))
         </MudChatBubble>
-        @if (IsLastParagraph && MessageId.HasValue)
+        @if (IsLastParagraph)
         {
             <MudChatFooter Class="feedback-footer">
                 <MessageIndicators

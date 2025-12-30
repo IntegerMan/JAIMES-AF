@@ -58,6 +58,7 @@
     <PackageVersion Include="Markdig" Version="0.44.0" />
     <PackageVersion Include="Meziantou.Analyzer" Version="2.0.266" />
     <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.101" />
+    <PackageVersion Include="bunit.web" Version="1.36.0" />
     <PackageVersion Include="MudBlazor" Version="8.15.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.14.0" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.14.0" />

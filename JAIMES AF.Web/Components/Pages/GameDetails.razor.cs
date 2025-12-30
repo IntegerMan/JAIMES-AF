@@ -29,7 +29,9 @@ public partial class GameDetails : IAsyncDisposable
     private GameStateResponse? _game;
     private bool _isLoading = true;
     private string? _errorMessage;
+    private int? _failedMessageIndex;
     private HubConnection? _hubConnection;
+
 
     private readonly MessageResponse _userMessage = new()
     {
@@ -89,28 +91,8 @@ public partial class GameDetails : IAsyncDisposable
                 .ToList();
             _messageIds = orderedMessages.Select(m => (int?)m.Id).ToList();
 
-            // Store sentiment for user messages
-            orderedMessages.Where(m => m.Participant == ChatParticipant.Player && m.Sentiment.HasValue)
-                .ToList()
-                .ForEach(m => _messageSentiment[m.Id] = new MessageSentimentInfo
-                {
-                    Sentiment = m.Sentiment!.Value, // We know it's not null from the Where clause
-                    Confidence = m.SentimentConfidence,
-                    SentimentSource = m.SentimentSource
-                });
-
-            // Load existing feedback for assistant messages
-            await LoadFeedbackForMessagesAsync(orderedMessages.Where(m => m.Participant == ChatParticipant.GameMaster)
-                .Select(m => m.Id).ToList());
-
-            // Load tool calls for assistant messages
-            await LoadToolCallsForMessagesAsync(orderedMessages.Where(m => m.Participant == ChatParticipant.GameMaster)
-                .Select(m => m.Id).ToList());
-
-            // Load evaluation metrics for assistant messages
-            await LoadEvaluationMetricsForMessagesAsync(orderedMessages
-                .Where(m => m.Participant == ChatParticipant.GameMaster)
-                .Select(m => m.Id).ToList());
+            // Batch load all metadata (Feedback, ToolCalls, Metrics, Sentiment)
+            await LoadMessagesMetadataAsync(orderedMessages.Select(m => m.Id).ToList());
 
             // Create AG-UI client for this game
             HttpClient aguiHttpClient = HttpClientFactory.CreateClient("AGUI");
@@ -149,14 +131,18 @@ public partial class GameDetails : IAsyncDisposable
 
         _isSending = true;
         _errorMessage = null;
+        _failedMessageIndex = null;
+
+        // Check if this is the first player message (no User messages yet)
+        bool isFirstPlayerMessage = IsFirstPlayerMessage();
+
         try
         {
-            // Check if this is the first player message (no User messages yet)
-            bool isFirstPlayerMessage = IsFirstPlayerMessage();
-
             // Indicate message is being sent
             _messages.Add(new(ChatRole.User, messageText));
             _messageIds.Add(null); // User messages don't have database IDs yet
+            int currentMessageIndex = _messages.Count - 1;
+
             _logger?.LogInformation("Sending message {Text} from User (first message: {IsFirst})", messageText,
                 isFirstPlayerMessage);
 
@@ -168,6 +154,7 @@ public partial class GameDetails : IAsyncDisposable
             if (_agent == null)
             {
                 _errorMessage = "Agent not initialized";
+                _failedMessageIndex = currentMessageIndex;
                 return;
             }
 
@@ -269,19 +256,36 @@ public partial class GameDetails : IAsyncDisposable
         {
             _logger?.LogError(ex, "Failed to send chat message");
             _errorMessage = $"Failed to send message: {ex.Message}";
+            _failedMessageIndex = _messages.Count - 1; // Mark the last message as failed
         }
         finally
         {
             _isSending = false;
 
-            // Don't reload game state here - it wipes out messages that were just added locally
-            // The messages are already in _messages from the AGUI response
-            // await LoadGameAsync();
+            // Don't reload game state here - SignalR will notify us when sentiment is analyzed
+            // and we'll update the message ID at that point
 
             // Scroll after typing indicator disappears
             _shouldScrollToBottom = true;
             await InvokeAsync(StateHasChanged);
         }
+    }
+
+    private async Task RetryMessageAsync(int messageIndex)
+    {
+        if (messageIndex < 0 || messageIndex >= _messages.Count) return;
+
+        // Get the failed message text
+        string messageText = _messages[messageIndex].Text;
+
+        // Remove the failed message from the list
+        _messages.RemoveAt(messageIndex);
+        _messageIds.RemoveAt(messageIndex);
+        _failedMessageIndex = null;
+        _errorMessage = null;
+
+        // Resend the message
+        await SendMessagePrivateAsync(messageText);
     }
 
     private async Task OnKeyDown(KeyboardEventArgs args)
@@ -342,63 +346,6 @@ public partial class GameDetails : IAsyncDisposable
         return utcTime.ToLocalTime();
     }
 
-    /// <summary>
-    /// Loads existing feedback for the specified message IDs.
-    /// </summary>
-    private async Task LoadFeedbackForMessagesAsync(List<int> messageIds)
-    {
-        if (messageIds.Count == 0) return;
-
-        try
-        {
-            HttpClient httpClient = HttpClientFactory.CreateClient("Api");
-
-            // Load feedback for each message (could be optimized with a batch endpoint, but this works for now)
-            foreach (int messageId in messageIds)
-            {
-                try
-                {
-                    // Use GetAsync to properly handle 204 NoContent responses
-                    HttpResponseMessage response = await httpClient.GetAsync($"/messages/{messageId}/feedback");
-
-                    if (response.StatusCode == System.Net.HttpStatusCode.OK)
-                    {
-                        MessageFeedbackResponse? feedback =
-                            await response.Content.ReadFromJsonAsync<MessageFeedbackResponse>();
-                        if (feedback != null)
-                        {
-                            _messageFeedback[messageId] = new MessageFeedbackInfo
-                            {
-                                MessageId = feedback.MessageId,
-                                IsPositive = feedback.IsPositive,
-                                Comment = feedback.Comment
-                            };
-                            _logger?.LogDebug("Loaded feedback for message {MessageId}: IsPositive={IsPositive}",
-                                messageId, feedback.IsPositive);
-                        }
-                    }
-                    else if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
-                    {
-                        // No feedback for this message, which is fine
-                        _logger?.LogDebug("No feedback found for message {MessageId}", messageId);
-                    }
-                    else
-                    {
-                        _logger?.LogWarning("Unexpected status {Status} when loading feedback for message {MessageId}",
-                            response.StatusCode, messageId);
-                    }
-                }
-                catch (HttpRequestException ex)
-                {
-                    _logger?.LogWarning(ex, "Failed to load feedback for message {MessageId}", messageId);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex, "Failed to load feedback for messages");
-        }
-    }
 
     /// <summary>
     /// Gets the message ID for a message at the specified index, if available.
@@ -547,49 +494,6 @@ public partial class GameDetails : IAsyncDisposable
         }
     }
 
-    /// <summary>
-    /// Loads tool calls for the specified message IDs.
-    /// </summary>
-    private async Task LoadToolCallsForMessagesAsync(List<int> messageIds)
-    {
-        if (messageIds.Count == 0) return;
-
-        try
-        {
-            HttpClient httpClient = HttpClientFactory.CreateClient("Api");
-
-            // Load tool calls for each message
-            foreach (int messageId in messageIds)
-            {
-                try
-                {
-                    List<MessageToolCallResponse>? toolCalls =
-                        await httpClient.GetFromJsonAsync<List<MessageToolCallResponse>>(
-                            $"/messages/{messageId}/tool-calls");
-                    if (toolCalls != null && toolCalls.Count > 0)
-                    {
-                        _messageToolCalls[messageId] = toolCalls.Select(tc => new MessageToolCallInfo
-                        {
-                            Id = tc.Id,
-                            MessageId = tc.MessageId,
-                            ToolName = tc.ToolName,
-                            InputJson = tc.InputJson,
-                            OutputJson = tc.OutputJson,
-                            CreatedAt = tc.CreatedAt
-                        }).ToList();
-                    }
-                }
-                catch (HttpRequestException)
-                {
-                    // Message doesn't have tool calls yet, which is fine
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex, "Failed to load tool calls for messages");
-        }
-    }
 
     /// <summary>
     /// Shows the tool calls dialog for a message.
@@ -620,9 +524,9 @@ public partial class GameDetails : IAsyncDisposable
     }
 
     /// <summary>
-    /// Loads evaluation metrics for the specified message IDs.
+    /// Loads metadata (feedback, metrics, tool calls, sentiment) for the specified message IDs in a single batch request.
     /// </summary>
-    private async Task LoadEvaluationMetricsForMessagesAsync(List<int> messageIds)
+    private async Task LoadMessagesMetadataAsync(List<int> messageIds)
     {
         if (messageIds.Count == 0) return;
 
@@ -630,28 +534,66 @@ public partial class GameDetails : IAsyncDisposable
         {
             HttpClient httpClient = HttpClientFactory.CreateClient("Api");
 
-            // Load metrics for each message
-            foreach (int messageId in messageIds)
+            var request = new MessagesMetadataRequest { MessageIds = messageIds };
+            var response = await httpClient.PostAsJsonAsync("/messages/metadata", request);
+
+            if (response.IsSuccessStatusCode)
             {
-                try
+                var metadata = await response.Content.ReadFromJsonAsync<MessagesMetadataResponse>();
+                if (metadata == null) return;
+
+                // 1. Process Feedback
+                foreach (var (msgId, fb) in metadata.Feedback)
                 {
-                    List<MessageEvaluationMetricResponse>? metrics =
-                        await httpClient.GetFromJsonAsync<List<MessageEvaluationMetricResponse>>(
-                            $"/messages/{messageId}/metrics");
-                    if (metrics != null && metrics.Count > 0)
+                    _messageFeedback[msgId] = new MessageFeedbackInfo
                     {
-                        _messageMetrics[messageId] = metrics;
-                    }
+                        MessageId = fb.MessageId,
+                        IsPositive = fb.IsPositive,
+                        Comment = fb.Comment
+                    };
                 }
-                catch (HttpRequestException)
+
+                // 2. Process Tool Calls
+                foreach (var (msgId, items) in metadata.ToolCalls)
                 {
-                    // Message doesn't have metrics yet, which is fine
+                    _messageToolCalls[msgId] = items.Select(tc => new MessageToolCallInfo
+                    {
+                        Id = tc.Id,
+                        MessageId = tc.MessageId,
+                        ToolName = tc.ToolName,
+                        InputJson = tc.InputJson,
+                        OutputJson = tc.OutputJson,
+                        CreatedAt = tc.CreatedAt
+                    }).ToList();
                 }
+
+                // 3. Process Metrics
+                foreach (var (msgId, items) in metadata.Metrics)
+                {
+                    _messageMetrics[msgId] = items;
+                }
+
+                // 4. Process Sentiment
+                foreach (var (msgId, sent) in metadata.Sentiment)
+                {
+                    _messageSentiment[msgId] = new MessageSentimentInfo
+                    {
+                        Sentiment = sent.Sentiment,
+                        Confidence = sent.Confidence,
+                        SentimentSource = sent.SentimentSource
+                    };
+                }
+
+                _logger?.LogInformation("Loaded metadata for {Count} messages", messageIds.Count);
+            }
+            else
+            {
+                _logger?.LogError("Failed to load message metadata. Status: {Status}", response.StatusCode);
             }
         }
         catch (Exception ex)
         {
-            _logger?.LogWarning(ex, "Failed to load evaluation metrics for messages");
+            _logger?.LogError(ex, "Failed to load message metadata");
         }
     }
 
@@ -692,12 +634,26 @@ public partial class GameDetails : IAsyncDisposable
                     if (notification.UpdateType == MessageUpdateType.SentimentAnalyzed &&
                         notification.Sentiment.HasValue)
                     {
+                        // Store sentiment info
                         _messageSentiment[notification.MessageId] = new MessageSentimentInfo
                         {
                             Sentiment = notification.Sentiment.Value,
                             Confidence = notification.SentimentConfidence,
                             SentimentSource = notification.SentimentSource
                         };
+
+                        // Find the first message with a null ID (most recent user message)
+                        // and update it with the message ID from the notification
+                        for (int i = _messageIds.Count - 1; i >= 0; i--)
+                        {
+                            if (_messageIds[i] == null && _messages[i].Role == ChatRole.User)
+                            {
+                                _messageIds[i] = notification.MessageId;
+                                _logger?.LogDebug("Updated message ID at index {Index} to {MessageId}", i,
+                                    notification.MessageId);
+                                break;
+                            }
+                        }
                     }
                     else if (notification.UpdateType == MessageUpdateType.MetricsEvaluated &&
                              notification.Metrics != null)

@@ -96,6 +96,19 @@
 							}
 						}
 					}
+
+                    @if (_failedMessageIndex == msgIndex && !string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <MudChat ChatPosition="ChatBubblePosition.End">
+                            <MudChatBubble Color="Color.Error">
+                                <MudIcon Icon="@Icons.Material.Filled.Error" Class="mr-2" Size="Size.Small"/>
+                                @_errorMessage
+                                <MudButton Size="Size.Small" Color="Color.Inherit" OnClick="@(() => RetryMessageAsync(msgIndex))" Variant="Variant.Text">
+                                    Retry
+                                </MudButton>
+                            </MudChatBubble>
+                        </MudChat>
+                    }
 				}
 
 				@if (_isSending)

@@ -11,10 +11,10 @@
         @Text
     </MudChatBubble>
     
-    @if (IsLastParagraph && MessageId.HasValue)
+    @if (IsLastParagraph)
     {
         <MudChatFooter Class="d-flex justify-content-end align-items-center gap-2 mt-1">
-            @if (Sentiment.HasValue)
+            @if (MessageId.HasValue && Sentiment.HasValue)
             {
                 if (ReadOnly)
                 {
