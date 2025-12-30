@@ -46,7 +46,7 @@ public class EvaluationMetricListItemDto
     public DateTime EvaluatedAt { get; set; }
 
     // Context information
-    
+
     /// <summary>
     /// The game ID associated with this metric's message.
     /// </summary>
@@ -71,4 +71,9 @@ public class EvaluationMetricListItemDto
     /// The agent instruction version number.
     /// </summary>
     public string? AgentVersion { get; set; }
+
+    /// <summary>
+    /// A short preview of the message content.
+    /// </summary>
+    public string? MessagePreview { get; set; }
 }

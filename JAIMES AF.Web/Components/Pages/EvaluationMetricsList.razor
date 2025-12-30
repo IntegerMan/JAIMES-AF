@@ -2,6 +2,7 @@
 @using MattEland.Jaimes.ServiceDefinitions.Responses
 @using MattEland.Jaimes.Web.Components.Shared
 @using MudBlazor
+@using System.Linq
 @inject IHttpClientFactory HttpClientFactory
 @inject IDialogService DialogService
 @inject NavigationManager NavigationManager
@@ -42,11 +43,14 @@
                  Groupable="true"
                  GroupExpanded="true">
         <Columns>
+
             <PropertyColumn Property="x => x.GamePlayerName" Title="Game" Groupable="true" Grouping="true">
                 <GroupTemplate>
                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                         <MudIcon Icon="@Icons.Material.Filled.SportsEsports" Size="Size.Small" />
-                        <MudText Typo="Typo.subtitle1"><strong>@context.Grouping.Key</strong></MudText>
+                        <MudLink Href="@($"/games/{context.Grouping.First().GameId}")" Typo="Typo.subtitle1">
+                            <strong>@context.Grouping.Key</strong>
+                        </MudLink>
                         <MudText Typo="Typo.caption" Class="text-muted">(@context.Grouping.Count() metrics)</MudText>
                     </MudStack>
                 </GroupTemplate>
@@ -58,7 +62,9 @@
                 <GroupTemplate>
                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                         <MudIcon Icon="@Icons.Material.Filled.Message" Size="Size.Small" />
-                        <MudText>Message @context.Grouping.Key</MudText>
+                        <MudText>
+                             <strong>@(context.Grouping.First().MessagePreview ?? $"Message {context.Grouping.Key}")</strong>
+                        </MudText>
                         <MudLink Href="@($"/admin/metrics/{context.Grouping.Key}")" Class="ml-2">View Details</MudLink>
                     </MudStack>
                 </GroupTemplate>
@@ -99,7 +105,7 @@
                     }
                     else
                     {
-                        <MudText Typo="Typo.caption" Class="text-muted">-</MudText>
+                        <MudText Typo="Typo.caption" Class="text-muted">No remarks provided</MudText>
                     }
                 </CellTemplate>
             </PropertyColumn>
@@ -122,7 +128,7 @@
                                            Href="@($"/admin/metrics/{context.Item.MessageId}")" />
                         </MudTooltip>
                         <MudTooltip Text="View Game">
-                            <MudIconButton Icon="@Icons.Material.Filled.Chat" 
+                            <MudIconButton Icon="@Icons.Material.Filled.SportsEsports" 
                                            Color="Color.Primary" 
                                            Size="Size.Small"
                                            Href="@($"/games/{context.Item.GameId}")"

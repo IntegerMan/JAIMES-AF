@@ -103,7 +103,10 @@ public class MessageEvaluationMetricsService(IDbContextFactory<JaimesDbContext> 
                 GamePlayerName = m.Message?.Game?.Player?.Name,
                 GameScenarioName = m.Message?.Game?.Scenario?.Name,
                 GameRulesetId = m.Message?.Game?.RulesetId,
-                AgentVersion = m.Message?.InstructionVersion?.VersionNumber
+                AgentVersion = m.Message?.InstructionVersion?.VersionNumber,
+                MessagePreview = m.Message?.Text is string text && text.Length > 50
+                    ? text[..50] + "..."
+                    : m.Message?.Text
             });
 
         return new EvaluationMetricListResponse
