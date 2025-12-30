@@ -21,6 +21,8 @@ public partial class GameDetails : IDisposable
     private List<int?> _messageIds = []; // Parallel list to track message IDs
     private Dictionary<int, MessageFeedbackInfo> _messageFeedback = new();
     private Dictionary<int, List<MessageToolCallInfo>> _messageToolCalls = new();
+    private Dictionary<int, List<MessageEvaluationMetricResponse>> _messageMetrics = new();
+    private Dictionary<int, int?> _messageSentiment = new();
     private AIAgent? _agent;
 
     private GameStateResponse? _game;
@@ -82,12 +84,22 @@ public partial class GameDetails : IDisposable
                 .ToList();
             _messageIds = orderedMessages.Select(m => (int?)m.Id).ToList();
 
+            // Store sentiment for user messages
+            orderedMessages.Where(m => m.Participant == ChatParticipant.Player && m.Sentiment.HasValue)
+                .ToList()
+                .ForEach(m => _messageSentiment[m.Id] = m.Sentiment);
+
             // Load existing feedback for assistant messages
             await LoadFeedbackForMessagesAsync(orderedMessages.Where(m => m.Participant == ChatParticipant.GameMaster)
                 .Select(m => m.Id).ToList());
 
             // Load tool calls for assistant messages
             await LoadToolCallsForMessagesAsync(orderedMessages.Where(m => m.Participant == ChatParticipant.GameMaster)
+                .Select(m => m.Id).ToList());
+
+            // Load evaluation metrics for assistant messages
+            await LoadEvaluationMetricsForMessagesAsync(orderedMessages
+                .Where(m => m.Participant == ChatParticipant.GameMaster)
                 .Select(m => m.Id).ToList());
 
             // Create AG-UI client for this game
@@ -594,6 +606,42 @@ public partial class GameDetails : IDisposable
 
         IDialogReference? dialogRef = await DialogService.ShowAsync<ToolCallsDialog>("Tool Calls", parameters, options);
         await dialogRef.Result;
+    }
+
+    /// <summary>
+    /// Loads evaluation metrics for the specified message IDs.
+    /// </summary>
+    private async Task LoadEvaluationMetricsForMessagesAsync(List<int> messageIds)
+    {
+        if (messageIds.Count == 0) return;
+
+        try
+        {
+            HttpClient httpClient = HttpClientFactory.CreateClient("Api");
+
+            // Load metrics for each message
+            foreach (int messageId in messageIds)
+            {
+                try
+                {
+                    List<MessageEvaluationMetricResponse>? metrics =
+                        await httpClient.GetFromJsonAsync<List<MessageEvaluationMetricResponse>>(
+                            $"/messages/{messageId}/metrics");
+                    if (metrics != null && metrics.Count > 0)
+                    {
+                        _messageMetrics[messageId] = metrics;
+                    }
+                }
+                catch (HttpRequestException)
+                {
+                    // Message doesn't have metrics yet, which is fine
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to load evaluation metrics for messages");
+        }
     }
 
     public void Dispose()

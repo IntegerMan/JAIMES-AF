@@ -58,6 +58,8 @@
 					// Pre-calculate data needed for components (avoiding dictionary lookups in render loop logic where possible)
 					MessageFeedbackInfo? feedback = messageId.HasValue && _messageFeedback.TryGetValue(messageId.Value, out var fb) ? fb : null;
 					List<MessageToolCallInfo>? toolCalls = messageId.HasValue && _messageToolCalls.TryGetValue(messageId.Value, out var tc) ? tc : null;
+					List<MessageEvaluationMetricResponse>? metrics = messageId.HasValue && _messageMetrics.TryGetValue(messageId.Value, out var met) ? met : null;
+                    int? sentiment = messageId.HasValue && _messageSentiment.TryGetValue(messageId.Value, out var s) ? s : null;
 
 					List<string> paragraphs = ChatHelpers.SplitIntoParagraphs(m.Text).ToList();
 					@foreach ((string paragraph, int index) in paragraphs.Select((p, i) => (p, i)))
@@ -69,7 +71,8 @@
 						{
 						    <UserChatMessage 
 						        Text="@paragraph" 
-						        IsFirstParagraph="@isFirstParagraph" />
+						        IsFirstParagraph="@isFirstParagraph"
+                                Sentiment="@sentiment" />
 						}
 						else
 						{
@@ -81,6 +84,7 @@
 							        IsFirstParagraph="@isFirstParagraph"
 							        IsLastParagraph="@isLastParagraph"
 							        ToolCalls="@toolCalls"
+                                    Metrics="@metrics"
 							        Feedback="@feedback"
 							        OnToolCallsClick="@OnToolCallClicked"
 							        OnFeedbackClick="@OnFeedbackClicked"

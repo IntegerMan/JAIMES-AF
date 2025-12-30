@@ -1,9 +1,40 @@
+@using MattEland.Jaimes.ServiceDefinitions.Responses
 @using MattEland.Jaimes.Web.Components.Pages
 @using MudBlazor
 
 @* Reusable component for displaying message feedback and tool call indicators *@
 
 <div class="d-flex align-items-center gap-2">
+    @if (Metrics != null && Metrics.Count > 0)
+    {
+        <MudTooltip>
+            <TooltipContent>
+                <div class="d-flex flex-column gap-1">
+                    @foreach (var metric in Metrics)
+                    {
+                        <div class="d-flex justify-space-between gap-4">
+                            <strong>@metric.MetricName</strong>
+                            <span>@metric.Score</span>
+                        </div>
+                    }
+                </div>
+            </TooltipContent>
+            <ChildContent>
+                 <MudIcon Icon="@Icons.Material.Filled.PieChart" 
+                          Color="Color.Info" 
+                          Size="Size.Small" />
+            </ChildContent>
+        </MudTooltip>
+    }
+    else if (!ReadOnly) 
+    {
+         <MudTooltip Text="Analysing Metrics...">
+             <MudIcon Icon="@Icons.Material.Filled.HourglassEmpty" 
+                      Color="Color.Default" 
+                      Size="Size.Small" />
+         </MudTooltip>
+    }
+
     @if (ToolCallCount > 0)
     {
         <MudTooltip Text="@($"{ToolCallCount} tool call(s)")">
@@ -65,6 +96,15 @@
 @code {
     private bool _isHoveringThumbUp;
     private bool _isHoveringThumbDown;
+
+    /// <summary>
+    /// The feedback for this message, if any.
+    /// </summary>
+    /// <summary>
+    /// The evaluation metrics for this message
+    /// </summary>
+    [Parameter]
+    public List<MessageEvaluationMetricResponse>? Metrics { get; set; }
 
     /// <summary>
     /// The feedback for this message, if any.
