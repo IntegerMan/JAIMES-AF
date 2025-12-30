@@ -6,6 +6,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
     public DbSet<Message> Messages { get; set; } = null!;
     public DbSet<MessageEmbedding> MessageEmbeddings { get; set; } = null!;
     public DbSet<MessageEvaluationMetric> MessageEvaluationMetrics { get; set; } = null!;
+    public DbSet<MessageSentiment> MessageSentiments { get; set; } = null!;
     public DbSet<Model> Models { get; set; } = null!;
     public DbSet<Player> Players { get; set; } = null!;
     public DbSet<Scenario> Scenarios { get; set; } = null!;
@@ -102,12 +103,12 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 .HasForeignKey(iv => iv.ModelId)
                 .OnDelete(DeleteBehavior.NoAction);
 
-            entity.HasIndex(iv => new {iv.AgentId, iv.VersionNumber}).IsUnique();
+            entity.HasIndex(iv => new { iv.AgentId, iv.VersionNumber }).IsUnique();
         });
 
         modelBuilder.Entity<ScenarioAgent>(entity =>
         {
-            entity.HasKey(sa => new {sa.ScenarioId, sa.AgentId});
+            entity.HasKey(sa => new { sa.ScenarioId, sa.AgentId });
             entity.Property(sa => sa.ScenarioId).IsRequired();
             entity.Property(sa => sa.AgentId).IsRequired();
             entity.Property(sa => sa.InstructionVersionId).IsRequired();
@@ -353,6 +354,27 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        modelBuilder.Entity<MessageSentiment>(entity =>
+        {
+            entity.HasKey(ms => ms.Id);
+            entity.Property(ms => ms.MessageId).IsRequired();
+            entity.Property(ms => ms.Sentiment).IsRequired();
+            entity.Property(ms => ms.CreatedAt).IsRequired();
+            entity.Property(ms => ms.UpdatedAt).IsRequired();
+
+            // Create unique index on MessageId to ensure one sentiment per message
+            entity.HasIndex(ms => ms.MessageId).IsUnique();
+
+            // Create index on UpdatedAt for time-based queries
+            entity.HasIndex(ms => ms.UpdatedAt);
+
+            entity.HasOne(ms => ms.Message)
+                .WithOne(m => m.MessageSentiment)
+                .HasForeignKey<MessageSentiment>(ms => ms.MessageId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+
         // RAG search diagnostic entity configurations
         modelBuilder.Entity<RagSearchQuery>(entity =>
         {
@@ -449,7 +471,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.Property(m => m.CreatedAt).IsRequired();
 
             // Create unique index on Name + Provider + Endpoint to prevent duplicates
-            var indexBuilder = entity.HasIndex(m => new {m.Name, m.Provider, m.Endpoint})
+            var indexBuilder = entity.HasIndex(m => new { m.Name, m.Provider, m.Endpoint })
                 .IsUnique();
 
             // AreNullsDistinct is a relational-only feature. PostgreSQL 15+ supports it.
@@ -516,7 +538,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
 
         modelBuilder.Entity<EvaluationScenarioIteration>(entity =>
         {
-            entity.HasKey(si => new {si.ExecutionName, si.ScenarioName, si.IterationName});
+            entity.HasKey(si => new { si.ExecutionName, si.ScenarioName, si.IterationName });
             entity.Property(si => si.ExecutionName).IsRequired().HasMaxLength(250);
             entity.Property(si => si.ScenarioName).IsRequired().HasMaxLength(250);
             entity.Property(si => si.IterationName).IsRequired().HasMaxLength(250);
@@ -547,7 +569,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
         // you MUST create a new EF Core migration. See AGENTS.md for the migration command.
         modelBuilder.Entity<Ruleset>()
             .HasData(
-                new Ruleset {Id = "dnd5e", Name = "Dungeons and Dragons 5th Edition"}
+                new Ruleset { Id = "dnd5e", Name = "Dungeons and Dragons 5th Edition" }
             );
 
         modelBuilder.Entity<Player>()

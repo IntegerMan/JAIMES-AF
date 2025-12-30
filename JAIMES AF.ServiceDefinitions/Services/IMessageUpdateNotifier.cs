@@ -14,8 +14,10 @@ public interface IMessageUpdateNotifier
     /// <param name="messageId">The message ID.</param>
     /// <param name="gameId">The game ID.</param>
     /// <param name="sentiment">The sentiment value (-1, 0, or 1).</param>
+    /// <param name="confidence">The sentiment confidence score (0.0 to 1.0).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    Task NotifySentimentAnalyzedAsync(int messageId, Guid gameId, int sentiment, CancellationToken cancellationToken = default);
+    Task NotifySentimentAnalyzedAsync(int messageId, Guid gameId, int sentiment, double? confidence,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Notifies the API that an assistant message has been evaluated for metrics.
@@ -24,5 +26,6 @@ public interface IMessageUpdateNotifier
     /// <param name="gameId">The game ID.</param>
     /// <param name="metrics">The evaluation metrics.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    Task NotifyMetricsEvaluatedAsync(int messageId, Guid gameId, List<MessageEvaluationMetricResponse> metrics, CancellationToken cancellationToken = default);
+    Task NotifyMetricsEvaluatedAsync(int messageId, Guid gameId, List<MessageEvaluationMetricResponse> metrics,
+        CancellationToken cancellationToken = default);
 }

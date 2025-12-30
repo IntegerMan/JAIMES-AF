@@ -21,6 +21,7 @@ public static partial class MessageMapper
     [MapperIgnoreSource(nameof(Message.ChatHistory))]
     [MapperIgnoreSource(nameof(Message.Agent))]
     [MapperIgnoreSource(nameof(Message.MessageEmbedding))]
+    [MapperIgnoreSource(nameof(Message.MessageSentiment))]
     [MapperIgnoreSource(nameof(Message.PreviousMessageId))]
     [MapperIgnoreSource(nameof(Message.PreviousMessage))]
     [MapperIgnoreSource(nameof(Message.NextMessageId))]

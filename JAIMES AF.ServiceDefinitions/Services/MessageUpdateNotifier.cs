@@ -19,20 +19,23 @@ public class MessageUpdateNotifier : IMessageUpdateNotifier
         _logger = logger;
     }
 
-    public async Task NotifySentimentAnalyzedAsync(int messageId, Guid gameId, int sentiment, CancellationToken cancellationToken = default)
+    public async Task NotifySentimentAnalyzedAsync(int messageId, Guid gameId, int sentiment, double? confidence,
+        CancellationToken cancellationToken = default)
     {
         MessageUpdateNotification notification = new()
         {
             MessageId = messageId,
             GameId = gameId,
             UpdateType = MessageUpdateType.SentimentAnalyzed,
-            Sentiment = sentiment
+            Sentiment = sentiment,
+            SentimentConfidence = confidence
         };
 
         await SendNotificationAsync(notification, cancellationToken);
     }
 
-    public async Task NotifyMetricsEvaluatedAsync(int messageId, Guid gameId, List<MessageEvaluationMetricResponse> metrics, CancellationToken cancellationToken = default)
+    public async Task NotifyMetricsEvaluatedAsync(int messageId, Guid gameId,
+        List<MessageEvaluationMetricResponse> metrics, CancellationToken cancellationToken = default)
     {
         MessageUpdateNotification notification = new()
         {
@@ -45,7 +48,8 @@ public class MessageUpdateNotifier : IMessageUpdateNotifier
         await SendNotificationAsync(notification, cancellationToken);
     }
 
-    private async Task SendNotificationAsync(MessageUpdateNotification notification, CancellationToken cancellationToken)
+    private async Task SendNotificationAsync(MessageUpdateNotification notification,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -70,7 +74,8 @@ public class MessageUpdateNotifier : IMessageUpdateNotifier
         catch (Exception ex)
         {
             // Log but don't throw - notification failure shouldn't fail message processing
-            _logger.LogWarning(ex, "Failed to send message update notification for message {MessageId}", notification.MessageId);
+            _logger.LogWarning(ex, "Failed to send message update notification for message {MessageId}",
+                notification.MessageId);
         }
     }
 }
