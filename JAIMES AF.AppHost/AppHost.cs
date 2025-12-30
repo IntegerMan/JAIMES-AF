@@ -76,8 +76,7 @@ IResourceBuilder<ProjectResource> databaseMigrationWorker = builder
     .WithReference(postgresdb)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
-    .WithParentRelationship(workersGroup)
-    .WithTelemetryEndpoint(configuration);
+    .WithParentRelationship(workersGroup);
 
 // Conditionally create Ollama container only if needed
 IResourceBuilder<OllamaResource>? ollama = null;
@@ -174,8 +173,7 @@ apiService = apiService
             ollama,
             isTextGenOllama);
         SetModelProviderEnvironmentVariables(SetVar, "EmbeddingModel", embedConfig, embedModel, ollama, isEmbedOllama);
-    })
-    .WithTelemetryEndpoint(configuration);
+    });
 
 builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")
     .WithIconName("GameChat")
@@ -213,8 +211,7 @@ builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")
             DisplayText = "👤 Players"
         })
     .WithReference(apiService)
-    .WaitFor(apiService)
-    .WithTelemetryEndpoint(configuration);
+    .WaitFor(apiService);
 
 IResourceBuilder<ProjectResource> documentCrackerWorker = builder
     .AddProject<Projects.JAIMES_AF_Workers_DocumentCrackerWorker>("document-cracker-worker")
@@ -225,8 +222,7 @@ IResourceBuilder<ProjectResource> documentCrackerWorker = builder
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
-    .WithParentRelationship(workersGroup)
-    .WithTelemetryEndpoint(configuration);
+    .WithParentRelationship(workersGroup);
 
 IResourceBuilder<ProjectResource> documentChangeDetector = builder
     .AddProject<Projects.JAIMES_AF_Workers_DocumentChangeDetector>("document-change-detector")
@@ -237,8 +233,7 @@ IResourceBuilder<ProjectResource> documentChangeDetector = builder
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
-    .WithParentRelationship(workersGroup)
-    .WithTelemetryEndpoint(configuration);
+    .WithParentRelationship(workersGroup);
 
 IResourceBuilder<ProjectResource> documentChunkingWorker = builder
     .AddProject<Projects.JAIMES_AF_Workers_DocumentChunking>("document-chunking-worker")
@@ -260,8 +255,7 @@ IResourceBuilder<ProjectResource> documentChunkingWorker = builder
         SetQdrantEnvironmentVariables(SetVar, "DocumentChunking", qdrant, qdrantApiKey);
         SetModelProviderEnvironmentVariables(SetVar, "EmbeddingModel", embedConfig, embedModel, ollama, isEmbedOllama);
         SetLegacyOllamaEndpoint(SetVar, "DocumentChunking__OllamaEndpoint", ollama, embedModel, embedConfig.Endpoint);
-    })
-    .WithTelemetryEndpoint(configuration);
+    });
 
 IResourceBuilder<ProjectResource> documentEmbeddingWorker = builder
     .AddProject<Projects.JAIMES_AF_Workers_DocumentEmbedding>("document-embedding-worker")
@@ -283,8 +277,7 @@ IResourceBuilder<ProjectResource> documentEmbeddingWorker = builder
         SetQdrantEnvironmentVariables(SetVar, "DocumentEmbedding", qdrant, qdrantApiKey);
         SetModelProviderEnvironmentVariables(SetVar, "EmbeddingModel", embedConfig, embedModel, ollama, isEmbedOllama);
         SetLegacyOllamaEndpoint(SetVar, "DocumentEmbedding__OllamaEndpoint", ollama, embedModel, embedConfig.Endpoint);
-    })
-    .WithTelemetryEndpoint(configuration);
+    });
 
 IResourceBuilder<ProjectResource> userMessageWorker = builder
     .AddProject<Projects.JAIMES_AF_Workers_UserMessageWorker>("user-message-worker")
@@ -295,8 +288,7 @@ IResourceBuilder<ProjectResource> userMessageWorker = builder
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
-    .WithParentRelationship(workersGroup)
-    .WithTelemetryEndpoint(configuration);
+    .WithParentRelationship(workersGroup);
 
 IResourceBuilder<ProjectResource> assistantMessageWorker = builder
     .AddProject<Projects.JAIMES_AF_Workers_AssistantMessageWorker>("assistant-message-worker")
@@ -319,8 +311,7 @@ IResourceBuilder<ProjectResource> assistantMessageWorker = builder
             chatModel,
             ollama,
             isTextGenOllama);
-    })
-    .WithTelemetryEndpoint(configuration);
+    });
 
 IResourceBuilder<ProjectResource> conversationEmbeddingWorker = builder
     .AddProject<Projects.JAIMES_AF_Workers_ConversationEmbeddingWorker>("conversation-embedding-worker")
@@ -341,8 +332,7 @@ IResourceBuilder<ProjectResource> conversationEmbeddingWorker = builder
 
         SetQdrantEnvironmentVariables(SetVar, "ConversationEmbedding", qdrant, qdrantApiKey);
         SetModelProviderEnvironmentVariables(SetVar, "EmbeddingModel", embedConfig, embedModel, ollama, isEmbedOllama);
-    })
-    .WithTelemetryEndpoint(configuration);
+    });
 
 DistributedApplication app = builder.Build();
 

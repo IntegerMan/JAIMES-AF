@@ -10,6 +10,8 @@ using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using System.Diagnostics;
+using System.Diagnostics.Tracing;
+using OpenTelemetry.Exporter;
 
 namespace MattEland.Jaimes.ServiceDefaults;
 
@@ -50,6 +52,12 @@ public static class Extensions
     public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder)
         where TBuilder : IHostApplicationBuilder
     {
+        // Initialize internal diagnostic logger to debug OTLP export failures
+        if (_otelListener == null)
+        {
+            _otelListener = new OpenTelemetryConsoleLogger();
+        }
+
         builder.Logging.AddOpenTelemetry(logging =>
         {
             logging.IncludeFormattedMessage = true;
@@ -150,6 +158,7 @@ public static class Extensions
         where TBuilder : IHostApplicationBuilder
     {
         var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
+        var otlpProtocol = builder.Configuration["OTEL_EXPORTER_OTLP_PROTOCOL"];
 
         // Log the endpoint being used (or lack thereof) to help debug "all or nothing" telemetry issues
         if (!string.IsNullOrWhiteSpace(otlpEndpoint))
@@ -161,6 +170,26 @@ public static class Extensions
             Console.WriteLine(
                 "[Telemetry] OTEL_EXPORTER_OTLP_ENDPOINT is not set. Using default OTLP configuration (usually localhost:4317).");
         }
+
+        // Log protocol configuration or fallback
+        if (!string.IsNullOrWhiteSpace(otlpProtocol))
+        {
+            Console.WriteLine($"[Telemetry] configuring OTLP exporter with protocol: {otlpProtocol}");
+        }
+        else
+        {
+            Console.WriteLine($"[Telemetry] OTEL_EXPORTER_OTLP_PROTOCOL is not set. defaulting to HttpProtobuf.");
+        }
+
+        // If the protocol isn't set, default to HttpProtobuf (HTTP/1.1).
+        // We do this via Configure options to avoid method overload issues.
+        builder.Services.Configure<OtlpExporterOptions>(options =>
+        {
+            if (string.IsNullOrWhiteSpace(otlpProtocol))
+            {
+                options.Protocol = OtlpExportProtocol.HttpProtobuf;
+            }
+        });
 
         // Always add the OTLP exporter. 
         // If the endpoint is missing, it will use defaults (localhost:4317).
@@ -229,4 +258,49 @@ public static class Extensions
                  args.Outcome.Result?.StatusCode <= (System.Net.HttpStatusCode) 599));
         };
     }
+
+
+    /// <summary>
+    /// EventListener that listens for OpenTelemetry internal diagnostics and prints them to the Console.
+    /// This helps debug silent failures like OTLP export issues.
+    /// </summary>
+    private class OpenTelemetryConsoleLogger : EventListener
+    {
+        protected override void OnEventSourceCreated(EventSource eventSource)
+        {
+            base.OnEventSourceCreated(eventSource);
+
+            if (eventSource.Name.StartsWith("OpenTelemetry", StringComparison.OrdinalIgnoreCase))
+            {
+                // Enable verbose logging for everything OpenTelemetry
+                EnableEvents(eventSource, EventLevel.Verbose, EventKeywords.All);
+            }
+        }
+
+        protected override void OnEventWritten(EventWrittenEventArgs eventData)
+        {
+            base.OnEventWritten(eventData);
+
+            // Only log Warnings and Errors to avoid flooding the console with Debug logs
+            if (eventData.Level == EventLevel.Warning || eventData.Level == EventLevel.Error ||
+                eventData.Level == EventLevel.Critical)
+            {
+                string message;
+                if (eventData.Message != null && eventData.Payload != null)
+                {
+                    message = string.Format(eventData.Message, eventData.Payload.ToArray());
+                }
+                else
+                {
+                    message = eventData.Message ?? "Unknown OpenTelemetry Event";
+                }
+
+                Console.WriteLine(
+                    $"[OpenTelemetry Diagnostics] [{eventData.Level}] {eventData.EventSource.Name}: {message}");
+            }
+        }
+    }
+
+// Keep a static reference to ensure the listener is not garbage collected
+    private static OpenTelemetryConsoleLogger? _otelListener;
 }
