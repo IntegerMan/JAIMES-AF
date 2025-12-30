@@ -695,7 +695,7 @@ public partial class GameDetails : IAsyncDisposable
                         {
                             Sentiment = notification.Sentiment.Value,
                             Confidence = notification.SentimentConfidence,
-                            SentimentSource = 1 // Player source when manually set
+                            SentimentSource = notification.SentimentSource
                         };
                     }
                     else if (notification.UpdateType == MessageUpdateType.MetricsEvaluated &&

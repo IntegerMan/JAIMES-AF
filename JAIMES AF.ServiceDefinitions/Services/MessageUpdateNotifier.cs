@@ -28,7 +28,8 @@ public class MessageUpdateNotifier : IMessageUpdateNotifier
             GameId = gameId,
             UpdateType = MessageUpdateType.SentimentAnalyzed,
             Sentiment = sentiment,
-            SentimentConfidence = confidence
+            SentimentConfidence = confidence,
+            SentimentSource = 0 // Model source for worker-generated sentiment
         };
 
         await SendNotificationAsync(notification, cancellationToken);

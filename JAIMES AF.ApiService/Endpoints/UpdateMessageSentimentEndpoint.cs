@@ -62,7 +62,8 @@ public static class UpdateMessageSentimentEndpoint
                     GameId = message.GameId,
                     UpdateType = MessageUpdateType.SentimentAnalyzed,
                     Sentiment = request.Sentiment,
-                    SentimentConfidence = 1.0
+                    SentimentConfidence = 1.0,
+                    SentimentSource = (int)SentimentSource.Player
                 };
 
                 await hubContext.Clients.Group(groupName).MessageUpdated(notification);

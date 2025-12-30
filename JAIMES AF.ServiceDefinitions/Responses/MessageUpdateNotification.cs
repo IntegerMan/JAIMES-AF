@@ -32,6 +32,11 @@ public record MessageUpdateNotification
     public double? SentimentConfidence { get; init; }
 
     /// <summary>
+    /// Optional sentiment source (0 = Model, 1 = Player) for user messages.
+    /// </summary>
+    public int? SentimentSource { get; init; }
+
+    /// <summary>
     /// Optional evaluation metrics for assistant messages.
     /// </summary>
     public List<MessageEvaluationMetricResponse>? Metrics { get; init; }
