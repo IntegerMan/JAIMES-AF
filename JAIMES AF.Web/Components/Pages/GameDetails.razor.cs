@@ -642,14 +642,14 @@ public partial class GameDetails : IAsyncDisposable
                             SentimentSource = notification.SentimentSource
                         };
 
-                        // Find the first message with a null ID (most recent user message)
-                        // and update it with the message ID from the notification
-                        for (int i = _messageIds.Count - 1; i >= 0; i--)
+                        // Find the first pending user message (null ID) and assign this ID to it.
+                        // We search forwards (FIFO) assuming notifications arrive in order of creation.
+                        for (int i = 0; i < _messageIds.Count; i++)
                         {
                             if (_messageIds[i] == null && _messages[i].Role == ChatRole.User)
                             {
                                 _messageIds[i] = notification.MessageId;
-                                _logger?.LogDebug("Updated message ID at index {Index} to {MessageId}", i,
+                                _logger?.LogDebug("Updated User message ID at index {Index} to {MessageId}", i,
                                     notification.MessageId);
                                 break;
                             }

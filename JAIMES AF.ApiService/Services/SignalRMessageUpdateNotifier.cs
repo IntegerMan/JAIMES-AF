@@ -22,7 +22,8 @@ public class SignalRMessageUpdateNotifier(
             GameId = gameId,
             UpdateType = MessageUpdateType.SentimentAnalyzed,
             Sentiment = sentiment,
-            SentimentConfidence = confidence
+            SentimentConfidence = confidence,
+            SentimentSource = 0 // Model
         };
 
         await BroadcastUpdateAsync(notification);
