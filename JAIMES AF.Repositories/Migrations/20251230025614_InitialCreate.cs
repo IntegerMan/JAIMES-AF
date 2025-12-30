@@ -152,8 +152,7 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     Instructions = table.Column<string>(type: "text", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
-                    ModelId = table.Column<int>(type: "integer", nullable: true),
-                    ModelId1 = table.Column<int>(type: "integer", nullable: true)
+                    ModelId = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -167,11 +166,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     table.ForeignKey(
                         name: "FK_AgentInstructionVersions_Models_ModelId",
                         column: x => x.ModelId,
-                        principalTable: "Models",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_AgentInstructionVersions_Models_ModelId1",
-                        column: x => x.ModelId1,
                         principalTable: "Models",
                         principalColumn: "Id");
                 });
@@ -348,7 +342,8 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     ChatHistoryId = table.Column<Guid>(type: "uuid", nullable: true),
                     PreviousMessageId = table.Column<int>(type: "integer", nullable: true),
                     NextMessageId = table.Column<int>(type: "integer", nullable: true),
-                    Sentiment = table.Column<int>(type: "integer", nullable: true)
+                    Sentiment = table.Column<int>(type: "integer", nullable: true),
+                    ModelId = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -383,6 +378,11 @@ namespace MattEland.Jaimes.Repositories.Migrations
                         name: "FK_Messages_Messages_PreviousMessageId",
                         column: x => x.PreviousMessageId,
                         principalTable: "Messages",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Messages_Models_ModelId",
+                        column: x => x.ModelId,
+                        principalTable: "Models",
                         principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_Messages_Players_PlayerId",
@@ -477,11 +477,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
                 name: "IX_AgentInstructionVersions_ModelId",
                 table: "AgentInstructionVersions",
                 column: "ModelId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_AgentInstructionVersions_ModelId1",
-                table: "AgentInstructionVersions",
-                column: "ModelId1");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ChatHistories_GameId",
@@ -588,6 +583,11 @@ namespace MattEland.Jaimes.Repositories.Migrations
                 column: "InstructionVersionId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Messages_ModelId",
+                table: "Messages",
+                column: "ModelId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Messages_NextMessageId",
                 table: "Messages",
                 column: "NextMessageId");
@@ -685,8 +685,8 @@ namespace MattEland.Jaimes.Repositories.Migrations
                 table: "AgentInstructionVersions");
 
             migrationBuilder.DropForeignKey(
-                name: "FK_AgentInstructionVersions_Models_ModelId1",
-                table: "AgentInstructionVersions");
+                name: "FK_Messages_Models_ModelId",
+                table: "Messages");
 
             migrationBuilder.DropForeignKey(
                 name: "FK_ChatHistories_Games_GameId",

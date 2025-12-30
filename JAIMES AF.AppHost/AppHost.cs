@@ -37,7 +37,7 @@ bool isEmbedOllama = string.Equals(embedConfig.Provider, "Ollama", StringCompari
 
 // Determine if we need Ollama container (only if Provider is Ollama and Endpoint is empty)
 bool needsOllamaContainer = (isTextGenOllama && string.IsNullOrWhiteSpace(textGenConfig.Endpoint)) ||
-                             (isEmbedOllama && string.IsNullOrWhiteSpace(embedConfig.Endpoint));
+                            (isEmbedOllama && string.IsNullOrWhiteSpace(embedConfig.Endpoint));
 
 // See https://storybooks.fluentui.dev/react/?path=/docs/icons-catalog--docs for available icons. Icon names should not end in "Regular", "Filled", etc.
 
@@ -45,7 +45,7 @@ bool needsOllamaContainer = (isTextGenOllama && string.IsNullOrWhiteSpace(textGe
 IResourceBuilder<PostgresServerResource> postgres = builder.AddPostgres("postgres")
     .WithImage("pgvector/pgvector", "pg17-trixie")
     .WithIconName("DatabaseSwitch")
-    .WithDataVolume("jaimes-pg17-v4", false);
+    .WithDataVolume("jaimes-pg17-v5", false);
 
 IResourceBuilder<PostgresServerResource> pgAdmin = postgres.WithPgAdmin(admin =>
 {
@@ -55,7 +55,7 @@ IResourceBuilder<PostgresServerResource> pgAdmin = postgres.WithPgAdmin(admin =>
     admin.WithUrls(u =>
     {
         u.Urls.Clear();
-        u.Urls.Add(new ResourceUrlAnnotation { Url = "http://localhost:5858", DisplayText = "📋 pgAdmin" });
+        u.Urls.Add(new ResourceUrlAnnotation {Url = "http://localhost:5858", DisplayText = "📋 pgAdmin"});
     });
 });
 
@@ -63,13 +63,15 @@ IResourceBuilder<PostgresDatabaseResource> postgresdb = postgres.AddDatabase("po
     .WithCreationScript("CREATE EXTENSION IF NOT EXISTS vector;");
 
 // Group all workers under a parent resource for better UI organization
-IResourceBuilder<ContainerResource> workersGroup = builder.AddContainer("workers", "mcr.microsoft.com/dotnet/runtime-deps", "10.0")
+IResourceBuilder<ContainerResource> workersGroup = builder
+    .AddContainer("workers", "mcr.microsoft.com/dotnet/runtime-deps", "10.0")
     .WithIconName("PeopleTeam")
     .WithEnvironment("DOTNET_RUNNING_IN_CONTAINER", "true")
     .ExcludeFromManifest();
 
 // Migration worker must run first and complete before other services start
-IResourceBuilder<ProjectResource> databaseMigrationWorker = builder.AddProject<Projects.JAIMES_AF_Workers_DatabaseMigration>("database-migration-worker")
+IResourceBuilder<ProjectResource> databaseMigrationWorker = builder
+    .AddProject<Projects.JAIMES_AF_Workers_DatabaseMigration>("database-migration-worker")
     .WithIconName("DatabasePlugConnected")
     .WithReference(postgresdb)
     .WaitFor(postgres)
@@ -98,6 +100,7 @@ if (needsOllamaContainer)
         embedModel = ollama.AddModel("embedModel", embedConfig.Name!).WithIconName("CodeTextEdit");
     }
 }
+
 // Add Qdrant for vector embeddings
 // Note: Qdrant API key is an Aspire parameter (not user secret) because it's required by the Aspire-managed Qdrant resource.
 // Application-level secrets (e.g., Azure OpenAI API keys) are managed via user secrets.
@@ -116,9 +119,9 @@ IResourceBuilder<LavinMQContainerResource> lavinmq = builder.AddLavinMQ("LavinMQ
     .WithUrls(u =>
     {
         u.Urls.Clear();
-        u.Urls.Add(new ResourceUrlAnnotation { Url = "http://localhost:15672", DisplayText = "📋 Management" });
-        u.Urls.Add(new ResourceUrlAnnotation { Url = "http://localhost:15672/queues", DisplayText = "📬 Queues" });
-        u.Urls.Add(new ResourceUrlAnnotation { Url = "http://localhost:15672/consumers", DisplayText = "👥 Consumers" });
+        u.Urls.Add(new ResourceUrlAnnotation {Url = "http://localhost:15672", DisplayText = "📋 Management"});
+        u.Urls.Add(new ResourceUrlAnnotation {Url = "http://localhost:15672/queues", DisplayText = "📬 Queues"});
+        u.Urls.Add(new ResourceUrlAnnotation {Url = "http://localhost:15672/consumers", DisplayText = "👥 Consumers"});
     });
 
 // Note: MongoDB has been replaced with PostgreSQL + JSONB for document storage
@@ -163,7 +166,12 @@ apiService = apiService
     {
         void SetVar(string key, object value) => context.EnvironmentVariables[key] = value;
 
-        SetModelProviderEnvironmentVariables(SetVar, "TextGenerationModel", textGenConfig, chatModel, ollama, isTextGenOllama);
+        SetModelProviderEnvironmentVariables(SetVar,
+            "TextGenerationModel",
+            textGenConfig,
+            chatModel,
+            ollama,
+            isTextGenOllama);
         SetModelProviderEnvironmentVariables(SetVar, "EmbeddingModel", embedConfig, embedModel, ollama, isEmbedOllama);
     });
 
@@ -205,7 +213,8 @@ builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")
     .WithReference(apiService)
     .WaitFor(apiService);
 
-IResourceBuilder<ProjectResource> documentCrackerWorker = builder.AddProject<Projects.JAIMES_AF_Workers_DocumentCrackerWorker>("document-cracker-worker")
+IResourceBuilder<ProjectResource> documentCrackerWorker = builder
+    .AddProject<Projects.JAIMES_AF_Workers_DocumentCrackerWorker>("document-cracker-worker")
     .WithIconName("DocumentTextExtract")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
@@ -215,7 +224,8 @@ IResourceBuilder<ProjectResource> documentCrackerWorker = builder.AddProject<Pro
     .WaitFor(postgresdb)
     .WithParentRelationship(workersGroup);
 
-IResourceBuilder<ProjectResource> documentChangeDetector = builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChangeDetector>("document-change-detector")
+IResourceBuilder<ProjectResource> documentChangeDetector = builder
+    .AddProject<Projects.JAIMES_AF_Workers_DocumentChangeDetector>("document-change-detector")
     .WithIconName("DocumentSearch")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
@@ -225,7 +235,8 @@ IResourceBuilder<ProjectResource> documentChangeDetector = builder.AddProject<Pr
     .WaitFor(postgresdb)
     .WithParentRelationship(workersGroup);
 
-IResourceBuilder<ProjectResource> documentChunkingWorker = builder.AddProject<Projects.JAIMES_AF_Workers_DocumentChunking>("document-chunking-worker")
+IResourceBuilder<ProjectResource> documentChunkingWorker = builder
+    .AddProject<Projects.JAIMES_AF_Workers_DocumentChunking>("document-chunking-worker")
     .WithIconName("DocumentPageBreak")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
@@ -246,7 +257,8 @@ IResourceBuilder<ProjectResource> documentChunkingWorker = builder.AddProject<Pr
         SetLegacyOllamaEndpoint(SetVar, "DocumentChunking__OllamaEndpoint", ollama, embedModel, embedConfig.Endpoint);
     });
 
-IResourceBuilder<ProjectResource> documentEmbeddingWorker = builder.AddProject<Projects.JAIMES_AF_Workers_DocumentEmbedding>("document-embedding-worker")
+IResourceBuilder<ProjectResource> documentEmbeddingWorker = builder
+    .AddProject<Projects.JAIMES_AF_Workers_DocumentEmbedding>("document-embedding-worker")
     .WithIconName("DocumentBulletListMultiple")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
@@ -267,7 +279,8 @@ IResourceBuilder<ProjectResource> documentEmbeddingWorker = builder.AddProject<P
         SetLegacyOllamaEndpoint(SetVar, "DocumentEmbedding__OllamaEndpoint", ollama, embedModel, embedConfig.Endpoint);
     });
 
-IResourceBuilder<ProjectResource> userMessageWorker = builder.AddProject<Projects.JAIMES_AF_Workers_UserMessageWorker>("user-message-worker")
+IResourceBuilder<ProjectResource> userMessageWorker = builder
+    .AddProject<Projects.JAIMES_AF_Workers_UserMessageWorker>("user-message-worker")
     .WithIconName("PersonChat")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
@@ -277,7 +290,8 @@ IResourceBuilder<ProjectResource> userMessageWorker = builder.AddProject<Project
     .WaitFor(postgresdb)
     .WithParentRelationship(workersGroup);
 
-IResourceBuilder<ProjectResource> assistantMessageWorker = builder.AddProject<Projects.JAIMES_AF_Workers_AssistantMessageWorker>("assistant-message-worker")
+IResourceBuilder<ProjectResource> assistantMessageWorker = builder
+    .AddProject<Projects.JAIMES_AF_Workers_AssistantMessageWorker>("assistant-message-worker")
     .WithIconName("SettingsChat")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
@@ -291,10 +305,16 @@ IResourceBuilder<ProjectResource> assistantMessageWorker = builder.AddProject<Pr
     {
         void SetVar(string key, object value) => context.EnvironmentVariables[key] = value;
 
-        SetModelProviderEnvironmentVariables(SetVar, "TextGenerationModel", textGenConfig, chatModel, ollama, isTextGenOllama);
+        SetModelProviderEnvironmentVariables(SetVar,
+            "TextGenerationModel",
+            textGenConfig,
+            chatModel,
+            ollama,
+            isTextGenOllama);
     });
 
-IResourceBuilder<ProjectResource> conversationEmbeddingWorker = builder.AddProject<Projects.JAIMES_AF_Workers_ConversationEmbeddingWorker>("conversation-embedding-worker")
+IResourceBuilder<ProjectResource> conversationEmbeddingWorker = builder
+    .AddProject<Projects.JAIMES_AF_Workers_ConversationEmbeddingWorker>("conversation-embedding-worker")
     .WithIconName("ChatBubblesQuestion")
     .WithReference(lavinmq)
     .WithReference(postgresdb)

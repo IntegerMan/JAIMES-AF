@@ -13,8 +13,8 @@ using Pgvector;
 namespace MattEland.Jaimes.Repositories.Migrations
 {
     [DbContext(typeof(JaimesDbContext))]
-    [Migration("20251229234318_FixAgentInstructionVersionModelRelationship")]
-    partial class FixAgentInstructionVersionModelRelationship
+    [Migration("20251230025614_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -322,6 +322,9 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.Property<int?>("InstructionVersionId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("ModelId")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("NextMessageId")
                         .HasColumnType("integer");
 
@@ -347,6 +350,8 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.HasIndex("GameId");
 
                     b.HasIndex("InstructionVersionId");
+
+                    b.HasIndex("ModelId");
 
                     b.HasIndex("NextMessageId");
 
@@ -785,6 +790,11 @@ namespace MattEland.Jaimes.Repositories.Migrations
                         .HasForeignKey("InstructionVersionId")
                         .OnDelete(DeleteBehavior.NoAction);
 
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.Model", "Model")
+                        .WithMany("Messages")
+                        .HasForeignKey("ModelId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("MattEland.Jaimes.Repositories.Entities.Message", "NextMessage")
                         .WithMany()
                         .HasForeignKey("NextMessageId")
@@ -806,6 +816,8 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.Navigation("Game");
 
                     b.Navigation("InstructionVersion");
+
+                    b.Navigation("Model");
 
                     b.Navigation("NextMessage");
 
@@ -934,6 +946,8 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.Navigation("AgentInstructionVersions");
 
                     b.Navigation("EvaluationMetrics");
+
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Player", b =>
