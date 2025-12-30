@@ -69,17 +69,13 @@ public class MessageEvaluationService(
                 executionName: "Assistant Message Quality",
                 chatConfiguration: chatConfiguration);
 
-            // Create a ScenarioRun - this tracks the results for a specific message/scenario
-            ScenarioRun scenarioRun = await reportConfig.CreateScenarioRunAsync(
-                scenarioName: $"Scenario {message.GameId}",
-                iterationName: $"Message {message.Id}",
-                cancellationToken: cancellationToken);
-
-            // Perform evaluation using the scenario run to automatically store results in IEvaluationResultStore
-            EvaluationResult result = await scenarioRun.EvaluateAsync(
+            // Perform evaluation using a separate method to ensure ScenarioRun is disposed before we manually store metrics
+            EvaluationResult result = await PerformEvaluationInternalAsync(
+                reportConfig,
+                message,
                 evaluationContext,
                 assistantResponse,
-                cancellationToken: cancellationToken);
+                cancellationToken);
 
             // Store metrics in database
             await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -156,5 +152,23 @@ public class MessageEvaluationService(
             logger.LogError(ex, "Failed to evaluate message {MessageId}", message.Id);
             throw;
         }
+    }
+
+    private static async Task<EvaluationResult> PerformEvaluationInternalAsync(
+        ReportingConfiguration reportConfig,
+        Message message,
+        List<ChatMessage> evaluationContext,
+        ChatResponse assistantResponse,
+        CancellationToken cancellationToken)
+    {
+        await using ScenarioRun scenarioRun = await reportConfig.CreateScenarioRunAsync(
+            scenarioName: $"Scenario {message.GameId}",
+            iterationName: $"Message {message.Id}",
+            cancellationToken: cancellationToken);
+
+        return await scenarioRun.EvaluateAsync(
+            evaluationContext,
+            assistantResponse,
+            cancellationToken: cancellationToken);
     }
 }
