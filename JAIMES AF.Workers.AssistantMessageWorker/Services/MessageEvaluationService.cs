@@ -1,10 +1,11 @@
 using System.Text.Json;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
-using MattEland.Jaimes.ServiceDefaults;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
 using Microsoft.Extensions.AI.Evaluation.Quality;
+using Microsoft.Extensions.AI.Evaluation.Reporting;
 
 namespace MattEland.Jaimes.Workers.AssistantMessageWorker.Services;
 
@@ -16,6 +17,7 @@ public class MessageEvaluationService(
     RelevanceTruthAndCompletenessEvaluator evaluator,
     IChatClient chatClient,
     TextGenerationModelOptions modelOptions,
+    IEvaluationResultStore resultStore,
     ILogger<MessageEvaluationService> logger) : IMessageEvaluationService
 {
     public async Task EvaluateMessageAsync(
@@ -38,7 +40,7 @@ public class MessageEvaluationService(
                 .TakeLast(5)
                 .Select(m => new ChatMessage(
                     m.PlayerId == null ? ChatRole.Assistant : ChatRole.User,
-                    m.Text ?? string.Empty))
+                    m.Text))
                 .ToList();
 
             // Add system prompt as the first message
@@ -60,11 +62,24 @@ public class MessageEvaluationService(
             // Create ChatConfiguration for the evaluator
             ChatConfiguration chatConfiguration = new(chatClient);
 
-            // Perform evaluation
-            EvaluationResult result = await evaluator.EvaluateAsync(
+            // Create ReportingConfiguration to integrate with the new result store
+            ReportingConfiguration reportConfig = new(
+                [evaluator],
+                resultStore,
+                executionName: "Assistant Message Quality",
+                chatConfiguration: chatConfiguration);
+
+            // Create a ScenarioRun - this tracks the results for a specific message/scenario
+            ScenarioRun scenarioRun = await reportConfig.CreateScenarioRunAsync(
+                scenarioName: $"Scenario {message.GameId}",
+                iterationName: $"Message {message.Id}",
+                cancellationToken: cancellationToken);
+
+            // Perform evaluation using the scenario run to automatically store results in IEvaluationResultStore
+            EvaluationResult result = await scenarioRun.EvaluateAsync(
                 evaluationContext,
                 assistantResponse,
-                chatConfiguration);
+                cancellationToken: cancellationToken);
 
             // Store metrics in database
             await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -90,7 +105,7 @@ public class MessageEvaluationService(
             foreach (string metricName in metricNames)
             {
                 NumericMetric? metric = result.Get<NumericMetric>(metricName);
-                if (metric != null && metric.Value.HasValue)
+                if (metric?.Value.HasValue == true)
                 {
                     // Serialize any additional metadata if available
                     string? diagnosticsJson = null;
