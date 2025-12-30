@@ -1,0 +1,42 @@
+@using MudBlazor
+@using System.Text.Json
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+            <MudIcon Icon="@Icons.Material.Filled.Biotech" Color="Color.Info" />
+            <MudText Typo="Typo.subtitle1"><strong>@MetricName</strong></MudText>
+        </MudStack>
+        
+        <MudPaper Class="pa-3" Elevation="0" Style="background-color: var(--mud-palette-background-grey);">
+            <MudText Style="font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; white-space: pre-wrap; word-break: break-all; font-size: 0.85rem;">@FormattedDiagnostics</MudText>
+        </MudPaper>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Default" OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter] public string? MetricName { get; set; }
+    [Parameter] public string? Diagnostics { get; set; }
+
+    private string FormattedDiagnostics => FormatDiagnostics(Diagnostics ?? "No diagnostics available");
+
+    private void Close() => MudDialog?.Close(DialogResult.Ok(true));
+
+    private static string FormatDiagnostics(string diagnostics)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(diagnostics);
+            return JsonSerializer.Serialize(doc.RootElement, new JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            return diagnostics;
+        }
+    }
+}

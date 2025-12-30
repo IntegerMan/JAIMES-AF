@@ -2,7 +2,6 @@
 @using MattEland.Jaimes.ServiceDefinitions.Responses
 @using MattEland.Jaimes.Web.Components.Shared
 @using MudBlazor
-@using System.Text.Json
 @inject IHttpClientFactory HttpClientFactory
 @inject IDialogService DialogService
 @inject NavigationManager NavigationManager
@@ -52,7 +51,7 @@
                     </MudStack>
                 </GroupTemplate>
             </PropertyColumn>
-            <PropertyColumn Property="x => x.MessageId" Title="Msg" Groupable="true">
+            <PropertyColumn Property="x => x.MessageId" Title="Msg" Groupable="true" Grouping="true">
                 <CellTemplate>
                     <MudLink Href="@($"/admin/metrics/{context.Item.MessageId}")">@context.Item.MessageId</MudLink>
                 </CellTemplate>
@@ -236,24 +235,19 @@
 
     private async Task ShowDiagnosticsAsync(EvaluationMetricListItemDto item)
     {
-        string formattedDiagnostics = FormatDiagnostics(item.Diagnostics ?? "No diagnostics available");
-        
-        await DialogService.ShowMessageBox(
-            $"Diagnostics - {item.MetricName}",
-            formattedDiagnostics,
-            "Close");
-    }
-    
-    private static string FormatDiagnostics(string diagnostics)
-    {
-        try
+        var parameters = new DialogParameters<DiagnosticsDialog>
         {
-            using var doc = JsonDocument.Parse(diagnostics);
-            return JsonSerializer.Serialize(doc.RootElement, new JsonSerializerOptions { WriteIndented = true });
-        }
-        catch
+            { nameof(DiagnosticsDialog.MetricName), item.MetricName },
+            { nameof(DiagnosticsDialog.Diagnostics), item.Diagnostics }
+        };
+
+        var options = new DialogOptions
         {
-            return diagnostics;
-        }
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        await DialogService.ShowAsync<DiagnosticsDialog>("Diagnostics", parameters, options);
     }
 }
