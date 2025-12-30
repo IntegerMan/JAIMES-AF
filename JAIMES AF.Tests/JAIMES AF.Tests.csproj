@@ -13,15 +13,16 @@
 
 
     <ItemGroup>
-        <PackageReference Include="Aspire.Hosting.Testing"/>
-        <PackageReference Include="Microsoft.NET.Test.Sdk"/>
+        <PackageReference Include="Aspire.Hosting.Testing" />
+        <PackageReference Include="Microsoft.Extensions.AI.Evaluation.Reporting" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
         <PackageReference Include="coverlet.collector">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing"/>
-        <PackageReference Include="Shouldly"/>
-        <PackageReference Include="xunit.v3"/>
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+        <PackageReference Include="Shouldly" />
+        <PackageReference Include="xunit.v3" />
         <PackageReference Include="xunit.runner.visualstudio">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -29,32 +30,32 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Moq"/>
+        <PackageReference Include="Moq" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\JAIMES AF.AppHost\JAIMES AF.AppHost.csproj"/>
-        <ProjectReference Include="..\JAIMES AF.Domain\JAIMES AF.Domain.csproj"/>
-        <ProjectReference Include="..\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj"/>
-        <ProjectReference Include="..\JAIMES AF.Services\JAIMES AF.ServiceLayer.csproj"/>
-        <ProjectReference Include="..\JAIMES AF.ApiService\JAIMES AF.ApiService.csproj"/>
-        <ProjectReference Include="..\JAIMES AF.Web\JAIMES AF.Web.csproj"/>
-        <ProjectReference Include="..\JAIMES AF.Tools\JAIMES AF.Tools.csproj"/>
-        <ProjectReference Include="..\JAIMES AF.DocumentProcessing\JAIMES AF.DocumentProcessing.csproj"/>
-        <ProjectReference Include="..\JAIMES AF.Workers.DocumentChangeDetector\JAIMES AF.Workers.DocumentChangeDetector.csproj"/>
-        <ProjectReference Include="..\JAIMES AF.Workers.DocumentCrackerWorker\JAIMES AF.Workers.DocumentCrackerWorker.csproj"/>
-        <ProjectReference Include="..\JAIMES AF.DocumentCracker\JAIMES AF.DocumentCracker.csproj"/>
-        <ProjectReference Include="..\JAIMES AF.Workers.DocumentChunking\JAIMES AF.Workers.DocumentChunking.csproj"/>
-        <ProjectReference Include="..\JAIMES AF.Workers.DocumentEmbedding\JAIMES AF.Workers.DocumentEmbedding.csproj"/>
+        <ProjectReference Include="..\JAIMES AF.AppHost\JAIMES AF.AppHost.csproj" />
+        <ProjectReference Include="..\JAIMES AF.Domain\JAIMES AF.Domain.csproj" />
+        <ProjectReference Include="..\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj" />
+        <ProjectReference Include="..\JAIMES AF.Services\JAIMES AF.ServiceLayer.csproj" />
+        <ProjectReference Include="..\JAIMES AF.ApiService\JAIMES AF.ApiService.csproj" />
+        <ProjectReference Include="..\JAIMES AF.Web\JAIMES AF.Web.csproj" />
+        <ProjectReference Include="..\JAIMES AF.Tools\JAIMES AF.Tools.csproj" />
+        <ProjectReference Include="..\JAIMES AF.DocumentProcessing\JAIMES AF.DocumentProcessing.csproj" />
+        <ProjectReference Include="..\JAIMES AF.Workers.DocumentChangeDetector\JAIMES AF.Workers.DocumentChangeDetector.csproj" />
+        <ProjectReference Include="..\JAIMES AF.Workers.DocumentCrackerWorker\JAIMES AF.Workers.DocumentCrackerWorker.csproj" />
+        <ProjectReference Include="..\JAIMES AF.DocumentCracker\JAIMES AF.DocumentCracker.csproj" />
+        <ProjectReference Include="..\JAIMES AF.Workers.DocumentChunking\JAIMES AF.Workers.DocumentChunking.csproj" />
+        <ProjectReference Include="..\JAIMES AF.Workers.DocumentEmbedding\JAIMES AF.Workers.DocumentEmbedding.csproj" />
     </ItemGroup>
 
     <ItemGroup>
-        <Using Include="System.Net"/>
-        <Using Include="Microsoft.Extensions.DependencyInjection"/>
-        <Using Include="Aspire.Hosting.ApplicationModel"/>
-        <Using Include="Aspire.Hosting.Testing"/>
-        <Using Include="Xunit"/>
-        <Using Include="MattEland.Jaimes.Repositories"/>
+        <Using Include="System.Net" />
+        <Using Include="Microsoft.Extensions.DependencyInjection" />
+        <Using Include="Aspire.Hosting.ApplicationModel" />
+        <Using Include="Aspire.Hosting.Testing" />
+        <Using Include="Xunit" />
+        <Using Include="MattEland.Jaimes.Repositories" />
     </ItemGroup>
 
     <ItemGroup>

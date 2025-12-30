@@ -1,3 +1,11 @@
+using Microsoft.Extensions.AI.Evaluation.Reporting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.EntityFrameworkCore;
+
 namespace MattEland.Jaimes.Repositories;
 
 public static class RepositoryServiceCollectionExtensions
@@ -23,6 +31,8 @@ public static class RepositoryServiceCollectionExtensions
         {
             options.UseInMemoryDatabase(dbName, sqlOpts => { sqlOpts.EnableNullChecks(); });
         });
+
+        services.AddSingleton<IEvaluationResultStore, EfEvaluationResultStore>();
 
         return services;
     }
@@ -55,6 +65,8 @@ public static class RepositoryServiceCollectionExtensions
                     dbOpts.EnableRetryOnFailure(3);
                 });
         });
+
+        services.AddSingleton<IEvaluationResultStore, EfEvaluationResultStore>();
 
         return services;
     }

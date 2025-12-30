@@ -1,10 +1,5 @@
 using System.Text.Json;
-using MattEland.Jaimes.Repositories;
-using MattEland.Jaimes.Repositories.Entities;
-using MattEland.Jaimes.ServiceDefaults;
-using Microsoft.Extensions.AI;
-using Microsoft.Extensions.AI.Evaluation;
-using Microsoft.Extensions.AI.Evaluation.Quality;
+using Microsoft.Extensions.AI.Evaluation.Reporting;
 
 namespace MattEland.Jaimes.Workers.AssistantMessageWorker.Services;
 
@@ -16,6 +11,7 @@ public class MessageEvaluationService(
     RelevanceTruthAndCompletenessEvaluator evaluator,
     IChatClient chatClient,
     TextGenerationModelOptions modelOptions,
+    IEvaluationResultStore resultStore,
     ILogger<MessageEvaluationService> logger) : IMessageEvaluationService
 {
     public async Task EvaluateMessageAsync(
@@ -60,11 +56,20 @@ public class MessageEvaluationService(
             // Create ChatConfiguration for the evaluator
             ChatConfiguration chatConfiguration = new(chatClient);
 
-            // Perform evaluation
-            EvaluationResult result = await evaluator.EvaluateAsync(
+            // Create ReportingConfiguration to integrate with the new result store
+            ReportingConfiguration reportConfig = new(
+                [evaluator],
+                resultStore,
+                executionName: "Assistant Message Quality",
+                chatConfiguration: chatConfiguration);
+
+            // Perform evaluation using a separate method to ensure ScenarioRun is disposed before we manually store metrics
+            EvaluationResult result = await PerformEvaluationInternalAsync(
+                reportConfig,
+                message,
                 evaluationContext,
                 assistantResponse,
-                chatConfiguration);
+                cancellationToken);
 
             // Store metrics in database
             await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -89,8 +94,7 @@ public class MessageEvaluationService(
 
             foreach (string metricName in metricNames)
             {
-                NumericMetric? metric = result.Get<NumericMetric>(metricName);
-                if (metric != null && metric.Value.HasValue)
+                if (result.Get<NumericMetric>(metricName) is {Value: not null} metric)
                 {
                     // Serialize any additional metadata if available
                     string? diagnosticsJson = null;
@@ -141,5 +145,23 @@ public class MessageEvaluationService(
             logger.LogError(ex, "Failed to evaluate message {MessageId}", message.Id);
             throw;
         }
+    }
+
+    private static async Task<EvaluationResult> PerformEvaluationInternalAsync(
+        ReportingConfiguration reportConfig,
+        Message message,
+        List<ChatMessage> evaluationContext,
+        ChatResponse assistantResponse,
+        CancellationToken cancellationToken)
+    {
+        await using ScenarioRun scenarioRun = await reportConfig.CreateScenarioRunAsync(
+            scenarioName: $"Scenario {message.GameId}",
+            iterationName: $"Message {message.Id}",
+            cancellationToken: cancellationToken);
+
+        return await scenarioRun.EvaluateAsync(
+            evaluationContext,
+            assistantResponse,
+            cancellationToken: cancellationToken);
     }
 }

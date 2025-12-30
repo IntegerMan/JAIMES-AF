@@ -3,6 +3,7 @@ using System;
 using MattEland.Jaimes.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -12,9 +13,11 @@ using Pgvector;
 namespace MattEland.Jaimes.Repositories.Migrations
 {
     [DbContext(typeof(JaimesDbContext))]
-    partial class JaimesDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251230041949_AddEvaluationReporting")]
+    partial class AddEvaluationReporting
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -998,7 +1001,7 @@ namespace MattEland.Jaimes.Repositories.Migrations
                         .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("MattEland.Jaimes.Repositories.Entities.Message", "Message")
-                        .WithMany("ToolCalls")
+                        .WithMany()
                         .HasForeignKey("MessageId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1097,8 +1100,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Message", b =>
                 {
                     b.Navigation("MessageEmbedding");
-
-                    b.Navigation("ToolCalls");
                 });
 
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Model", b =>

@@ -11,6 +11,8 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
     public DbSet<Scenario> Scenarios { get; set; } = null!;
     public DbSet<Ruleset> Rulesets { get; set; } = null!;
     public DbSet<ChatHistory> ChatHistories { get; set; } = null!;
+    public DbSet<EvaluationExecution> EvaluationExecutions { get; set; } = null!;
+    public DbSet<EvaluationScenarioIteration> EvaluationScenarioIterations { get; set; } = null!;
 
     // Agent instruction system entities
     public DbSet<Agent> Agents { get; set; } = null!;
@@ -503,6 +505,42 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 .WithMany(model => model.EvaluationMetrics)
                 .HasForeignKey(mem => mem.EvaluationModelId)
                 .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<EvaluationExecution>(entity =>
+        {
+            entity.HasKey(e => e.ExecutionName);
+            entity.Property(e => e.ExecutionName).IsRequired().HasMaxLength(250);
+            entity.Property(e => e.CreatedAt).IsRequired();
+        });
+
+        modelBuilder.Entity<EvaluationScenarioIteration>(entity =>
+        {
+            entity.HasKey(si => new {si.ExecutionName, si.ScenarioName, si.IterationName});
+            entity.Property(si => si.ExecutionName).IsRequired().HasMaxLength(250);
+            entity.Property(si => si.ScenarioName).IsRequired().HasMaxLength(250);
+            entity.Property(si => si.IterationName).IsRequired().HasMaxLength(250);
+
+            // Configure ResultJson as jsonb for PostgreSQL
+            string providerName;
+            try
+            {
+                providerName = Database.ProviderName ?? "Npgsql.EntityFrameworkCore.PostgreSQL";
+            }
+            catch
+            {
+                providerName = "Npgsql.EntityFrameworkCore.PostgreSQL";
+            }
+
+            if (string.Equals(providerName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
+            {
+                entity.Property(si => si.ResultJson).HasColumnType("jsonb");
+            }
+
+            entity.HasOne(si => si.Execution)
+                .WithMany(e => e.ScenarioIterations)
+                .HasForeignKey(si => si.ExecutionName)
+                .OnDelete(DeleteBehavior.Cascade);
         });
         // Seed data - use lowercase ids for new defaults
         // IMPORTANT: When modifying any seed data values (e.g., ScenarioInstructions, InitialGreeting, or any HasData() values),
