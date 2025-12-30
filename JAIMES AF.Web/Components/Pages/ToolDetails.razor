@@ -94,12 +94,24 @@
             </PropertyColumn>
             <TemplateColumn Title="Actions">
                 <CellTemplate>
-                    <MudTooltip Text="View Details">
-                        <MudIconButton Icon="@Icons.Material.Filled.Info" 
-                                       Color="Color.Primary" 
-                                       Size="Size.Small"
-                                       Href="@($"/admin/tool-calls/{context.Item.Id}")" />
-                    </MudTooltip>
+                    <MudStack Row="true" Spacing="0">
+                        <MudTooltip Text="View Details">
+                            <MudIconButton Icon="@Icons.Material.Filled.Info" 
+                                           Color="Color.Primary" 
+                                           Size="Size.Small"
+                                           Href="@($"/admin/tool-calls/{context.Item.Id}")" />
+                        </MudTooltip>
+                        @if (context.Item.GameId.HasValue)
+                        {
+                            <MudTooltip Text="Go to Game">
+                                <MudIconButton Icon="@Icons.Material.Filled.VideogameAsset" 
+                                               Color="Color.Secondary" 
+                                               Size="Size.Small"
+                                               Href="@($"/games/{context.Item.GameId}")"
+                                               Target="_blank" />
+                            </MudTooltip>
+                        }
+                    </MudStack>
                 </CellTemplate>
             </TemplateColumn>
         </Columns>
