@@ -1,4 +1,5 @@
 using MattEland.Jaimes.ServiceDefinitions.Messages;
+using MattEland.Jaimes.Workers.AssistantMessageWorker.Services;
 
 namespace MattEland.Jaimes.Workers.AssistantMessageWorker.Consumers;
 
@@ -6,7 +7,9 @@ public class AssistantMessageConsumer(
     IDbContextFactory<JaimesDbContext> contextFactory,
     IMessagePublisher messagePublisher,
     ILogger<AssistantMessageConsumer> logger,
-    ActivitySource activitySource) : IMessageConsumer<ConversationMessageQueuedMessage>
+    ActivitySource activitySource,
+    IMessageEvaluationService evaluationService,
+    IInstructionService instructionService) : IMessageConsumer<ConversationMessageQueuedMessage>
 {
     public async Task HandleAsync(ConversationMessageQueuedMessage message, CancellationToken cancellationToken = default)
     {
@@ -72,6 +75,65 @@ public class AssistantMessageConsumer(
                 messageEntity.Text?.Length ?? 0,
                 messageEntity.CreatedAt,
                 textPreview);
+
+            // Evaluate the assistant message
+            using Activity? evaluationActivity = activitySource.StartActivity("AssistantMessage.Evaluate");
+            evaluationActivity?.SetTag("message.id", messageEntity.Id);
+            evaluationActivity?.SetTag("message.game_id", messageEntity.GameId.ToString());
+
+            try
+            {
+                // Load last 5 messages for conversation context (ordered by CreatedAt descending, take 5, reverse)
+                List<Message> conversationContext = await context.Messages
+                    .Where(m => m.GameId == messageEntity.GameId && m.CreatedAt <= messageEntity.CreatedAt && m.Id != messageEntity.Id)
+                    .OrderByDescending(m => m.CreatedAt)
+                    .ThenByDescending(m => m.Id)
+                    .Take(5)
+                    .OrderBy(m => m.CreatedAt)
+                    .ThenBy(m => m.Id)
+                    .ToListAsync(cancellationToken);
+
+                logger.LogDebug(
+                    "Loaded {Count} messages for evaluation context (game {GameId})",
+                    conversationContext.Count,
+                    messageEntity.GameId);
+
+                // Get system prompt/instructions for the scenario
+                string? systemPrompt = null;
+                if (messageEntity.Game?.ScenarioId != null)
+                {
+                    systemPrompt = await instructionService.GetInstructionsAsync(
+                        messageEntity.Game.ScenarioId,
+                        cancellationToken);
+                }
+
+                if (string.IsNullOrWhiteSpace(systemPrompt))
+                {
+                    logger.LogWarning(
+                        "No system prompt found for scenario {ScenarioId}, using default",
+                        messageEntity.Game?.ScenarioId ?? "(unknown)");
+                    systemPrompt = "You are a helpful game master assistant.";
+                }
+
+                evaluationActivity?.SetTag("evaluation.context_message_count", conversationContext.Count);
+                evaluationActivity?.SetTag("evaluation.system_prompt_length", systemPrompt.Length);
+
+                // Perform evaluation
+                await evaluationService.EvaluateMessageAsync(
+                    messageEntity,
+                    systemPrompt,
+                    conversationContext,
+                    cancellationToken);
+
+                evaluationActivity?.SetStatus(ActivityStatusCode.Ok);
+                logger.LogDebug("Successfully evaluated message {MessageId}", messageEntity.Id);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to evaluate message {MessageId}", messageEntity.Id);
+                evaluationActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                // Continue processing - don't fail the message if evaluation fails
+            }
 
             // Enqueue message for embedding
             ConversationMessageReadyForEmbeddingMessage embeddingMessage = new()

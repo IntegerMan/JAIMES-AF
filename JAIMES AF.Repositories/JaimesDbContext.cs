@@ -5,11 +5,13 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
     public DbSet<Game> Games { get; set; } = null!;
     public DbSet<Message> Messages { get; set; } = null!;
     public DbSet<MessageEmbedding> MessageEmbeddings { get; set; } = null!;
+    public DbSet<MessageEvaluationMetric> MessageEvaluationMetrics { get; set; } = null!;
+    public DbSet<Model> Models { get; set; } = null!;
     public DbSet<Player> Players { get; set; } = null!;
     public DbSet<Scenario> Scenarios { get; set; } = null!;
     public DbSet<Ruleset> Rulesets { get; set; } = null!;
     public DbSet<ChatHistory> ChatHistories { get; set; } = null!;
-    
+
     // Agent instruction system entities
     public DbSet<Agent> Agents { get; set; } = null!;
     public DbSet<AgentInstructionVersion> AgentInstructionVersions { get; set; } = null!;
@@ -93,12 +95,17 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 .HasForeignKey(iv => iv.AgentId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            entity.HasIndex(iv => new { iv.AgentId, iv.VersionNumber }).IsUnique();
+            entity.HasOne(iv => iv.Model)
+                .WithMany(m => m.AgentInstructionVersions)
+                .HasForeignKey(iv => iv.ModelId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasIndex(iv => new {iv.AgentId, iv.VersionNumber}).IsUnique();
         });
 
         modelBuilder.Entity<ScenarioAgent>(entity =>
         {
-            entity.HasKey(sa => new { sa.ScenarioId, sa.AgentId });
+            entity.HasKey(sa => new {sa.ScenarioId, sa.AgentId});
             entity.Property(sa => sa.ScenarioId).IsRequired();
             entity.Property(sa => sa.AgentId).IsRequired();
             entity.Property(sa => sa.InstructionVersionId).IsRequired();
@@ -184,6 +191,11 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.HasOne(m => m.NextMessage)
                 .WithMany()
                 .HasForeignKey(m => m.NextMessageId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(m => m.Model)
+                .WithMany(mo => mo.Messages)
+                .HasForeignKey(m => m.ModelId)
                 .OnDelete(DeleteBehavior.NoAction);
         });
 
@@ -425,19 +437,98 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.HasIndex(mtc => mtc.InstructionVersionId);
         });
 
+        // Model entity configuration
+        modelBuilder.Entity<Model>(entity =>
+        {
+            entity.HasKey(m => m.Id);
+            entity.Property(m => m.Name).IsRequired().HasMaxLength(200);
+            entity.Property(m => m.Provider).IsRequired().HasMaxLength(50);
+            entity.Property(m => m.Endpoint).HasMaxLength(500);
+            entity.Property(m => m.CreatedAt).IsRequired();
+
+            // Create unique index on Name + Provider + Endpoint to prevent duplicates
+            var indexBuilder = entity.HasIndex(m => new {m.Name, m.Provider, m.Endpoint})
+                .IsUnique();
+
+            // AreNullsDistinct is a relational-only feature. PostgreSQL 15+ supports it.
+            // We only apply this if we're using a relational provider to avoid issues with In-Memory testing.
+            if (Database.IsRelational())
+            {
+                indexBuilder.AreNullsDistinct(false);
+            }
+        });
+        // Message evaluation metric entity configuration
+        modelBuilder.Entity<MessageEvaluationMetric>(entity =>
+        {
+            entity.HasKey(mem => mem.Id);
+            entity.Property(mem => mem.MessageId).IsRequired();
+            entity.Property(mem => mem.MetricName).IsRequired();
+            entity.Property(mem => mem.Score).IsRequired();
+            entity.Property(mem => mem.EvaluatedAt).IsRequired();
+
+            // Configure Diagnostics as JSONB for PostgreSQL
+            string providerName;
+            try
+            {
+                providerName = Database.ProviderName ?? "Npgsql.EntityFrameworkCore.PostgreSQL";
+            }
+            catch
+            {
+                // At design-time or when database is not initialized, assume PostgreSQL
+                providerName = "Npgsql.EntityFrameworkCore.PostgreSQL";
+            }
+
+            if (string.Equals(providerName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
+            {
+                // For PostgreSQL, use jsonb type for Diagnostics
+                entity.Property(mem => mem.Diagnostics)
+                    .HasColumnType("jsonb");
+            }
+
+            // Create index on MessageId for efficient queries by message
+            entity.HasIndex(mem => mem.MessageId);
+
+            // Create index on EvaluatedAt for time-based queries
+            entity.HasIndex(mem => mem.EvaluatedAt);
+
+            // Create index on MetricName for filtering by metric type
+            entity.HasIndex(mem => mem.MetricName);
+
+            entity.HasOne(mem => mem.Message)
+                .WithMany()
+                .HasForeignKey(mem => mem.MessageId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(mem => mem.EvaluationModel)
+                .WithMany(model => model.EvaluationMetrics)
+                .HasForeignKey(mem => mem.EvaluationModelId)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
         // Seed data - use lowercase ids for new defaults
         // IMPORTANT: When modifying any seed data values (e.g., ScenarioInstructions, InitialGreeting, or any HasData() values),
         // you MUST create a new EF Core migration. See AGENTS.md for the migration command.
         modelBuilder.Entity<Ruleset>()
             .HasData(
-                new Ruleset { Id = "dnd5e", Name = "Dungeons and Dragons 5th Edition" }
+                new Ruleset {Id = "dnd5e", Name = "Dungeons and Dragons 5th Edition"}
             );
 
         modelBuilder.Entity<Player>()
             .HasData(
-                new Player { Id = "emcee", RulesetId = "dnd5e", Description = "Default player", Name = "Emcee" },
-                new Player { Id = "kigorath", RulesetId = "dnd5e", Description = "A towering goliath druid who communes with the primal spirits of stone and storm. Their skin is marked with tribal patterns that glow faintly when channeling nature magic.", Name = "Kigorath the Goliath Druid" },
-                new Player { Id = "glim", RulesetId = "dnd5e", Description = "A small frog wizard with bright, curious eyes and a penchant for collecting strange spell components. They speak in a croaky voice and are always eager to learn new magic.", Name = "Glim the Frog Wizard" }
+                new Player {Id = "emcee", RulesetId = "dnd5e", Description = "Default player", Name = "Emcee"},
+                new Player
+                {
+                    Id = "kigorath", RulesetId = "dnd5e",
+                    Description =
+                        "A towering goliath druid who communes with the primal spirits of stone and storm. Their skin is marked with tribal patterns that glow faintly when channeling nature magic.",
+                    Name = "Kigorath the Goliath Druid"
+                },
+                new Player
+                {
+                    Id = "glim", RulesetId = "dnd5e",
+                    Description =
+                        "A small frog wizard with bright, curious eyes and a penchant for collecting strange spell components. They speak in a croaky voice and are always eager to learn new magic.",
+                    Name = "Glim the Frog Wizard"
+                }
             );
 
         // Agents and instruction versions will be created programmatically during application startup

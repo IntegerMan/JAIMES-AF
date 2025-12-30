@@ -13,7 +13,7 @@ public class DatabaseInitializationTests
         ServiceProvider provider = services.BuildServiceProvider();
 
         // Act
-        await provider.InitializeDatabaseAsync();
+        await provider.ApplyMigrationsAsync();
 
         // Assert
         using IServiceScope scope = provider.CreateScope();
@@ -50,9 +50,9 @@ public class DatabaseInitializationTests
         ServiceProvider provider = services.BuildServiceProvider();
 
         // Act
-        await provider.InitializeDatabaseAsync();
-        await provider.InitializeDatabaseAsync();
-        await provider.InitializeDatabaseAsync();
+        await provider.ApplyMigrationsAsync();
+        await provider.ApplyMigrationsAsync();
+        await provider.ApplyMigrationsAsync();
 
         // Assert - should not throw and database should still be valid
         using IServiceScope scope = provider.CreateScope();
@@ -73,7 +73,7 @@ public class DatabaseInitializationTests
         ServiceProvider provider = services.BuildServiceProvider();
 
         // Act & Assert - should not throw
-        await provider.InitializeDatabaseAsync();
+        await provider.ApplyMigrationsAsync();
 
         using IServiceScope scope = provider.CreateScope();
         JaimesDbContext context = scope.ServiceProvider.GetRequiredService<JaimesDbContext>();
@@ -94,10 +94,10 @@ public class DatabaseInitializationTests
         ServiceProvider provider = services.BuildServiceProvider();
 
         // Act
-        await provider.InitializeDatabaseAsync();
+        await provider.ApplyMigrationsAsync();
 
         // Assert
-        logMessages.ShouldContain(msg => msg.Contains("Starting database initialization"));
+        logMessages.ShouldContain(msg => msg.Contains("database") && (msg.Contains("migration") || msg.Contains("initialization")));
         logMessages.ShouldContain(msg => msg.Contains("Microsoft.EntityFrameworkCore.InMemory"));
     }
 

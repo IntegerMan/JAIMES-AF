@@ -11,4 +11,7 @@ public class MessageDto
     public int? InstructionVersionId { get; init; }
     // Sentiment analysis result: -1 (negative), 0 (neutral), 1 (positive), null (not analyzed)
     public int? Sentiment { get; init; }
+    public string? ModelName { get; init; }
+    public string? ModelProvider { get; init; }
+    public string? ModelEndpoint { get; init; }
 }

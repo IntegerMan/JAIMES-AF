@@ -13,8 +13,8 @@ using Pgvector;
 namespace MattEland.Jaimes.Repositories.Migrations
 {
     [DbContext(typeof(JaimesDbContext))]
-    [Migration("20251229050251_AddMessageSentiment")]
-    partial class AddMessageSentiment
+    [Migration("20251230032622_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -67,11 +67,16 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("ModelId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("VersionNumber")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ModelId");
 
                     b.HasIndex("AgentId", "VersionNumber")
                         .IsUnique();
@@ -317,6 +322,9 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.Property<int?>("InstructionVersionId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("ModelId")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("NextMessageId")
                         .HasColumnType("integer");
 
@@ -342,6 +350,8 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.HasIndex("GameId");
 
                     b.HasIndex("InstructionVersionId");
+
+                    b.HasIndex("ModelId");
 
                     b.HasIndex("NextMessageId");
 
@@ -379,6 +389,155 @@ namespace MattEland.Jaimes.Repositories.Migrations
                         .IsUnique();
 
                     b.ToTable("MessageEmbeddings");
+                });
+
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.MessageEvaluationMetric", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Diagnostics")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("EvaluatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("EvaluationModelId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MessageId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("MetricName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("text");
+
+                    b.Property<double>("Score")
+                        .HasColumnType("double precision");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EvaluatedAt");
+
+                    b.HasIndex("EvaluationModelId");
+
+                    b.HasIndex("MessageId");
+
+                    b.HasIndex("MetricName");
+
+                    b.ToTable("MessageEvaluationMetrics");
+                });
+
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.MessageFeedback", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Comment")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("InstructionVersionId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsPositive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("MessageId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InstructionVersionId");
+
+                    b.HasIndex("MessageId")
+                        .IsUnique();
+
+                    b.ToTable("MessageFeedbacks");
+                });
+
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.MessageToolCall", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("InputJson")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("InstructionVersionId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MessageId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("OutputJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ToolName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InstructionVersionId");
+
+                    b.HasIndex("MessageId");
+
+                    b.ToTable("MessageToolCalls");
+                });
+
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Model", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Endpoint")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name", "Provider", "Endpoint")
+                        .IsUnique();
+
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("Name", "Provider", "Endpoint"), false);
+
+                    b.ToTable("Models");
                 });
 
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Player", b =>
@@ -600,7 +759,14 @@ namespace MattEland.Jaimes.Repositories.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.Model", "Model")
+                        .WithMany("AgentInstructionVersions")
+                        .HasForeignKey("ModelId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.Navigation("Agent");
+
+                    b.Navigation("Model");
                 });
 
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.ChatHistory", b =>
@@ -696,6 +862,11 @@ namespace MattEland.Jaimes.Repositories.Migrations
                         .HasForeignKey("InstructionVersionId")
                         .OnDelete(DeleteBehavior.NoAction);
 
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.Model", "Model")
+                        .WithMany("Messages")
+                        .HasForeignKey("ModelId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("MattEland.Jaimes.Repositories.Entities.Message", "NextMessage")
                         .WithMany()
                         .HasForeignKey("NextMessageId")
@@ -718,6 +889,8 @@ namespace MattEland.Jaimes.Repositories.Migrations
 
                     b.Navigation("InstructionVersion");
 
+                    b.Navigation("Model");
+
                     b.Navigation("NextMessage");
 
                     b.Navigation("Player");
@@ -732,6 +905,60 @@ namespace MattEland.Jaimes.Repositories.Migrations
                         .HasForeignKey("MattEland.Jaimes.Repositories.Entities.MessageEmbedding", "MessageId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Message");
+                });
+
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.MessageEvaluationMetric", b =>
+                {
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.Model", "EvaluationModel")
+                        .WithMany("EvaluationMetrics")
+                        .HasForeignKey("EvaluationModelId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.Message", "Message")
+                        .WithMany()
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EvaluationModel");
+
+                    b.Navigation("Message");
+                });
+
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.MessageFeedback", b =>
+                {
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.AgentInstructionVersion", "InstructionVersion")
+                        .WithMany()
+                        .HasForeignKey("InstructionVersionId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.Message", "Message")
+                        .WithMany()
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("InstructionVersion");
+
+                    b.Navigation("Message");
+                });
+
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.MessageToolCall", b =>
+                {
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.AgentInstructionVersion", "InstructionVersion")
+                        .WithMany()
+                        .HasForeignKey("InstructionVersionId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.Message", "Message")
+                        .WithMany()
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("InstructionVersion");
 
                     b.Navigation("Message");
                 });
@@ -820,6 +1047,15 @@ namespace MattEland.Jaimes.Repositories.Migrations
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Message", b =>
                 {
                     b.Navigation("MessageEmbedding");
+                });
+
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Model", b =>
+                {
+                    b.Navigation("AgentInstructionVersions");
+
+                    b.Navigation("EvaluationMetrics");
+
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Player", b =>

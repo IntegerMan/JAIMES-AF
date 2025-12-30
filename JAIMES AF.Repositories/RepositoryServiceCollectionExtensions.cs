@@ -59,7 +59,12 @@ public static class RepositoryServiceCollectionExtensions
         return services;
     }
 
-    public static async Task InitializeDatabaseAsync(this IServiceProvider serviceProvider)
+    /// <summary>
+    /// Waits for database migrations to be applied by the migration worker.
+    /// This method checks for pending migrations and waits for them to be applied.
+    /// It does NOT apply migrations itself - that is handled by the migration worker.
+    /// </summary>
+    public static async Task WaitForMigrationsAsync(this IServiceProvider serviceProvider)
     {
         using IServiceScope scope = serviceProvider.CreateScope();
         IDbContextFactory<JaimesDbContext> factory =
@@ -70,23 +75,125 @@ public static class RepositoryServiceCollectionExtensions
                          NullLoggerFactory.Instance.CreateLogger("DatabaseInitialization");
 
         string providerName = context.Database.ProviderName ?? "unknown";
-        logger.LogInformation("Starting database initialization. EF provider: {Provider}", providerName);
+        logger.LogInformation("Waiting for database migrations. EF provider: {Provider}", providerName);
 
-        IEnumerable<string> appliedMigrations = Enumerable.Empty<string>();
-        IEnumerable<string> pendingMigrations = Enumerable.Empty<string>();
+        const int maxWaitSeconds = 300; // 5 minutes max wait
+        const int checkIntervalMs = 1000; // Check every second
+        int waitedSeconds = 0;
+
+        while (waitedSeconds < maxWaitSeconds)
+        {
+            try
+            {
+                string[] pendingMigrations = context.Database.GetPendingMigrations().ToArray();
+
+                if (pendingMigrations.Length == 0)
+                {
+                    string[] appliedMigrations = context.Database.GetAppliedMigrations().ToArray();
+                    logger.LogInformation(
+                        "All migrations applied. Applied migrations count: {AppliedCount}. Proceeding with startup.",
+                        appliedMigrations.Length);
+                    return;
+                }
+
+                if (waitedSeconds == 0)
+                {
+                    logger.LogInformation(
+                        "Found {PendingCount} pending migrations. Waiting for migration worker to apply them...",
+                        pendingMigrations.Length);
+                    foreach (string m in pendingMigrations)
+                    {
+                        logger.LogInformation("Pending migration: {Migration}", m);
+                    }
+                }
+
+                await Task.Delay(checkIntervalMs);
+                waitedSeconds += checkIntervalMs / 1000;
+
+                // Log progress every 10 seconds
+                if (waitedSeconds % 10 == 0)
+                {
+                    logger.LogInformation(
+                        "Still waiting for migrations to be applied... ({WaitSeconds}s / {MaxWaitSeconds}s)",
+                        waitedSeconds,
+                        maxWaitSeconds);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex,
+                    "Error checking migration status (attempt {Attempt}). Retrying...",
+                    waitedSeconds);
+                await Task.Delay(checkIntervalMs);
+                waitedSeconds += checkIntervalMs / 1000;
+            }
+        }
+
+        // Final check
+        try
+        {
+            string[] finalPending = context.Database.GetPendingMigrations().ToArray();
+            if (finalPending.Length > 0)
+            {
+                logger.LogError(
+                    "Timeout waiting for migrations. {PendingCount} migrations still pending after {MaxWaitSeconds} seconds.",
+                    finalPending.Length,
+                    maxWaitSeconds);
+                throw new InvalidOperationException(
+                    $"Database migrations were not applied within {maxWaitSeconds} seconds. " +
+                    $"The migration worker may not be running or may have failed. " +
+                    $"Pending migrations: {string.Join(", ", finalPending)}");
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to verify migration status after timeout.");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Applies database migrations. This should only be called by the migration worker.
+    /// </summary>
+    public static async Task ApplyMigrationsAsync(this IServiceProvider serviceProvider)
+    {
+        using IServiceScope scope = serviceProvider.CreateScope();
+        IDbContextFactory<JaimesDbContext> factory =
+            scope.ServiceProvider.GetRequiredService<IDbContextFactory<JaimesDbContext>>();
+        using JaimesDbContext context = await factory.CreateDbContextAsync();
+        ILoggerFactory? loggerFactory = scope.ServiceProvider.GetService<ILoggerFactory>();
+        ILogger logger = loggerFactory?.CreateLogger("DatabaseInitialization") ??
+                         NullLoggerFactory.Instance.CreateLogger("DatabaseInitialization");
+
+        string providerName = context.Database.ProviderName ?? "unknown";
+        logger.LogInformation("Applying database migrations. EF provider: {Provider}", providerName);
 
         try
         {
-            appliedMigrations = context.Database.GetAppliedMigrations().ToArray();
-            pendingMigrations = context.Database.GetPendingMigrations().ToArray();
-            logger.LogInformation("Applied migrations count: {AppliedCount}", appliedMigrations.Count());
-            logger.LogInformation("Pending migrations count: {PendingCount}", pendingMigrations.Count());
+            logger.LogInformation("Applied migrations count: {AppliedCount}",
+                context.Database.GetAppliedMigrations().Count());
+            logger.LogInformation("Pending migrations count: {PendingCount}",
+                context.Database.GetPendingMigrations().Count());
 
-            foreach (string m in pendingMigrations) logger.LogInformation("Pending migration: {Migration}", m);
+            foreach (string m in context.Database.GetPendingMigrations())
+                logger.LogInformation("Pending migration: {Migration}", m);
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to enumerate applied/pending migrations. Continuing to migration step.");
+        }
+
+        if (context.Database.IsInMemory())
+        {
+            logger.LogInformation("In-memory database detected; using EnsureCreatedAsync to initialize and seed.");
+            await context.Database.EnsureCreatedAsync();
+            return;
+        }
+
+        if (!context.Database.GetPendingMigrations().Any())
+        {
+            logger.LogInformation("No pending migrations. Database is up to date.");
+            return;
         }
 
         try
@@ -134,15 +241,47 @@ public static class RepositoryServiceCollectionExtensions
     }
 
     /// <summary>
+    /// Waits for database migrations to be applied by the migration worker.
+    /// This method should be called after building the host and before starting the worker/API.
+    /// </summary>
+    public static async Task WaitForMigrationsAsync(this IHost host)
+    {
+        await host.Services.WaitForMigrationsAsync();
+    }
+
+    /// <summary>
+    /// Applies database migrations. This should only be called by the migration worker.
+    /// </summary>
+    public static async Task ApplyMigrationsAsync(this IHost host)
+    {
+        await host.Services.ApplyMigrationsAsync();
+    }
+
+    /// <summary>
+    /// Applies database migrations. This is used by tests and the migration worker.
+    /// For production code, use WaitForMigrationsAsync instead.
+    /// </summary>
+    /// <param name="serviceProvider">The service provider to use for database operations.</param>
+    [Obsolete(
+        "Use ApplyMigrationsAsync for tests or WaitForMigrationsAsync for production. This method is kept for backward compatibility.")]
+    public static async Task InitializeDatabaseAsync(this IServiceProvider serviceProvider)
+    {
+        // For backward compatibility, delegate to ApplyMigrationsAsync (tests need to actually apply migrations)
+        await serviceProvider.ApplyMigrationsAsync();
+    }
+
+    /// <summary>
     /// Initializes the database for a worker application by applying pending migrations.
     /// This method should be called after building the host and before starting the worker.
-    /// Delegates to <see cref="InitializeDatabaseAsync(IServiceProvider)"/> which contains the core implementation.
+    /// Delegates to <see cref="WaitForMigrationsAsync(IServiceProvider)"/> which waits for migrations to be applied.
     /// </summary>
     /// <param name="host">The host instance to initialize the database for.</param>
     /// <exception cref="Exception">Thrown if database initialization fails. The worker should not start in this case.</exception>
+    [Obsolete(
+        "Use WaitForMigrationsAsync instead. This method is kept for backward compatibility but will be removed.")]
     public static async Task InitializeDatabaseAsync(this IHost host)
     {
-        // Delegate to the IServiceProvider implementation which contains all the migration logic and logging
-        await host.Services.InitializeDatabaseAsync();
+        // For backward compatibility, delegate to WaitForMigrationsAsync
+        await host.WaitForMigrationsAsync();
     }
 }

@@ -11,6 +11,9 @@ public static partial class MessageResponseMapper
     [MapProperty(nameof(MessageDto.AgentId), nameof(MessageResponse.AgentId))]
     [MapProperty(nameof(MessageDto.InstructionVersionId), nameof(MessageResponse.InstructionVersionId))]
     [MapProperty(nameof(MessageDto.Sentiment), nameof(MessageResponse.Sentiment))]
+    [MapProperty(nameof(MessageDto.ModelName), nameof(MessageResponse.ModelName))]
+    [MapProperty(nameof(MessageDto.ModelProvider), nameof(MessageResponse.ModelProvider))]
+    [MapProperty(nameof(MessageDto.ModelEndpoint), nameof(MessageResponse.ModelEndpoint))]
     [MapProperty(nameof(MessageDto.PlayerId),
         nameof(MessageResponse.Participant),
         Use = nameof(MapParticipantFromPlayerId))]

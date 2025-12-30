@@ -1,5 +1,9 @@
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
+using MattEland.Jaimes.ServiceDefaults;
+using MattEland.Jaimes.ServiceLayer;
+using MattEland.Jaimes.Workers.AssistantMessageWorker.Services;
+using Microsoft.Extensions.AI.Evaluation.Quality;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
@@ -26,6 +30,18 @@ builder.Configuration
 
 // Add PostgreSQL with EF Core
 builder.Services.AddJaimesRepositories(builder.Configuration);
+
+// Add services (includes IInstructionService)
+builder.Services.AddJaimesServices();
+
+// Configure chat client for evaluation
+builder.Services.AddChatClient(builder.Configuration, "TextGenerationModel");
+
+// Register RelevanceTruthAndCompletenessEvaluator as singleton
+builder.Services.AddSingleton<RelevanceTruthAndCompletenessEvaluator>();
+
+// Register evaluation service
+builder.Services.AddScoped<IMessageEvaluationService, MessageEvaluationService>();
 
 // Configure message consuming and publishing using RabbitMQ.Client (LavinMQ compatible)
 IConnectionFactory connectionFactory = RabbitMqConnectionFactory.CreateConnectionFactory(builder.Configuration);
@@ -77,7 +93,7 @@ using IHost host = builder.Build();
 
 ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 
-await host.InitializeDatabaseAsync();
+await host.WaitForMigrationsAsync();
 
 logger.LogInformation("Starting Assistant Message Worker");
 

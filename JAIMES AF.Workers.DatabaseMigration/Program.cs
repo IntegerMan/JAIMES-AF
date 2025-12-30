@@ -1,3 +1,10 @@
+using MattEland.Jaimes.Repositories;
+using MattEland.Jaimes.ServiceDefaults;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using System.Diagnostics;
+
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
 // Configure OpenTelemetry for Aspire telemetry
@@ -21,33 +28,11 @@ builder.Configuration
     .AddEnvironmentVariables()
     .AddCommandLine(args);
 
-// Bind configuration
-DocumentCrackerWorkerOptions options =
-    builder.Configuration.GetSection("DocumentCrackerWorker").Get<DocumentCrackerWorkerOptions>()
-    ?? throw new InvalidOperationException("DocumentCrackerWorker configuration section is required");
-
-builder.Services.AddSingleton(options);
-
 // Add PostgreSQL with EF Core
 builder.Services.AddJaimesRepositories(builder.Configuration);
 
-// Register shared worker services
-builder.Services.AddSingleton<IPdfTextExtractor, MattEland.Jaimes.Workers.Services.PdfPigTextExtractor>();
-builder.Services.AddSingleton<IDocumentCrackingService, MattEland.Jaimes.Workers.Services.DocumentCrackingService>();
-
-// Configure message publishing and consuming using RabbitMQ.Client (LavinMQ compatible)
-IConnectionFactory connectionFactory = RabbitMqConnectionFactory.CreateConnectionFactory(builder.Configuration);
-builder.Services.AddSingleton(connectionFactory);
-builder.Services.AddSingleton<IMessagePublisher, MessagePublisher>();
-
-// Register consumer
-builder.Services.AddSingleton<IMessageConsumer<CrackDocumentMessage>, CrackDocumentConsumer>();
-
-// Register consumer service (background service)
-builder.Services.AddHostedService<MessageConsumerService<CrackDocumentMessage>>();
-
 // Configure OpenTelemetry ActivitySource
-const string activitySourceName = "Jaimes.Workers.DocumentCrackerWorker";
+const string activitySourceName = "Jaimes.Workers.DatabaseMigration";
 ActivitySource activitySource = new(activitySourceName);
 
 builder.Services.AddOpenTelemetry()
@@ -73,8 +58,16 @@ using IHost host = builder.Build();
 
 ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 
-await host.WaitForMigrationsAsync();
+logger.LogInformation("Starting Database Migration Worker");
 
-logger.LogInformation("Starting Document Cracker Worker");
-
-await host.RunAsync();
+try
+{
+    await host.ApplyMigrationsAsync();
+    logger.LogInformation("Database migrations completed successfully. Exiting migration worker.");
+}
+catch (Exception ex)
+{
+    logger.LogError(ex, "Failed to apply database migrations. Migration worker will exit with error.");
+    Environment.ExitCode = 1;
+    throw;
+}

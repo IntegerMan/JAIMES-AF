@@ -74,7 +74,7 @@ using IHost host = builder.Build();
 
 ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 
-await host.InitializeDatabaseAsync();
+await host.WaitForMigrationsAsync();
 
 logger.LogInformation("Starting Document Change Detector Worker");
 

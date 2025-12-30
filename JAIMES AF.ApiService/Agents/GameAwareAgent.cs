@@ -4,6 +4,7 @@ using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
+using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.Tools;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
@@ -33,7 +34,9 @@ public class GameAwareAgent(
         string? gameIdStr = context?.Request.RouteValues["gameId"]?.ToString();
         Guid.TryParse(gameIdStr, out Guid gameId);
 
-        _logger.LogInformation("GameAwareAgent.RunAsync called for game {GameId} with {MessageCount} message(s)", gameId, messages?.Count() ?? 0);
+        _logger.LogInformation("GameAwareAgent.RunAsync called for game {GameId} with {MessageCount} message(s)",
+            gameId,
+            messages?.Count() ?? 0);
 
         // Enumerate messages once for logging and processing
         List<ChatMessage> messagesList = (messages ?? []).ToList();
@@ -41,7 +44,9 @@ public class GameAwareAgent(
         // Log incoming messages - ensure we enumerate and log each one
         if (messagesList.Count > 0)
         {
-            _logger.LogInformation("Processing {Count} incoming message(s) for game {GameId}", messagesList.Count, gameId);
+            _logger.LogInformation("Processing {Count} incoming message(s) for game {GameId}",
+                messagesList.Count,
+                gameId);
 
             int messageIndex = 0;
             foreach (var msg in messagesList)
@@ -49,8 +54,12 @@ public class GameAwareAgent(
                 string textPreview = msg.Text?.Length > 200
                     ? msg.Text.Substring(0, 200) + "..."
                     : msg.Text ?? "(null)";
-                _logger.LogInformation("📥 Incoming message [{Index}] - Role: {Role}, AuthorName: {AuthorName}, Text: {Text}",
-                    messageIndex++, msg.Role, msg.AuthorName ?? "(none)", textPreview);
+                _logger.LogInformation(
+                    "📥 Incoming message [{Index}] - Role: {Role}, AuthorName: {AuthorName}, Text: {Text}",
+                    messageIndex++,
+                    msg.Role,
+                    msg.AuthorName ?? "(none)",
+                    textPreview);
             }
         }
         else
@@ -64,20 +73,24 @@ public class GameAwareAgent(
         // This ensures the agent generates responses with full context, matching what AGUI returns to the client
         AgentThread? gameThread = await GetOrCreateGameThreadAsync(gameAgent, cancellationToken);
 
-        _logger.LogInformation("Running agent for game {GameId} with thread (has conversation history for context)", gameId);
+        _logger.LogInformation("Running agent for game {GameId} with thread (has conversation history for context)",
+            gameId);
 
         // Run with the game-specific agent AND the thread so it has conversation history
         // This ensures the response matches what AGUI returns to the client
         AgentRunResponse response = await gameAgent.RunAsync(messagesList, gameThread, options, cancellationToken);
 
         _logger.LogInformation("Agent run completed for game {GameId}. Response contains {MessageCount} message(s)",
-            gameId, response.Messages?.Count() ?? 0);
+            gameId,
+            response.Messages?.Count() ?? 0);
 
         // Log outgoing messages - ensure we enumerate and log each one
         if (response.Messages != null)
         {
             List<ChatMessage> responseMessagesList = response.Messages.ToList();
-            _logger.LogInformation("Processing {Count} outgoing message(s) for game {GameId}", responseMessagesList.Count, gameId);
+            _logger.LogInformation("Processing {Count} outgoing message(s) for game {GameId}",
+                responseMessagesList.Count,
+                gameId);
 
             int messageIndex = 0;
             foreach (var msg in responseMessagesList)
@@ -85,8 +98,12 @@ public class GameAwareAgent(
                 string textPreview = msg.Text?.Length > 200
                     ? msg.Text.Substring(0, 200) + "..."
                     : msg.Text ?? "(null)";
-                _logger.LogInformation("📤 Outgoing message [{Index}] - Role: {Role}, AuthorName: {AuthorName}, Text: {Text}",
-                    messageIndex++, msg.Role, msg.AuthorName ?? "(none)", textPreview);
+                _logger.LogInformation(
+                    "📤 Outgoing message [{Index}] - Role: {Role}, AuthorName: {AuthorName}, Text: {Text}",
+                    messageIndex++,
+                    msg.Role,
+                    msg.AuthorName ?? "(none)",
+                    textPreview);
             }
         }
         else
@@ -108,7 +125,8 @@ public class GameAwareAgent(
         IEnumerable<ChatMessage> messages,
         AgentThread? thread = null,
         AgentRunOptions? options = null,
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [System.Runtime.CompilerServices.EnumeratorCancellation]
+        CancellationToken cancellationToken = default)
     {
         AIAgent gameAgent = await GetOrCreateGameAgentAsync(cancellationToken);
         AgentThread? gameThread = await GetOrCreateGameThreadAsync(gameAgent, cancellationToken);
@@ -122,7 +140,10 @@ public class GameAwareAgent(
         AgentRunResponseUpdate? lastUpdate = null;
 
         // Stream with the game-specific agent and thread
-        await foreach (AgentRunResponseUpdate update in gameAgent.RunStreamingAsync(messagesList, gameThread ?? thread, options, cancellationToken))
+        await foreach (AgentRunResponseUpdate update in gameAgent.RunStreamingAsync(messagesList,
+                           gameThread ?? thread,
+                           options,
+                           cancellationToken))
         {
             // Track the last update for ResponseId
             lastUpdate = update;
@@ -208,7 +229,9 @@ public class GameAwareAgent(
         }
 
         _logger.LogInformation("Game found: {GameId}, Scenario: {ScenarioName}, Player: {PlayerName}",
-            gameId, gameDto.Scenario.Name, gameDto.Player.Name);
+            gameId,
+            gameDto.Scenario.Name,
+            gameDto.Player.Name);
 
         // Get instructions from InstructionService
         string? systemPrompt = await instructionService.GetInstructionsAsync(gameDto.Scenario.Id, cancellationToken);
@@ -234,7 +257,8 @@ public class GameAwareAgent(
             () => _httpContextAccessor.HttpContext?.RequestServices);
 
         _logger.LogInformation("Agent created for game {GameId} with {ToolCount} tool(s)",
-            gameId, tools?.Count ?? 0);
+            gameId,
+            tools?.Count ?? 0);
 
         // Cache it for this request
         context.Items[cacheKey] = gameAgent;
@@ -271,10 +295,12 @@ public class GameAwareAgent(
             IChatHistoryService chatHistoryService = scope.ServiceProvider.GetRequiredService<IChatHistoryService>();
 
             // Load or create thread
-            string? existingThreadJson = await chatHistoryService.GetMostRecentThreadJsonAsync(gameId, cancellationToken);
+            string? existingThreadJson =
+                await chatHistoryService.GetMostRecentThreadJsonAsync(gameId, cancellationToken);
             if (!string.IsNullOrEmpty(existingThreadJson))
             {
-                JsonElement jsonElement = JsonSerializer.Deserialize<JsonElement>(existingThreadJson, JsonSerializerOptions.Web);
+                JsonElement jsonElement =
+                    JsonSerializer.Deserialize<JsonElement>(existingThreadJson, JsonSerializerOptions.Web);
                 gameThread = agent.DeserializeThread(jsonElement, JsonSerializerOptions.Web);
             }
         }
@@ -291,9 +317,11 @@ public class GameAwareAgent(
         GameConversationMemoryProvider memoryProvider;
         using (IServiceScope factoryScope = _serviceProvider.CreateScope())
         {
-            GameConversationMemoryProviderFactory memoryProviderFactory = factoryScope.ServiceProvider.GetRequiredService<GameConversationMemoryProviderFactory>();
+            GameConversationMemoryProviderFactory memoryProviderFactory =
+                factoryScope.ServiceProvider.GetRequiredService<GameConversationMemoryProviderFactory>();
             memoryProvider = memoryProviderFactory.CreateForGame(gameId, _serviceProvider);
         }
+
         memoryProvider.SetThread(gameThread);
 
         // Store memory provider in context for use in PersistGameStateAsync
@@ -307,10 +335,14 @@ public class GameAwareAgent(
         return gameThread;
     }
 
-    private async Task PersistGameStateAsync(IEnumerable<ChatMessage> incomingMessages, AgentRunResponse response, AgentThread? thread, CancellationToken cancellationToken)
+    private async Task PersistGameStateAsync(IEnumerable<ChatMessage> incomingMessages,
+        AgentRunResponse response,
+        AgentThread? thread,
+        CancellationToken cancellationToken)
     {
         HttpContext? context = _httpContextAccessor.HttpContext;
-        if (context == null || !context.Items.TryGetValue("GameId", out object? gameIdObj) || gameIdObj is not Guid gameId)
+        if (context == null || !context.Items.TryGetValue("GameId", out object? gameIdObj) ||
+            gameIdObj is not Guid gameId)
         {
             _logger.LogWarning("Cannot persist game state - HttpContext or GameId not available");
             return;
@@ -327,14 +359,18 @@ public class GameAwareAgent(
         {
             _logger.LogDebug("No thread provided for persistence, will create new thread for game {GameId}", gameId);
             // Get the agent to create a new thread
-            AIAgent? gameAgent = context.Items.TryGetValue($"GameAgent_{gameId}", out object? agentObj) && agentObj is AIAgent agent ? agent : null;
+            AIAgent? gameAgent =
+                context.Items.TryGetValue($"GameAgent_{gameId}", out object? agentObj) && agentObj is AIAgent agent
+                    ? agent
+                    : null;
             if (gameAgent != null)
             {
                 thread = gameAgent.GetNewThread();
             }
             else
             {
-                _logger.LogWarning("Cannot create thread for persistence - agent not available for game {GameId}", gameId);
+                _logger.LogWarning("Cannot create thread for persistence - agent not available for game {GameId}",
+                    gameId);
                 return;
             }
         }
@@ -344,20 +380,36 @@ public class GameAwareAgent(
         ChatMessage? newUserMessage = incomingMessages?.LastOrDefault(m => m.Role == ChatRole.User);
         if (newUserMessage == null)
         {
-            _logger.LogDebug("No user message found in incoming messages for game {GameId}, skipping persistence", gameId);
+            _logger.LogDebug("No user message found in incoming messages for game {GameId}, skipping persistence",
+                gameId);
             return;
         }
 
         _logger.LogInformation("Persisting game state for game {GameId} - User message: {Text}",
-            gameId, newUserMessage.Text?.Substring(0, Math.Min(100, newUserMessage.Text?.Length ?? 0)) ?? "(null)");
+            gameId,
+            newUserMessage.Text?.Substring(0, Math.Min(100, newUserMessage.Text?.Length ?? 0)) ?? "(null)");
 
         // Get scoped services
         using IServiceScope scope = _serviceProvider.CreateScope();
-        IDbContextFactory<JaimesDbContext> contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<JaimesDbContext>>();
+        IDbContextFactory<JaimesDbContext> contextFactory =
+            scope.ServiceProvider.GetRequiredService<IDbContextFactory<JaimesDbContext>>();
         IChatHistoryService chatHistoryService = scope.ServiceProvider.GetRequiredService<IChatHistoryService>();
+        TextGenerationModelOptions? modelOptions = scope.ServiceProvider.GetService<TextGenerationModelOptions>();
 
         // Persist messages to database
         await using JaimesDbContext dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        // Get the model entity if model options are available
+        Model? model = null;
+        if (modelOptions != null)
+        {
+            model = await dbContext.GetOrCreateModelAsync(
+                modelOptions.Name,
+                modelOptions.Provider.ToString(),
+                modelOptions.Endpoint,
+                _logger,
+                cancellationToken);
+        }
 
         // Get the scenario's agent and instruction version for linking messages
         ScenarioAgent? scenarioAgent = await dbContext.ScenarioAgents
@@ -391,7 +443,8 @@ public class GameAwareAgent(
                 PlayerId = null,
                 CreatedAt = DateTime.UtcNow,
                 AgentId = agentId,
-                InstructionVersionId = instructionVersionId
+                InstructionVersionId = instructionVersionId,
+                ModelId = model?.Id
             })
             .ToList();
         dbContext.Messages.AddRange(aiMessageEntities);
@@ -399,7 +452,8 @@ public class GameAwareAgent(
 
         await dbContext.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Saved {TotalMessageCount} message(s) to database for game {GameId}",
-            1 + aiMessageEntities.Count, gameId);
+            1 + aiMessageEntities.Count,
+            gameId);
 
         // Save tool calls associated with the last assistant message
         // Get tracker from request services (not from the new scope) since it's scoped per request
@@ -460,7 +514,7 @@ public class GameAwareAgent(
         for (int i = 0; i < allMessages.Count; i++)
         {
             Message currentMessage = allMessages[i];
-            
+
             // Set PreviousMessageId to the previous message's Id (if exists)
             if (i > 0)
             {
@@ -475,11 +529,13 @@ public class GameAwareAgent(
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        _logger.LogDebug("Linked {MessageCount} messages in chronological order for game {GameId}", allMessages.Count, gameId);
+        _logger.LogDebug("Linked {MessageCount} messages in chronological order for game {GameId}",
+            allMessages.Count,
+            gameId);
 
         // Enqueue messages for asynchronous processing (quality control, sentiment analysis)
         IMessagePublisher messagePublisher = scope.ServiceProvider.GetRequiredService<IMessagePublisher>();
-        
+
         // Enqueue user message (defensive check: ensure it's not a tool call)
         // Note: newUserMessage is already filtered to ChatRole.User, but this is a safety check
         if (newUserMessage.Role != ChatRole.Tool)
@@ -514,7 +570,8 @@ public class GameAwareAgent(
         // Use memory provider to persist thread state
         // The memory provider provides a consistent interface for thread persistence
         string memoryProviderKey = $"MemoryProvider_{gameId}";
-        if (context != null && context.Items.TryGetValue(memoryProviderKey, out object? providerObj) && providerObj is GameConversationMemoryProvider memoryProvider)
+        if (context != null && context.Items.TryGetValue(memoryProviderKey, out object? providerObj) &&
+            providerObj is GameConversationMemoryProvider memoryProvider)
         {
             // Update thread reference in case it changed
             memoryProvider.SetThread(thread);
@@ -527,7 +584,9 @@ public class GameAwareAgent(
         {
             // Fallback to direct persistence if memory provider not available
             string threadJson = thread.Serialize(JsonSerializerOptions.Web).GetRawText();
-            _logger.LogDebug("Serialized thread for game {GameId}, length: {Length} characters", gameId, threadJson.Length);
+            _logger.LogDebug("Serialized thread for game {GameId}, length: {Length} characters",
+                gameId,
+                threadJson.Length);
             await chatHistoryService.SaveThreadJsonAsync(gameId, threadJson, lastAiMessageId, cancellationToken);
             _logger.LogInformation("Saved thread JSON for game {GameId}", gameId);
         }
@@ -560,7 +619,8 @@ public class GameAwareAgent(
         }
 
         // Add conversation search tool if the service is available
-        IConversationSearchService? conversationSearchService = scope.ServiceProvider.GetService<IConversationSearchService>();
+        IConversationSearchService? conversationSearchService =
+            scope.ServiceProvider.GetService<IConversationSearchService>();
         if (conversationSearchService != null)
         {
             ConversationSearchTool conversationSearchTool = new(game, _serviceProvider);

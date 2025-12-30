@@ -9,6 +9,8 @@ global using MattEland.Jaimes.ServiceDefinitions.Services;
 global using MattEland.Jaimes.Workers.AssistantMessageWorker.Consumers;
 global using Microsoft.EntityFrameworkCore;
 global using Microsoft.Extensions.AI;
+global using Microsoft.Extensions.AI.Evaluation;
+global using Microsoft.Extensions.AI.Evaluation.Quality;
 global using OpenTelemetry.Metrics;
 global using OpenTelemetry.Resources;
 global using OpenTelemetry.Trace;
