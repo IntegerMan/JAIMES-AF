@@ -66,6 +66,30 @@ public class EfEvaluationResultStoreTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task WriteResultsAsync_BatchWithSameNewExecution_ShouldNotThrow()
+    {
+        // Arrange
+        string executionName = "BatchExecution";
+        List<ScenarioRunResult> results = new()
+        {
+            CreateTestResult(executionName, "Scenario1", "Iteration1"),
+            CreateTestResult(executionName, "Scenario2", "Iteration1")
+        };
+
+        // Act & Assert
+        await _store.WriteResultsAsync(results, TestContext.Current.CancellationToken);
+
+        using JaimesDbContext context = new(_options);
+        var executions = await context.EvaluationExecutions.Where(e => e.ExecutionName == executionName)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        executions.Count.ShouldBe(1);
+
+        var iterations = await context.EvaluationScenarioIterations.Where(si => si.ExecutionName == executionName)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        iterations.Count.ShouldBe(2);
+    }
+
+    [Fact]
     public async Task ReadResultsAsync_ShouldReturnPersistedResults()
     {
         // Arrange

@@ -1,10 +1,4 @@
 using System.Text.Json;
-using MattEland.Jaimes.Repositories;
-using MattEland.Jaimes.Repositories.Entities;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.AI;
-using Microsoft.Extensions.AI.Evaluation;
-using Microsoft.Extensions.AI.Evaluation.Quality;
 using Microsoft.Extensions.AI.Evaluation.Reporting;
 
 namespace MattEland.Jaimes.Workers.AssistantMessageWorker.Services;
@@ -101,7 +95,7 @@ public class MessageEvaluationService(
             foreach (string metricName in metricNames)
             {
                 NumericMetric? metric = result.Get<NumericMetric>(metricName);
-                if (metric?.Value.HasValue == true)
+                if (metric is {Value: not null})
                 {
                     // Serialize any additional metadata if available
                     string? diagnosticsJson = null;

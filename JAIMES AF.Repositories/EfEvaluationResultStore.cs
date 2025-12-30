@@ -1,7 +1,5 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-using MattEland.Jaimes.Repositories.Entities;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI.Evaluation.Reporting;
 
 namespace MattEland.Jaimes.Repositories;
@@ -70,7 +68,7 @@ public class EfEvaluationResultStore(IDbContextFactory<JaimesDbContext> dbContex
 
             // Ensure execution exists
             EvaluationExecution? execution = await context.EvaluationExecutions
-                .FirstOrDefaultAsync(e => e.ExecutionName == result.ExecutionName, cancellationToken);
+                .FindAsync([result.ExecutionName], cancellationToken);
 
             if (execution == null)
             {
@@ -85,10 +83,7 @@ public class EfEvaluationResultStore(IDbContextFactory<JaimesDbContext> dbContex
             string resultJson = JsonSerializer.Serialize(result, JsonOptions);
 
             EvaluationScenarioIteration? iteration = await context.EvaluationScenarioIterations
-                .FirstOrDefaultAsync(si => si.ExecutionName == result.ExecutionName &&
-                                           si.ScenarioName == result.ScenarioName &&
-                                           si.IterationName == result.IterationName,
-                    cancellationToken);
+                .FindAsync([result.ExecutionName, result.ScenarioName, result.IterationName], cancellationToken);
 
             if (iteration == null)
             {
@@ -142,7 +137,7 @@ public class EfEvaluationResultStore(IDbContextFactory<JaimesDbContext> dbContex
 
         // Delete any executions that no longer have any associated results
         List<EvaluationExecution> orphanedExecutions = await context.EvaluationExecutions
-            .Where(e => !context.EvaluationScenarioIterations.Any(si => si.ExecutionName == e.ExecutionName))
+            .Where(e => !e.ScenarioIterations.Any())
             .ToListAsync(cancellationToken);
 
         if (orphanedExecutions.Count > 0)
