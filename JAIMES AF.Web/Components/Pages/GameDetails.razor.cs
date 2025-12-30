@@ -644,14 +644,18 @@ public partial class GameDetails : IAsyncDisposable
 
                         // Find the first pending user message (null ID) and assign this ID to it.
                         // We search forwards (FIFO) assuming notifications arrive in order of creation.
-                        for (int i = 0; i < _messageIds.Count; i++)
+                        // Only proceed if we don't already have this message ID mapped (avoid re-mapping existing messages)
+                        if (!_messageIds.Contains(notification.MessageId))
                         {
-                            if (_messageIds[i] == null && _messages[i].Role == ChatRole.User)
+                            for (int i = 0; i < _messageIds.Count; i++)
                             {
-                                _messageIds[i] = notification.MessageId;
-                                _logger?.LogDebug("Updated User message ID at index {Index} to {MessageId}", i,
-                                    notification.MessageId);
-                                break;
+                                if (_messageIds[i] == null && _messages[i].Role == ChatRole.User)
+                                {
+                                    _messageIds[i] = notification.MessageId;
+                                    _logger?.LogDebug("Updated User message ID at index {Index} to {MessageId}", i,
+                                        notification.MessageId);
+                                    break;
+                                }
                             }
                         }
                     }
@@ -670,7 +674,8 @@ public partial class GameDetails : IAsyncDisposable
                                 if (_messageIds[i] == null && _messages[i].Role == ChatRole.Assistant)
                                 {
                                     _messageIds[i] = notification.MessageId;
-                                    _logger?.LogDebug("Updated Assistant message ID at index {Index} to {MessageId}", i,
+                                    _logger?.LogDebug(
+                                        "Updated Assistant message ID at index {Index} to {MessageId}", i,
                                         notification.MessageId);
                                     break;
                                 }
