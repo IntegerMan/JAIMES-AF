@@ -32,21 +32,18 @@
 						{
 						    <MattEland.Jaimes.Web.Components.Chat.UserChatMessage 
 						        Text="@paragraph" 
-						        IsFirstParagraph="@isFirstParagraph" />
+						        IsFirstParagraph="@isFirstParagraph"
+                                Color="@(isTargetMessage ? Color.Info : Color.Primary)" />
 						}
 						else // Assistant message
 						{
-                            // Highlight the target message
-                            var style = isTargetMessage ? "border: 2px solid var(--mud-palette-primary); border-radius: 8px; padding: 4px;" : "";
-                            
-                            <div style="@style">
-							    <MattEland.Jaimes.Web.Components.Chat.AssistantChatMessage
-							        Text="@paragraph"
-							        MessageId="@m.Id"
-							        IsFirstParagraph="@isFirstParagraph"
-							        IsLastParagraph="@isLastParagraph"
-							        ReadOnly="true" />
-                            </div>
+							<MattEland.Jaimes.Web.Components.Chat.AssistantChatMessage
+							    Text="@paragraph"
+							    MessageId="@m.Id"
+							    IsFirstParagraph="@isFirstParagraph"
+							    IsLastParagraph="@isLastParagraph"
+							    ReadOnly="true"
+                                Color="@(isTargetMessage ? Color.Info : Color.Default)" />
 						}
 					}
                 }
