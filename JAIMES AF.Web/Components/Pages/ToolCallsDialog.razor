@@ -11,22 +11,36 @@
             @foreach (var toolCall in _toolCalls)
             {
                 <MudExpansionPanels Class="mt-2">
-                    <MudExpansionPanel Text="@toolCall.ToolName" Icon="@Icons.Material.Filled.Build">
-                        <div class="tool-call-details">
-                            <MudText Typo="Typo.subtitle2" Class="mt-2 mb-1">Input:</MudText>
-                            <MudPaper Elevation="1" Class="pa-2 mb-3">
-                                <MudText Typo="Typo.body2" Class="font-family-monospace" Style="white-space: pre-wrap; font-size: 0.875rem;">
-                                    @FormatJson(toolCall.InputJson)
-                                </MudText>
-                            </MudPaper>
+                    <MudExpansionPanel Icon="@Icons.Material.Filled.Build">
+                        <TitleContent>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                                <MudText Typo="Typo.body1">@toolCall.ToolName</MudText>
+                                <MudTooltip Text="View all calls for this tool">
+                                    <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
+                                                   Size="Size.Small"
+                                                   Color="Color.Primary"
+                                                   Href="@($"/admin/tools/{Uri.EscapeDataString(toolCall.ToolName)}")"
+                                                   Target="_blank" />
+                                </MudTooltip>
+                            </MudStack>
+                        </TitleContent>
+                        <ChildContent>
+                            <div class="tool-call-details">
+                                <MudText Typo="Typo.subtitle2" Class="mt-2 mb-1">Input:</MudText>
+                                <MudPaper Elevation="1" Class="pa-2 mb-3">
+                                    <MudText Typo="Typo.body2" Class="font-family-monospace" Style="white-space: pre-wrap; font-size: 0.875rem;">
+                                        @FormatJson(toolCall.InputJson)
+                                    </MudText>
+                                </MudPaper>
 
-                            <MudText Typo="Typo.subtitle2" Class="mt-2 mb-1">Output:</MudText>
-                            <MudPaper Elevation="1" Class="pa-2">
-                                <MudText Typo="Typo.body2" Class="font-family-monospace" Style="white-space: pre-wrap; font-size: 0.875rem;">
-                                    @FormatJson(toolCall.OutputJson)
-                                </MudText>
-                            </MudPaper>
-                        </div>
+                                <MudText Typo="Typo.subtitle2" Class="mt-2 mb-1">Output:</MudText>
+                                <MudPaper Elevation="1" Class="pa-2">
+                                    <MudText Typo="Typo.body2" Class="font-family-monospace" Style="white-space: pre-wrap; font-size: 0.875rem;">
+                                        @FormatJson(toolCall.OutputJson)
+                                    </MudText>
+                                </MudPaper>
+                            </div>
+                        </ChildContent>
                     </MudExpansionPanel>
                 </MudExpansionPanels>
             }

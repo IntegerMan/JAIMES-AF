@@ -335,21 +335,39 @@ public partial class GameDetails : IDisposable
             {
                 try
                 {
-                    MessageFeedbackResponse? feedback =
-                        await httpClient.GetFromJsonAsync<MessageFeedbackResponse>($"/messages/{messageId}/feedback");
-                    if (feedback != null)
+                    // Use GetAsync to properly handle 204 NoContent responses
+                    HttpResponseMessage response = await httpClient.GetAsync($"/messages/{messageId}/feedback");
+
+                    if (response.StatusCode == System.Net.HttpStatusCode.OK)
                     {
-                        _messageFeedback[messageId] = new MessageFeedbackInfo
+                        MessageFeedbackResponse? feedback =
+                            await response.Content.ReadFromJsonAsync<MessageFeedbackResponse>();
+                        if (feedback != null)
                         {
-                            MessageId = feedback.MessageId,
-                            IsPositive = feedback.IsPositive,
-                            Comment = feedback.Comment
-                        };
+                            _messageFeedback[messageId] = new MessageFeedbackInfo
+                            {
+                                MessageId = feedback.MessageId,
+                                IsPositive = feedback.IsPositive,
+                                Comment = feedback.Comment
+                            };
+                            _logger?.LogDebug("Loaded feedback for message {MessageId}: IsPositive={IsPositive}",
+                                messageId, feedback.IsPositive);
+                        }
+                    }
+                    else if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
+                    {
+                        // No feedback for this message, which is fine
+                        _logger?.LogDebug("No feedback found for message {MessageId}", messageId);
+                    }
+                    else
+                    {
+                        _logger?.LogWarning("Unexpected status {Status} when loading feedback for message {MessageId}",
+                            response.StatusCode, messageId);
                     }
                 }
-                catch (HttpRequestException)
+                catch (HttpRequestException ex)
                 {
-                    // Message doesn't have feedback yet, which is fine
+                    _logger?.LogWarning(ex, "Failed to load feedback for message {MessageId}", messageId);
                 }
             }
         }
