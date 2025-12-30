@@ -15,13 +15,15 @@ public static partial class MessageMapper
     [MapProperty(nameof(Message.InstructionVersion),
         nameof(MessageDto.ModelEndpoint),
         Use = nameof(MapModelEndpointFromInstructionVersion))]
+    [MapProperty(nameof(Message.MessageSentiment),
+        nameof(MessageDto.SentimentSource),
+        Use = nameof(MapSentimentSourceFromMessageSentiment))]
     [MapperIgnoreSource(nameof(Message.GameId))]
     [MapperIgnoreSource(nameof(Message.Game))]
     [MapperIgnoreSource(nameof(Message.ChatHistoryId))]
     [MapperIgnoreSource(nameof(Message.ChatHistory))]
     [MapperIgnoreSource(nameof(Message.Agent))]
     [MapperIgnoreSource(nameof(Message.MessageEmbedding))]
-    [MapperIgnoreSource(nameof(Message.MessageSentiment))]
     [MapperIgnoreSource(nameof(Message.PreviousMessageId))]
     [MapperIgnoreSource(nameof(Message.PreviousMessage))]
     [MapperIgnoreSource(nameof(Message.NextMessageId))]
@@ -51,5 +53,10 @@ public static partial class MessageMapper
     private static string? MapModelEndpointFromInstructionVersion(AgentInstructionVersion? instructionVersion)
     {
         return instructionVersion?.Model?.Endpoint;
+    }
+
+    private static int? MapSentimentSourceFromMessageSentiment(MessageSentiment? messageSentiment)
+    {
+        return messageSentiment != null ? (int)messageSentiment.SentimentSource : null;
     }
 }

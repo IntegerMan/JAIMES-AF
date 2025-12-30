@@ -17,6 +17,9 @@ public record MessageResponse
 
     // Sentiment analysis confidence (0.0 to 1.0), null if not analyzed or legacy data
     public double? SentimentConfidence { get; set; }
+
+    // Source of sentiment: 0 (Model), 1 (Player), null if not analyzed
+    public int? SentimentSource { get; set; }
     public string? ModelName { get; set; }
     public string? ModelProvider { get; set; }
     public string? ModelEndpoint { get; set; }

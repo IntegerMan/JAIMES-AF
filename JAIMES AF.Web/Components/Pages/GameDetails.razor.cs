@@ -95,7 +95,8 @@ public partial class GameDetails : IAsyncDisposable
                 .ForEach(m => _messageSentiment[m.Id] = new MessageSentimentInfo
                 {
                     Sentiment = m.Sentiment!.Value, // We know it's not null from the Where clause
-                    Confidence = m.SentimentConfidence
+                    Confidence = m.SentimentConfidence,
+                    SentimentSource = m.SentimentSource
                 });
 
             // Load existing feedback for assistant messages
@@ -693,7 +694,8 @@ public partial class GameDetails : IAsyncDisposable
                         _messageSentiment[notification.MessageId] = new MessageSentimentInfo
                         {
                             Sentiment = notification.Sentiment.Value,
-                            Confidence = notification.SentimentConfidence
+                            Confidence = notification.SentimentConfidence,
+                            SentimentSource = 1 // Player source when manually set
                         };
                     }
                     else if (notification.UpdateType == MessageUpdateType.MetricsEvaluated &&
@@ -746,4 +748,5 @@ public class MessageSentimentInfo
 {
     public int Sentiment { get; set; }
     public double? Confidence { get; set; }
+    public int? SentimentSource { get; set; }
 }

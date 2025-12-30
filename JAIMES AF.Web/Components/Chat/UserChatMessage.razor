@@ -85,6 +85,9 @@
     [Parameter]
     public bool ReadOnly { get; set; }
 
+    [Parameter]
+    public int? SentimentSource { get; set; }
+
     private string GetSentimentIcon() => Sentiment switch
     {
         > 0 => Icons.Material.Filled.ThumbUp,
@@ -116,6 +119,12 @@
 
         string sentimentLabel = Sentiment.Value > 0 ? "Positive" :
                                 Sentiment.Value < 0 ? "Negative" : "Neutral";
+
+        // SentimentSource: 0 = Model, 1 = Player
+        if (SentimentSource == 1)
+        {
+            return $"{sentimentLabel} Sentiment - Set by User";
+        }
 
         if (Confidence.HasValue)
         {
