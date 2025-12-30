@@ -31,4 +31,15 @@ public class ToolUsageItemDto
     /// List of agent names and versions where this tool has been used.
     /// </summary>
     public IReadOnlyList<string> EnabledAgents { get; init; } = [];
+
+    /// <summary>
+    /// Number of messages invoking this tool that received positive feedback.
+    /// </summary>
+    public int HelpfulCount { get; init; }
+
+    /// <summary>
+    /// Number of messages invoking this tool that received negative feedback.
+    /// </summary>
+    public int UnhelpfulCount { get; init; }
 }
+

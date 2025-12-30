@@ -1,0 +1,181 @@
+@page "/admin/tools/{ToolName}"
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Pages
+@using MudBlazor
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<PageTitle>Tool Details - @ToolName</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudButton Variant="Variant.Text" 
+               Color="Color.Primary" 
+               StartIcon="@Icons.Material.Filled.ArrowBack"
+               Href="/admin/tools"
+               Class="mb-2">
+        Back to Tool List
+    </MudButton>
+
+    <MudText Typo="Typo.h4" Class="mb-2">@ToolName</MudText>
+    
+    @if (!string.IsNullOrEmpty(_toolDescription))
+    {
+        <MudText Typo="Typo.body2" Class="mb-4 text-muted">
+            @_toolDescription
+        </MudText>
+    }
+
+    <MudDataGrid T="ToolCallDetailDto"
+                 ServerData="ServerReload"
+                 Filterable="false"
+                 Hover="true"
+                 Dense="true"
+                 Striped="true">
+        <Columns>
+            <PropertyColumn Property="x => x.CreatedAt" Title="Time">
+                <CellTemplate>
+                    @context.Item.CreatedAt.ToLocalTime().ToString("g")
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.GameName" Title="Game">
+                <CellTemplate>
+                    @if (context.Item.GameId.HasValue)
+                    {
+                        <MudLink Href="@($"/games/{context.Item.GameId}")" Target="_blank">
+                            @(context.Item.GameName ?? "Unknown Game")
+                        </MudLink>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Class="text-muted">N/A</MudText>
+                    }
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.AgentName" Title="Agent">
+                <CellTemplate>
+                    @if (!string.IsNullOrEmpty(context.Item.AgentName))
+                    {
+                        <MudText Typo="Typo.body2">
+                            @context.Item.AgentName
+                            @if (!string.IsNullOrEmpty(context.Item.AgentVersion))
+                            {
+                                <span class="text-muted"> v@(context.Item.AgentVersion)</span>
+                            }
+                        </MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Class="text-muted">Unknown</MudText>
+                    }
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.FeedbackIsPositive" Title="Feedback" Sortable="false">
+                <CellTemplate>
+                    @if (context.Item.FeedbackIsPositive.HasValue)
+                    {
+                        <MessageIndicators 
+                            Feedback="@(new MessageFeedbackInfo 
+                            { 
+                                MessageId = context.Item.MessageId, 
+                                IsPositive = context.Item.FeedbackIsPositive.Value,
+                                Comment = context.Item.FeedbackComment
+                            })"
+                            ReadOnly="true" />
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Class="text-muted">None</MudText>
+                    }
+                </CellTemplate>
+            </PropertyColumn>
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="ToolCallDetailDto" />
+        </PagerContent>
+        <NoRecordsContent>
+            <MudText Typo="Typo.body1" Class="pa-4">
+                No calls recorded for this tool.
+            </MudText>
+        </NoRecordsContent>
+    </MudDataGrid>
+</MudContainer>
+
+@code {
+    [Parameter]
+    public string ToolName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional agent ID to filter results.
+    /// </summary>
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? AgentId { get; set; }
+
+    /// <summary>
+    /// Optional instruction version ID to filter results.
+    /// </summary>
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public int? InstructionVersionId { get; set; }
+
+    /// <summary>
+    /// Optional game ID to filter results.
+    /// </summary>
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public Guid? GameId { get; set; }
+
+    private string? _toolDescription;
+
+    private async Task<GridData<ToolCallDetailDto>> ServerReload(GridState<ToolCallDetailDto> state)
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient("Api");
+
+            // MudDataGrid uses 0-based index, API uses 1-based page
+            int page = state.Page + 1;
+            int pageSize = state.PageSize;
+
+            // Build query string with optional filters
+            var queryParams = new List<string>
+            {
+                $"page={page}",
+                $"pageSize={pageSize}"
+            };
+
+            if (!string.IsNullOrEmpty(AgentId))
+                queryParams.Add($"agentId={Uri.EscapeDataString(AgentId)}");
+            if (InstructionVersionId.HasValue)
+                queryParams.Add($"instructionVersionId={InstructionVersionId.Value}");
+            if (GameId.HasValue)
+                queryParams.Add($"gameId={GameId.Value}");
+
+            string queryString = string.Join("&", queryParams);
+            var response = await client.GetFromJsonAsync<ToolCallDetailListResponse>(
+                $"/admin/tools/{Uri.EscapeDataString(ToolName)}?{queryString}");
+
+            if (response != null)
+            {
+                _toolDescription = response.ToolDescription;
+                
+                return new GridData<ToolCallDetailDto>
+                {
+                    TotalItems = response.TotalCount,
+                    Items = response.Items
+                };
+            }
+        }
+        catch (Exception)
+        {
+            // Handle error (maybe show snackbar)
+        }
+
+        return new GridData<ToolCallDetailDto>
+        {
+            TotalItems = 0,
+            Items = []
+        };
+    }
+}

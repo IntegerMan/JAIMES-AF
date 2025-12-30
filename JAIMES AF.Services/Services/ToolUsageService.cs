@@ -50,19 +50,44 @@ public class ToolUsageService(
         // Get all tool calls to process in memory for grouping
         List<MessageToolCall> allToolCalls = await toolCallQuery.ToListAsync(cancellationToken);
 
+        // Get message IDs that have tool calls for feedback lookup
+        HashSet<int> messageIdsWithToolCalls = allToolCalls
+            .Select(mtc => mtc.MessageId)
+            .ToHashSet();
+
+        // Get feedback for messages that have tool calls
+        Dictionary<int, bool> feedbackByMessageId = await context.MessageFeedbacks
+            .AsNoTracking()
+            .Where(mf => messageIdsWithToolCalls.Contains(mf.MessageId))
+            .ToDictionaryAsync(mf => mf.MessageId, mf => mf.IsPositive, cancellationToken);
+
         // Group by tool name to get statistics for tools that have been called
-        Dictionary<string, (int TotalCalls, List<string> EnabledAgents)> toolCallStats = allToolCalls
+        var toolCallStats = allToolCalls
             .GroupBy(mtc => mtc.ToolName)
             .ToDictionary(
                 grp => grp.Key,
-                grp => (
-                    TotalCalls: grp.Count(),
-                    EnabledAgents: grp
-                        .Where(mtc => mtc.InstructionVersion?.Agent != null)
-                        .Select(mtc => $"{mtc.InstructionVersion!.Agent!.Name} v{mtc.InstructionVersion.VersionNumber}")
-                        .Distinct()
-                        .ToList()
-                ));
+                grp =>
+                {
+                    var toolCallsForTool = grp.ToList();
+                    var messageIds = toolCallsForTool.Select(mtc => mtc.MessageId).Distinct().ToList();
+
+                    int helpfulCount = messageIds.Count(mid =>
+                        feedbackByMessageId.TryGetValue(mid, out bool isPositive) && isPositive);
+                    int unhelpfulCount = messageIds.Count(mid =>
+                        feedbackByMessageId.TryGetValue(mid, out bool isPositive) && !isPositive);
+
+                    return (
+                        TotalCalls: grp.Count(),
+                        EnabledAgents: grp
+                            .Where(mtc => mtc.InstructionVersion?.Agent != null)
+                            .Select(mtc =>
+                                $"{mtc.InstructionVersion!.Agent!.Name} v{mtc.InstructionVersion.VersionNumber}")
+                            .Distinct()
+                            .ToList(),
+                        HelpfulCount: helpfulCount,
+                        UnhelpfulCount: unhelpfulCount
+                    );
+                });
 
         // Calculate eligible messages count
         // Assistant messages are those where PlayerId is null
@@ -99,6 +124,8 @@ public class ToolUsageService(
                 bool hasStats = toolCallStats.TryGetValue(tool.Name, out var stats);
                 int totalCalls = hasStats ? stats.TotalCalls : 0;
                 List<string> enabledAgents = hasStats ? stats.EnabledAgents : [];
+                int helpfulCount = hasStats ? stats.HelpfulCount : 0;
+                int unhelpfulCount = hasStats ? stats.UnhelpfulCount : 0;
 
                 return new ToolUsageItemDto
                 {
@@ -108,7 +135,9 @@ public class ToolUsageService(
                     UsagePercentage = eligibleMessagesCount > 0
                         ? Math.Round((double)totalCalls / eligibleMessagesCount * 100, 2)
                         : 0,
-                    EnabledAgents = enabledAgents
+                    EnabledAgents = enabledAgents,
+                    HelpfulCount = helpfulCount,
+                    UnhelpfulCount = unhelpfulCount
                 };
             })
             .OrderByDescending(x => x.TotalCalls)
@@ -129,7 +158,9 @@ public class ToolUsageService(
                     UsagePercentage = eligibleMessagesCount > 0
                         ? Math.Round((double)stats.TotalCalls / eligibleMessagesCount * 100, 2)
                         : 0,
-                    EnabledAgents = stats.EnabledAgents
+                    EnabledAgents = stats.EnabledAgents,
+                    HelpfulCount = stats.HelpfulCount,
+                    UnhelpfulCount = stats.UnhelpfulCount
                 };
             });
 
@@ -152,4 +183,102 @@ public class ToolUsageService(
             PageSize = pageSize
         };
     }
+
+    /// <inheritdoc />
+    public async Task<ToolCallDetailListResponse> GetToolCallDetailsAsync(
+        string toolName,
+        int page,
+        int pageSize,
+        string? agentId = null,
+        int? instructionVersionId = null,
+        Guid? gameId = null,
+        CancellationToken cancellationToken = default)
+    {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        // Build query for tool calls for the specific tool
+        IQueryable<MessageToolCall> query = context.MessageToolCalls
+            .AsNoTracking()
+            .Include(mtc => mtc.Message)
+            .ThenInclude(m => m!.Game)
+            .ThenInclude(g => g!.Scenario)
+            .Include(mtc => mtc.Message)
+            .ThenInclude(m => m!.Game)
+            .ThenInclude(g => g!.Player)
+            .Include(mtc => mtc.InstructionVersion)
+            .ThenInclude(iv => iv!.Agent)
+            .Where(mtc => mtc.ToolName == toolName);
+
+        // Apply optional filters
+        if (instructionVersionId.HasValue)
+        {
+            query = query.Where(mtc => mtc.InstructionVersionId == instructionVersionId.Value);
+        }
+        else if (!string.IsNullOrEmpty(agentId))
+        {
+            query = query.Where(mtc => mtc.InstructionVersion != null && mtc.InstructionVersion.AgentId == agentId);
+        }
+
+        if (gameId.HasValue)
+        {
+            query = query.Where(mtc => mtc.Message != null && mtc.Message.GameId == gameId.Value);
+        }
+
+        int totalCount = await query.CountAsync(cancellationToken);
+
+        // Get paginated results
+        List<MessageToolCall> toolCalls = await query
+            .OrderByDescending(mtc => mtc.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        // Get feedback for these messages
+        HashSet<int> messageIds = toolCalls.Select(mtc => mtc.MessageId).ToHashSet();
+        Dictionary<int, MessageFeedback> feedbackByMessageId = await context.MessageFeedbacks
+            .AsNoTracking()
+            .Where(mf => messageIds.Contains(mf.MessageId))
+            .ToDictionaryAsync(mf => mf.MessageId, mf => mf, cancellationToken);
+
+        // Map to DTOs
+        List<ToolCallDetailDto> items = toolCalls.Select(mtc =>
+        {
+            feedbackByMessageId.TryGetValue(mtc.MessageId, out MessageFeedback? feedback);
+
+            string? gameName = null;
+            if (mtc.Message?.Game != null)
+            {
+                gameName =
+                    $"{mtc.Message.Game.Scenario?.Name ?? "Unknown Scenario"} - {mtc.Message.Game.Player?.Name ?? "Unknown Player"}";
+            }
+
+            return new ToolCallDetailDto
+            {
+                Id = mtc.Id,
+                ToolName = mtc.ToolName,
+                CreatedAt = mtc.CreatedAt,
+                MessageId = mtc.MessageId,
+                GameId = mtc.Message?.GameId,
+                GameName = gameName,
+                AgentName = mtc.InstructionVersion?.Agent?.Name,
+                AgentVersion = mtc.InstructionVersion?.VersionNumber,
+                FeedbackIsPositive = feedback?.IsPositive,
+                FeedbackComment = feedback?.Comment
+            };
+        }).ToList();
+
+        // Get tool metadata from registry
+        ToolMetadata? toolMetadata = toolRegistry.GetTool(toolName);
+
+        return new ToolCallDetailListResponse
+        {
+            Items = items,
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize,
+            ToolName = toolName,
+            ToolDescription = toolMetadata?.Description
+        };
+    }
 }
+
