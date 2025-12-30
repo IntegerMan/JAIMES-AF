@@ -527,6 +527,38 @@ public partial class GameDetails : IAsyncDisposable
     }
 
     /// <summary>
+    /// Shows the evaluation metrics dialog for a message.
+    /// </summary>
+    private async Task ShowMetricsDialogAsync(int messageId)
+    {
+        if (!_messageMetrics.TryGetValue(messageId, out List<MessageEvaluationMetricResponse>? metrics) ||
+            metrics == null ||
+            metrics.Count == 0)
+        {
+            await DialogService.ShowMessageBox("No Metrics", "This message has no evaluation metrics.", "OK");
+            return;
+        }
+
+        var parameters = new DialogParameters<EvaluationMetricsDialog>
+        {
+            { nameof(EvaluationMetricsDialog.Metrics), metrics },
+            { nameof(EvaluationMetricsDialog.MessageId), messageId },
+            { nameof(EvaluationMetricsDialog.GameId), GameId }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        IDialogReference? dialogRef =
+            await DialogService.ShowAsync<EvaluationMetricsDialog>("Evaluation Metrics", parameters, options);
+        await dialogRef.Result;
+    }
+
+    /// <summary>
     /// Loads metadata (feedback, metrics, tool calls, sentiment) for the specified message IDs in a single batch request.
     /// </summary>
     private async Task LoadMessagesMetadataAsync(List<int> messageIds)

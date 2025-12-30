@@ -1,0 +1,83 @@
+@using MudBlazor
+
+@* Reusable admin filter component that displays active filters and provides clear functionality *@
+
+<MudStack Class="mb-4">
+    @if (HasActiveFilters)
+    {
+        <MudText Typo="Typo.body2" Class="text-muted">
+            Filtering by:
+            @if (!string.IsNullOrEmpty(ToolName))
+            {
+                <MudChip T="string" Color="Color.Primary" Size="Size.Small" Class="ml-2">Tool: @ToolName</MudChip>
+            }
+            @if (IsPositive.HasValue)
+            {
+                <MudChip T="string" Color="@(IsPositive.Value ? Color.Success : Color.Error)" Size="Size.Small" Class="ml-2">
+                    @(IsPositive.Value ? "Helpful" : "Unhelpful")
+                </MudChip>
+            }
+            @if (!string.IsNullOrEmpty(MetricName))
+            {
+                <MudChip T="string" Color="Color.Secondary" Size="Size.Small" Class="ml-2">Metric: @MetricName</MudChip>
+            }
+            @if (Passed.HasValue)
+            {
+                <MudChip T="string" Color="@(Passed.Value ? Color.Success : Color.Error)" Size="Size.Small" Class="ml-2">
+                    @(Passed.Value ? "Passed" : "Failed")
+                </MudChip>
+            }
+            @if (MinScore.HasValue || MaxScore.HasValue)
+            {
+                string scoreText = (MinScore.HasValue, MaxScore.HasValue) switch
+                {
+                    (true, true) => $"Score: {MinScore} - {MaxScore}",
+                    (true, false) => $"Score ≥ {MinScore}",
+                    (false, true) => $"Score ≤ {MaxScore}",
+                    _ => ""
+                };
+                <MudChip T="string" Color="Color.Info" Size="Size.Small" Class="ml-2">@scoreText</MudChip>
+            }
+            @if (GameId.HasValue)
+            {
+                <MudChip T="string" Color="Color.Tertiary" Size="Size.Small" Class="ml-2">Game ID: @GameId.Value.ToString()[..8]...</MudChip>
+            }
+            @if (!string.IsNullOrEmpty(AgentVersion))
+            {
+                <MudChip T="string" Color="Color.Dark" Size="Size.Small" Class="ml-2">Agent: @AgentVersion</MudChip>
+            }
+            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="ClearFilters" Class="ml-2">
+                Clear Filters
+            </MudButton>
+        </MudText>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public string? ToolName { get; set; }
+    [Parameter] public bool? IsPositive { get; set; }
+    [Parameter] public string? MetricName { get; set; }
+    [Parameter] public bool? Passed { get; set; }
+    [Parameter] public double? MinScore { get; set; }
+    [Parameter] public double? MaxScore { get; set; }
+    [Parameter] public Guid? GameId { get; set; }
+    [Parameter] public string? AgentVersion { get; set; }
+    
+    [Parameter] public string? ClearUrl { get; set; }
+    [Parameter] public EventCallback OnClearFilters { get; set; }
+
+    private bool HasActiveFilters => 
+        !string.IsNullOrEmpty(ToolName) ||
+        IsPositive.HasValue ||
+        !string.IsNullOrEmpty(MetricName) ||
+        Passed.HasValue ||
+        MinScore.HasValue ||
+        MaxScore.HasValue ||
+        GameId.HasValue ||
+        !string.IsNullOrEmpty(AgentVersion);
+
+    private async Task ClearFilters()
+    {
+        await OnClearFilters.InvokeAsync();
+    }
+}

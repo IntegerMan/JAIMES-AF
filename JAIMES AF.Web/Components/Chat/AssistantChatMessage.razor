@@ -26,7 +26,8 @@
                     ShowFeedbackButtons="true"
                     MessageId="@MessageId"
                     OnToolCallsClick="OnToolCallsClick"
-                    OnFeedbackClick="OnFeedbackClick" />
+                    OnFeedbackClick="OnFeedbackClick"
+                    OnMetricsClick="OnMetricsClick" />
             </MudChatFooter>
         }
     </MudChat>
@@ -68,5 +69,8 @@
 
     [Parameter]
     public EventCallback<(int MessageId, bool IsPositive)> OnFeedbackClick { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnMetricsClick { get; set; }
 }
 

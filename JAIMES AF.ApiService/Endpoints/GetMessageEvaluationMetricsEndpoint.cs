@@ -45,6 +45,7 @@ public class GetMessageEvaluationMetricsEndpoint : EndpointWithoutRequest<IEnume
                 MetricName = m.MetricName,
                 Score = m.Score,
                 Remarks = m.Remarks,
+                Diagnostics = m.Diagnostics,
                 EvaluatedAt = m.EvaluatedAt,
                 EvaluationModelId = m.EvaluationModelId
             })

@@ -83,17 +83,18 @@
 						{
 							@if (!string.IsNullOrWhiteSpace(paragraph))
 							{
-							    <AssistantChatMessage
-							        Text="@paragraph"
-							        MessageId="@messageId"
-							        IsFirstParagraph="@isFirstParagraph"
-							        IsLastParagraph="@isLastParagraph"
-							        ToolCalls="@toolCalls"
-                                    Metrics="@metrics"
-							        Feedback="@feedback"
-							        OnToolCallsClick="@OnToolCallClicked"
-							        OnFeedbackClick="@OnFeedbackClicked"
-							        ReadOnly="false" />
+								    <AssistantChatMessage
+								        Text="@paragraph"
+								        MessageId="@messageId"
+								        IsFirstParagraph="@isFirstParagraph"
+								        IsLastParagraph="@isLastParagraph"
+								        ToolCalls="@toolCalls"
+                                        Metrics="@metrics"
+								        Feedback="@feedback"
+								        OnToolCallsClick="@OnToolCallClicked"
+								        OnFeedbackClick="@OnFeedbackClicked"
+								        OnMetricsClick="@OnMetricsClicked"
+								        ReadOnly="false" />
 							}
 						}
 					}
@@ -155,6 +156,11 @@
     private async Task OnFeedbackClicked((int MessageId, bool IsPositive) args)
     {
         await ShowFeedbackDialogAsync(args.MessageId, args.IsPositive);
+    }
+
+    private async Task OnMetricsClicked(int messageId)
+    {
+        await ShowMetricsDialogAsync(messageId);
     }
 }
 

@@ -17,14 +17,29 @@
                             <span>@metric.Score</span>
                         </div>
                     }
+                    @if (!ReadOnly)
+                    {
+                        <MudText Typo="Typo.caption" Class="text-muted mt-1">Click for more details</MudText>
+                    }
                 </div>
             </TooltipContent>
             <ChildContent>
-                 <div class="d-flex align-center justify-center" style="width:32px; height:32px;">
-                     <MudIcon Icon="@Icons.Material.Filled.PieChart" 
-                              Color="Color.Default" 
-                              Size="Size.Small" />
-                 </div>
+                @if (ReadOnly)
+                {
+                    <div class="d-flex align-center justify-center" style="width:32px; height:32px;">
+                        <MudIcon Icon="@Icons.Material.Filled.PieChart" 
+                                 Color="Color.Default" 
+                                 Size="Size.Small" />
+                    </div>
+                }
+                else
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.PieChart"
+                                   Color="Color.Default"
+                                   Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   OnClick="OnMetricsClicked" />
+                }
             </ChildContent>
         </MudTooltip>
     }
@@ -151,6 +166,12 @@
     [Parameter]
     public EventCallback<(int MessageId, bool IsPositive)> OnFeedbackClick { get; set; }
 
+    /// <summary>
+    /// Event callback when metrics icon is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> OnMetricsClick { get; set; }
+
     private async Task OnToolCallsClicked()
     {
         if (MessageId.HasValue)
@@ -164,6 +185,14 @@
         if (MessageId.HasValue)
         {
             await OnFeedbackClick.InvokeAsync((MessageId.Value, isPositive));
+        }
+    }
+
+    private async Task OnMetricsClicked()
+    {
+        if (MessageId.HasValue)
+        {
+            await OnMetricsClick.InvokeAsync(MessageId.Value);
         }
     }
 }
