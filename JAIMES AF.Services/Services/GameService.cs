@@ -80,6 +80,7 @@ public class GameService(
         Game gameWithNav = await context.Games
             .AsNoTracking()
             .Include(g => g.Messages)
+            .ThenInclude(m => m.MessageSentiment)
             .Include(g => g.Scenario)
             .Include(g => g.Player)
             .Include(g => g.Ruleset)
@@ -94,6 +95,8 @@ public class GameService(
 
         Game? game = await context.Games
             .AsNoTracking()
+            .Include(g => g.Messages)
+            .ThenInclude(message => message.MessageSentiment)
             .Include(g => g.Messages)
             .ThenInclude(message => message.Player)
             .Include(g => g.Messages)
