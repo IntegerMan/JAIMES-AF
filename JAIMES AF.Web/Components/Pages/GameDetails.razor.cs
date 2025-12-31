@@ -29,6 +29,8 @@ public partial class GameDetails : IAsyncDisposable
     private Dictionary<ChatMessage, MessageAgentInfo> _pendingMessageAgentInfo = new();
     private string? _defaultAgentId;
     private string? _defaultAgentName;
+    private int? _defaultInstructionVersionId;
+    private string? _defaultVersionNumber;
     private AIAgent? _agent;
 
     private GameStateResponse? _game;
@@ -127,6 +129,8 @@ public partial class GameDetails : IAsyncDisposable
                     {
                         _defaultAgentId = info.AgentId;
                         _defaultAgentName = info.AgentName;
+                        _defaultInstructionVersionId = info.InstructionVersionId;
+                        _defaultVersionNumber = info.VersionNumber;
                     }
                 }
             }
@@ -365,11 +369,12 @@ public partial class GameDetails : IAsyncDisposable
                     _pendingMessageAgentInfo[normalizedMessage] = new MessageAgentInfo
                     {
                         AgentId = _defaultAgentId, // Use default from history
-                        // Ignore generic game-ID names from the agent runner if we have a real name
                         AgentName = (!string.IsNullOrWhiteSpace(message.AuthorName) &&
                                      !message.AuthorName.StartsWith("game-", StringComparison.OrdinalIgnoreCase))
                             ? message.AuthorName
                             : _defaultAgentName,
+                        InstructionVersionId = _defaultInstructionVersionId,
+                        VersionNumber = _defaultVersionNumber,
                         IsScriptedMessage = false // Live messages are generally not scripted
                     };
                 }
@@ -779,6 +784,13 @@ public partial class GameDetails : IAsyncDisposable
                                         _messages[i].Text.Trim().Equals(normalizedText, StringComparison.Ordinal))
                                     {
                                         _messageIds[i] = notification.MessageId;
+
+                                        // Persist agent info from pending to permanent dictionary now that we have an ID
+                                        if (_pendingMessageAgentInfo.TryGetValue(_messages[i], out var agentInfo))
+                                        {
+                                            _messageAgentInfo[notification.MessageId] = agentInfo;
+                                        }
+
                                         _logger?.LogDebug(
                                             "Assigned Assistant message ID {MessageId} to index {Index} by content matching",
                                             notification.MessageId,
