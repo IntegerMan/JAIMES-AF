@@ -3,7 +3,7 @@ namespace MattEland.Jaimes.Repositories.Entities;
 public class Game
 {
     public Guid Id { get; set; }
-    public string? Title { get; set; }
+    public required string Title { get; set; }
     public required string RulesetId { get; set; }
     public required string ScenarioId { get; set; }
     public required string PlayerId { get; set; }

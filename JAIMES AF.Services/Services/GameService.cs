@@ -40,7 +40,7 @@ public class GameService(
             RulesetId = rulesetId,
             ScenarioId = scenarioId,
             PlayerId = playerId,
-            Title = title,
+            Title = title ?? "Untitled Game",
             CreatedAt = DateTime.UtcNow
         };
 
@@ -177,7 +177,7 @@ public class GameService(
 
         if (game == null) return null;
 
-        game.Title = title;
+        game.Title = title ?? "Untitled Game";
         await context.SaveChangesAsync(cancellationToken);
 
         // Calculate lastPlayedAt for the DTO

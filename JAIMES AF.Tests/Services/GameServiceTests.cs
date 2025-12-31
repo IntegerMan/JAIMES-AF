@@ -109,6 +109,7 @@ public class GameServiceTests : IAsyncLifetime
         Game game = new()
         {
             Id = Guid.NewGuid(),
+            Title = "Test Game",
             RulesetId = "test-ruleset",
             ScenarioId = "test-scenario",
             PlayerId = "test-player",
@@ -149,6 +150,7 @@ public class GameServiceTests : IAsyncLifetime
         Game game = new()
         {
             Id = Guid.NewGuid(),
+            Title = "Test Game",
             RulesetId = "test-ruleset",
             ScenarioId = "test-scenario",
             PlayerId = "test-player",
@@ -206,6 +208,7 @@ public class GameServiceTests : IAsyncLifetime
         Game game = new()
         {
             Id = Guid.NewGuid(),
+            Title = "Test Game",
             RulesetId = "test-ruleset",
             ScenarioId = "test-scenario",
             PlayerId = "test-player",

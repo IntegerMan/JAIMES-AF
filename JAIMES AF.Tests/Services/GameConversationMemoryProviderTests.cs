@@ -77,6 +77,7 @@ public class GameConversationMemoryProviderTests : RepositoryTestBase
         Game game = new()
         {
             Id = gameId,
+            Title = "Test Game",
             RulesetId = "test-ruleset",
             ScenarioId = "test-scenario",
             PlayerId = "test-player",
