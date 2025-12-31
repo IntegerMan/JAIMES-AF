@@ -25,7 +25,7 @@ public interface IMessageService
     /// <param name="versionId">The optional instruction version ID.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A list of MessageContextDto objects.</returns>
-    Task<IEnumerable<MessageContextDto>> GetMessagesByAgentAsync(Guid agentId,
+    Task<IEnumerable<MessageContextDto>> GetMessagesByAgentAsync(string agentId,
         int? versionId,
         CancellationToken cancellationToken = default);
 }
