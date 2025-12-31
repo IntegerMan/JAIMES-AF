@@ -31,13 +31,14 @@
 			<div class="game-header">
 				@if (_isEditingTitle)
 				{
-					<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+					<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Style="width: 100%;">
 						<MudTextField @bind-Value="_editableTitle"
 						              Variant="Variant.Outlined"
 						              Margin="Margin.Dense"
-						              Style="max-width: 400px;"
+						              FullWidth="true"
 						              Immediate="true"
-						              Placeholder="Enter game title"/>
+						              Placeholder="Enter game title"
+						              Style="flex-grow: 1;"/>
 						<MudIconButton Icon="@Icons.Material.Filled.Check"
 						               Color="Color.Success"
 						               Size="Size.Small"
