@@ -43,4 +43,23 @@ public class BrevityEvaluatorTests
         metric.ShouldNotBeNull();
         metric.Value.ShouldBe(expectedScore);
     }
+
+    [Fact]
+    public async Task EvaluateAsync_WithZeroMargin_ShouldThrowInvalidOperationException()
+    {
+        // Arrange
+        var options = Options.Create(new BrevityEvaluatorOptions
+        {
+            TargetCharacters = 500,
+            Margin = 0
+        });
+        var evaluator = new BrevityEvaluator(options);
+
+        var text = new string('a', 501);
+        var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, text));
+
+        // Act & Assert
+        await Should.ThrowAsync<InvalidOperationException>(async () =>
+            await evaluator.EvaluateAsync([], modelResponse, cancellationToken: TestContext.Current.CancellationToken));
+    }
 }

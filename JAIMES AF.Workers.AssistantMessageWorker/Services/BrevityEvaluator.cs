@@ -28,6 +28,11 @@ public class BrevityEvaluator(IOptions<BrevityEvaluatorOptions> options) : IEval
         int target = config.TargetCharacters;
         int margin = config.Margin;
 
+        if (margin <= 0)
+        {
+            throw new InvalidOperationException("Brevity margin must be greater than zero.");
+        }
+
         int score;
         if (Math.Abs(charCount - target) <= margin)
         {
