@@ -1,9 +1,11 @@
 @page "/admin/feedback"
 @using MattEland.Jaimes.ServiceDefinitions.Responses
 @using MattEland.Jaimes.Web.Components.Pages
+@using MattEland.Jaimes.Web.Components.Shared
 @using MudBlazor
 @inject IDialogService DialogService
 @inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
 @rendermode InteractiveServer
 
 <PageTitle>Feedback Reports</PageTitle>
@@ -14,25 +16,9 @@
     </MudStack>
     <MudText Typo="Typo.h4" Class="mb-2">Feedback Reports</MudText>
     
-    @if (!string.IsNullOrEmpty(ToolName) || IsPositive.HasValue)
-    {
-        <MudText Typo="Typo.body2" Class="mb-4 text-muted">
-            Filtering by:
-            @if (!string.IsNullOrEmpty(ToolName))
-            {
-                <MudChip T="string" Color="Color.Primary" Size="Size.Small" Class="ml-2">Tool: @ToolName</MudChip>
-            }
-            @if (IsPositive.HasValue)
-            {
-                <MudChip T="string" Color="@(IsPositive.Value ? Color.Success : Color.Error)" Size="Size.Small" Class="ml-2">
-                    @(IsPositive.Value ? "Helpful" : "Unhelpful")
-                </MudChip>
-            }
-            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" Href="/admin/feedback" Class="ml-2">
-                Clear Filters
-            </MudButton>
-        </MudText>
-    }
+    <AdminFilters ToolName="@ToolName"
+                  IsPositive="@IsPositive"
+                  OnClearFilters="ClearFilters" />
 
     <MudDataGrid T="FeedbackListItemDto"
                  ServerData="ServerReload"
@@ -206,6 +192,11 @@
         };
 
         await DialogService.ShowAsync<FeedbackContextDialog>("Feedback Context", parameters, options);
+    }
+
+    private void ClearFilters()
+    {
+        NavigationManager.NavigateTo("/admin/feedback");
     }
 }
 
