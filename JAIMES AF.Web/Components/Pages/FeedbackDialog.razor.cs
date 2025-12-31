@@ -9,7 +9,7 @@ public partial class FeedbackDialog : ComponentBase
 
     [Parameter] public int MessageId { get; set; }
     [Parameter] public bool? PreSelectedFeedback { get; set; }
-    [Parameter] public EventCallback<MessageFeedbackInfo?> OnFeedbackSubmitted { get; set; }
+    [Parameter] public EventCallback<FeedbackSubmission?> OnFeedbackSubmitted { get; set; }
 
     private bool? _selectedFeedback;
     private string? _comment;
@@ -31,15 +31,12 @@ public partial class FeedbackDialog : ComponentBase
     {
         if (_selectedFeedback.HasValue)
         {
-            var feedbackInfo = new MessageFeedbackInfo
-            {
-                MessageId = MessageId,
-                IsPositive = _selectedFeedback.Value,
-                Comment = _comment
-            };
-            await OnFeedbackSubmitted.InvokeAsync(feedbackInfo);
+            var submission = new FeedbackSubmission(MessageId, _selectedFeedback.Value, _comment);
+            await OnFeedbackSubmitted.InvokeAsync(submission);
             // Signal to parent that we're done - parent will close the dialog
         }
     }
 }
+
+public record FeedbackSubmission(int MessageId, bool IsPositive, string? Comment);
 

@@ -374,3 +374,8 @@ JAIMES AF.Workers.UserMessageWorker/Result/SentimentModel.zip
 
 build_output.txt
 test_output.txt
+JAIMES AF.Web/errors.json
+web_err_2.txt
+web_err.txt
+build_log.txt
+build_err.txt

@@ -5,6 +5,9 @@
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
 	<MudPaper Class="pa-8" Elevation="2">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+            <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+        </MudStack>
 		<MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">Admin</MudText>
 		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">Administrative tools and utilities
 		</MudText>
@@ -134,7 +137,31 @@
 					</MudButton>
 				</MudPaper>
 			</MudItem>
+
+			<MudItem xs="12" sm="6" md="3">
+				<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
+					<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Evaluation Metrics</MudText>
+					<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">View AI response
+						evaluation metrics and quality scores.
+					</MudText>
+					<MudButton Variant="Variant.Filled" Color="Color.Info" Href="/admin/metrics"
+					           Class="mt-auto" FullWidth="true">View Metrics
+					</MudButton>
+				</MudPaper>
+			</MudItem>
 		</MudGrid>
 	</MudPaper>
 </MudContainer>
 
+@code {
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override void OnInitialized()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Admin", href: null, disabled: true)
+        };
+    }
+}

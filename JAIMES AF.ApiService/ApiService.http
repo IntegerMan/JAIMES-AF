@@ -161,3 +161,24 @@ Accept: application/json
 ### Get Tool Call Details with pagination
 GET {{ApiService_HostAddress}}/admin/tools/SearchRules?page=1&pageSize=10
 Accept: application/json
+
+### Get Evaluation Metrics List
+# @name GetEvaluationMetrics
+GET {{ApiService_HostAddress}}/admin/metrics
+Accept: application/json
+
+### Get Evaluation Metrics (with pagination)
+GET {{ApiService_HostAddress}}/admin/metrics?page=1&pageSize=10
+Accept: application/json
+
+### Get Evaluation Metrics (filter by passing)
+GET {{ApiService_HostAddress}}/admin/metrics?passed=true
+Accept: application/json
+
+### Get Evaluation Metrics (filter by metric name)
+GET {{ApiService_HostAddress}}/admin/metrics?metricName=Relevance
+Accept: application/json
+
+### Get Evaluation Metrics (filter by score range)
+GET {{ApiService_HostAddress}}/admin/metrics?minScore=3&maxScore=5
+Accept: application/json

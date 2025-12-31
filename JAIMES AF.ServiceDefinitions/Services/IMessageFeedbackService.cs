@@ -11,5 +11,8 @@ public interface IMessageFeedbackService
 
     Task<MattEland.Jaimes.ServiceDefinitions.Responses.FeedbackListResponse> GetFeedbackListAsync(int page,
         int pageSize, string? toolName = null, bool? isPositive = null, CancellationToken cancellationToken = default);
+
+    Task<MattEland.Jaimes.ServiceDefinitions.Responses.FeedbackFullDetailsResponse?> GetFeedbackDetailsAsync(int id,
+        CancellationToken cancellationToken = default);
 }
 

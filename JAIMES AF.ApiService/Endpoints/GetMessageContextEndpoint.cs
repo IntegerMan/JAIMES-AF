@@ -3,7 +3,7 @@ using MattEland.Jaimes.ServiceDefinitions.Services;
 
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
-public class GetMessageContextEndpoint : EndpointWithoutRequest<IEnumerable<MessageDto>>
+public class GetMessageContextEndpoint : EndpointWithoutRequest<IEnumerable<MessageContextDto>>
 {
     public required IMessageService MessageService { get; set; }
 
@@ -12,7 +12,7 @@ public class GetMessageContextEndpoint : EndpointWithoutRequest<IEnumerable<Mess
         Get("/messages/{messageId}/context");
         AllowAnonymous();
         Description(b => b
-            .Produces<IEnumerable<MessageDto>>(StatusCodes.Status200OK)
+            .Produces<IEnumerable<MessageContextDto>>(StatusCodes.Status200OK)
             .WithTags("Messages"));
     }
 
@@ -24,7 +24,7 @@ public class GetMessageContextEndpoint : EndpointWithoutRequest<IEnumerable<Mess
 
         try
         {
-            IEnumerable<MessageDto> messages = await MessageService.GetMessageContextAsync(messageId, count, ct);
+            IEnumerable<MessageContextDto> messages = await MessageService.GetMessageContextAsync(messageId, count, ct);
             await Send.OkAsync(messages, ct);
         }
         catch (ArgumentException ex)

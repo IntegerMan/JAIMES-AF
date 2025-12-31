@@ -11,13 +11,9 @@
 <PageTitle>Tool Call Details</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <MudButton Variant="Variant.Text" 
-               Color="Color.Primary" 
-               StartIcon="@Icons.Material.Filled.ArrowBack"
-               OnClick="GoBack"
-               Class="mb-2">
-        Back to Tool List
-    </MudButton>
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+    </MudStack>
 
     @if (_loading)
     {
@@ -43,62 +39,26 @@
         </MudStack>
         
         <MudGrid>
-            <MudItem xs="12">
-                 <MudText Typo="Typo.h5" Class="mb-2">Conversation Context</MudText>
-                 <MudPaper Class="pa-4 custom-scroll" Style="max-height: 500px; overflow-y: auto;">
-                      @if (_toolCall.ContextMessages.Any())
-                      {
-                          @foreach(var msg in _toolCall.ContextMessages)
-                          {
-                              List<string> paragraphs = ChatHelpers.SplitIntoParagraphs(msg.Text).ToList();
-                              @foreach ((string paragraph, int index) in paragraphs.Select((p, i) => (p, i)))
-                              {
-                                  bool isFirstParagraph = index == 0;
-                                  bool isLastParagraph = index == paragraphs.Count - 1;
-                                  bool isTarget = msg.Id == _toolCall.MessageId;
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.h6" Class="mb-3">Tool Invocations</MudText>
+                <div style="max-height: 80vh; overflow-y: auto; padding-right: 8px;">
+                    <MudStack Spacing="3">
+                        <MudText Typo="Typo.h6" Class="mb-1">Input Payload</MudText>
+                        <MudPaper Class="pa-3" Elevation="2">
+                            <pre style="white-space: pre-wrap; font-family: monospace; font-size: 0.875rem;">@FormatJson(_toolCall.InputJson)</pre>
+                        </MudPaper>
 
-                                  @if (msg.Participant == ChatParticipant.Player) // User message
-                                  {
-                                      <UserChatMessage 
-                                          Text="@paragraph" 
-                                          IsFirstParagraph="@isFirstParagraph"
-                                          IsLastParagraph="@isLastParagraph"
-                                          MessageId="@msg.Id"
-                                          Sentiment="@msg.Sentiment"
-                                          ReadOnly="true"
-                                          Highlighted="@isTarget" />
-                                  }
-                                  else // Assistant message
-                                  {
-                                      <AssistantChatMessage
-                                          Text="@paragraph"
-                                          MessageId="@msg.Id"
-                                          IsFirstParagraph="@isFirstParagraph"
-                                          IsLastParagraph="@isLastParagraph"
-                                          ReadOnly="true"
-                                          Highlighted="@isTarget" />
-                                  }
-                              }
-                          }
-                      }
-                      else
-                      {
-                          <MudText Typo="Typo.body2" Class="text-muted">No context messages available.</MudText>
-                      }
-                 </MudPaper>
+                        <MudText Typo="Typo.h6" Class="mt-4 mb-2">Output Result</MudText>
+                        <MudPaper Class="pa-3" Elevation="2">
+                            <pre style="white-space: pre-wrap; font-family: monospace; font-size: 0.875rem;">@FormatJson(_toolCall.OutputJson)</pre>
+                        </MudPaper>
+                    </MudStack>
+                </div>
             </MudItem>
             
             <MudItem xs="12" md="6">
-                <MudText Typo="Typo.h6" Class="mt-4 mb-2">Input Payload</MudText>
-                <MudPaper Class="pa-3" Elevation="2">
-                    <pre style="white-space: pre-wrap; font-family: monospace; font-size: 0.875rem;">@FormatJson(_toolCall.InputJson)</pre>
-                </MudPaper>
-            </MudItem>
-             <MudItem xs="12" md="6">
-                <MudText Typo="Typo.h6" Class="mt-4 mb-2">Output Result</MudText>
-                <MudPaper Class="pa-3" Elevation="2">
-                     <pre style="white-space: pre-wrap; font-family: monospace; font-size: 0.875rem;">@FormatJson(_toolCall.OutputJson)</pre>
-                </MudPaper>
+                 <MudText Typo="Typo.h6" Class="mb-3">Conversation Context</MudText>
+                 <ReadOnlyConversation MessageId="@_toolCall.MessageId" ContextCount="5" />
             </MudItem>
         </MudGrid>
     }
@@ -108,12 +68,33 @@
     [Parameter] public int Id { get; set; }
     private ToolCallFullDetailResponse? _toolCall;
     private bool _loading = true;
+    private List<BreadcrumbItem> _breadcrumbs = new();
 
     protected override async Task OnInitializedAsync()
     {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Admin", href: "/admin"),
+            new BreadcrumbItem("Tool Usage", href: "/admin/tools"),
+            new BreadcrumbItem($"Tool Call {Id}", href: null, disabled: true)
+        };
+
         try {
             var client = HttpClientFactory.CreateClient("Api");
             _toolCall = await client.GetFromJsonAsync<ToolCallFullDetailResponse>($"/admin/tool-calls/{Id}");
+            if (_toolCall != null)
+            {
+                 // Update breadcrumbs with tool name
+                 _breadcrumbs = new List<BreadcrumbItem>
+                {
+                    new BreadcrumbItem("Home", href: "/"),
+                    new BreadcrumbItem("Admin", href: "/admin"),
+                    new BreadcrumbItem("Tool Usage", href: "/admin/tools"),
+                    new BreadcrumbItem(_toolCall.ToolName, href: $"/admin/tools/{Uri.EscapeDataString(_toolCall.ToolName)}"),
+                    new BreadcrumbItem($"Call {Id}", href: null, disabled: true)
+                };
+            }
         }
         catch (Exception ex) {
             // Silently fail in UI, leaving _toolCall null to show error

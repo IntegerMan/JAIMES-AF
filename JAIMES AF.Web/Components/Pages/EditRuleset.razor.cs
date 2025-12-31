@@ -15,8 +15,17 @@ public partial class EditRuleset
     private bool _isSaving = false;
     private string? _errorMessage;
 
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
     protected override async Task OnInitializedAsync()
     {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Admin", href: "/admin"),
+            new BreadcrumbItem("Rulesets", href: "/rulesets"),
+            new BreadcrumbItem("Edit Ruleset", href: null, disabled: true)
+        };
         await LoadDataAsync();
     }
 
@@ -37,6 +46,15 @@ public partial class EditRuleset
             }
 
             _name = rulesetResponse.Name;
+
+            _breadcrumbs = new List<BreadcrumbItem>
+            {
+                new BreadcrumbItem("Home", href: "/"),
+                new BreadcrumbItem("Admin", href: "/admin"),
+                new BreadcrumbItem("Rulesets", href: "/rulesets"),
+                new BreadcrumbItem(rulesetResponse.Name, href: null, disabled: true),
+                new BreadcrumbItem("Edit", href: null, disabled: true)
+            };
         }
         catch (Exception ex)
         {

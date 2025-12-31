@@ -5,6 +5,9 @@
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
 	<MudPaper Class="pa-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+            <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+        </MudStack>
 		<MudText Typo="Typo.h4" Class="mb-4">Create New Ruleset</MudText>
 
 		@if (!string.IsNullOrEmpty(_errorMessage))

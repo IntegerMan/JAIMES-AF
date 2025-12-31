@@ -8,8 +8,16 @@ public partial class Agents
     private bool _isLoading = true;
     private string? _errorMessage;
 
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
     protected override async Task OnInitializedAsync()
     {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Admin", href: "/admin"),
+            new BreadcrumbItem("Agents", href: null, disabled: true)
+        };
         await LoadAgentsAsync();
     }
 

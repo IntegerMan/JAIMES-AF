@@ -1,4 +1,5 @@
 using MattEland.Jaimes.ServiceDefinitions.Requests;
+using MudBlazor;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 
@@ -20,9 +21,21 @@ public partial class NewAgentInstructionVersion
 
     protected override void OnInitialized()
     {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Admin", href: "/admin"),
+            new BreadcrumbItem("Agents", href: "/agents"),
+            new BreadcrumbItem($"Agent {AgentId}", href: null, disabled: true),
+            new BreadcrumbItem("Instructions", href: $"/agents/{AgentId}/instruction-versions"),
+            new BreadcrumbItem("New", href: null, disabled: true)
+        };
+
         // Initialize with suggested version number
         _versionNumber = $"v{DateTime.Now:yyyy.MM.dd}";
     }
+
+    private List<BreadcrumbItem> _breadcrumbs = new();
 
     private bool IsFormValid()
     {
@@ -49,7 +62,8 @@ public partial class NewAgentInstructionVersion
                 Instructions = _instructions
             };
 
-            HttpResponseMessage response = await Http.PostAsJsonAsync($"/agents/{AgentId}/instruction-versions", request);
+            HttpResponseMessage response =
+                await Http.PostAsJsonAsync($"/agents/{AgentId}/instruction-versions", request);
 
             if (response.IsSuccessStatusCode)
             {
@@ -74,7 +88,8 @@ public partial class NewAgentInstructionVersion
         }
         catch (Exception ex)
         {
-            LoggerFactory.CreateLogger("NewAgentInstructionVersion").LogError(ex, "Failed to create instruction version");
+            LoggerFactory.CreateLogger("NewAgentInstructionVersion")
+                .LogError(ex, "Failed to create instruction version");
             _errorMessage = "Failed to create instruction version: " + ex.Message;
             StateHasChanged();
         }

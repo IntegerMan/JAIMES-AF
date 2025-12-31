@@ -1,0 +1,96 @@
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Chat
+@using MattEland.Jaimes.Web.Components.Helpers
+@using MudBlazor
+@inject HttpClient Http
+
+<div class="read-only-conversation" style="max-height: 80vh; overflow-y: auto; padding-right: 8px;">
+    @if (_isLoading)
+    {
+        <div class="d-flex justify-center my-4">
+            <MudProgressCircular Indeterminate="true" />
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
+    }
+    else if (_messages != null)
+    {
+        @foreach (var m in _messages)
+        {
+            List<string> paragraphs = ChatHelpers.SplitIntoParagraphs(m.Text).ToList();
+            @foreach ((string paragraph, int index) in paragraphs.Select((p, i) => (p, i)))
+            {
+                bool isFirstParagraph = index == 0;
+                bool isLastParagraph = index == paragraphs.Count - 1;
+                bool isTargetMessage = m.Id == MessageId;
+
+                @if (m.PlayerId != null) // User message
+                {
+                    <UserChatMessage 
+                        Text="@paragraph" 
+                        IsFirstParagraph="@isFirstParagraph"
+                        IsLastParagraph="@isLastParagraph"
+                        MessageId="@m.Id"
+                        Sentiment="@m.Sentiment"
+                        Confidence="@m.SentimentConfidence"
+                        SentimentSource="@m.SentimentSource"
+                        ReadOnly="true"
+                        Highlighted="@isTargetMessage" />
+                }
+                else // Assistant message
+                {
+                    <AssistantChatMessage
+                        Text="@paragraph"
+                        MessageId="@m.Id"
+                        IsFirstParagraph="@isFirstParagraph"
+                        IsLastParagraph="@isLastParagraph"
+                        ReadOnly="true"
+                        Metrics="@m.Metrics"
+                        Feedback="@m.Feedback"
+                        ToolCalls="@m.ToolCalls"
+                        Highlighted="@isTargetMessage" />
+                }
+            }
+        }
+    }
+    else
+    {
+         <MudText Typo="Typo.body2" Class="text-muted">No context messages available.</MudText>
+    }
+</div>
+
+@code {
+    [Parameter] public int MessageId { get; set; }
+    [Parameter] public int ContextCount { get; set; } = 5;
+
+    private IEnumerable<MessageContextDto>? _messages;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadContextAsync();
+    }
+
+    private async Task LoadContextAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            _messages = await Http.GetFromJsonAsync<IEnumerable<MessageContextDto>>($"/messages/{MessageId}/context?count={ContextCount}");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load context: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

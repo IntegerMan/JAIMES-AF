@@ -8,6 +8,7 @@ public class FeedbackListItemDto
     public string? Comment { get; set; }
     public DateTime CreatedAt { get; set; }
     public int? InstructionVersionId { get; set; }
+    public string? AgentId { get; set; }
     public string? AgentVersion { get; set; }
 
     // Context information

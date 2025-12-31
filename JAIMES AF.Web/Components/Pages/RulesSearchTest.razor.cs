@@ -15,8 +15,17 @@ public partial class RulesSearchTest
     private SearchRulesResponse? _searchResult;
     private string? _toolOutput;
 
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
     protected override async Task OnInitializedAsync()
     {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Tools", href: null, disabled: true),
+            new BreadcrumbItem("Rules Search", href: null, disabled: true)
+        };
+
         await LoadRulesetsAsync();
     }
 
@@ -65,7 +74,7 @@ public partial class RulesSearchTest
             if (response.IsSuccessStatusCode)
             {
                 _searchResult = await response.Content.ReadFromJsonAsync<SearchRulesResponse>();
-                
+
                 // Format the output as the tool would return it
                 if (_searchResult != null && _searchResult.Results.Length > 0)
                 {

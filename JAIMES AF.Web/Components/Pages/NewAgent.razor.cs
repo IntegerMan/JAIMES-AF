@@ -11,6 +11,19 @@ public partial class NewAgent
 
     [Inject] public NavigationManager Navigation { get; set; } = null!;
 
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override void OnInitialized()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Admin", href: "/admin"),
+            new BreadcrumbItem("Agents", href: "/agents"),
+            new BreadcrumbItem("New Agent", href: null, disabled: true)
+        };
+    }
+
     private string _name = string.Empty;
     private string _role = string.Empty;
     private string _instructions = string.Empty;

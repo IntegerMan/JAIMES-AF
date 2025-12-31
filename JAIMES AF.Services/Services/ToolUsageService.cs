@@ -11,7 +11,8 @@ namespace MattEland.Jaimes.ServiceLayer.Services;
 /// </summary>
 public class ToolUsageService(
     IDbContextFactory<JaimesDbContext> contextFactory,
-    IToolRegistry toolRegistry) : IToolUsageService
+    IToolRegistry toolRegistry,
+    IMessageService messageService) : IToolUsageService
 {
     /// <inheritdoc />
     public async Task<ToolUsageListResponse> GetToolUsageAsync(
@@ -319,39 +320,8 @@ public class ToolUsageService(
         }
 
         // Get context messages (last 5 messages leading up to and including the tool call message)
-        List<Message> contextMessages = await context.Messages
-            .AsNoTracking()
-            .Where(m => m.GameId == toolCall.Message.GameId && m.CreatedAt <= toolCall.Message.CreatedAt)
-            .OrderByDescending(m => m.CreatedAt)
-            .Take(5)
-            .Include(m => m.Player)
-            .Include(m => m.Agent)
-            .Include(m => m.InstructionVersion)
-            .ThenInclude(iv => iv!.Agent)
-            .ToListAsync(cancellationToken);
-
-        contextMessages.Reverse();
-
-        List<MessageResponse> messageResponses = contextMessages.Select(m =>
-        {
-            bool isAssistant = m.PlayerId == null;
-            string participantName = isAssistant
-                ? (m.InstructionVersion?.Agent?.Name ?? m.Agent?.Name ?? "Assistant")
-                : (m.Player?.Name ?? "User");
-
-            return new MessageResponse
-            {
-                Id = m.Id,
-                Text = m.Text,
-                Participant = isAssistant ? ChatParticipant.GameMaster : ChatParticipant.Player,
-                ParticipantName = participantName,
-                PlayerId = m.PlayerId,
-                CreatedAt = m.CreatedAt,
-                AgentId = m.AgentId ?? m.InstructionVersion?.AgentId,
-                InstructionVersionId = m.InstructionVersionId,
-                Sentiment = m.Sentiment
-            };
-        }).ToList();
+        IEnumerable<MessageContextDto> contextMessages =
+            await messageService.GetMessageContextAsync(toolCall.MessageId, 5, cancellationToken);
 
         return new ToolCallFullDetailResponse
         {
@@ -367,7 +337,7 @@ public class ToolUsageService(
             FeedbackComment = feedback?.Comment,
             InputJson = toolCall.InputJson,
             OutputJson = toolCall.OutputJson,
-            ContextMessages = messageResponses
+            ContextMessages = contextMessages.ToList()
         };
     }
 }

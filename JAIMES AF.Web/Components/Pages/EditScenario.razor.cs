@@ -43,8 +43,17 @@ public partial class EditScenario
 
     protected override async Task OnInitializedAsync()
     {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Content", href: null, disabled: true),
+            new BreadcrumbItem("Scenarios", href: "/scenarios"),
+            new BreadcrumbItem("Edit Scenario", href: null, disabled: true)
+        };
         await LoadDataAsync();
     }
+
+    private List<BreadcrumbItem> _breadcrumbs = new();
 
     private async Task LoadDataAsync()
     {
@@ -54,7 +63,8 @@ public partial class EditScenario
         {
             Task<RulesetListResponse?> rulesetsTask = Http.GetFromJsonAsync<RulesetListResponse>("/rulesets");
             Task<ScenarioResponse?> scenarioTask = Http.GetFromJsonAsync<ScenarioResponse>($"/scenarios/{ScenarioId}");
-            Task<ScenarioAgentListResponse?> scenarioAgentsTask = Http.GetFromJsonAsync<ScenarioAgentListResponse>($"/scenarios/{ScenarioId}/agents");
+            Task<ScenarioAgentListResponse?> scenarioAgentsTask =
+                Http.GetFromJsonAsync<ScenarioAgentListResponse>($"/scenarios/{ScenarioId}/agents");
             Task<AgentListResponse?> agentsTask = Http.GetFromJsonAsync<AgentListResponse>("/agents");
 
             await Task.WhenAll(rulesetsTask, scenarioTask, scenarioAgentsTask, agentsTask);
@@ -79,6 +89,15 @@ public partial class EditScenario
             _description = scenarioResponse.Description;
             _scenarioInstructions = scenarioResponse.ScenarioInstructions;
             _initialGreeting = scenarioResponse.InitialGreeting;
+
+            _breadcrumbs = new List<BreadcrumbItem>
+            {
+                new BreadcrumbItem("Home", href: "/"),
+                new BreadcrumbItem("Content", href: null, disabled: true),
+                new BreadcrumbItem("Scenarios", href: "/scenarios"),
+                new BreadcrumbItem(scenarioResponse.Name, href: null, disabled: true),
+                new BreadcrumbItem("Edit", href: null, disabled: true)
+            };
 
             // Load scenario agents with details
             await LoadScenarioAgentsWithDetailsAsync(scenarioAgentsResponse?.ScenarioAgents ?? []);
@@ -105,7 +124,9 @@ public partial class EditScenario
         {
             try
             {
-                var versions = await Http.GetFromJsonAsync<AgentInstructionVersionListResponse>($"/agents/{agentId}/instruction-versions");
+                var versions =
+                    await Http.GetFromJsonAsync<AgentInstructionVersionListResponse>(
+                        $"/agents/{agentId}/instruction-versions");
                 if (versions != null)
                 {
                     _agentVersions[agentId] = versions.InstructionVersions;
@@ -113,7 +134,8 @@ public partial class EditScenario
             }
             catch (Exception ex)
             {
-                LoggerFactory.CreateLogger("EditScenario").LogError(ex, $"Failed to load instruction versions for agent {agentId}");
+                LoggerFactory.CreateLogger("EditScenario")
+                    .LogError(ex, $"Failed to load instruction versions for agent {agentId}");
                 _agentVersions[agentId] = [];
             }
         }
@@ -231,7 +253,9 @@ public partial class EditScenario
         try
         {
             // Get the active instruction version for this agent
-            var activeVersion = await Http.GetFromJsonAsync<AgentInstructionVersionResponse>($"/agents/{agentToAdd.Id}/instruction-versions/active");
+            var activeVersion =
+                await Http.GetFromJsonAsync<AgentInstructionVersionResponse>(
+                    $"/agents/{agentToAdd.Id}/instruction-versions/active");
             if (activeVersion == null)
             {
                 _errorMessage = $"No active instruction version found for agent '{agentToAdd.Name}'.";
@@ -280,7 +304,8 @@ public partial class EditScenario
                 InstructionVersionId = newVersionId
             };
 
-            var response = await Http.PutAsJsonAsync($"/scenarios/{ScenarioId}/agents/{scenarioAgent.AgentId}", request);
+            var response =
+                await Http.PutAsJsonAsync($"/scenarios/{ScenarioId}/agents/{scenarioAgent.AgentId}", request);
             if (response.IsSuccessStatusCode)
             {
                 await LoadDataAsync(); // Reload to show updated version
@@ -293,7 +318,8 @@ public partial class EditScenario
         }
         catch (Exception ex)
         {
-            LoggerFactory.CreateLogger("EditScenario").LogError(ex, $"Failed to change version for agent {scenarioAgent.AgentId}");
+            LoggerFactory.CreateLogger("EditScenario")
+                .LogError(ex, $"Failed to change version for agent {scenarioAgent.AgentId}");
             _errorMessage = "Failed to change agent version: " + ex.Message;
             StateHasChanged();
         }
@@ -323,7 +349,8 @@ public partial class EditScenario
             }
             catch (Exception ex)
             {
-                LoggerFactory.CreateLogger("EditScenario").LogError(ex, $"Failed to remove agent {scenarioAgent.AgentId} from scenario");
+                LoggerFactory.CreateLogger("EditScenario")
+                    .LogError(ex, $"Failed to remove agent {scenarioAgent.AgentId} from scenario");
                 _errorMessage = "Failed to remove agent: " + ex.Message;
                 StateHasChanged();
             }

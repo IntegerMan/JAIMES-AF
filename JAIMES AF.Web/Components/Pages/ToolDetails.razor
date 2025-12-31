@@ -9,13 +9,10 @@
 <PageTitle>Tool Details - @ToolName</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <MudButton Variant="Variant.Text" 
-               Color="Color.Primary" 
-               StartIcon="@Icons.Material.Filled.ArrowBack"
-               Href="/admin/tools"
-               Class="mb-2">
-        Back to Tool List
-    </MudButton>
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+    </MudStack>
+
 
     <MudText Typo="Typo.h4" Class="mb-2">@ToolName</MudText>
     
@@ -35,7 +32,9 @@
         <Columns>
             <PropertyColumn Property="x => x.CreatedAt" Title="Time">
                 <CellTemplate>
-                    @context.Item.CreatedAt.ToLocalTime().ToString("g")
+                    <MudLink Href="@($"/admin/tool-calls/{context.Item.Id}")">
+                        @context.Item.CreatedAt.ToLocalTime().ToString("g")
+                    </MudLink>
                 </CellTemplate>
             </PropertyColumn>
             <PropertyColumn Property="x => x.GameName" Title="Game">
@@ -104,7 +103,7 @@
                         @if (context.Item.GameId.HasValue)
                         {
                             <MudTooltip Text="Go to Game">
-                                <MudIconButton Icon="@Icons.Material.Filled.VideogameAsset" 
+                                <MudIconButton Icon="@Icons.Material.Filled.Gamepad" 
                                                Color="Color.Secondary" 
                                                Size="Size.Small"
                                                Href="@($"/games/{context.Item.GameId}")"
@@ -150,6 +149,19 @@
     [Parameter]
     [SupplyParameterFromQuery]
     public Guid? GameId { get; set; }
+
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override void OnInitialized()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Admin", href: "/admin"),
+            new BreadcrumbItem("Tool Usage", href: "/admin/tools"),
+            new BreadcrumbItem(ToolName, href: null, disabled: true)
+        };
+    }
 
     private string? _toolDescription;
 

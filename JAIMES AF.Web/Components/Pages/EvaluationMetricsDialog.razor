@@ -1,0 +1,86 @@
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        @if (Metrics == null || Metrics.Count == 0)
+        {
+            <MudText Typo="Typo.body1">No evaluation metrics available for this message.</MudText>
+        }
+        else
+        {
+            <MudText Typo="Typo.caption" Class="mb-4 text-muted">Click for more details</MudText>
+            
+            <MudStack Spacing="3">
+                @foreach (var metric in Metrics)
+                {
+                    <MudPaper Class="pa-3" Elevation="1">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                            <MudStack Spacing="0">
+                                <MudText Typo="Typo.subtitle1"><strong>@metric.MetricName</strong></MudText>
+                                @if (!string.IsNullOrEmpty(metric.Remarks))
+                                {
+                                    <MudText Typo="Typo.body2" Class="text-muted">@metric.Remarks</MudText>
+                                }
+                            </MudStack>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudChip T="string" Color="@GetScoreColor(metric.Score)" Size="Size.Small">
+                                    @metric.Score.ToString("F1")
+                                </MudChip>
+                                @if (metric.Score >= 3)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                                }
+                                else
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Size="Size.Small" />
+                                }
+                            </MudStack>
+                        </MudStack>
+                        
+                        @if (!string.IsNullOrEmpty(metric.Diagnostics))
+                        {
+                            <MudExpansionPanels Class="mt-2" Elevation="0">
+                                <MudExpansionPanel Text="Diagnostics" Dense="true">
+                                    <MudText Typo="Typo.caption" Style="font-family: monospace; white-space: pre-wrap; word-break: break-all;">
+                                        @metric.Diagnostics
+                                    </MudText>
+                                </MudExpansionPanel>
+                            </MudExpansionPanels>
+                        }
+                    </MudPaper>
+                }
+            </MudStack>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (GameId.HasValue)
+        {
+            <MudButton Color="Color.Primary" Variant="Variant.Text" Href="@($"/games/{GameId}")" Target="_blank">
+                View Game
+            </MudButton>
+        }
+        <MudButton Color="Color.Default" OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter] public List<MessageEvaluationMetricResponse>? Metrics { get; set; }
+    [Parameter] public int? MessageId { get; set; }
+    [Parameter] public Guid? GameId { get; set; }
+
+    private void Close() => MudDialog?.Close(DialogResult.Ok(true));
+
+    private static Color GetScoreColor(double score)
+    {
+        return score switch
+        {
+            >= 4 => Color.Success,
+            >= 3 => Color.Info,
+            >= 2 => Color.Warning,
+            _ => Color.Error
+        };
+    }
+}

@@ -5,6 +5,9 @@
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
 	<MudPaper Class="pa-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+    </MudStack>
 		<MudText Typo="Typo.h4" Class="mb-4">Create New Game</MudText>
 
 		@if (_isLoading)
@@ -66,4 +69,5 @@
 		}
 	</MudPaper>
 </MudContainer>
+
 

@@ -1,0 +1,166 @@
+@page "/admin/feedback/{Id:int}"
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Chat
+@using MudBlazor
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<PageTitle>Feedback Details</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+    </MudStack>
+
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" Class="d-block mx-auto mt-4" />
+    }
+    else if (_feedback == null)
+    {
+        <MudAlert Severity="Severity.Error">Feedback not found.</MudAlert>
+    }
+    else
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+            <MudText Typo="Typo.h4">Feedback Details</MudText>
+            
+            <MudStack Row="true" Spacing="2">
+                @if (_feedback.GameId != Guid.Empty)
+                {
+                    <MudButton StartIcon="@Icons.Material.Filled.Games" 
+                               Color="Color.Secondary" 
+                               Href="@($"/games/{_feedback.GameId}")">
+                        View Game
+                    </MudButton>
+                }
+            </MudStack>
+        </MudStack>
+        
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudText Typo="Typo.h6" Class="mb-3">Feedback Info</MudText>
+                
+                <MudCard Elevation="2" Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                @if (_feedback.IsPositive)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Success" />
+                                    <MudText Typo="Typo.h6">Positive Feedback</MudText>
+                                }
+                                else
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.ThumbDown" Color="Color.Error" />
+                                    <MudText Typo="Typo.h6">Negative Feedback</MudText>
+                                }
+                            </MudStack>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (!string.IsNullOrEmpty(_feedback.Comment))
+                        {
+                            <MudText Typo="Typo.body1" Class="mb-3">@_feedback.Comment</MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Class="text-muted mb-3">No specific comment provided.</MudText>
+                        }
+                        
+                        <MudDivider Class="my-3"/>
+                        
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.caption" Class="text-muted">
+                                <strong>Created:</strong> @_feedback.CreatedAt.ToLocalTime().ToString("g")
+                            </MudText>
+                            
+                            @if (!string.IsNullOrEmpty(_feedback.GamePlayerName))
+                            {
+                                <MudText Typo="Typo.caption" Class="text-muted">
+                                    <strong>Player:</strong> @_feedback.GamePlayerName
+                                </MudText>
+                            }
+                            @if (!string.IsNullOrEmpty(_feedback.GameScenarioName))
+                            {
+                                <MudText Typo="Typo.caption" Class="text-muted">
+                                    <strong>Scenario:</strong> @_feedback.GameScenarioName
+                                </MudText>
+                            }
+                            @if (!string.IsNullOrEmpty(_feedback.GameRulesetId))
+                            {
+                                <MudText Typo="Typo.caption" Class="text-muted">
+                                    <strong>Ruleset:</strong> @_feedback.GameRulesetId
+                                </MudText>
+                            }
+                            @if (!string.IsNullOrEmpty(_feedback.AgentVersion))
+                            {
+                                <MudText Typo="Typo.caption" Class="text-muted">
+                                    <strong>Agent Version:</strong>
+                                    @if (!string.IsNullOrEmpty(_feedback.AgentId))
+                                    {
+                                        <MudLink Href="@($"/agents/{_feedback.AgentId}/instruction-versions")" Typo="Typo.caption">
+                                            @_feedback.AgentVersion
+                                        </MudLink>
+                                    }
+                                    else
+                                    {
+                                        @_feedback.AgentVersion
+                                    }
+                                </MudText>
+                            }
+                        </MudStack>
+                        
+                         @if (_feedback.ToolNames != null && _feedback.ToolNames.Any())
+                         {
+                             <MudText Typo="Typo.subtitle2" Class="mt-3 mb-1">Tools Involved:</MudText>
+                             <div class="d-flex flex-wrap gap-1">
+                                 @foreach (var tool in _feedback.ToolNames)
+                                 {
+                                     <MudChip T="string" Color="Color.Secondary" Size="Size.Small" Variant="Variant.Outlined">@tool</MudChip>
+                                 }
+                             </div>
+                         }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            
+            <MudItem xs="12" md="8">
+                 <MudText Typo="Typo.h6" Class="mb-3">Conversation Context</MudText>
+                 <MudPaper Elevation="2" Class="pa-4" Style="max-height: 80vh; overflow-y: auto;">
+                     <ReadOnlyConversation MessageId="@_feedback.MessageId" ContextCount="5" />
+                 </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private FeedbackFullDetailsResponse? _feedback;
+    private bool _loading = true;
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Admin", href: "/admin"),
+            new BreadcrumbItem("Feedback", href: "/admin/feedback"),
+            new BreadcrumbItem($"Feedback {Id}", href: null, disabled: true)
+        };
+
+        try {
+            var client = HttpClientFactory.CreateClient("Api");
+            _feedback = await client.GetFromJsonAsync<FeedbackFullDetailsResponse>($"/admin/feedback/{Id}");
+        }
+        catch (Exception ex) {
+            Console.WriteLine($"Error loading feedback: {ex}");
+        }
+        finally {
+            _loading = false;
+        }
+    }
+}

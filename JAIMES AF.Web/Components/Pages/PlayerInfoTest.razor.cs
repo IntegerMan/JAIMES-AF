@@ -13,9 +13,17 @@ public partial class PlayerInfoTest
 	private bool _isLoading = false;
 	private string? _errorMessage;
 	private string? _toolOutput;
+	private List<BreadcrumbItem> _breadcrumbs = new();
 
 	protected override async Task OnInitializedAsync()
 	{
+		_breadcrumbs = new List<BreadcrumbItem>
+		{
+			new BreadcrumbItem("Home", href: "/"),
+			new BreadcrumbItem("Tools", href: null, disabled: true),
+			new BreadcrumbItem("Player Info", href: null, disabled: true)
+		};
+
 		await LoadGamesAsync();
 	}
 

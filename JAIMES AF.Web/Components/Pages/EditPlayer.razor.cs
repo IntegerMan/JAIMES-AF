@@ -17,9 +17,17 @@ public partial class EditPlayer
     private bool _isLoading = true;
     private bool _isSaving = false;
     private string? _errorMessage;
+    private List<BreadcrumbItem> _breadcrumbs = new();
 
     protected override async Task OnInitializedAsync()
     {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Content", href: null, disabled: true),
+            new BreadcrumbItem("Players", href: "/players"),
+            new BreadcrumbItem("Edit Player", href: null, disabled: true)
+        };
         await LoadDataAsync();
     }
 
@@ -49,6 +57,15 @@ public partial class EditPlayer
             _selectedRulesetId = playerResponse.RulesetId;
             _name = playerResponse.Name;
             _description = playerResponse.Description;
+
+            _breadcrumbs = new List<BreadcrumbItem>
+            {
+                new BreadcrumbItem("Home", href: "/"),
+                new BreadcrumbItem("Content", href: null, disabled: true),
+                new BreadcrumbItem("Players", href: "/players"),
+                new BreadcrumbItem(playerResponse.Name, href: null, disabled: true),
+                new BreadcrumbItem("Edit", href: null, disabled: true)
+            };
         }
         catch (Exception ex)
         {

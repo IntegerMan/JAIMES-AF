@@ -22,11 +22,13 @@
                     Feedback="@Feedback"
                     Metrics="@Metrics"
                     ToolCallCount="@(ToolCalls?.Count ?? 0)"
+                    ToolCalls="@ToolCalls"
                     ReadOnly="@ReadOnly"
                     ShowFeedbackButtons="true"
                     MessageId="@MessageId"
                     OnToolCallsClick="OnToolCallsClick"
-                    OnFeedbackClick="OnFeedbackClick" />
+                    OnFeedbackClick="OnFeedbackClick"
+                    OnMetricsClick="OnMetricsClick" />
             </MudChatFooter>
         }
     </MudChat>
@@ -55,18 +57,21 @@
     public bool ReadOnly { get; set; }
 
     [Parameter]
-    public List<MessageToolCallInfo>? ToolCalls { get; set; }
+    public List<MessageToolCallResponse>? ToolCalls { get; set; }
 
     [Parameter]
     public List<MessageEvaluationMetricResponse>? Metrics { get; set; }
 
     [Parameter]
-    public MessageFeedbackInfo? Feedback { get; set; }
+    public MessageFeedbackResponse? Feedback { get; set; }
 
     [Parameter]
     public EventCallback<int> OnToolCallsClick { get; set; }
 
     [Parameter]
     public EventCallback<(int MessageId, bool IsPositive)> OnFeedbackClick { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnMetricsClick { get; set; }
 }
 

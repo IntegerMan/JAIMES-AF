@@ -1,0 +1,232 @@
+@page "/admin/metrics/{MessageId:int}"
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Domain
+@using MattEland.Jaimes.Web.Components.Chat
+@using MattEland.Jaimes.Web.Components.Helpers
+@using MudBlazor
+@using System.Text.Json
+@using System.Linq
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+@inject HttpClient Http
+@rendermode InteractiveServer
+
+<PageTitle>Message Evaluation Metrics</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+    </MudStack>
+    <MudText Typo="Typo.h4" Class="mb-4">Message Evaluation Metrics</MudText>
+    
+    @if (_isLoading)
+    {
+        <MudProgressCircular Indeterminate="true" Class="my-4" />
+    }
+    else if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
+    }
+    else if (_metrics == null || !_metrics.Any())
+    {
+        <MudText Typo="Typo.body1">No evaluation metrics found for this message.</MudText>
+    }
+    else
+    {
+
+        
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.h6" Class="mb-3">Evaluation Metrics</MudText>
+                <div style="max-height: 80vh; overflow-y: auto; padding-right: 8px;">
+                    <MudStack Spacing="3">
+                        @foreach (var metric in _metrics)
+                        {
+                            <MudCard Elevation="2">
+                                <MudCardHeader>
+                                    <CardHeaderContent>
+                                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                            <MudText Typo="Typo.h6">@metric.MetricName</MudText>
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                                <MudChip T="string" Color="@GetScoreColor(metric.Score)" Size="Size.Medium">
+                                                    @metric.Score.ToString("F1")
+                                                </MudChip>
+                                                @if (metric.Score >= 3)
+                                                {
+                                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
+                                                }
+                                                else
+                                                {
+                                                    <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" />
+                                                }
+                                            </MudStack>
+                                        </MudStack>
+                                    </CardHeaderContent>
+                                </MudCardHeader>
+                                <MudCardContent>
+                                    @if (!string.IsNullOrEmpty(metric.Remarks))
+                                    {
+                                        <MudText Typo="Typo.body1" Class="mb-3">@metric.Remarks</MudText>
+                                    }
+                                    else
+                                    {
+                                        <MudText Typo="Typo.body2" Class="text-muted mb-3">No remarks provided</MudText>
+                                    }
+                                    
+                                    <MudText Typo="Typo.caption" Class="text-muted">
+                                        Evaluated: @metric.EvaluatedAt.ToLocalTime().ToString("g")
+                                    </MudText>
+                                    
+                                    @if (!string.IsNullOrEmpty(metric.Diagnostics))
+                                    {
+                                        <MudExpansionPanels Class="mt-3" Elevation="0">
+                                            <MudExpansionPanel Dense="true">
+                                                <TitleContent>
+                                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                                        <MudIcon Icon="@Icons.Material.Filled.Biotech" Size="Size.Small" />
+                                                        <MudText>Diagnostics</MudText>
+                                                    </MudStack>
+                                                </TitleContent>
+                                                <ChildContent>
+                                                    <MudText Typo="Typo.caption" Style="font-family: monospace; white-space: pre-wrap; word-break: break-all;">
+                                                        @FormatDiagnostics(metric.Diagnostics)
+                                                    </MudText>
+                                                </ChildContent>
+                                            </MudExpansionPanel>
+                                        </MudExpansionPanels>
+                                    }
+                                </MudCardContent>
+                            </MudCard>
+                        }
+                    </MudStack>
+                </div>
+            </MudItem>
+            
+            <MudItem xs="12" md="6">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
+                    <MudText Typo="Typo.h6">Conversation Context</MudText>
+                    @if (_gameId.HasValue)
+                    {
+                        <MudButton Href="@($"/games/{_gameId}")" 
+                                   Variant="Variant.Text" 
+                                   StartIcon="@Icons.Material.Filled.Gamepad" 
+                                   Color="Color.Primary">
+                            View Game
+                        </MudButton>
+                    }
+                </MudStack>
+                
+                <ReadOnlyConversation MessageId="@MessageId" ContextCount="10" />
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public int MessageId { get; set; }
+    
+    private IEnumerable<MessageEvaluationMetricResponse> _metrics = new List<MessageEvaluationMetricResponse>();
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private Guid? _gameId;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadMetricsAsync();
+        await LoadMessageMetadataAsync();
+    }
+
+    private async Task LoadMetricsAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            _metrics = await Http.GetFromJsonAsync<IEnumerable<MessageEvaluationMetricResponse>>($"/messages/{MessageId}/metrics") 
+                       ?? new List<MessageEvaluationMetricResponse>();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Failed to load evaluation metrics.";
+            Console.WriteLine($"Error loading metrics: {ex}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+
+
+    private async Task LoadMessageMetadataAsync()
+    {
+        try
+        {
+            // We need to fetch the message to get the GameId for the "View Game" button
+            // We use count=1 to just get the message itself
+            var messages = await Http.GetFromJsonAsync<IEnumerable<MessageContextDto>>($"/messages/{MessageId}/context?count=1");
+            var message = messages?.FirstOrDefault();
+            
+            if (message != null && message.GameId != Guid.Empty)
+            {
+                _gameId = message.GameId;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading message metadata: {ex}");
+        }
+    }
+
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Metrics", href: "/admin/metrics"),
+            new BreadcrumbItem($"Message {MessageId}", href: null, disabled: true)
+        };
+    }
+
+    private void GoBack()
+    {
+        // Deprecated
+    }
+
+    private static Color GetScoreColor(double score)
+    {
+        return score switch
+        {
+            >= 4 => Color.Success,
+            >= 3 => Color.Info,
+            >= 2 => Color.Warning,
+            _ => Color.Error
+        };
+    }
+    
+    // DTO for message metadata (simplified)
+    private class MessageMetadataResponse
+    {
+        public Guid? GameId { get; set; }
+    }
+
+    /// <summary>
+    /// Formats diagnostics as pretty-printed JSON if valid, otherwise returns as-is.
+    /// </summary>
+    private static string FormatDiagnostics(string diagnostics)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(diagnostics);
+            return JsonSerializer.Serialize(doc.RootElement, new JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            return diagnostics;
+        }
+    }
+}

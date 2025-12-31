@@ -15,13 +15,14 @@ public partial class GameDetails : IAsyncDisposable
     [Inject] public ILoggerFactory LoggerFactory { get; set; } = null!;
     [Inject] public IJSRuntime JsRuntime { get; set; } = null!;
     [Inject] public IDialogService DialogService { get; set; } = null!;
+    [Inject] public NavigationManager NavigationManager { get; set; } = null!;
 
     [Parameter] public Guid GameId { get; set; }
 
     private List<ChatMessage> _messages = [];
     private List<int?> _messageIds = []; // Parallel list to track message IDs
-    private Dictionary<int, MessageFeedbackInfo> _messageFeedback = new();
-    private Dictionary<int, List<MessageToolCallInfo>> _messageToolCalls = new();
+    private Dictionary<int, MessageFeedbackResponse> _messageFeedback = new();
+    private Dictionary<int, List<MessageToolCallResponse>> _messageToolCalls = new();
     private Dictionary<int, List<MessageEvaluationMetricResponse>> _messageMetrics = new();
     private Dictionary<int, MessageSentimentInfo> _messageSentiment = new();
     private AIAgent? _agent;
@@ -406,7 +407,7 @@ public partial class GameDetails : IAsyncDisposable
         if (_messageFeedback.ContainsKey(messageId))
         {
             // Show existing feedback info
-            MessageFeedbackInfo existing = _messageFeedback[messageId];
+            MessageFeedbackResponse existing = _messageFeedback[messageId];
             await DialogService.ShowMessageBox(
                 "Feedback Already Submitted",
                 $"You have already submitted {(existing.IsPositive ? "positive" : "negative")} feedback for this message." +
@@ -423,8 +424,8 @@ public partial class GameDetails : IAsyncDisposable
             { nameof(FeedbackDialog.MessageId), messageId },
             { nameof(FeedbackDialog.PreSelectedFeedback), isPositive },
             {
-                nameof(FeedbackDialog.OnFeedbackSubmitted), EventCallback.Factory.Create<MessageFeedbackInfo?>(this,
-                    async (MessageFeedbackInfo? feedback) =>
+                nameof(FeedbackDialog.OnFeedbackSubmitted), EventCallback.Factory.Create<FeedbackSubmission?>(this,
+                    async (FeedbackSubmission? feedback) =>
                     {
                         if (feedback != null)
                         {
@@ -474,12 +475,7 @@ public partial class GameDetails : IAsyncDisposable
                 MessageFeedbackResponse? feedback = await response.Content.ReadFromJsonAsync<MessageFeedbackResponse>();
                 if (feedback != null)
                 {
-                    _messageFeedback[messageId] = new MessageFeedbackInfo
-                    {
-                        MessageId = feedback.MessageId,
-                        IsPositive = feedback.IsPositive,
-                        Comment = feedback.Comment
-                    };
+                    _messageFeedback[messageId] = feedback;
                     StateHasChanged();
                 }
             }
@@ -499,31 +495,12 @@ public partial class GameDetails : IAsyncDisposable
 
 
     /// <summary>
-    /// Shows the tool calls dialog for a message.
+    /// Shows the evaluation metrics page for a message.
     /// </summary>
-    private async Task ShowToolCallsDialogAsync(int messageId)
+    private void ShowMetricsDialogAsync(int messageId)
     {
-        if (!_messageToolCalls.TryGetValue(messageId, out List<MessageToolCallInfo>? toolCalls) || toolCalls == null ||
-            toolCalls.Count == 0)
-        {
-            await DialogService.ShowMessageBox("No Tool Calls", "This message has no tool calls.", "OK");
-            return;
-        }
-
-        var parameters = new DialogParameters<ToolCallsDialog>
-        {
-            { nameof(ToolCallsDialog.ToolCalls), toolCalls }
-        };
-
-        var options = new DialogOptions
-        {
-            CloseOnEscapeKey = true,
-            MaxWidth = MaxWidth.Large,
-            FullWidth = true
-        };
-
-        IDialogReference? dialogRef = await DialogService.ShowAsync<ToolCallsDialog>("Tool Calls", parameters, options);
-        await dialogRef.Result;
+        // Navigate to the dedicated metrics page
+        NavigationManager.NavigateTo($"/admin/metrics/{messageId}");
     }
 
     /// <summary>
@@ -545,29 +522,15 @@ public partial class GameDetails : IAsyncDisposable
                 var metadata = await response.Content.ReadFromJsonAsync<MessagesMetadataResponse>();
                 if (metadata == null) return;
 
-                // 1. Process Feedback
                 foreach (var (msgId, fb) in metadata.Feedback)
                 {
-                    _messageFeedback[msgId] = new MessageFeedbackInfo
-                    {
-                        MessageId = fb.MessageId,
-                        IsPositive = fb.IsPositive,
-                        Comment = fb.Comment
-                    };
+                    _messageFeedback[msgId] = fb;
                 }
 
                 // 2. Process Tool Calls
                 foreach (var (msgId, items) in metadata.ToolCalls)
                 {
-                    _messageToolCalls[msgId] = items.Select(tc => new MessageToolCallInfo
-                    {
-                        Id = tc.Id,
-                        MessageId = tc.MessageId,
-                        ToolName = tc.ToolName,
-                        InputJson = tc.InputJson,
-                        OutputJson = tc.OutputJson,
-                        CreatedAt = tc.CreatedAt
-                    }).ToList();
+                    _messageToolCalls[msgId] = items;
                 }
 
                 // 3. Process Metrics

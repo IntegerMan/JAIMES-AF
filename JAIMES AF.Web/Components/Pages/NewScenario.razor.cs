@@ -18,8 +18,17 @@ public partial class NewScenario
     private bool _isSaving = false;
     private string? _errorMessage;
 
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
     protected override async Task OnInitializedAsync()
     {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Content", href: null, disabled: true),
+            new BreadcrumbItem("Scenarios", href: "/scenarios"),
+            new BreadcrumbItem("New Scenario", href: null, disabled: true)
+        };
         await LoadRulesetsAsync();
     }
 

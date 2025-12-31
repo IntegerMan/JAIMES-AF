@@ -2,6 +2,8 @@
 @using MattEland.Jaimes.Web.Components.Pages
 @using MudBlazor
 
+@inject NavigationManager NavigationManager
+
 @* Reusable component for displaying message feedback and tool call indicators *@
 
 <div class="d-flex align-items-center gap-2">
@@ -17,18 +19,23 @@
                             <span>@metric.Score</span>
                         </div>
                     }
+                    @if (!ReadOnly)
+                    {
+                        <MudText Typo="Typo.caption" Class="text-muted mt-1">Click icon to view details</MudText>
+                    }
                 </div>
             </TooltipContent>
             <ChildContent>
-                 <div class="d-flex align-center justify-center" style="width:32px; height:32px;">
-                     <MudIcon Icon="@Icons.Material.Filled.PieChart" 
-                              Color="Color.Default" 
-                              Size="Size.Small" />
-                 </div>
+                <MudIconButton Icon="@Icons.Material.Filled.PieChart"
+                               Color="Color.Default"
+                               Size="Size.Small"
+                               Variant="Variant.Text"
+                               Disabled="@(!ReadOnly && OnMetricsClick.HasDelegate == false)"
+                               OnClick="OnMetricsClicked" />
             </ChildContent>
         </MudTooltip>
     }
-    else if (!ReadOnly) 
+    else if (!ReadOnly)
     {
          <MudTooltip Text="Analysing Metrics..." Placement="Placement.Top">
              <div class="d-flex align-center justify-center" style="width:32px; height:32px;">
@@ -42,33 +49,45 @@
 
     @if (ToolCallCount > 0)
     {
-        <MudTooltip Text="@($"{ToolCallCount} tool call(s)")" Placement="Placement.Top">
-            @if (ReadOnly)
-            {
-                <MudIcon Icon="@Icons.Material.Filled.Build"
-                         Color="Color.Default"
-                         Size="Size.Small"
-                         Class="tool-call-icon" />
-            }
-            else
-            {
+        <MudTooltip Placement="Placement.Top">
+            <TooltipContent>
+                @if (ToolCalls != null && ToolCalls.Count > 0) {
+                     <div class="d-flex flex-column gap-1">
+                        <MudText Typo="Typo.caption"><b>Tool Calls (@ToolCallCount):</b></MudText>
+                        @foreach (var tool in ToolCalls)
+                        {
+                            <MudText Typo="Typo.caption">• @tool.ToolName</MudText>
+                        }
+                    </div>
+                }
+                else {
+                    <MudText Typo="Typo.caption">@($"{ToolCallCount} tool call(s)")</MudText>
+                }
+            </TooltipContent>
+            <ChildContent>
                 <MudIconButton Icon="@Icons.Material.Filled.Build"
                                Color="Color.Default"
                                Size="Size.Small"
                                Variant="Variant.Text"
                                Class="tool-call-button"
+                               Disabled="@(!ReadOnly && OnToolCallsClick.HasDelegate == false)"
                                OnClick="OnToolCallsClicked" />
-            }
+            </ChildContent>
         </MudTooltip>
     }
 
     @if (Feedback != null)
     {
         <MudTooltip Text="@(string.IsNullOrWhiteSpace(Feedback.Comment) ? $"{(Feedback.IsPositive ? "Helpful" : "Unhelpful")} feedback" : Feedback.Comment)" Placement="Placement.Top">
-            <MudIcon Icon="@(Feedback.IsPositive ? Icons.Material.Filled.ThumbUp : Icons.Material.Filled.ThumbDown)"
-                     Color="@(Feedback.IsPositive ? Color.Success : Color.Error)"
-                     Size="Size.Small"
-                     Class="feedback-icon-existing" />
+            <MudIconButton Icon="@(Feedback.IsPositive ? Icons.Material.Filled.ThumbUp : Icons.Material.Filled.ThumbDown)"
+                           Color="@(Feedback.IsPositive ? Color.Success : Color.Error)"
+                           Size="Size.Small"
+                           Variant="Variant.Text"
+                           Class="feedback-icon-existing"
+                           OnClick="OnFeedbackIconClicked" 
+                           Disabled="@(!ReadOnly && OnFeedbackClick.HasDelegate == false)" /> 
+                           @* In non-read-only (chat), clicking existing feedback usually does nothing or edits. 
+                              In read-only context, we want it to navigate. *@
         </MudTooltip>
     }
     else if (ShowFeedbackButtons && !ReadOnly)
@@ -80,6 +99,7 @@
                                Size="Size.Small"
                                Variant="Variant.Text"
                                Class="feedback-button"
+                               Disabled="@ReadOnly"
                                @onmouseenter="() => _isHoveringThumbUp = true"
                                @onmouseleave="() => _isHoveringThumbUp = false"
                                OnClick="@(() => OnFeedbackButtonClicked(true))" />
@@ -90,6 +110,7 @@
                                Size="Size.Small"
                                Variant="Variant.Text"
                                Class="feedback-button"
+                               Disabled="@ReadOnly"
                                @onmouseenter="() => _isHoveringThumbDown = true"
                                @onmouseleave="() => _isHoveringThumbDown = false"
                                OnClick="@(() => OnFeedbackButtonClicked(false))" />
@@ -112,16 +133,22 @@
     /// The feedback for this message, if any.
     /// </summary>
     [Parameter]
-    public MessageFeedbackInfo? Feedback { get; set; }
+    public MessageFeedbackResponse? Feedback { get; set; }
 
     /// <summary>
     /// Number of tool calls associated with this message.
     /// </summary>
     [Parameter]
     public int ToolCallCount { get; set; }
+    
+    /// <summary>
+    /// The list of tool calls.
+    /// </summary>
+    [Parameter]
+    public List<MessageToolCallResponse>? ToolCalls { get; set; }
 
     /// <summary>
-    /// Whether to show in read-only mode (no interactive buttons).
+    /// Whether to show in read-only mode (navigation instead of action).
     /// </summary>
     [Parameter]
     public bool ReadOnly { get; set; } = true;
@@ -134,7 +161,7 @@
     public bool ShowFeedbackButtons { get; set; }
 
     /// <summary>
-    /// The message ID for event callbacks.
+    /// The message ID for event callbacks and navigation.
     /// </summary>
     [Parameter]
     public int? MessageId { get; set; }
@@ -151,9 +178,26 @@
     [Parameter]
     public EventCallback<(int MessageId, bool IsPositive)> OnFeedbackClick { get; set; }
 
+    /// <summary>
+    /// Event callback when metrics icon is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> OnMetricsClick { get; set; }
+
     private async Task OnToolCallsClicked()
     {
-        if (MessageId.HasValue)
+        if (!MessageId.HasValue) return;
+
+        if (ReadOnly)
+        {
+            if (ToolCalls != null && ToolCalls.Any())
+            {
+                 // Navigate to the first tool call detail
+                 NavigationManager.NavigateTo($"/admin/tool-calls/{ToolCalls.First().Id}");
+            }
+            // else: maybe navigate to tool list filtered by message? For now just tool-calls/{Id} is the main request
+        }
+        else
         {
             await OnToolCallsClick.InvokeAsync(MessageId.Value);
         }
@@ -164,6 +208,28 @@
         if (MessageId.HasValue)
         {
             await OnFeedbackClick.InvokeAsync((MessageId.Value, isPositive));
+        }
+    }
+    
+    private void OnFeedbackIconClicked()
+    {
+         if (ReadOnly && Feedback != null)
+         {
+             NavigationManager.NavigateTo($"/admin/feedback/{Feedback.Id}");
+         }
+    }
+
+    private async Task OnMetricsClicked()
+    {
+        if (!MessageId.HasValue) return;
+        
+        if (ReadOnly)
+        {
+            NavigationManager.NavigateTo($"/admin/metrics/{MessageId}");
+        }
+        else
+        {
+            await OnMetricsClick.InvokeAsync(MessageId.Value);
         }
     }
 }
