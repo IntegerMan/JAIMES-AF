@@ -70,8 +70,8 @@ public class PlayerAgencyEvaluator(IChatClient chatClient) : IEvaluator
         {
             if (!string.IsNullOrWhiteSpace(responseText))
             {
-                EvaluationResponse? evalResponse =
-                    JsonSerializer.Deserialize<EvaluationResponse>(responseText, JsonSerializerOptions.Web);
+                ChatBasedEvaluationResponse? evalResponse =
+                    JsonSerializer.Deserialize<ChatBasedEvaluationResponse>(responseText, JsonSerializerOptions.Web);
                 if (evalResponse != null)
                 {
                     score = evalResponse.Score;
@@ -103,7 +103,7 @@ public class PlayerAgencyEvaluator(IChatClient chatClient) : IEvaluator
         return new EvaluationResult(metric);
     }
 
-    private class EvaluationResponse
+    private class ChatBasedEvaluationResponse
     {
         [JsonPropertyName("score")] public int Score { get; set; }
 
