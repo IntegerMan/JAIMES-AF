@@ -47,7 +47,7 @@
                  GroupExpanded="true">
         <Columns>
 
-            <TemplateColumn Title="Game" Groupable="true" Grouping="true">
+            <PropertyColumn Property="x => x.GameId" Title="Game" Groupable="true" Grouping="true">
                 <CellTemplate>
                     <MudLink Href="@($"/games/{context.Item.GameId}")">
                         @(context.Item.GamePlayerName ?? "Player") in @(context.Item.GameScenarioName ?? "Scenario") (@(context.Item.GameRulesetId ?? "Unknown"))
@@ -65,7 +65,7 @@
                         <MudText Typo="Typo.caption" Class="text-muted">(@context.Grouping.Count() metrics)</MudText>
                     </MudStack>
                 </GroupTemplate>
-            </TemplateColumn>
+            </PropertyColumn>
             <PropertyColumn Property="x => x.MessageId" Title="Message" Groupable="true" Grouping="true">
                 <CellTemplate>
                     <MudLink Href="@($"/admin/metrics/{context.Item.MessageId}")">

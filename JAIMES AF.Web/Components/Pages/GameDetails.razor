@@ -59,15 +59,6 @@
 						               OnClick="EnterTitleEditMode"/>
 					</MudStack>
 				}
-				<MudText Typo="Typo.body2" Class="text-muted">
-					<strong>@_game!.PlayerName</strong> playing <strong>@_game!.ScenarioName</strong> |
-					Ruleset: <strong>@_game!.RulesetName</strong> |
-					Created: @ToLocalTime(_game!.CreatedAt).ToString("g")
-					@if (_game!.LastPlayedAt.HasValue)
-					{
-						<text> | Last played: @ToLocalTime(_game!.LastPlayedAt.Value).ToString("g")</text>
-					}
-				</MudText>
 			</div>
 
 			<div id="chat-scroll-container" class="chat-scroll">
