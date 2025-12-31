@@ -41,7 +41,7 @@
             </PropertyColumn>
             <PropertyColumn Property="x => x.Comment" Title="Comment">
                 <CellTemplate>
-                    <MudLink OnClick="@(() => ShowContextAsync(context.Item))" Typo="Typo.body2" Color="Color.Inherit" Underline="Underline.Hover" Style="cursor: pointer;">
+                    <MudLink Href="@($"/admin/feedback/{context.Item.Id}")" Typo="Typo.body2" Color="Color.Inherit" Underline="Underline.Hover">
                         @context.Item.Comment
                     </MudLink>
                 </CellTemplate>
@@ -54,12 +54,12 @@
                             @foreach (var tool in context.Item.ToolNames.Take(3))
                             {
                                 <MudLink Href="@($"/admin/tools/{Uri.EscapeDataString(tool)}")" Typo="Typo.body2">
-                                    <MudChip Color="Color.Secondary" Size="Size.Small">@tool</MudChip>
+                                    <MudChip T="string" Color="Color.Secondary" Size="Size.Small">@tool</MudChip>
                                 </MudLink>
                             }
                             @if (context.Item.ToolNames.Count > 3)
                             {
-                                <MudChip Color="Color.Default" Size="Size.Small">+@(context.Item.ToolNames.Count - 3) more</MudChip>
+                                <MudChip T="string" Color="Color.Default" Size="Size.Small">+@(context.Item.ToolNames.Count - 3) more</MudChip>
                             }
                         </MudStack>
                     }
@@ -81,19 +81,21 @@
             <TemplateColumn Title="Actions">
                 <CellTemplate>
                     <div class="d-flex">
-                        <MudTooltip Text="View Context">
-                            <MudIconButton Icon="@Icons.Material.Filled.Chat" 
+                        <MudTooltip Text="View Details">
+                            <MudIconButton Icon="@Icons.Material.Filled.Visibility" 
                                            Color="Color.Primary" 
                                            Size="Size.Small"
-                                           OnClick="@(() => ShowContextAsync(context.Item))" />
+                                           Href="@($"/admin/feedback/{context.Item.Id}")" />
                         </MudTooltip>
-                        <MudTooltip Text="Open Game">
-                            <MudIconButton Icon="@Icons.Material.Filled.OpenInNew" 
-                                           Color="Color.Secondary" 
-                                           Size="Size.Small"
-                                           Href="@($"/games/{context.Item.GameId}")"
-                                           Target="_blank" />
-                        </MudTooltip>
+                        @if (context.Item.GameId != Guid.Empty)
+                        {
+                            <MudTooltip Text="View Game">
+                                <MudIconButton Icon="@Icons.Material.Filled.Games" 
+                                               Color="Color.Secondary" 
+                                               Size="Size.Small"
+                                               Href="@($"/games/{context.Item.GameId}")" />
+                            </MudTooltip>
+                        }
                     </div>
                 </CellTemplate>
             </TemplateColumn>
@@ -177,22 +179,7 @@
         };
     }
 
-    private async Task ShowContextAsync(FeedbackListItemDto item)
-    {
-        var parameters = new DialogParameters<FeedbackContextDialog>
-        {
-            { x => x.MessageId, item.MessageId }
-        };
 
-        var options = new DialogOptions
-        {
-            CloseOnEscapeKey = true,
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true
-        };
-
-        await DialogService.ShowAsync<FeedbackContextDialog>("Feedback Context", parameters, options);
-    }
 
     private void ClearFilters()
     {

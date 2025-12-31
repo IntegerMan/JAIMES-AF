@@ -128,5 +128,42 @@ public class MessageFeedbackService(IDbContextFactory<JaimesDbContext> contextFa
             PageSize = pageSize
         };
     }
+
+    public async Task<MattEland.Jaimes.ServiceDefinitions.Responses.FeedbackFullDetailsResponse?>
+        GetFeedbackDetailsAsync(int id, CancellationToken cancellationToken = default)
+    {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        MessageFeedback? mf = await context.MessageFeedbacks
+            .AsNoTracking()
+            .Include(mf => mf.Message)
+            .ThenInclude(m => m!.Game)
+            .ThenInclude(g => g!.Player)
+            .Include(mf => mf.Message)
+            .ThenInclude(m => m!.Game)
+            .ThenInclude(g => g!.Scenario)
+            .Include(mf => mf.Message)
+            .ThenInclude(m => m!.ToolCalls)
+            .Include(mf => mf.InstructionVersion)
+            .FirstOrDefaultAsync(mf => mf.Id == id, cancellationToken);
+
+        if (mf == null) return null;
+
+        return new MattEland.Jaimes.ServiceDefinitions.Responses.FeedbackFullDetailsResponse
+        {
+            Id = mf.Id,
+            MessageId = mf.MessageId,
+            IsPositive = mf.IsPositive,
+            Comment = mf.Comment,
+            CreatedAt = mf.CreatedAt,
+            InstructionVersionId = mf.InstructionVersionId,
+            AgentVersion = mf.InstructionVersion?.VersionNumber,
+            GameId = mf.Message?.GameId ?? Guid.Empty,
+            GamePlayerName = mf.Message?.Game?.Player?.Name,
+            GameScenarioName = mf.Message?.Game?.Scenario?.Name,
+            GameRulesetId = mf.Message?.Game?.RulesetId,
+            ToolNames = mf.Message?.ToolCalls?.Select(tc => tc.ToolName).Distinct().ToList()
+        };
+    }
 }
 
