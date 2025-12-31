@@ -13,6 +13,7 @@ namespace MattEland.Jaimes.ServiceLayer.Services;
 public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextFactory) : IMessageSentimentService
 {
     /// <inheritdoc />
+    /// <inheritdoc />
     public async Task<SentimentListResponse> GetSentimentListAsync(
         int page,
         int pageSize,
@@ -32,7 +33,9 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
             .Include(s => s.Message)
             .ThenInclude(m => m!.ToolCalls)
             .Include(s => s.Message)
-            .ThenInclude(m => m!.InstructionVersion);
+            .ThenInclude(m => m!.InstructionVersion)
+            .Include(s => s.Message)
+            .ThenInclude(m => m!.NextMessage);
 
         // Apply filters
         if (filters != null)
@@ -69,6 +72,49 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
                 query = query.Where(s => s.Message != null &&
                                          s.Message.InstructionVersionId == filters.InstructionVersionId.Value);
             }
+
+            // Apply feedback filters in the database query (Use NextMessageId to link to the response message)
+            if (filters.HasFeedback.HasValue)
+            {
+                bool hasFeedback = filters.HasFeedback.Value;
+                if (hasFeedback)
+                {
+                    query = query.Where(s => s.Message != null &&
+                                             s.Message.NextMessageId.HasValue &&
+                                             context.MessageFeedbacks.Any(f =>
+                                                 f.MessageId == s.Message.NextMessageId.Value));
+                }
+                else
+                {
+                    query = query.Where(s => s.Message == null ||
+                                             !s.Message.NextMessageId.HasValue ||
+                                             !context.MessageFeedbacks.Any(f =>
+                                                 f.MessageId == s.Message.NextMessageId.Value));
+                }
+            }
+
+            if (filters.FeedbackType.HasValue)
+            {
+                int feedbackType = filters.FeedbackType.Value;
+                if (feedbackType > 0) // Positive
+                {
+                    query = query.Where(s => s.Message != null &&
+                                             s.Message.NextMessageId.HasValue &&
+                                             context.MessageFeedbacks.Any(f =>
+                                                 f.MessageId == s.Message.NextMessageId.Value && f.IsPositive));
+                }
+                else if (feedbackType < 0) // Negative
+                {
+                    query = query.Where(s => s.Message != null &&
+                                             s.Message.NextMessageId.HasValue &&
+                                             context.MessageFeedbacks.Any(f =>
+                                                 f.MessageId == s.Message.NextMessageId.Value && !f.IsPositive));
+                }
+                else // Neutral (0) - No neutral feedback exists, so return nothing
+                {
+                    query = query.Where(s => false);
+                }
+            }
         }
 
         // Order by created date descending (newest first)
@@ -85,72 +131,40 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
         Dictionary<int, MessageFeedback?> feedbackByUserMessageId = new();
         if (items.Count != 0)
         {
-            List<int> messageIds = items.Select(s => s.MessageId).ToList();
-
-            // Get the next message IDs (AI responses) for each user message
-            var nextMessages = await context.Messages
-                .AsNoTracking()
-                .Where(m => messageIds.Contains(m.Id))
-                .Select(m => new
-                {
-                    UserMessageId = m.Id,
-                    NextMessageId = context.Messages
-                        .Where(nm => nm.GameId == m.GameId && nm.Id > m.Id)
-                        .OrderBy(nm => nm.Id)
-                        .Select(nm => (int?)nm.Id)
-                        .FirstOrDefault()
-                })
-                .ToListAsync(cancellationToken);
-
-            List<int> responseMessageIds = nextMessages
-                .Where(x => x.NextMessageId.HasValue)
-                .Select(x => x.NextMessageId!.Value)
+            // Collect next message IDs from the loaded items
+            List<int> responseMessageIds = items
+                .Where(s => s.Message?.NextMessageId.HasValue == true)
+                .Select(s => s.Message!.NextMessageId!.Value)
+                .Distinct()
                 .ToList();
 
             // Get feedback for those response messages
-            List<MessageFeedback> feedbacks = await context.MessageFeedbacks
-                .AsNoTracking()
-                .Where(f => responseMessageIds.Contains(f.MessageId))
-                .ToListAsync(cancellationToken);
-
-            Dictionary<int, MessageFeedback> feedbackByResponseId = feedbacks.ToDictionary(f => f.MessageId);
-
-            foreach (var nm in nextMessages)
+            Dictionary<int, MessageFeedback> feedbackByResponseId = new();
+            if (responseMessageIds.Count != 0)
             {
-                if (nm.NextMessageId.HasValue && feedbackByResponseId.TryGetValue(nm.NextMessageId.Value, out var fb))
+                List<MessageFeedback> feedbacks = await context.MessageFeedbacks
+                    .AsNoTracking()
+                    .Where(f => responseMessageIds.Contains(f.MessageId))
+                    .ToListAsync(cancellationToken);
+
+                feedbackByResponseId = feedbacks.ToDictionary(f => f.MessageId);
+            }
+
+            foreach (var item in items)
+            {
+                if (item.Message?.NextMessageId.HasValue == true &&
+                    feedbackByResponseId.TryGetValue(item.Message.NextMessageId.Value, out var fb))
                 {
-                    feedbackByUserMessageId[nm.UserMessageId] = fb;
+                    feedbackByUserMessageId[item.MessageId] = fb;
                 }
                 else
                 {
-                    feedbackByUserMessageId[nm.UserMessageId] = null;
+                    feedbackByUserMessageId[item.MessageId] = null;
                 }
             }
         }
 
-        // Apply feedback filters in memory (after fetching, since it requires join logic)
-        IEnumerable<MessageSentiment> filteredItems = items;
-        if (filters?.HasFeedback == true)
-        {
-            filteredItems = filteredItems.Where(s =>
-                feedbackByUserMessageId.TryGetValue(s.MessageId, out var fb) && fb != null);
-        }
-        else if (filters?.HasFeedback == false)
-        {
-            filteredItems = filteredItems.Where(s =>
-                !feedbackByUserMessageId.TryGetValue(s.MessageId, out var fb) || fb == null);
-        }
-
-        if (filters?.FeedbackType.HasValue == true)
-        {
-            bool isPositive = filters.FeedbackType.Value > 0;
-            filteredItems = filteredItems.Where(s =>
-                feedbackByUserMessageId.TryGetValue(s.MessageId, out var fb) &&
-                fb != null &&
-                fb.IsPositive == isPositive);
-        }
-
-        IEnumerable<SentimentListItemDto> dtos = filteredItems.Select(s =>
+        IEnumerable<SentimentListItemDto> dtos = items.Select(s =>
         {
             feedbackByUserMessageId.TryGetValue(s.MessageId, out var feedback);
 

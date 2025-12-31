@@ -56,7 +56,7 @@ public class AdminFilterParams
     public int? Sentiment { get; set; }
 
     /// <summary>
-    /// Filter by feedback type on the AI response: -1 (negative), 0 (neutral), 1 (positive), null for any.
+    /// Filter by feedback type on the AI response: -1 (negative), 0 (neutral - returns no results), 1 (positive), null for any.
     /// Use with HasFeedback to filter for messages with or without feedback.
     /// </summary>
     public int? FeedbackType { get; set; }
