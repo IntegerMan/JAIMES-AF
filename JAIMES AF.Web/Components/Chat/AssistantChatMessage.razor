@@ -56,13 +56,13 @@
     public bool ReadOnly { get; set; }
 
     [Parameter]
-    public List<MessageToolCallInfo>? ToolCalls { get; set; }
+    public List<MessageToolCallResponse>? ToolCalls { get; set; }
 
     [Parameter]
     public List<MessageEvaluationMetricResponse>? Metrics { get; set; }
 
     [Parameter]
-    public MessageFeedbackInfo? Feedback { get; set; }
+    public MessageFeedbackResponse? Feedback { get; set; }
 
     [Parameter]
     public EventCallback<int> OnToolCallsClick { get; set; }

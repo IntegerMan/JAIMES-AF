@@ -59,4 +59,48 @@ public static partial class MessageMapper
     {
         return messageSentiment != null ? (int)messageSentiment.SentimentSource : null;
     }
+
+    [MapProperty(nameof(Message.ToolCalls), nameof(MessageContextDto.ToolCalls))]
+    [MapProperty(nameof(Message.MessageSentiment), nameof(MessageContextDto.SentimentSource),
+        Use = nameof(MapSentimentSourceFromMessageSentiment))]
+    [MapProperty(nameof(Message.InstructionVersion), nameof(MessageDto.ModelName),
+        Use = nameof(MapModelNameFromInstructionVersion))]
+    [MapProperty(nameof(Message.InstructionVersion), nameof(MessageDto.ModelProvider),
+        Use = nameof(MapModelProviderFromInstructionVersion))]
+    [MapProperty(nameof(Message.InstructionVersion), nameof(MessageDto.ModelEndpoint),
+        Use = nameof(MapModelEndpointFromInstructionVersion))]
+    [MapProperty(nameof(Message.Player), nameof(MessageDto.ParticipantName),
+        Use = nameof(MapParticipantNameFromPlayer))]
+    [MapperIgnoreTarget(nameof(MessageContextDto.Metrics))]
+    [MapperIgnoreTarget(nameof(MessageContextDto.Feedback))]
+    [MapperIgnoreSource(nameof(Message.Game))]
+    [MapperIgnoreSource(nameof(Message.ChatHistoryId))]
+    [MapperIgnoreSource(nameof(Message.ChatHistory))]
+    [MapperIgnoreSource(nameof(Message.Agent))]
+    [MapperIgnoreSource(nameof(Message.MessageEmbedding))]
+    [MapperIgnoreSource(nameof(Message.PreviousMessageId))]
+    [MapperIgnoreSource(nameof(Message.PreviousMessage))]
+    [MapperIgnoreSource(nameof(Message.NextMessageId))]
+    [MapperIgnoreSource(nameof(Message.NextMessage))]
+    [MapperIgnoreSource(nameof(Message.Model))]
+    [MapperIgnoreSource(nameof(Message.ModelId))]
+    public static partial MessageContextDto ToContextDto(this Message message);
+
+    private static MessageFeedbackResponse? MapFeedbackFromCollection(ICollection<MessageFeedback> feedbacks)
+    {
+        var feedback = feedbacks.FirstOrDefault();
+        return feedback == null ? null : ToResponse(feedback);
+    }
+
+    [MapperIgnoreSource(nameof(MessageEvaluationMetric.EvaluationModel))]
+    [MapperIgnoreSource(nameof(MessageEvaluationMetric.Message))]
+    public static partial MessageEvaluationMetricResponse ToResponse(MessageEvaluationMetric metric);
+
+    [MapperIgnoreSource(nameof(MessageFeedback.Message))]
+    [MapperIgnoreSource(nameof(MessageFeedback.InstructionVersion))]
+    public static partial MessageFeedbackResponse ToResponse(MessageFeedback feedback);
+
+    [MapperIgnoreSource(nameof(MessageToolCall.Message))]
+    [MapperIgnoreSource(nameof(MessageToolCall.InstructionVersion))]
+    private static partial MessageToolCallResponse ToResponse(MessageToolCall toolCall);
 }

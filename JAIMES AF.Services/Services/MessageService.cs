@@ -9,7 +9,7 @@ namespace MattEland.Jaimes.ServiceLayer.Services;
 
 public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) : IMessageService
 {
-    public async Task<IEnumerable<MessageDto>> GetMessageContextAsync(int messageId, int count,
+    public async Task<IEnumerable<MessageContextDto>> GetMessageContextAsync(int messageId, int count,
         CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -33,14 +33,45 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
             .OrderByDescending(m => m.Id)
             .Take(count)
             .Include(m => m.Player)
-            .Include(m => m.InstructionVersion)
-            .Include(m => m.Agent)
             .Include(m => m.ChatHistory)
+            .Include(m => m.ToolCalls)
+            .Include(m => m.MessageSentiment)
+            .ToListAsync(cancellationToken);
+
+        // Fetch metrics and feedback manually since navigation properties aren't configured
+        var messageIds = messages.Select(m => m.Id).ToList();
+
+        var metrics = await context.MessageEvaluationMetrics
+            .AsNoTracking()
+            .Where(m => messageIds.Contains(m.MessageId))
+            .ToListAsync(cancellationToken);
+
+        var feedbacks = await context.MessageFeedbacks
+            .AsNoTracking()
+            .Where(f => messageIds.Contains(f.MessageId))
             .ToListAsync(cancellationToken);
 
         // Reverse to return them in chronological order
         messages.Reverse();
 
-        return messages.Select(m => m.ToDto());
+        var dtos = new List<MessageContextDto>();
+        foreach (var message in messages)
+        {
+            var dto = message.ToContextDto();
+            dto.Metrics = metrics
+                .Where(m => m.MessageId == message.Id)
+                .Select(MessageMapper.ToResponse)
+                .ToList();
+
+            var feedback = feedbacks.FirstOrDefault(f => f.MessageId == message.Id);
+            if (feedback != null)
+            {
+                dto.Feedback = MessageMapper.ToResponse(feedback);
+            }
+
+            dtos.Add(dto);
+        }
+
+        return dtos;
     }
 }

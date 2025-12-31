@@ -8,6 +8,7 @@
 @using System.Linq
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager NavigationManager
+@inject HttpClient Http
 @rendermode InteractiveServer
 
 <PageTitle>Message Evaluation Metrics</PageTitle>
@@ -28,7 +29,7 @@
     {
         <MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
     }
-    else if (_metrics == null || _metrics.Count == 0)
+    else if (_metrics == null || !_metrics.Any())
     {
         <MudText Typo="Typo.body1">No evaluation metrics found for this message.</MudText>
     }
@@ -144,6 +145,9 @@
                                         IsFirstParagraph="@isFirstParagraph"
                                         IsLastParagraph="@isLastParagraph"
                                         ReadOnly="true"
+                                        Metrics="@m.Metrics"
+                                        Feedback="@m.Feedback"
+                                        ToolCalls="@m.ToolCalls"
                                         Highlighted="@isTargetMessage" />
                                 }
                             }
@@ -162,8 +166,8 @@
 @code {
     [Parameter] public int MessageId { get; set; }
     
-    private List<MessageEvaluationMetricResponse>? _metrics;
-    private List<MessageDto>? _contextMessages;
+    private IEnumerable<MessageEvaluationMetricResponse> _metrics = new List<MessageEvaluationMetricResponse>();
+    private IEnumerable<MessageContextDto>? _contextMessages;
     private bool _isLoading = true;
     private string? _errorMessage;
     private Guid? _gameId;
@@ -171,8 +175,7 @@
     protected override async Task OnParametersSetAsync()
     {
         await LoadMetricsAsync();
-        // Load context independently to allow metrics to show while context loads
-        _ = LoadContextAsync(); 
+        await LoadContextAsync();
     }
 
     private async Task LoadMetricsAsync()
@@ -182,27 +185,13 @@
 
         try
         {
-            var client = HttpClientFactory.CreateClient("Api");
-            _metrics = await client.GetFromJsonAsync<List<MessageEvaluationMetricResponse>>($"/messages/{MessageId}/metrics");
-            
-            // Try to get the game ID from the message metadata endpoint
-            try
-            {
-                var metadataResponse = await client.GetAsync($"/messages/{MessageId}/metadata");
-                if (metadataResponse.IsSuccessStatusCode)
-                {
-                    var metadata = await metadataResponse.Content.ReadFromJsonAsync<MessageMetadataResponse>();
-                    _gameId = metadata?.GameId;
-                }
-            }
-            catch
-            {
-                // Ignore - we just won't show the game link
-            }
+            _metrics = await Http.GetFromJsonAsync<IEnumerable<MessageEvaluationMetricResponse>>($"/messages/{MessageId}/metrics") 
+                       ?? new List<MessageEvaluationMetricResponse>();
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Failed to load metrics: {ex.Message}";
+            _errorMessage = "Failed to load evaluation metrics.";
+            Console.WriteLine($"Error loading metrics: {ex}");
         }
         finally
         {
@@ -214,19 +203,27 @@
     {
         try
         {
-            var client = HttpClientFactory.CreateClient("Api");
-            // Load more context to ensure we see surrounding messages
-            var messages = await client.GetFromJsonAsync<List<MessageDto>>($"/messages/{MessageId}/context?count=10");
+            _contextMessages = await Http.GetFromJsonAsync<IEnumerable<MessageContextDto>>($"/messages/{MessageId}/context?count=10");
             
-            if (messages != null)
+            // Extract GameId from the context messages since they contain it
+            if (_contextMessages != null && _contextMessages.Any())
             {
-                _contextMessages = messages;
-                StateHasChanged();
+                 // Prefer the target message's GameId, fallback to any
+                 var target = _contextMessages.FirstOrDefault(m => m.Id == MessageId);
+                 if (target != null && target.GameId != Guid.Empty) 
+                 {
+                     _gameId = target.GameId;
+                 }
+                 else 
+                 {
+                     _gameId = _contextMessages.First().GameId;
+                 }
             }
+            StateHasChanged();
         }
-        catch
+        catch (Exception ex)
         {
-            // Ignore context loading failures, just don't show it
+            Console.WriteLine($"Error loading context: {ex}");
         }
     }
 

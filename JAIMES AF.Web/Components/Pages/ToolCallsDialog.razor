@@ -1,5 +1,6 @@
 @using MudBlazor
 @using System.Text.Json
+@using MattEland.Jaimes.ServiceDefinitions.Responses
 @using MattEland.Jaimes.Web.Components.Pages
 
 <MudDialog>
@@ -53,9 +54,9 @@
 
 @code {
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
-    [Parameter] public List<MessageToolCallInfo>? ToolCalls { get; set; }
+    [Parameter] public List<MessageToolCallResponse>? ToolCalls { get; set; }
 
-    private List<MessageToolCallInfo>? _toolCalls;
+    private List<MessageToolCallResponse>? _toolCalls;
 
     protected override void OnParametersSet()
     {

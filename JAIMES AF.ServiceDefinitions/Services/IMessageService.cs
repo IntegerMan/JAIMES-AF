@@ -1,4 +1,5 @@
 using MattEland.Jaimes.Domain;
+using MattEland.Jaimes.ServiceDefinitions.Responses;
 
 namespace MattEland.Jaimes.ServiceDefinitions.Services;
 
@@ -11,5 +12,6 @@ public interface IMessageService
     /// <param name="count">The maximum number of messages to retrieve.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A list of MessageDto objects.</returns>
-    Task<IEnumerable<MessageDto>> GetMessageContextAsync(int messageId, int count, CancellationToken cancellationToken = default);
+    Task<IEnumerable<MessageContextDto>> GetMessageContextAsync(int messageId, int count,
+        CancellationToken cancellationToken = default);
 }
