@@ -9,6 +9,7 @@ public static partial class MessageResponseMapper
     [MapProperty(nameof(MessageDto.Text), nameof(MessageResponse.Text))]
     [MapProperty(nameof(MessageDto.CreatedAt), nameof(MessageResponse.CreatedAt))]
     [MapProperty(nameof(MessageDto.AgentId), nameof(MessageResponse.AgentId))]
+    [MapProperty(nameof(MessageDto.AgentName), nameof(MessageResponse.AgentName))]
     [MapProperty(nameof(MessageDto.InstructionVersionId), nameof(MessageResponse.InstructionVersionId))]
     [MapProperty(nameof(MessageDto.IsScriptedMessage), nameof(MessageResponse.IsScriptedMessage))]
     [MapProperty(nameof(MessageDto.Sentiment), nameof(MessageResponse.Sentiment))]

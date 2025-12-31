@@ -12,6 +12,7 @@ public partial class NewGame
     private PlayerInfoResponse[] _players = [];
     private string? _selectedScenarioId;
     private string? _selectedPlayerId;
+    private string? _title;
     private bool _isLoading = true;
     private bool _isCreating = false;
     private string? _errorMessage;
@@ -83,11 +84,13 @@ public partial class NewGame
             NewGameRequest request = new()
             {
                 ScenarioId = _selectedScenarioId,
-                PlayerId = _selectedPlayerId
+                PlayerId = _selectedPlayerId,
+                Title = _title
             };
 
             logger.LogInformation("Creating game with ScenarioId: {ScenarioId}, PlayerId: {PlayerId}",
-                _selectedScenarioId, _selectedPlayerId);
+                _selectedScenarioId,
+                _selectedPlayerId);
             HttpResponseMessage response = await Http.PostAsJsonAsync("/games/", request);
 
             logger.LogInformation("Game creation response received. StatusCode: {StatusCode}", response.StatusCode);
@@ -96,7 +99,8 @@ public partial class NewGame
             {
                 NewGameResponse? gameResponse = await response.Content.ReadFromJsonAsync<NewGameResponse>();
                 logger.LogInformation("Response parsed. GameResponse is null: {IsNull}, GameId: {GameId}",
-                    gameResponse == null, gameResponse?.GameId);
+                    gameResponse == null,
+                    gameResponse?.GameId);
 
                 if (gameResponse != null)
                 {
@@ -126,7 +130,9 @@ public partial class NewGame
 
                 logger.LogError(
                     "Game creation failed. StatusCode: {StatusCode}, ReasonPhrase: {ReasonPhrase}, Body: {Body}",
-                    response.StatusCode, response.ReasonPhrase, body);
+                    response.StatusCode,
+                    response.ReasonPhrase,
+                    body);
                 _errorMessage =
                     $"Failed to create game: {response.ReasonPhrase}{(string.IsNullOrEmpty(body) ? string.Empty : " - " + body)}";
                 StateHasChanged();

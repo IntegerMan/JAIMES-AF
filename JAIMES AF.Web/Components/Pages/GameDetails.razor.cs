@@ -26,6 +26,9 @@ public partial class GameDetails : IAsyncDisposable
     private Dictionary<int, List<MessageEvaluationMetricResponse>> _messageMetrics = new();
     private Dictionary<int, MessageSentimentInfo> _messageSentiment = new();
     private Dictionary<int, MessageAgentInfo> _messageAgentInfo = new();
+    private Dictionary<ChatMessage, MessageAgentInfo> _pendingMessageAgentInfo = new();
+    private string? _defaultAgentId;
+    private string? _defaultAgentName;
     private AIAgent? _agent;
 
     private GameStateResponse? _game;
@@ -103,21 +106,28 @@ public partial class GameDetails : IAsyncDisposable
 
             // Track agent info per message
             _messageAgentInfo.Clear();
+            _pendingMessageAgentInfo.Clear();
             foreach (var message in orderedMessages)
             {
                 if ((!string.IsNullOrEmpty(message.AgentId) || message.InstructionVersionId.HasValue) &&
                     message.Participant == ChatParticipant.GameMaster)
                 {
-                    _messageAgentInfo[message.Id] = new MessageAgentInfo
+                    var info = new MessageAgentInfo
                     {
                         AgentId = message.AgentId,
-                        // We don't have the agent name in the message response directly unless we fetch it separately
-                        // But we can fallback to AgentId if needed. Ideally MessageResponse should have AgentName.
-                        // For now we'll do our best.
+                        AgentName = message.AgentName,
                         InstructionVersionId = message.InstructionVersionId,
                         // We don't have version number either.
                         IsScriptedMessage = message.IsScriptedMessage
                     };
+                    _messageAgentInfo[message.Id] = info;
+
+                    // Capture default agent info from history (e.g. from the first or any message)
+                    if (_defaultAgentId == null && !string.IsNullOrEmpty(info.AgentId))
+                    {
+                        _defaultAgentId = info.AgentId;
+                        _defaultAgentName = info.AgentName;
+                    }
                 }
             }
 
@@ -348,6 +358,19 @@ public partial class GameDetails : IAsyncDisposable
                 {
                     AuthorName = message.AuthorName
                 };
+
+                // For Assistant messages, populate pending agent info so the icon/name appears immediately
+                if (normalizedRole == ChatRole.Assistant)
+                {
+                    _pendingMessageAgentInfo[normalizedMessage] = new MessageAgentInfo
+                    {
+                        AgentId = _defaultAgentId, // Use default from history
+                        AgentName = !string.IsNullOrWhiteSpace(message.AuthorName)
+                            ? message.AuthorName
+                            : _defaultAgentName,
+                        IsScriptedMessage = false // Live messages are generally not scripted
+                    };
+                }
 
                 _logger?.LogInformation("Received message '{Text}' from {Role}", message.Text, normalizedRole);
                 _messages.Add(normalizedMessage);

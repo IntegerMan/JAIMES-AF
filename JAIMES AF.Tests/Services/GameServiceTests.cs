@@ -62,7 +62,7 @@ public class GameServiceTests : IAsyncLifetime
 
         // Act
         GameDto gameDto =
-            await _gameService.CreateGameAsync(scenarioId, playerId, TestContext.Current.CancellationToken);
+            await _gameService.CreateGameAsync(scenarioId, playerId, null, TestContext.Current.CancellationToken);
 
         // Assert
         gameDto.GameId.ShouldNotBe(Guid.Empty);
@@ -265,7 +265,7 @@ public class GameServiceTests : IAsyncLifetime
 
         // Act & Assert
         ArgumentException exception = await Should.ThrowAsync<ArgumentException>(async () =>
-            await _gameService.CreateGameAsync(scenarioId, playerId, TestContext.Current.CancellationToken)
+            await _gameService.CreateGameAsync(scenarioId, playerId, null, TestContext.Current.CancellationToken)
         );
         exception.Message.ShouldContain("Player 'nonexistent-player' does not exist");
     }
@@ -279,7 +279,7 @@ public class GameServiceTests : IAsyncLifetime
 
         // Act & Assert
         ArgumentException exception = await Should.ThrowAsync<ArgumentException>(async () =>
-            await _gameService.CreateGameAsync(scenarioId, playerId, TestContext.Current.CancellationToken)
+            await _gameService.CreateGameAsync(scenarioId, playerId, null, TestContext.Current.CancellationToken)
         );
         exception.Message.ShouldContain("Scenario 'nonexistent-scenario' does not exist");
     }
@@ -298,7 +298,7 @@ public class GameServiceTests : IAsyncLifetime
 
         // Act & Assert
         ArgumentException exception = await Should.ThrowAsync<ArgumentException>(async () =>
-            await _gameService.CreateGameAsync(scenarioId, playerId, TestContext.Current.CancellationToken)
+            await _gameService.CreateGameAsync(scenarioId, playerId, null, TestContext.Current.CancellationToken)
         );
         exception.Message.ShouldContain("uses ruleset 'different-ruleset'");
         exception.Message.ShouldContain("uses ruleset 'test-ruleset'");
@@ -322,6 +322,7 @@ public class GameServiceTests : IAsyncLifetime
         // Act
         GameDto gameDto = await _gameService.CreateGameAsync("scenario-with-greeting",
             "test-player",
+            null,
             TestContext.Current.CancellationToken);
 
         // Assert

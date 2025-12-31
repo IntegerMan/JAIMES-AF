@@ -9,6 +9,7 @@ public record MessageResponse
     public required string ParticipantName { get; set; }
     public DateTime CreatedAt { get; set; }
     public string? AgentId { get; set; }
+    public string? AgentName { get; set; }
 
     public int? InstructionVersionId { get; set; }
     public bool IsScriptedMessage { get; set; }

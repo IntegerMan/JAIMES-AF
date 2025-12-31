@@ -7,7 +7,7 @@
 {
     <MudChat ChatPosition="ChatBubblePosition.Start"
              Variant="Variant.Filled"
-             Color="@(Highlighted || IsVersionSwitch ? Color.Primary : Color)">
+             Color="@(Highlighted ? Color.Primary : Color)">
         @if (IsFirstParagraph)
         {
             <MudChatHeader Name="Game Master"/>
@@ -24,7 +24,7 @@
                         <MudTooltip Text="@($"{AgentName} v{VersionNumber}")">
                             <MudIconButton Icon="@Icons.Material.Filled.SmartToy"
                                            Size="Size.Small"
-                                           Color="Color.Inherit"
+                                           Color="@(IsVersionSwitch ? Color.Primary : Color.Inherit)"
                                            Href="@($"/agents/{AgentId}/versions/{InstructionVersionId}")"/>
                         </MudTooltip>
                     }

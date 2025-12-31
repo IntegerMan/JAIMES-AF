@@ -94,7 +94,7 @@
                               In read-only context, we want it to navigate. *@
         </MudTooltip>
     }
-    else if (ShowFeedbackButtons && !ReadOnly)
+    else if (ShowFeedbackButtons && !ReadOnly && !ExemptFromProcessing)
     {
         <div class="d-flex align-items-center gap-1">
             <MudTooltip Text="Mark as helpful" Placement="Placement.Top">

@@ -75,7 +75,13 @@
 					bool isExempt = false;
 					int? messageId = GetMessageId(msgIndex);
 
-					if (m.Role == ChatRole.Assistant && messageId.HasValue && _messageAgentInfo.TryGetValue(messageId.Value, out var agentInfo))
+					MessageAgentInfo? agentInfo = null;
+					if (messageId.HasValue)
+						_messageAgentInfo.TryGetValue(messageId.Value, out agentInfo);
+					else
+						_pendingMessageAgentInfo.TryGetValue(m, out agentInfo);
+
+					if (m.Role == ChatRole.Assistant && agentInfo != null)
 					{
 						agentId = agentInfo.AgentId;
 						agentName = agentInfo.AgentName ?? _agent?.Name; // Fallback to current agent name

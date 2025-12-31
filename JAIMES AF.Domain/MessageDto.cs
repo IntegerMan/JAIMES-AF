@@ -8,6 +8,7 @@ public class MessageDto
     public required string ParticipantName { get; init; }
     public DateTime CreatedAt { get; init; }
     public required string AgentId { get; init; }
+    public string? AgentName { get; init; }
     public required int InstructionVersionId { get; init; }
     public bool IsScriptedMessage { get; init; }
 

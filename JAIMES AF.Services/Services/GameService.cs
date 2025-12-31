@@ -11,6 +11,7 @@ public class GameService(
 {
     public async Task<GameDto> CreateGameAsync(string scenarioId,
         string playerId,
+        string? title,
         CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -39,6 +40,7 @@ public class GameService(
             RulesetId = rulesetId,
             ScenarioId = scenarioId,
             PlayerId = playerId,
+            Title = title,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -95,6 +97,8 @@ public class GameService(
             .AsNoTracking()
             .Include(g => g.Messages)
             .ThenInclude(m => m.MessageSentiment)
+            .Include(g => g.Messages)
+            .ThenInclude(m => m.Agent)
             .Include(g => g.Scenario)
             .Include(g => g.Player)
             .Include(g => g.Ruleset)
@@ -111,6 +115,8 @@ public class GameService(
             .AsNoTracking()
             .Include(g => g.Messages)
             .ThenInclude(message => message.MessageSentiment)
+            .Include(g => g.Messages)
+            .ThenInclude(message => message.Agent)
             .Include(g => g.Messages)
             .ThenInclude(message => message.Player)
             .Include(g => g.Messages)
