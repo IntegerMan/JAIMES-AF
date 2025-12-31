@@ -6,7 +6,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.ServiceDiscovery;
-using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using System.Diagnostics;
@@ -83,7 +82,8 @@ public static class Extensions
                     .AddMeter("Jaimes.Agents.Tools")
                     .AddMeter("Microsoft.EntityFrameworkCore")
                     .AddMeter("Npgsql")
-                    .AddRuntimeInstrumentation();
+                    .AddRuntimeInstrumentation()
+                    .AddOtlpExporter(options => { options.Protocol = OtlpExportProtocol.HttpProtobuf; });
             })
             .WithTracing(tracing =>
             {
@@ -148,7 +148,8 @@ public static class Extensions
                     .AddRedisInstrumentation()
                     // Uncomment the following line to enable gRPC instrumentation (requires the OpenTelemetry.Instrumentation.GrpcNetClient package)
                     //.AddGrpcClientInstrumentation()
-                    .AddHttpClientInstrumentation();
+                    .AddHttpClientInstrumentation()
+                    .AddOtlpExporter(options => { options.Protocol = OtlpExportProtocol.HttpProtobuf; });
             });
 
         builder.AddOpenTelemetryExporters();
@@ -160,7 +161,6 @@ public static class Extensions
         where TBuilder : IHostApplicationBuilder
     {
         var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
-        var otlpProtocol = builder.Configuration["OTEL_EXPORTER_OTLP_PROTOCOL"];
 
         // Log the endpoint being used (or lack thereof) to help debug "all or nothing" telemetry issues
         if (!string.IsNullOrWhiteSpace(otlpEndpoint))
@@ -170,31 +170,11 @@ public static class Extensions
         else
         {
             Console.WriteLine(
-                "[Telemetry] OTEL_EXPORTER_OTLP_ENDPOINT is not set. Using default OTLP configuration (usually localhost:4317).");
+                "[Telemetry] OTEL_EXPORTER_OTLP_ENDPOINT is checking - no explicit endpoint found.");
         }
 
-        // Log protocol configuration or fallback
-        if (!string.IsNullOrWhiteSpace(otlpProtocol))
-        {
-            Console.WriteLine($"[Telemetry] configuring OTLP exporter with protocol: {otlpProtocol}");
-        }
-        else
-        {
-            Console.WriteLine($"[Telemetry] OTEL_EXPORTER_OTLP_PROTOCOL is not set. defaulting to HttpProtobuf.");
-        }
-
-        // If the protocol isn't set, default to HttpProtobuf (HTTP/1.1).
-        // We set the environment variable directly because UseOtlpExporter() reads from env vars,
-        // not from Configure<OtlpExporterOptions>.
-        if (string.IsNullOrWhiteSpace(otlpProtocol))
-        {
-            Environment.SetEnvironmentVariable("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf");
-        }
-
-        // Always add the OTLP exporter. 
-        // If the endpoint is missing, it will use defaults (localhost:4317).
-        // This prevents silent failures where telemetry is just turned off.
-        builder.Services.AddOpenTelemetry().UseOtlpExporter();
+        // Exporter is now configured inline in WithMetrics and WithTracing
+        // to ensure the correct protocol (HttpProtobuf) is used.
 
         return builder;
     }
