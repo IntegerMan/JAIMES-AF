@@ -11,7 +11,12 @@ public enum SentimentSource
     Model = 0,
 
     /// <summary>
-    /// The sentiment was manually set by a player/admin.
+    /// The sentiment was manually set by the player from the game UI.
     /// </summary>
-    Player = 1
+    Player = 1,
+
+    /// <summary>
+    /// The sentiment was set by an admin from the admin pages.
+    /// </summary>
+    Admin = 2
 }

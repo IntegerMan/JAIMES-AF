@@ -36,6 +36,13 @@ public static class UpdateMessageSentimentEndpoint
 
                 DateTime now = DateTime.UtcNow;
 
+                // Determine the source - default to Player if not specified
+                SentimentSource source = request.Source switch
+                {
+                    2 => SentimentSource.Admin,
+                    _ => SentimentSource.Player
+                };
+
                 if (message.MessageSentiment == null)
                 {
                     message.MessageSentiment = new MessageSentiment
@@ -43,7 +50,7 @@ public static class UpdateMessageSentimentEndpoint
                         MessageId = message.Id,
                         Sentiment = request.Sentiment,
                         Confidence = 1.0,
-                        SentimentSource = SentimentSource.Player,
+                        SentimentSource = source,
                         CreatedAt = now,
                         UpdatedAt = now
                     };
@@ -53,7 +60,7 @@ public static class UpdateMessageSentimentEndpoint
                 {
                     message.MessageSentiment.Sentiment = request.Sentiment;
                     message.MessageSentiment.Confidence = 1.0;
-                    message.MessageSentiment.SentimentSource = SentimentSource.Player;
+                    message.MessageSentiment.SentimentSource = source;
                     message.MessageSentiment.UpdatedAt = now;
                 }
 
@@ -68,7 +75,7 @@ public static class UpdateMessageSentimentEndpoint
                     UpdateType = MessageUpdateType.SentimentAnalyzed,
                     Sentiment = request.Sentiment,
                     SentimentConfidence = 1.0,
-                    SentimentSource = (int)SentimentSource.Player
+                    SentimentSource = (int)source
                 };
 
                 await hubContext.Clients.Group(groupName).MessageUpdated(notification);

@@ -1,0 +1,178 @@
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+
+@if (Sentiment.HasValue)
+{
+    @if (ReadOnly)
+    {
+        <MudTooltip Text="@GetSentimentTooltipText()" Placement="Placement.Top">
+            <MudIcon Icon="@GetSentimentIcon()"
+                     Color="@GetSentimentColor()"
+                     Size="Size.Small" />
+        </MudTooltip>
+    }
+    else
+    {
+        <MudMenu AnchorOrigin="Origin.TopCenter" TransformOrigin="Origin.BottomCenter" Dense="true">
+            <ActivatorContent>
+                <MudTooltip Text="@GetSentimentTooltipText()" Placement="Placement.Top">
+                    <MudIconButton Icon="@GetSentimentIcon()"
+                                   Color="@GetSentimentColor()"
+                                   Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Class="pa-0" />
+                </MudTooltip>
+            </ActivatorContent>
+            <ChildContent>
+                <MudMenuItem OnClick="@(() => SetSentimentAsync(1))" Icon="@Icons.Material.Filled.ThumbUp" IconColor="Color.Success">Positive</MudMenuItem>
+                <MudMenuItem OnClick="@(() => SetSentimentAsync(0))" Icon="@Icons.Material.Filled.Balance" IconColor="Color.Default">Neutral</MudMenuItem>
+                <MudMenuItem OnClick="@(() => SetSentimentAsync(-1))" Icon="@Icons.Material.Filled.ThumbDown" IconColor="Color.Error">Negative</MudMenuItem>
+                @if (ShowViewDetails && SentimentId.HasValue)
+                {
+                    <MudDivider />
+                    <MudMenuItem OnClick="ViewDetails" Icon="@Icons.Material.Filled.Visibility" IconColor="Color.Primary">View Details</MudMenuItem>
+                }
+            </ChildContent>
+        </MudMenu>
+    }
+}
+else
+{
+    <MudTooltip Text="Analyzing Sentiment..." Placement="Placement.Top">
+        <MudIcon Icon="@Icons.Material.Filled.HourglassBottom" 
+                 Color="Color.Default" 
+                 Size="Size.Small"
+                 Class="spin-icon" />
+    </MudTooltip>
+}
+
+@code {
+    /// <summary>
+    /// The sentiment value: -1 (negative), 0 (neutral), 1 (positive).
+    /// </summary>
+    [Parameter]
+    public int? Sentiment { get; set; }
+
+    /// <summary>
+    /// The source of the sentiment: 0 (Model), 1 (Player), 2 (Admin).
+    /// </summary>
+    [Parameter]
+    public int? SentimentSource { get; set; }
+
+    /// <summary>
+    /// The confidence score (0.0 to 1.0).
+    /// </summary>
+    [Parameter]
+    public double? Confidence { get; set; }
+
+    /// <summary>
+    /// The message ID this sentiment belongs to.
+    /// </summary>
+    [Parameter]
+    public int? MessageId { get; set; }
+
+    /// <summary>
+    /// The sentiment record ID (for navigation to details).
+    /// </summary>
+    [Parameter]
+    public int? SentimentId { get; set; }
+
+    /// <summary>
+    /// Whether the control is read-only (no editing allowed).
+    /// </summary>
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    /// <summary>
+    /// Whether edits should be marked as Admin source.
+    /// </summary>
+    [Parameter]
+    public bool IsAdminContext { get; set; }
+
+    /// <summary>
+    /// Whether to show the "View Details" option in the menu.
+    /// </summary>
+    [Parameter]
+    public bool ShowViewDetails { get; set; }
+
+    /// <summary>
+    /// Callback when sentiment is changed.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnSentimentChanged { get; set; }
+
+    private string GetSentimentIcon() => Sentiment switch
+    {
+        > 0 => Icons.Material.Filled.ThumbUp,
+        < 0 => Icons.Material.Filled.ThumbDown,
+        _ => Icons.Material.Filled.Balance
+    };
+
+    private Color GetSentimentColor() => Sentiment switch
+    {
+        > 0 => Color.Success,
+        < 0 => Color.Error,
+        _ => Color.Default
+    };
+
+    private async Task SetSentimentAsync(int newSentiment)
+    {
+        if (!MessageId.HasValue || ReadOnly) return;
+
+        var request = new MattEland.Jaimes.ServiceDefinitions.Requests.UpdateMessageSentimentRequest 
+        { 
+            Sentiment = newSentiment,
+            Source = IsAdminContext ? 2 : 1 // 2 = Admin, 1 = Player
+        };
+        
+        try
+        {
+            var response = await Http.PutAsJsonAsync($"/messages/{MessageId}/sentiment", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                Sentiment = newSentiment;
+                SentimentSource = IsAdminContext ? 2 : 1;
+                Confidence = 1.0;
+                await OnSentimentChanged.InvokeAsync();
+            }
+            else
+            {
+                var errorMsg = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to update sentiment: {errorMsg}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to update sentiment: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void ViewDetails()
+    {
+        if (SentimentId.HasValue)
+        {
+            NavigationManager.NavigateTo($"/admin/sentiments/{SentimentId.Value}");
+        }
+    }
+
+    private string GetSentimentTooltipText()
+    {
+        if (!Sentiment.HasValue)
+            return "Unknown Sentiment";
+
+        string sentimentLabel = Sentiment.Value > 0 ? "Positive" :
+                                Sentiment.Value < 0 ? "Negative" : "Neutral";
+
+        string sourceLabel = SentimentSource switch
+        {
+            2 => " - Set by Admin",
+            1 => " - Set by User",
+            0 when Confidence.HasValue => $" - {(int)(Confidence.Value * 100)}% Confidence",
+            _ => ""
+        };
+
+        return $"{sentimentLabel} Sentiment{sourceLabel}";
+    }
+}

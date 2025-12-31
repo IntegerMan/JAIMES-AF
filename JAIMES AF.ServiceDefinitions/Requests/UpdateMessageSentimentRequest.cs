@@ -14,4 +14,11 @@ public class UpdateMessageSentimentRequest
     [Required]
     [Range(-1, 1)]
     public int Sentiment { get; set; }
+
+    /// <summary>
+    /// Gets or sets the source of the update: 1 (Player) or 2 (Admin).
+    /// Defaults to Player if not specified.
+    /// </summary>
+    public int? Source { get; set; }
 }
+

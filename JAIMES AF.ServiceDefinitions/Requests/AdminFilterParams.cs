@@ -49,4 +49,20 @@ public class AdminFilterParams
     /// Filter by pass/fail status.
     /// </summary>
     public bool? Passed { get; set; }
+
+    /// <summary>
+    /// Filter by sentiment value: -1 (negative), 0 (neutral), 1 (positive).
+    /// </summary>
+    public int? Sentiment { get; set; }
+
+    /// <summary>
+    /// Filter by feedback type on the AI response: -1 (negative), 0 (neutral), 1 (positive), null for any.
+    /// Use with HasFeedback to filter for messages with or without feedback.
+    /// </summary>
+    public int? FeedbackType { get; set; }
+
+    /// <summary>
+    /// Filter by whether the AI response has any feedback.
+    /// </summary>
+    public bool? HasFeedback { get; set; }
 }

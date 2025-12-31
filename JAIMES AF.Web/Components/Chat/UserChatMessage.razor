@@ -1,4 +1,5 @@
 @inject HttpClient Http
+@inject NavigationManager NavigationManager
 
 <MudChat ChatPosition="ChatBubblePosition.End"
          Variant="Variant.Filled"
@@ -40,6 +41,11 @@
                             <MudMenuItem OnClick="@(() => SetSentimentAsync(1))" Icon="@Icons.Material.Filled.ThumbUp" IconColor="Color.Success">Positive</MudMenuItem>
                             <MudMenuItem OnClick="@(() => SetSentimentAsync(0))" Icon="@Icons.Material.Filled.Balance" IconColor="Color.Default">Neutral</MudMenuItem>
                             <MudMenuItem OnClick="@(() => SetSentimentAsync(-1))" Icon="@Icons.Material.Filled.ThumbDown" IconColor="Color.Error">Negative</MudMenuItem>
+                            @if (SentimentId.HasValue)
+                            {
+                                <MudDivider />
+                                <MudMenuItem OnClick="ViewDetails" Icon="@Icons.Material.Filled.Visibility" IconColor="Color.Primary">View Details</MudMenuItem>
+                            }
                         </ChildContent>
                     </MudMenu>
                 }
@@ -90,6 +96,9 @@
     [Parameter]
     public int? SentimentSource { get; set; }
 
+    [Parameter]
+    public int? SentimentId { get; set; }
+
     private string GetSentimentIcon() => Sentiment switch
     {
         > 0 => Icons.Material.Filled.ThumbUp,
@@ -127,6 +136,14 @@
         // Note: The UI will update automatically via SignalR broadcast from the server if successful
     }
 
+    private void ViewDetails()
+    {
+        if (SentimentId.HasValue)
+        {
+            NavigationManager.NavigateTo($"/admin/sentiments/{SentimentId.Value}");
+        }
+    }
+
     private string GetSentimentTooltipText()
     {
         if (!Sentiment.HasValue)
@@ -135,7 +152,11 @@
         string sentimentLabel = Sentiment.Value > 0 ? "Positive" :
                                 Sentiment.Value < 0 ? "Negative" : "Neutral";
 
-        // SentimentSource: 0 = Model, 1 = Player
+        // SentimentSource: 0 = Model, 1 = Player, 2 = Admin
+        if (SentimentSource == 2)
+        {
+            return $"{sentimentLabel} Sentiment - Set by Admin";
+        }
         if (SentimentSource == 1)
         {
             return $"{sentimentLabel} Sentiment - Set by User";

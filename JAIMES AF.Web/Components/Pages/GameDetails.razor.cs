@@ -544,6 +544,7 @@ public partial class GameDetails : IAsyncDisposable
                 {
                     _messageSentiment[msgId] = new MessageSentimentInfo
                     {
+                        SentimentId = sent.SentimentId,
                         Sentiment = sent.Sentiment,
                         Confidence = sent.Confidence,
                         SentimentSource = sent.SentimentSource
@@ -700,6 +701,7 @@ public partial class GameDetails : IAsyncDisposable
 /// </summary>
 public class MessageSentimentInfo
 {
+    public int? SentimentId { get; set; }
     public int Sentiment { get; set; }
     public double? Confidence { get; set; }
     public int? SentimentSource { get; set; }

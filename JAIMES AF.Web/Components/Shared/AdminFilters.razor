@@ -46,6 +46,28 @@
             {
                 <MudChip T="string" Color="Color.Dark" Size="Size.Small" Class="ml-2">Agent: @AgentVersion</MudChip>
             }
+            @if (Sentiment.HasValue)
+            {
+                string sentimentLabel = Sentiment.Value switch
+                {
+                    > 0 => "Positive",
+                    < 0 => "Negative",
+                    _ => "Neutral"
+                };
+                Color sentimentColor = Sentiment.Value switch
+                {
+                    > 0 => Color.Success,
+                    < 0 => Color.Error,
+                    _ => Color.Default
+                };
+                <MudChip T="string" Color="@sentimentColor" Size="Size.Small" Class="ml-2">Sentiment: @sentimentLabel</MudChip>
+            }
+            @if (HasFeedback.HasValue)
+            {
+                <MudChip T="string" Color="@(HasFeedback.Value ? Color.Info : Color.Default)" Size="Size.Small" Class="ml-2">
+                    @(HasFeedback.Value ? "Has Feedback" : "No Feedback")
+                </MudChip>
+            }
             <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="ClearFilters" Class="ml-2">
                 Clear Filters
             </MudButton>
@@ -62,6 +84,8 @@
     [Parameter] public double? MaxScore { get; set; }
     [Parameter] public Guid? GameId { get; set; }
     [Parameter] public string? AgentVersion { get; set; }
+    [Parameter] public int? Sentiment { get; set; }
+    [Parameter] public bool? HasFeedback { get; set; }
     
     [Parameter] public string? ClearUrl { get; set; }
     [Parameter] public EventCallback OnClearFilters { get; set; }
@@ -74,7 +98,9 @@
         MinScore.HasValue ||
         MaxScore.HasValue ||
         GameId.HasValue ||
-        !string.IsNullOrEmpty(AgentVersion);
+        !string.IsNullOrEmpty(AgentVersion) ||
+        Sentiment.HasValue ||
+        HasFeedback.HasValue;
 
     private async Task ClearFilters()
     {

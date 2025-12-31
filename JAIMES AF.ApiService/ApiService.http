@@ -182,3 +182,49 @@ Accept: application/json
 ### Get Evaluation Metrics (filter by score range)
 GET {{ApiService_HostAddress}}/admin/metrics?minScore=3&maxScore=5
 Accept: application/json
+
+### Get Sentiment List
+# @name GetSentimentList
+GET {{ApiService_HostAddress}}/admin/sentiments
+Accept: application/json
+
+### Get Sentiment List (with pagination)
+GET {{ApiService_HostAddress}}/admin/sentiments?page=1&pageSize=10
+Accept: application/json
+
+### Get Sentiment List (filter by sentiment value)
+GET {{ApiService_HostAddress}}/admin/sentiments?sentiment=1
+Accept: application/json
+
+### Get Sentiment List (filter by game)
+GET {{ApiService_HostAddress}}/admin/sentiments?gameId=95d26a53-5b62-43f2-bc19-3c64ff013c4f
+Accept: application/json
+
+### Get Sentiment List (filter by tool)
+GET {{ApiService_HostAddress}}/admin/sentiments?toolName=SearchRules
+Accept: application/json
+
+### Get Sentiment List (filter by feedback type - positive)
+GET {{ApiService_HostAddress}}/admin/sentiments?hasFeedback=true&feedbackType=1
+Accept: application/json
+
+### Get Sentiment Details
+GET {{ApiService_HostAddress}}/admin/sentiments/1
+Accept: application/json
+
+### Update Message Sentiment (Player source - default)
+PUT {{ApiService_HostAddress}}/messages/1/sentiment
+Content-Type: application/json
+
+{
+  "sentiment": 1
+}
+
+### Update Message Sentiment (Admin source)
+PUT {{ApiService_HostAddress}}/messages/1/sentiment
+Content-Type: application/json
+
+{
+  "sentiment": 1,
+  "source": 2
+}

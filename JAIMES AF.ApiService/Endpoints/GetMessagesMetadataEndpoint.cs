@@ -87,6 +87,7 @@ public class GetMessagesMetadataEndpoint : Endpoint<MessagesMetadataRequest, Mes
             .Select(m => new
             {
                 m.Id,
+                SentimentId = m.MessageSentiment!.Id,
                 Sentiment = m.MessageSentiment!.Sentiment,
                 m.MessageSentiment.Confidence,
                 SentimentSource =
@@ -95,6 +96,7 @@ public class GetMessagesMetadataEndpoint : Endpoint<MessagesMetadataRequest, Mes
             })
             .ToDictionaryAsync(m => m.Id, m => new MessageSentimentResponse
             {
+                SentimentId = m.SentimentId,
                 Sentiment = m.Sentiment,
                 Confidence = m.Confidence,
                 SentimentSource = m.SentimentSource
