@@ -19,6 +19,25 @@
         View AI response evaluation metrics and quality scores across all messages.
     </MudText>
 
+    @if (_evaluator != null)
+    {
+        <MudPaper Class="pa-4 mb-4" Elevation="1">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+                <MudIcon Icon="@Icons.Material.Filled.Info" Color="Color.Info" />
+                <MudText Typo="Typo.h6">@_evaluator.Name</MudText>
+                <MudSpacer />
+                <MudChip T="string" Color="Color.Primary" Size="Size.Small">@_evaluator.MetricCount.ToString("N0") Metrics</MudChip>
+                @if (_evaluator.AverageScore.HasValue)
+                {
+                    <MudChip T="string" Color="@GetScoreColor(_evaluator.AverageScore.Value)" Size="Size.Small">
+                        Avg: @_evaluator.AverageScore.Value.ToString("F2")
+                    </MudChip>
+                }
+            </MudStack>
+            <MudText Typo="Typo.body1">@_evaluator.Description</MudText>
+        </MudPaper>
+    }
+
     @if (GameId.HasValue)
     {
         <MudAlert Severity="Severity.Info" Class="mb-4">
@@ -35,7 +54,8 @@
         MinScore="@MinScore"
         MaxScore="@MaxScore"
         GameId="@GameId"
-        OnClearFilters="ClearFilters"/>
+        EvaluatorId="@EvaluatorId"
+        OnClearFilters="ClearFilters" />
 
     <MudDataGrid T="EvaluationMetricListItemDto"
                  ServerData="ServerReload"
@@ -84,6 +104,18 @@
             <PropertyColumn Property="x => x.MetricName" Title="Metric">
                 <CellTemplate>
                     <strong>@context.Item.MetricName</strong>
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.EvaluatorName" Title="Evaluator">
+                <CellTemplate>
+                    @if (context.Item.EvaluatorId.HasValue)
+                    {
+                        <MudLink Href="@($"/admin/evaluators")">@context.Item.EvaluatorName</MudLink>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Class="text-muted">Direct Metric</MudText>
+                    }
                 </CellTemplate>
             </PropertyColumn>
             <PropertyColumn Property="x => x.Score" Title="Score">
@@ -172,7 +204,37 @@
 
     [Parameter] [SupplyParameterFromQuery] public Guid? GameId { get; set; }
 
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public int? EvaluatorId { get; set; }
+
     private List<BreadcrumbItem> _breadcrumbs = new();
+    private EvaluatorItemDto? _evaluator;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadEvaluatorAsync();
+    }
+
+    private async Task LoadEvaluatorAsync()
+    {
+        if (EvaluatorId.HasValue)
+        {
+            try
+            {
+                var client = HttpClientFactory.CreateClient("Api");
+                _evaluator = await client.GetFromJsonAsync<EvaluatorItemDto>($"/admin/evaluators/{EvaluatorId.Value}");
+            }
+            catch (Exception)
+            {
+                _evaluator = null;
+            }
+        }
+        else
+        {
+            _evaluator = null;
+        }
+    }
 
     protected override void OnInitialized()
     {
@@ -180,6 +242,7 @@
         {
             new BreadcrumbItem("Home", href: "/"),
             new BreadcrumbItem("Admin", href: "/admin"),
+            new BreadcrumbItem("Evaluators", href: "/admin/evaluators"),
             new BreadcrumbItem("Metrics", href: null, disabled: true)
         };
     }
@@ -209,6 +272,8 @@
                 queryParams.Add($"maxScore={MaxScore.Value}");
             if (GameId.HasValue)
                 queryParams.Add($"gameId={GameId.Value}");
+            if (EvaluatorId.HasValue)
+                queryParams.Add($"evaluatorId={EvaluatorId.Value}");
 
             string queryString = string.Join("&", queryParams);
             var response = await client.GetFromJsonAsync<EvaluationMetricListResponse>($"/admin/metrics?{queryString}");

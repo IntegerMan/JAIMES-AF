@@ -10,4 +10,6 @@ public class MessageEvaluationMetricResponse
     public DateTime EvaluatedAt { get; set; }
     public string? Diagnostics { get; set; }
     public int? EvaluationModelId { get; set; }
+    public int? EvaluatorId { get; set; }
+    public string? EvaluatorName { get; set; }
 }

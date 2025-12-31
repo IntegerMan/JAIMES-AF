@@ -67,6 +67,17 @@ public class MessageEvaluationMetric
     public Model? EvaluationModel { get; set; }
 
     /// <summary>
+    /// Gets or sets the ID of the evaluator that produced this metric.
+    /// </summary>
+    public int? EvaluatorId { get; set; }
+
+    /// <summary>
+    /// Navigation property to the evaluator that produced this metric.
+    /// </summary>
+    [ForeignKey(nameof(EvaluatorId))]
+    public Evaluator? Evaluator { get; set; }
+
+    /// <summary>
     /// Navigation property to the message this evaluation metric belongs to.
     /// </summary>
     [ForeignKey(nameof(MessageId))]

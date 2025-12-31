@@ -10,8 +10,11 @@ public class MessageToolCall
     public DateTime CreatedAt { get; set; }
     public int? InstructionVersionId { get; set; }
 
+    public int? ToolId { get; set; }
+
     // Navigation properties
     public Message? Message { get; set; }
     public AgentInstructionVersion? InstructionVersion { get; set; }
+    public Tool? Tool { get; set; }
 }
 

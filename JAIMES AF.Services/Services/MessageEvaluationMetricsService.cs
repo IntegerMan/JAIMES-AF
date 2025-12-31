@@ -32,7 +32,8 @@ public class MessageEvaluationMetricsService(IDbContextFactory<JaimesDbContext> 
             .ThenInclude(msg => msg!.Game)
             .ThenInclude(g => g!.Scenario)
             .Include(m => m.Message)
-            .ThenInclude(msg => msg!.InstructionVersion);
+            .ThenInclude(msg => msg!.InstructionVersion)
+            .Include(m => m.Evaluator);
 
         // Apply filters
         if (filters != null)
@@ -75,6 +76,11 @@ public class MessageEvaluationMetricsService(IDbContextFactory<JaimesDbContext> 
                                          m.Message.InstructionVersionId == filters.InstructionVersionId.Value);
             }
 
+            if (filters.EvaluatorId.HasValue)
+            {
+                query = query.Where(m => m.EvaluatorId == filters.EvaluatorId.Value);
+            }
+
             if (!string.IsNullOrEmpty(filters.AgentId))
             {
                 query = query.Where(m => m.Message != null &&
@@ -106,6 +112,8 @@ public class MessageEvaluationMetricsService(IDbContextFactory<JaimesDbContext> 
                 Remarks = m.Remarks,
                 Diagnostics = m.Diagnostics,
                 EvaluatedAt = m.EvaluatedAt,
+                EvaluatorId = m.EvaluatorId,
+                EvaluatorName = m.Evaluator?.Name,
                 GameId = m.Message?.GameId ?? Guid.Empty,
                 GamePlayerName = m.Message?.Game?.Player?.Name,
                 GameScenarioName = m.Message?.Game?.Scenario?.Name,
@@ -133,6 +141,7 @@ public class MessageEvaluationMetricsService(IDbContextFactory<JaimesDbContext> 
 
         List<MessageEvaluationMetric> metrics = await context.MessageEvaluationMetrics
             .AsNoTracking()
+            .Include(m => m.Evaluator)
             .Where(m => m.MessageId == messageId)
             .OrderBy(m => m.MetricName)
             .ToListAsync(cancellationToken);
@@ -146,7 +155,9 @@ public class MessageEvaluationMetricsService(IDbContextFactory<JaimesDbContext> 
             Remarks = m.Remarks,
             Diagnostics = m.Diagnostics,
             EvaluatedAt = m.EvaluatedAt,
-            EvaluationModelId = m.EvaluationModelId
+            EvaluationModelId = m.EvaluationModelId,
+            EvaluatorId = m.EvaluatorId,
+            EvaluatorName = m.Evaluator?.Name
         }).ToList();
     }
 }

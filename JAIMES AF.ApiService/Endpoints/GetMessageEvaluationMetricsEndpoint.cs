@@ -37,6 +37,7 @@ public class GetMessageEvaluationMetricsEndpoint : EndpointWithoutRequest<IEnume
         }
 
         var metrics = await DbContext.MessageEvaluationMetrics
+            .Include(m => m.Evaluator)
             .Where(m => m.MessageId == messageId)
             .Select(m => new MessageEvaluationMetricResponse
             {
@@ -47,7 +48,9 @@ public class GetMessageEvaluationMetricsEndpoint : EndpointWithoutRequest<IEnume
                 Remarks = m.Remarks,
                 Diagnostics = m.Diagnostics,
                 EvaluatedAt = m.EvaluatedAt,
-                EvaluationModelId = m.EvaluationModelId
+                EvaluationModelId = m.EvaluationModelId,
+                EvaluatorId = m.EvaluatorId,
+                EvaluatorName = m.Evaluator != null ? m.Evaluator.Name : null
             })
             .ToListAsync(ct);
 

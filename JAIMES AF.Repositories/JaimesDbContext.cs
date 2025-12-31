@@ -35,6 +35,9 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
     // Message tool call entity
     public DbSet<MessageToolCall> MessageToolCalls { get; set; } = null!;
 
+    public DbSet<Tool> Tools { get; set; } = null!;
+    public DbSet<Evaluator> Evaluators { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -459,6 +462,25 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
 
             // Create index on InstructionVersionId for analytics
             entity.HasIndex(mtc => mtc.InstructionVersionId);
+
+            entity.HasOne(mtc => mtc.Tool)
+                .WithMany(t => t.ToolCalls)
+                .HasForeignKey(mtc => mtc.ToolId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Tool>(entity =>
+        {
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.Name).IsRequired().HasMaxLength(200);
+            entity.HasIndex(t => t.Name).IsUnique();
+        });
+
+        modelBuilder.Entity<Evaluator>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.HasIndex(e => e.Name).IsUnique();
         });
 
         // Model entity configuration
@@ -527,6 +549,11 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 .WithMany(model => model.EvaluationMetrics)
                 .HasForeignKey(mem => mem.EvaluationModelId)
                 .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(mem => mem.Evaluator)
+                .WithMany(e => e.EvaluationMetrics)
+                .HasForeignKey(mem => mem.EvaluatorId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<EvaluationExecution>(entity =>

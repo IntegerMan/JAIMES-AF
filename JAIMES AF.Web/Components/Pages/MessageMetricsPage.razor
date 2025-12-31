@@ -46,7 +46,15 @@
                                 <MudCardHeader>
                                     <CardHeaderContent>
                                         <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-                                            <MudText Typo="Typo.h6">@metric.MetricName</MudText>
+                                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                             <MudText Typo="Typo.h6">@metric.MetricName</MudText>
+                                             @if (metric.EvaluatorId.HasValue)
+                                             {
+                                                 <MudLink Typo="Typo.caption" Href="@($"/admin/metrics?evaluatorId={metric.EvaluatorId}")" Class="mt-1">
+                                                     (View Evaluator)
+                                                 </MudLink>
+                                             }
+                                         </MudStack>
                                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                                                 <MudChip T="string" Color="@GetScoreColor(metric.Score)" Size="Size.Medium">
                                                     @metric.Score.ToString("F1")
@@ -187,6 +195,8 @@
         _breadcrumbs = new List<BreadcrumbItem>
         {
             new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Admin", href: "/admin"),
+            new BreadcrumbItem("Evaluators", href: "/admin/evaluators"),
             new BreadcrumbItem("Metrics", href: "/admin/metrics"),
             new BreadcrumbItem($"Message {MessageId}", href: null, disabled: true)
         };

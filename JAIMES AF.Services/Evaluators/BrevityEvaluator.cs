@@ -1,12 +1,14 @@
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
 using Microsoft.Extensions.Options;
+using System.ComponentModel;
 
-namespace MattEland.Jaimes.Workers.AssistantMessageWorker.Services;
+namespace MattEland.Jaimes.ServiceLayer.Evaluators;
 
 /// <summary>
 /// An evaluator that grades responses by their brevity relative to a target length.
 /// </summary>
+[Description("Grades responses based on their length relative to a target character count.")]
 public class BrevityEvaluator(IOptions<BrevityEvaluatorOptions> options) : IEvaluator
 {
     public const string BrevityMetricName = "Brevity";
@@ -42,7 +44,7 @@ public class BrevityEvaluator(IOptions<BrevityEvaluatorOptions> options) : IEval
         {
             // Deduct 1 per margin quantity over or under
             int deviation = Math.Abs(charCount - target) - margin;
-            int deduction = (int) Math.Ceiling((double) deviation / margin);
+            int deduction = (int)Math.Ceiling((double)deviation / margin);
             score = Math.Max(1, 5 - deduction);
         }
 

@@ -21,6 +21,16 @@ public class EvaluationMetricListItemDto
     public required string MetricName { get; set; }
 
     /// <summary>
+    /// The evaluator ID this metric is associated with.
+    /// </summary>
+    public int? EvaluatorId { get; set; }
+
+    /// <summary>
+    /// The name of the evaluator this metric is associated with.
+    /// </summary>
+    public string? EvaluatorName { get; set; }
+
+    /// <summary>
     /// The numeric score for this metric.
     /// </summary>
     public double Score { get; set; }

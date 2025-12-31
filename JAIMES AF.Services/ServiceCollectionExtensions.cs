@@ -23,6 +23,18 @@ public static class ServiceCollectionExtensions
             .AsSelfWithInterfaces()
             .WithScopedLifetime());
 
+        services.Scan(scan => scan
+            .FromAssemblies([
+                typeof(EvaluatorRegistrar).Assembly
+            ])
+            .AddClasses(classes => classes.AssignableTo<Microsoft.Extensions.AI.Evaluation.IEvaluator>())
+            .AsImplementedInterfaces()
+            .WithSingletonLifetime());
+
+        services
+            .AddSingleton<Microsoft.Extensions.AI.Evaluation.IEvaluator,
+                Microsoft.Extensions.AI.Evaluation.Quality.RelevanceTruthAndCompletenessEvaluator>();
+
 
         // Configure our AI Agent
         services.AddSingleton<AIAgent>(s =>
@@ -34,7 +46,8 @@ public static class ServiceCollectionExtensions
             chat = chat.WrapWithInstrumentation(logger);
             // Get system prompt from somewhere else
             // Link up tools
-            return chat.CreateJaimesAgent(logger, "JAIMES-AF", "You are an AI game master running a role playing game with the player as the sole human player.");
+            return chat.CreateJaimesAgent(logger, "JAIMES-AF",
+                "You are an AI game master running a role playing game with the player as the sole human player.");
         });
 
         return services;

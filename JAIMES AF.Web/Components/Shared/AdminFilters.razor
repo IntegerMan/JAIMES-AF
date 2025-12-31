@@ -42,6 +42,10 @@
             {
                 <MudChip T="string" Color="Color.Tertiary" Size="Size.Small" Class="ml-2">Game ID: @GameId.Value.ToString()[..8]...</MudChip>
             }
+            @if (EvaluatorId.HasValue)
+            {
+                <MudChip T="string" Color="Color.Primary" Size="Size.Small" Class="ml-2">Evaluator ID: @EvaluatorId.Value</MudChip>
+            }
             @if (!string.IsNullOrEmpty(AgentVersion))
             {
                 <MudChip T="string" Color="Color.Dark" Size="Size.Small" Class="ml-2">Agent: @AgentVersion</MudChip>
@@ -86,6 +90,7 @@
     [Parameter] public string? AgentVersion { get; set; }
     [Parameter] public int? Sentiment { get; set; }
     [Parameter] public bool? HasFeedback { get; set; }
+    [Parameter] public int? EvaluatorId { get; set; }
     
     [Parameter] public string? ClearUrl { get; set; }
     [Parameter] public EventCallback OnClearFilters { get; set; }
@@ -100,7 +105,8 @@
         GameId.HasValue ||
         !string.IsNullOrEmpty(AgentVersion) ||
         Sentiment.HasValue ||
-        HasFeedback.HasValue;
+        HasFeedback.HasValue ||
+        EvaluatorId.HasValue;
 
     private async Task ClearFilters()
     {

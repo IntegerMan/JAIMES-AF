@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
 using Microsoft.Extensions.AI.Evaluation.Reporting;
+using MattEland.Jaimes.ServiceLayer.Evaluators;
 
 namespace MattEland.Jaimes.Workers.AssistantMessageWorker.Services;
 
@@ -17,7 +18,7 @@ namespace MattEland.Jaimes.Workers.AssistantMessageWorker.Services;
 /// </summary>
 public class MessageEvaluationService(
     IDbContextFactory<JaimesDbContext> contextFactory,
-    IEvaluator evaluator,
+    IEnumerable<IEvaluator> evaluators,
     IChatClient chatClient,
     TextGenerationModelOptions modelOptions,
     IEvaluationResultStore resultStore,
@@ -66,9 +67,12 @@ public class MessageEvaluationService(
             // Create ChatConfiguration for the evaluator
             ChatConfiguration chatConfiguration = new(chatClient);
 
+            // Create a composite evaluator from all registered evaluators
+            IEvaluator compositeEvaluator = new CompositeEvaluator(evaluators);
+
             // Create ReportingConfiguration to integrate with the new result store
             ReportingConfiguration reportConfig = new(
-                [evaluator],
+                [compositeEvaluator],
                 resultStore,
                 executionName: "Assistant Message Quality",
                 chatConfiguration: chatConfiguration);
@@ -94,13 +98,44 @@ public class MessageEvaluationService(
 
             DateTime evaluatedAt = DateTime.UtcNow;
 
-            // Extract and store each metric from the evaluator
-            IEnumerable<string> metricNames = evaluator.EvaluationMetricNames;
-
-            foreach (string metricName in metricNames)
+            // Map metric names to their respective evaluator class names
+            var metricToEvaluatorMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var evaluator in evaluators)
             {
-                if (result.Get<NumericMetric>(metricName) is {Value: not null} metric)
+                string className = evaluator.GetType().Name;
+                foreach (var metricName in evaluator.EvaluationMetricNames)
                 {
+                    metricToEvaluatorMap[metricName] = className;
+                }
+            }
+
+            // Load evaluators for lookup (small table, so this is fine)
+            var evaluatorIdLookup = await context.Evaluators
+                .ToDictionaryAsync(e => e.Name.ToLower(), e => e.Id, cancellationToken);
+
+            foreach (var metricPair in result.Metrics)
+            {
+                string metricName = metricPair.Key;
+                if (metricPair.Value is NumericMetric metric && metric.Value != null)
+                {
+                    // Find the parent evaluator class name
+                    int? evaluatorId = null;
+                    if (metricToEvaluatorMap.TryGetValue(metricName, out string? evaluatorClassName))
+                    {
+                        // Match to evaluator ID by class name
+                        if (evaluatorIdLookup.TryGetValue(evaluatorClassName.ToLower(), out int id))
+                        {
+                            evaluatorId = id;
+                        }
+                    }
+
+                    if (evaluatorId == null)
+                    {
+                        logger.LogWarning(
+                            "Evaluator parent for metric '{MetricName}' not found in database. Registration might be missing.",
+                            metricName);
+                    }
+
                     // Serialize any additional metadata if available
                     string? diagnosticsJson = null;
                     try
@@ -108,9 +143,9 @@ public class MessageEvaluationService(
                         // Try to get any additional context from the result
                         var diagnostics = new Dictionary<string, object?>
                         {
-                            {"MetricName", metricName},
-                            {"EvaluatedAt", evaluatedAt},
-                            {"Messages", metric.Diagnostics?.Select(d => d.Message).ToList() ?? []}
+                            { "MetricName", metricName },
+                            { "EvaluatedAt", evaluatedAt },
+                            { "Messages", metric.Diagnostics?.Select(d => d.Message).ToList() ?? [] }
                         };
                         diagnosticsJson = JsonSerializer.Serialize(diagnostics);
                     }
@@ -127,23 +162,25 @@ public class MessageEvaluationService(
                         Remarks = metric.Reason,
                         EvaluatedAt = evaluatedAt,
                         Diagnostics = diagnosticsJson,
-                        EvaluationModelId = evaluationModel?.Id
+                        EvaluationModelId = evaluationModel?.Id,
+                        EvaluatorId = evaluatorId
                     };
 
                     context.MessageEvaluationMetrics.Add(evaluationMetric);
 
                     logger.LogDebug(
-                        "Stored evaluation metric: MessageId={MessageId}, MetricName={MetricName}, Score={Score}",
+                        "Stored evaluation metric: MessageId={MessageId}, MetricName={MetricName}, Score={Score}, EvaluatorId={EvaluatorId}",
                         message.Id,
                         metricName,
-                        metric.Value.Value);
+                        metric.Value.Value,
+                        evaluatorId);
                 }
             }
 
             await context.SaveChangesAsync(cancellationToken);
 
             // Notify web clients via SignalR
-            List<MessageEvaluationMetricResponse> metricResponses = metricNames
+            List<MessageEvaluationMetricResponse> metricResponses = result.Metrics.Keys
                 .Select(metricName =>
                 {
                     NumericMetric? metric = result.Get<NumericMetric>(metricName);
