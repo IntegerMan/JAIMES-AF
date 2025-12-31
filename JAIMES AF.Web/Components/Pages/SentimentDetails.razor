@@ -206,7 +206,7 @@
     private int _conversationKey = 0;
     private List<BreadcrumbItem> _breadcrumbs = new();
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
         _breadcrumbs = new List<BreadcrumbItem>
         {
@@ -221,6 +221,9 @@
 
     private async Task LoadSentimentAsync()
     {
+        _loading = true;
+        _conversationKey++; // Force conversation to reload
+        
         try 
         {
             var client = HttpClientFactory.CreateClient("Api");
