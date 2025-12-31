@@ -36,9 +36,12 @@
     {
         @if (_gameId.HasValue)
         {
-            <MudText Typo="Typo.body2" Class="mb-4">
-                <MudLink Href="@($"/games/{_gameId}")">← Back to Game</MudLink>
-            </MudText>
+            <MudButton Href="@($"/games/{_gameId}")" 
+                       Variant="Variant.Text" 
+                       StartIcon="@Icons.Material.Filled.ArrowBack" 
+                       Class="mb-4">
+                Back to Game
+            </MudButton>
         }
         
         <MudGrid>
@@ -140,8 +143,7 @@
                                         MessageId="@m.Id"
                                         IsFirstParagraph="@isFirstParagraph"
                                         IsLastParagraph="@isLastParagraph"
-                                        ReadOnly="false"
-                                        OnMetricsClick="@((id) => NavigationManager.NavigateTo($"/admin/metrics/{id}"))"
+                                        ReadOnly="true"
                                         Highlighted="@isTargetMessage" />
                                 }
                             }

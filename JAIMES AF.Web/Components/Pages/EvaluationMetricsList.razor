@@ -45,6 +45,9 @@
         <Columns>
 
             <PropertyColumn Property="x => x.GamePlayerName" Title="Game" Groupable="true" Grouping="true">
+                <CellTemplate>
+                    <MudLink Href="@($"/games/{context.Item.GameId}")">@context.Item.GamePlayerName</MudLink>
+                </CellTemplate>
                 <GroupTemplate>
                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                         <MudIcon Icon="@Icons.Material.Filled.SportsEsports" Size="Size.Small" />
@@ -58,7 +61,7 @@
             <PropertyColumn Property="x => x.MessageId" Title="Msg" Groupable="true" Grouping="true">
                 <CellTemplate>
                     <MudLink Href="@($"/admin/metrics/{context.Item.MessageId}")">
-                        @(context.Item.MessagePreview ?? $"Message {context.Item.MessageId}")
+                        @((context.Item.MessagePreview?.Length > 20 ? context.Item.MessagePreview[..20] + "..." : context.Item.MessagePreview) ?? $"Message {context.Item.MessageId}")
                     </MudLink>
                 </CellTemplate>
                 <GroupTemplate>

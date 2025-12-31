@@ -24,26 +24,16 @@
                 </div>
             </TooltipContent>
             <ChildContent>
-                @if (ReadOnly)
-                {
-                    <div class="d-flex align-center justify-center" style="width:32px; height:32px;">
-                        <MudIcon Icon="@Icons.Material.Filled.PieChart" 
-                                 Color="Color.Default" 
-                                 Size="Size.Small" />
-                    </div>
-                }
-                else
-                {
-                    <MudIconButton Icon="@Icons.Material.Filled.PieChart"
-                                   Color="Color.Default"
-                                   Size="Size.Small"
-                                   Variant="Variant.Text"
-                                   OnClick="OnMetricsClicked" />
-                }
+                <MudIconButton Icon="@Icons.Material.Filled.PieChart"
+                               Color="Color.Default"
+                               Size="Size.Small"
+                               Variant="Variant.Text"
+                               Disabled="@ReadOnly"
+                               OnClick="OnMetricsClicked" />
             </ChildContent>
         </MudTooltip>
     }
-    else if (!ReadOnly) 
+    else 
     {
          <MudTooltip Text="Analysing Metrics..." Placement="Placement.Top">
              <div class="d-flex align-center justify-center" style="width:32px; height:32px;">
@@ -58,35 +48,28 @@
     @if (ToolCallCount > 0)
     {
         <MudTooltip Text="@($"{ToolCallCount} tool call(s)")" Placement="Placement.Top">
-            @if (ReadOnly)
-            {
-                <MudIcon Icon="@Icons.Material.Filled.Build"
-                         Color="Color.Default"
-                         Size="Size.Small"
-                         Class="tool-call-icon" />
-            }
-            else
-            {
-                <MudIconButton Icon="@Icons.Material.Filled.Build"
-                               Color="Color.Default"
-                               Size="Size.Small"
-                               Variant="Variant.Text"
-                               Class="tool-call-button"
-                               OnClick="OnToolCallsClicked" />
-            }
+            <MudIconButton Icon="@Icons.Material.Filled.Build"
+                           Color="Color.Default"
+                           Size="Size.Small"
+                           Variant="Variant.Text"
+                           Class="tool-call-button"
+                           Disabled="@ReadOnly"
+                           OnClick="OnToolCallsClicked" />
         </MudTooltip>
     }
 
     @if (Feedback != null)
     {
         <MudTooltip Text="@(string.IsNullOrWhiteSpace(Feedback.Comment) ? $"{(Feedback.IsPositive ? "Helpful" : "Unhelpful")} feedback" : Feedback.Comment)" Placement="Placement.Top">
-            <MudIcon Icon="@(Feedback.IsPositive ? Icons.Material.Filled.ThumbUp : Icons.Material.Filled.ThumbDown)"
-                     Color="@(Feedback.IsPositive ? Color.Success : Color.Error)"
-                     Size="Size.Small"
-                     Class="feedback-icon-existing" />
+            <MudIconButton Icon="@(Feedback.IsPositive ? Icons.Material.Filled.ThumbUp : Icons.Material.Filled.ThumbDown)"
+                           Color="@(Feedback.IsPositive ? Color.Success : Color.Error)"
+                           Size="Size.Small"
+                           Variant="Variant.Text"
+                           Class="feedback-icon-existing"
+                           Disabled="true" />
         </MudTooltip>
     }
-    else if (ShowFeedbackButtons && !ReadOnly)
+    else if (ShowFeedbackButtons)
     {
         <div class="d-flex align-items-center gap-1">
             <MudTooltip Text="Mark as helpful" Placement="Placement.Top">
@@ -95,6 +78,7 @@
                                Size="Size.Small"
                                Variant="Variant.Text"
                                Class="feedback-button"
+                               Disabled="@ReadOnly"
                                @onmouseenter="() => _isHoveringThumbUp = true"
                                @onmouseleave="() => _isHoveringThumbUp = false"
                                OnClick="@(() => OnFeedbackButtonClicked(true))" />
@@ -105,6 +89,7 @@
                                Size="Size.Small"
                                Variant="Variant.Text"
                                Class="feedback-button"
+                               Disabled="@ReadOnly"
                                @onmouseenter="() => _isHoveringThumbDown = true"
                                @onmouseleave="() => _isHoveringThumbDown = false"
                                OnClick="@(() => OnFeedbackButtonClicked(false))" />
