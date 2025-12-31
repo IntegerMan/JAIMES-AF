@@ -15,10 +15,10 @@
         <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
     </MudStack>
     <MudText Typo="Typo.h4" Class="mb-2">Feedback Reports</MudText>
-    
+
     <AdminFilters ToolName="@ToolName"
                   IsPositive="@IsPositive"
-                  OnClearFilters="ClearFilters" />
+                  OnClearFilters="ClearFilters"/>
 
     <MudDataGrid T="FeedbackListItemDto"
                  ServerData="ServerReload"
@@ -31,11 +31,11 @@
                 <CellTemplate>
                     @if (context.Item.IsPositive)
                     {
-                        <MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Success" />
+                        <MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Success"/>
                     }
                     else
                     {
-                        <MudIcon Icon="@Icons.Material.Filled.ThumbDown" Color="Color.Error" />
+                        <MudIcon Icon="@Icons.Material.Filled.ThumbDown" Color="Color.Error"/>
                     }
                 </CellTemplate>
             </PropertyColumn>
@@ -74,16 +74,29 @@
                     @context.Item.CreatedAt.ToLocalTime().ToString("g")
                 </CellTemplate>
             </PropertyColumn>
-            <PropertyColumn Property="x => x.GamePlayerName" Title="Player" />
-            <PropertyColumn Property="x => x.GameScenarioName" Title="Scenario" />
-            <PropertyColumn Property="x => x.GameRulesetId" Title="Ruleset" />
+            <PropertyColumn Property="x => x.GamePlayerName" Title="Player"/>
+            <PropertyColumn Property="x => x.GameScenarioName" Title="Scenario"/>
+            <PropertyColumn Property="x => x.GameRulesetId" Title="Ruleset"/>
             <PropertyColumn Property="x => x.AgentVersion" Title="Agent Version">
                 <CellTemplate>
-                    @if (!string.IsNullOrEmpty(context.Item.AgentId) && !string.IsNullOrEmpty(context.Item.AgentVersion))
+                    @if (!string.IsNullOrEmpty(context.Item.AgentId))
                     {
-                        <MudLink Href="@($"/agents/{context.Item.AgentId}/instruction-versions")" Typo="Typo.body2">
-                            @context.Item.AgentVersion
-                        </MudLink>
+                        <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                            <MudLink Href="@($"/agents/{context.Item.AgentId}")" Typo="Typo.body2">
+                                @context.Item.AgentId
+                            </MudLink>
+                            @if (!string.IsNullOrEmpty(context.Item.AgentVersion) && context.Item.InstructionVersionId.HasValue)
+                            {
+                                <MudText Typo="Typo.body2">/</MudText>
+                                <MudLink Href="@($"/agents/{context.Item.AgentId}/versions/{context.Item.InstructionVersionId}")" Typo="Typo.body2">
+                                    @context.Item.AgentVersion
+                                </MudLink>
+                            }
+                            else if (!string.IsNullOrEmpty(context.Item.AgentVersion))
+                            {
+                                <MudText Typo="Typo.body2">(@context.Item.AgentVersion)</MudText>
+                            }
+                        </MudStack>
                     }
                     else if (!string.IsNullOrEmpty(context.Item.AgentVersion))
                     {
@@ -95,18 +108,18 @@
                 <CellTemplate>
                     <div class="d-flex">
                         <MudTooltip Text="View Details" Placement="Placement.Top">
-                            <MudIconButton Icon="@Icons.Material.Filled.Visibility" 
-                                           Color="Color.Primary" 
+                            <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                           Color="Color.Primary"
                                            Size="Size.Small"
-                                           Href="@($"/admin/feedback/{context.Item.Id}")" />
+                                           Href="@($"/admin/feedback/{context.Item.Id}")"/>
                         </MudTooltip>
                         @if (context.Item.GameId != Guid.Empty)
                         {
                             <MudTooltip Text="View Game" Placement="Placement.Top">
-                                <MudIconButton Icon="@Icons.Material.Filled.Games" 
-                                               Color="Color.Secondary" 
+                                <MudIconButton Icon="@Icons.Material.Filled.Games"
+                                               Color="Color.Secondary"
                                                Size="Size.Small"
-                                               Href="@($"/games/{context.Item.GameId}")" />
+                                               Href="@($"/games/{context.Item.GameId}")"/>
                             </MudTooltip>
                         }
                     </div>
@@ -114,12 +127,13 @@
             </TemplateColumn>
         </Columns>
         <PagerContent>
-            <MudDataGridPager T="FeedbackListItemDto" />
+            <MudDataGridPager T="FeedbackListItemDto"/>
         </PagerContent>
     </MudDataGrid>
 </MudContainer>
 
 @code {
+
     /// <summary>
     /// Optional tool name to filter feedback by.
     /// </summary>
@@ -151,7 +165,7 @@
         try
         {
             var client = HttpClientFactory.CreateClient("Api");
-            
+
             // MudDataGrid uses 0-based index, API uses 1-based page
             int page = state.Page + 1;
             int pageSize = state.PageSize;
@@ -193,10 +207,10 @@
     }
 
 
-
     private void ClearFilters()
     {
         NavigationManager.NavigateTo("/admin/feedback");
     }
+
 }
 

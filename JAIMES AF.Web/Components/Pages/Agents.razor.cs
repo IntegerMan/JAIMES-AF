@@ -41,27 +41,5 @@ public partial class Agents
             StateHasChanged();
         }
     }
-
-    private async Task DeleteAgent(AgentResponse agent)
-    {
-        bool? result = await DialogService.ShowMessageBox(
-            "Delete Agent",
-            $"Are you sure you want to delete agent '{agent.Name}'?",
-            yesText: "Delete", cancelText: "Cancel");
-
-        if (result == true)
-        {
-            try
-            {
-                await Http.DeleteAsync($"/agents/{agent.Id}");
-                await LoadAgentsAsync();
-            }
-            catch (Exception ex)
-            {
-                LoggerFactory.CreateLogger("Agents").LogError(ex, "Failed to delete agent");
-                _errorMessage = "Failed to delete agent: " + ex.Message;
-                StateHasChanged();
-            }
-        }
-    }
 }
+

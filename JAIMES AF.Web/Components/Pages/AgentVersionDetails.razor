@@ -1,0 +1,73 @@
+@page "/agents/{AgentId}/versions/{VersionId:int}"
+@rendermode InteractiveServer
+
+@inject HttpClient Http
+@inject ILoggerFactory LoggerFactory
+@inject NavigationManager Navigation
+
+<PageTitle>Agent Version Details</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudPaper Class="pa-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+            <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+        </MudStack>
+
+        @if (_isLoading)
+        {
+            <div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+                <MudProgressCircular Indeterminate="true"/>
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+            <MudButton Variant="Variant.Text" Color="Color.Primary" Href="@($"/agents/{AgentId}")">
+                Back to Agent
+            </MudButton>
+        }
+        else if (_version is not null)
+        {
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+                <MudText Typo="Typo.h4">Version @_version.VersionNumber</MudText>
+                @if (_version.IsActive)
+                {
+                    <MudChip T="string" Color="Color.Success">Active Version</MudChip>
+                }
+            </MudStack>
+
+            <MudGrid Spacing="3" Class="mb-4">
+                <MudItem xs="12" sm="6" md="4">
+                    <MudText Typo="Typo.caption" Class="text-muted">Agent</MudText>
+                    <MudLink Href="@($"/agents/{AgentId}")" Typo="Typo.body1">
+                        @(_agentName ?? AgentId)
+                    </MudLink>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4">
+                    <MudText Typo="Typo.caption" Class="text-muted">Version Number</MudText>
+                    <MudText Typo="Typo.body1">@_version.VersionNumber</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4">
+                    <MudText Typo="Typo.caption" Class="text-muted">Created</MudText>
+                    <MudText Typo="Typo.body1">@_version.CreatedAt.ToString("yyyy-MM-dd HH:mm")</MudText>
+                </MudItem>
+            </MudGrid>
+
+            <MudDivider Class="my-4" />
+
+            <MudText Typo="Typo.h6" Class="mb-3">Instructions</MudText>
+            <MudPaper Class="pa-4" Elevation="1" Style="background-color: var(--mud-palette-background-grey);">
+                <MudText Style="white-space: pre-wrap; font-family: monospace;">@_version.Instructions</MudText>
+            </MudPaper>
+
+            <MudStack Row="true" Class="mt-4">
+                <MudButton Variant="Variant.Text" 
+                           Color="Color.Primary" 
+                           StartIcon="@Icons.Material.Filled.ArrowBack"
+                           Href="@($"/agents/{AgentId}")">
+                    Back to Agent
+                </MudButton>
+            </MudStack>
+        }
+    </MudPaper>
+</MudContainer>

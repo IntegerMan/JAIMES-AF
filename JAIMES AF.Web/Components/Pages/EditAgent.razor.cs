@@ -172,7 +172,7 @@ public partial class EditAgent
 
             if (response.IsSuccessStatusCode)
             {
-                Navigation.NavigateTo("/agents");
+                Navigation.NavigateTo($"/agents/{AgentId}");
             }
             else
             {
@@ -206,6 +206,6 @@ public partial class EditAgent
 
     private void Cancel()
     {
-        Navigation.NavigateTo("/agents");
+        Navigation.NavigateTo($"/agents/{AgentId}");
     }
 }

@@ -9,9 +9,9 @@
 <PageTitle>Scenarios</PageTitle>
 
 <MudPaper Class="pa-4">
-    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
-    </MudStack>
+	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+	</MudStack>
 	<MudText Typo="Typo.h4">Scenarios</MudText>
 
 	<MudText Class="mb-4">Manage your game scenarios. Create new scenarios or edit existing ones.</MudText>
@@ -35,7 +35,8 @@
 
 		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && (_scenarios is null || _scenarios.Length == 0))
 		{
-			<MudText Class="mb-4">No scenarios yet.
+			<MudText Class="mb-4">
+				No scenarios yet.
 				<MudLink Href="/scenarios/new">Create a new scenario</MudLink>
 			</MudText>
 		}
@@ -59,7 +60,14 @@
 						{
 							@foreach (var agentInfo in GetScenarioAgentsDisplay(context.Id))
 							{
-								<span class="me-2">@agentInfo</span>
+								<MudStack Row="true" Spacing="1" Class="me-3 d-inline-flex" AlignItems="AlignItems.Center">
+									<MudLink Href="@($"/agents/{agentInfo.AgentId}")">@agentInfo.AgentName</MudLink>
+									<MudText Typo="Typo.body2">(</MudText>
+									<MudLink Href="@($"/agents/{agentInfo.AgentId}/versions/{agentInfo.VersionId}")" Typo="Typo.body2">
+										@agentInfo.VersionNumber
+									</MudLink>
+									<MudText Typo="Typo.body2">)</MudText>
+								</MudStack>
 							}
 						}
 						else
