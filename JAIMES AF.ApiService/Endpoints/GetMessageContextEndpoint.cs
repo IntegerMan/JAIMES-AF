@@ -19,12 +19,16 @@ public class GetMessageContextEndpoint : EndpointWithoutRequest<IEnumerable<Mess
     public override async Task HandleAsync(CancellationToken ct)
     {
         int messageId = Route<int>("messageId");
-        int count = Query<int>("count", false);
-        if (count < 1) count = 5;
+        int countBefore = Query<int>("count", false);
+        if (countBefore < 1) countBefore = 5;
+
+        int countAfter = Query<int>("countAfter", false);
+        if (countAfter < 0) countAfter = 0;
 
         try
         {
-            IEnumerable<MessageContextDto> messages = await MessageService.GetMessageContextAsync(messageId, count, ct);
+            IEnumerable<MessageContextDto> messages =
+                await MessageService.GetMessageContextAsync(messageId, countBefore, countAfter, ct);
             await Send.OkAsync(messages, ct);
         }
         catch (ArgumentException ex)

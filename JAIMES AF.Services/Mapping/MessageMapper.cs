@@ -18,6 +18,9 @@ public static partial class MessageMapper
     [MapProperty(nameof(Message.MessageSentiment),
         nameof(MessageDto.SentimentSource),
         Use = nameof(MapSentimentSourceFromMessageSentiment))]
+    [MapProperty(nameof(Message.MessageSentiment),
+        nameof(MessageDto.SentimentId),
+        Use = nameof(MapSentimentIdFromMessageSentiment))]
     [MapperIgnoreSource(nameof(Message.GameId))]
     [MapperIgnoreSource(nameof(Message.Game))]
     [MapperIgnoreSource(nameof(Message.ChatHistoryId))]
@@ -60,9 +63,16 @@ public static partial class MessageMapper
         return messageSentiment != null ? (int)messageSentiment.SentimentSource : null;
     }
 
+    private static int? MapSentimentIdFromMessageSentiment(MessageSentiment? messageSentiment)
+    {
+        return messageSentiment?.Id;
+    }
+
     [MapProperty(nameof(Message.ToolCalls), nameof(MessageContextDto.ToolCalls))]
     [MapProperty(nameof(Message.MessageSentiment), nameof(MessageContextDto.SentimentSource),
         Use = nameof(MapSentimentSourceFromMessageSentiment))]
+    [MapProperty(nameof(Message.MessageSentiment), nameof(MessageContextDto.SentimentId),
+        Use = nameof(MapSentimentIdFromMessageSentiment))]
     [MapProperty(nameof(Message.InstructionVersion), nameof(MessageDto.ModelName),
         Use = nameof(MapModelNameFromInstructionVersion))]
     [MapProperty(nameof(Message.InstructionVersion), nameof(MessageDto.ModelProvider),

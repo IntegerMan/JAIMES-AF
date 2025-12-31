@@ -19,7 +19,7 @@ public record MessagesMetadataResponse
     /// Evaluation metrics for the requested messages, keyed by Message ID.
     /// </summary>
     public Dictionary<int, List<MessageEvaluationMetricResponse>> Metrics { get; init; } = [];
-    
+
     /// <summary>
     /// Sentiment information for the requested messages, keyed by Message ID.
     /// </summary>
@@ -31,6 +31,7 @@ public record MessagesMetadataResponse
 /// </summary>
 public record MessageSentimentResponse
 {
+    public int? SentimentId { get; init; }
     public int Sentiment { get; init; }
     public double? Confidence { get; init; }
     public int? SentimentSource { get; init; }

@@ -1,4 +1,5 @@
 @inject HttpClient Http
+@inject NavigationManager NavigationManager
 
 <MudChat ChatPosition="ChatBubblePosition.End"
          Variant="Variant.Filled"
@@ -16,8 +17,21 @@
         <MudChatFooter Class="d-flex justify-content-end align-items-center gap-2 mt-1">
             @if (MessageId.HasValue && Sentiment.HasValue)
             {
-                if (ReadOnly)
+                @if (ReadOnly && NavigateOnClick && SentimentId.HasValue)
                 {
+                    @* Read-only mode with clickable navigation to details *@
+                    <MudTooltip Text="@GetClickableTooltipText()" Placement="Placement.Top">
+                        <MudIconButton Icon="@GetSentimentIcon()"
+                                       Color="@GetSentimentColor()"
+                                       Size="Size.Small"
+                                       Variant="Variant.Text"
+                                       Class="pa-0"
+                                       OnClick="ViewDetails" />
+                    </MudTooltip>
+                }
+                else if (ReadOnly)
+                {
+                    @* Read-only mode without navigation *@
                     <MudTooltip Text="@GetSentimentTooltipText()" Placement="Placement.Top">
                         <MudIcon Icon="@GetSentimentIcon()"
                                  Color="@GetSentimentColor()"
@@ -26,6 +40,7 @@
                 }
                 else
                 {
+                    @* Editable mode with menu *@
                     <MudMenu AnchorOrigin="Origin.TopCenter" TransformOrigin="Origin.BottomCenter" Dense="true">
                         <ActivatorContent>
                             <MudTooltip Text="@GetSentimentTooltipText()" Placement="Placement.Top">
@@ -40,6 +55,11 @@
                             <MudMenuItem OnClick="@(() => SetSentimentAsync(1))" Icon="@Icons.Material.Filled.ThumbUp" IconColor="Color.Success">Positive</MudMenuItem>
                             <MudMenuItem OnClick="@(() => SetSentimentAsync(0))" Icon="@Icons.Material.Filled.Balance" IconColor="Color.Default">Neutral</MudMenuItem>
                             <MudMenuItem OnClick="@(() => SetSentimentAsync(-1))" Icon="@Icons.Material.Filled.ThumbDown" IconColor="Color.Error">Negative</MudMenuItem>
+                            @if (SentimentId.HasValue)
+                            {
+                                <MudDivider />
+                                <MudMenuItem OnClick="ViewDetails" Icon="@Icons.Material.Filled.Visibility" IconColor="Color.Primary">View Details</MudMenuItem>
+                            }
                         </ChildContent>
                     </MudMenu>
                 }
@@ -90,6 +110,15 @@
     [Parameter]
     public int? SentimentSource { get; set; }
 
+    [Parameter]
+    public int? SentimentId { get; set; }
+
+    /// <summary>
+    /// When true and in ReadOnly mode, clicking the sentiment icon navigates to the details page.
+    /// </summary>
+    [Parameter]
+    public bool NavigateOnClick { get; set; }
+
     private string GetSentimentIcon() => Sentiment switch
     {
         > 0 => Icons.Material.Filled.ThumbUp,
@@ -127,6 +156,14 @@
         // Note: The UI will update automatically via SignalR broadcast from the server if successful
     }
 
+    private void ViewDetails()
+    {
+        if (SentimentId.HasValue)
+        {
+            NavigationManager.NavigateTo($"/admin/sentiments/{SentimentId.Value}");
+        }
+    }
+
     private string GetSentimentTooltipText()
     {
         if (!Sentiment.HasValue)
@@ -135,7 +172,11 @@
         string sentimentLabel = Sentiment.Value > 0 ? "Positive" :
                                 Sentiment.Value < 0 ? "Negative" : "Neutral";
 
-        // SentimentSource: 0 = Model, 1 = Player
+        // SentimentSource: 0 = Model, 1 = Player, 2 = Admin
+        if (SentimentSource == 2)
+        {
+            return $"{sentimentLabel} Sentiment - Set by Admin";
+        }
         if (SentimentSource == 1)
         {
             return $"{sentimentLabel} Sentiment - Set by User";
@@ -148,5 +189,10 @@
         }
 
         return $"{sentimentLabel} Sentiment";
+    }
+
+    private string GetClickableTooltipText()
+    {
+        return GetSentimentTooltipText() + " - Click to view details";
     }
 }
