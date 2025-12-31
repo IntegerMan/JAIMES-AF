@@ -1,0 +1,95 @@
+@page "/agents/{AgentId}"
+@rendermode InteractiveServer
+
+@inject HttpClient Http
+@inject ILoggerFactory LoggerFactory
+@inject NavigationManager Navigation
+
+<PageTitle>Agent Details</PageTitle>
+
+<MudPaper Class="pa-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+    </MudStack>
+
+    <div style="position: relative; min-height: 200px;">
+        @if (_isLoading)
+        {
+            <div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+                <MudProgressCircular Indeterminate="true"/>
+            </div>
+        }
+
+        @if (!_isLoading && !string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
+        }
+
+        @if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && _agent is not null)
+        {
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+                <MudText Typo="Typo.h4">@_agent.Name</MudText>
+                <MudButton Variant="Variant.Filled" 
+                           Color="Color.Primary" 
+                           StartIcon="@Icons.Material.Filled.Edit"
+                           Href="@($"/agents/{AgentId}/edit")">
+                    Edit Agent
+                </MudButton>
+            </MudStack>
+
+            <MudText Typo="Typo.body1" Class="mb-4">
+                <strong>Role:</strong> @_agent.Role
+            </MudText>
+
+            <MudDivider Class="my-4" />
+
+            <MudText Typo="Typo.h5" Class="mb-3">Instruction Versions</MudText>
+
+            @if (_versions is null || _versions.Length == 0)
+            {
+                <MudText Class="mb-4">No instruction versions yet.</MudText>
+            }
+            else
+            {
+                <MudTable Items="_versions" Dense="true" Hover="true">
+                    <HeaderContent>
+                        <MudTh>Version</MudTh>
+                        <MudTh>Created</MudTh>
+                        <MudTh>Active</MudTh>
+                        <MudTh>Instructions Preview</MudTh>
+                        <MudTh align="Align.Right">Actions</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>
+                            <MudLink Href="@($"/agents/{AgentId}/versions/{context.Id}")">@context.VersionNumber</MudLink>
+                        </MudTd>
+                        <MudTd>@context.CreatedAt.ToString("yyyy-MM-dd")</MudTd>
+                        <MudTd>
+                            @if (context.IsActive)
+                            {
+                                <MudChip T="string" Color="Color.Success" Size="Size.Small">Active</MudChip>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Class="text-muted">No</MudText>
+                            }
+                        </MudTd>
+                        <MudTd>
+                            <MudTooltip Text="@context.Instructions">
+                                <span>@(context.Instructions.Length > 50 ? context.Instructions.Substring(0, 50) + "..." : context.Instructions)</span>
+                            </MudTooltip>
+                        </MudTd>
+                        <MudTd align="Align.Right">
+                            <MudTooltip Text="View Version Details">
+                                <MudIconButton Icon="@Icons.Material.Filled.Visibility" 
+                                               Color="Color.Primary" 
+                                               Size="Size.Small"
+                                               Href="@($"/agents/{AgentId}/versions/{context.Id}")" />
+                            </MudTooltip>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        }
+    </div>
+</MudPaper>

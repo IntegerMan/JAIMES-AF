@@ -3,7 +3,7 @@ namespace MattEland.Jaimes.Web.Components.Pages;
 public partial class Scenarios
 {
     private ScenarioInfoResponse[]? _scenarios;
-    private Dictionary<string, List<string>> _scenarioAgents = new();
+    private Dictionary<string, List<AgentDisplayInfo>> _scenarioAgents = new();
     private bool _isLoading = true;
     private string? _errorMessage;
 
@@ -53,7 +53,7 @@ public partial class Scenarios
         {
             var agentsResponse =
                 await Http.GetFromJsonAsync<ScenarioAgentListResponse>($"/scenarios/{scenarioId}/agents");
-            var agentInfos = new List<string>();
+            var agentInfos = new List<AgentDisplayInfo>();
 
             if (agentsResponse?.ScenarioAgents != null)
             {
@@ -66,10 +66,14 @@ public partial class Scenarios
                         // Get instruction version details
                         var version = await Http.GetFromJsonAsync<AgentInstructionVersionResponse>(
                             $"/agents/{scenarioAgent.AgentId}/instruction-versions/{scenarioAgent.InstructionVersionId}");
-                        string versionDisplay = version != null
-                            ? $"{agent.Name} ({version.VersionNumber})"
-                            : $"{agent.Name} (v?)";
-                        agentInfos.Add(versionDisplay);
+
+                        agentInfos.Add(new AgentDisplayInfo
+                        {
+                            AgentId = scenarioAgent.AgentId,
+                            AgentName = agent.Name,
+                            VersionId = scenarioAgent.InstructionVersionId,
+                            VersionNumber = version?.VersionNumber ?? "v?"
+                        });
                     }
                 }
             }
@@ -79,12 +83,23 @@ public partial class Scenarios
         catch (Exception ex)
         {
             LoggerFactory.CreateLogger("Scenarios").LogError(ex, $"Failed to load agents for scenario {scenarioId}");
-            _scenarioAgents[scenarioId] = new List<string>();
+            _scenarioAgents[scenarioId] = new List<AgentDisplayInfo>();
         }
     }
 
-    private IEnumerable<string> GetScenarioAgentsDisplay(string scenarioId)
+    private IEnumerable<AgentDisplayInfo> GetScenarioAgentsDisplay(string scenarioId)
     {
-        return _scenarioAgents.GetValueOrDefault(scenarioId, new List<string>());
+        return _scenarioAgents.GetValueOrDefault(scenarioId, new List<AgentDisplayInfo>());
+    }
+
+    /// <summary>
+    /// Holds structured agent information for display with links.
+    /// </summary>
+    public class AgentDisplayInfo
+    {
+        public required string AgentId { get; init; }
+        public required string AgentName { get; init; }
+        public int VersionId { get; init; }
+        public required string VersionNumber { get; init; }
     }
 }

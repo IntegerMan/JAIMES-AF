@@ -1,11 +1,11 @@
-using MattEland.Jaimes.ServiceDefinitions.Requests;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 
 public partial class EditAgent
 {
     [Parameter] public string AgentId { get; set; } = string.Empty;
+
+    [Parameter] [SupplyParameterFromQuery] public int? BaseVersionId { get; set; }
 
     [Inject] public HttpClient Http { get; set; } = null!;
 
@@ -22,7 +22,7 @@ public partial class EditAgent
     private string? _errorMessage;
     private List<BreadcrumbItem> _breadcrumbs = new();
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
         _breadcrumbs = new List<BreadcrumbItem>
         {
@@ -61,48 +61,87 @@ public partial class EditAgent
                 new BreadcrumbItem("Edit", href: null, disabled: true)
             };
 
-            // Load the active instruction version for editing
+            // Load instructions - either from base version (if specified) or active version
             try
             {
-                var activeVersion =
-                    await Http.GetFromJsonAsync<AgentInstructionVersionResponse>(
-                        $"/agents/{AgentId}/instruction-versions/active");
-                if (activeVersion != null)
+                AgentInstructionVersionResponse? versionToLoad = null;
+
+                if (BaseVersionId.HasValue)
                 {
-                    _instructions = activeVersion.Instructions;
-                    _originalInstructions = activeVersion.Instructions;
+                    versionToLoad = await Http.GetFromJsonAsync<AgentInstructionVersionResponse>(
+                        $"/agents/{AgentId}/instruction-versions/{BaseVersionId}");
+                }
+                else
+                {
+                    versionToLoad = await Http.GetFromJsonAsync<AgentInstructionVersionResponse>(
+                        $"/agents/{AgentId}/instruction-versions/active");
+                }
+
+                if (versionToLoad != null)
+                {
+                    _instructions = versionToLoad.Instructions;
+
+                    if (BaseVersionId.HasValue)
+                    {
+                        // Let's grab active version too to check against.
+                        try
+                        {
+                            var active = await Http.GetFromJsonAsync<AgentInstructionVersionResponse>(
+                                $"/agents/{AgentId}/instruction-versions/active");
+                            _originalInstructions = active?.Instructions ?? string.Empty;
+                        }
+                        catch
+                        {
+                            _originalInstructions = string.Empty;
+                        }
+                    }
+                    else
+                    {
+                        // Standard edit flow
+                        _originalInstructions = versionToLoad.Instructions;
+                    }
+
+                    _instructions = versionToLoad.Instructions;
                 }
             }
             catch (HttpRequestException ex) when (ex.Message.Contains("404"))
             {
-                // Agent has no active instruction version - create a default one
-                var logger = LoggerFactory.CreateLogger("EditAgent");
-                logger.LogWarning("Agent {AgentId} has no active instruction version, creating default one", AgentId);
-
-                var defaultInstructions =
-                    $"You are {agent.Name}, a {agent.Role}. Provide helpful and engaging responses.";
-                var createVersionRequest = new CreateAgentInstructionVersionRequest
+                if (!BaseVersionId.HasValue)
                 {
-                    VersionNumber = "v1.0",
-                    Instructions = defaultInstructions
-                };
+                    // Agent has no active instruction version - create a default one
+                    var logger = LoggerFactory.CreateLogger("EditAgent");
+                    logger.LogWarning("Agent {AgentId} has no active instruction version, creating default one",
+                        AgentId);
 
-                var createResponse =
-                    await Http.PostAsJsonAsync($"/agents/{AgentId}/instruction-versions", createVersionRequest);
-                if (createResponse.IsSuccessStatusCode)
-                {
-                    var createdVersion =
-                        await createResponse.Content.ReadFromJsonAsync<AgentInstructionVersionResponse>();
-                    if (createdVersion != null)
+                    var defaultInstructions =
+                        $"You are {agent.Name}, a {agent.Role}. Provide helpful and engaging responses.";
+                    var createVersionRequest = new CreateAgentInstructionVersionRequest
                     {
-                        _instructions = createdVersion.Instructions;
-                        _originalInstructions = createdVersion.Instructions;
+                        VersionNumber = "v1.0",
+                        Instructions = defaultInstructions
+                    };
+
+                    var createResponse =
+                        await Http.PostAsJsonAsync($"/agents/{AgentId}/instruction-versions", createVersionRequest);
+                    if (createResponse.IsSuccessStatusCode)
+                    {
+                        var createdVersion =
+                            await createResponse.Content.ReadFromJsonAsync<AgentInstructionVersionResponse>();
+                        if (createdVersion != null)
+                        {
+                            _instructions = createdVersion.Instructions;
+                            _originalInstructions = createdVersion.Instructions;
+                        }
+                    }
+                    else
+                    {
+                        _errorMessage =
+                            "Agent has no instruction versions and failed to create a default one. Please create an instruction version manually.";
                     }
                 }
                 else
                 {
-                    _errorMessage =
-                        "Agent has no instruction versions and failed to create a default one. Please create an instruction version manually.";
+                    _errorMessage = $"Version {BaseVersionId} not found.";
                 }
             }
         }
@@ -172,7 +211,7 @@ public partial class EditAgent
 
             if (response.IsSuccessStatusCode)
             {
-                Navigation.NavigateTo("/agents");
+                Navigation.NavigateTo($"/agents/{AgentId}");
             }
             else
             {
@@ -206,6 +245,6 @@ public partial class EditAgent
 
     private void Cancel()
     {
-        Navigation.NavigateTo("/agents");
+        Navigation.NavigateTo($"/agents/{AgentId}");
     }
 }

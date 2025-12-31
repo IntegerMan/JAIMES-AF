@@ -3,15 +3,13 @@
 
 @inject HttpClient Http
 @inject ILoggerFactory LoggerFactory
-@inject IDialogService DialogService
-@inject NavigationManager Navigation
 
 <PageTitle>Agents</PageTitle>
 
 <MudPaper Class="pa-4">
-    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
-    </MudStack>
+	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+	</MudStack>
 	<MudText Typo="Typo.h4">Agents</MudText>
 
 	<MudText Class="mb-4">Manage AI agents and their instruction versions.</MudText>
@@ -35,7 +33,8 @@
 
 		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && (_agents is null || _agents.Length == 0))
 		{
-			<MudText Class="mb-4">No agents yet.
+			<MudText Class="mb-4">
+				No agents yet.
 				<MudLink Href="/agents/new">Create a new agent</MudLink>
 			</MudText>
 		}
@@ -49,21 +48,23 @@
 					<MudTh align="Align.Right">Actions</MudTh>
 				</HeaderContent>
 				<RowTemplate>
-					<MudTd>@context.Name</MudTd>
+					<MudTd>
+						<MudLink Href="@($"/agents/{context.Id}")">@context.Name</MudLink>
+					</MudTd>
 					<MudTd>@context.Role</MudTd>
 					<MudTd align="Align.Right">
-						<MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-						           Href="@($"/agents/{context.Id}/instruction-versions")" Class="me-2">
-							Instruction Versions
-						</MudButton>
-						<MudButton Variant="Variant.Filled" Color="Color.Secondary" Size="Size.Small"
-						           Href="@($"/agents/{context.Id}/edit")" Class="me-2">
-							Edit
-						</MudButton>
-						<MudButton Variant="Variant.Filled" Color="Color.Error" Size="Size.Small"
-						           OnClick="@(() => DeleteAgent(context))">
-							Delete
-						</MudButton>
+						<MudTooltip Text="View Details">
+							<MudIconButton Icon="@Icons.Material.Filled.Visibility"
+							               Color="Color.Primary"
+							               Size="Size.Small"
+							               Href="@($"/agents/{context.Id}")"/>
+						</MudTooltip>
+						<MudTooltip Text="Edit Agent">
+							<MudIconButton Icon="@Icons.Material.Filled.Edit"
+							               Color="Color.Secondary"
+							               Size="Size.Small"
+							               Href="@($"/agents/{context.Id}/edit")"/>
+						</MudTooltip>
 					</MudTd>
 				</RowTemplate>
 			</MudTable>
