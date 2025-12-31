@@ -36,6 +36,7 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
             .Include(m => m.ChatHistory)
             .Include(m => m.ToolCalls)
             .Include(m => m.MessageSentiment)
+            .Include(m => m.InstructionVersion)
             .ToListAsync(cancellationToken);
 
         // Fetch metrics and feedback manually since navigation properties aren't configured

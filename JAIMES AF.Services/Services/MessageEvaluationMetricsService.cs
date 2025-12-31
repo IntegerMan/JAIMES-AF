@@ -74,6 +74,13 @@ public class MessageEvaluationMetricsService(IDbContextFactory<JaimesDbContext> 
                 query = query.Where(m => m.Message != null &&
                                          m.Message.InstructionVersionId == filters.InstructionVersionId.Value);
             }
+
+            if (!string.IsNullOrEmpty(filters.AgentId))
+            {
+                query = query.Where(m => m.Message != null &&
+                                         m.Message.InstructionVersion != null &&
+                                         m.Message.InstructionVersion.AgentId == filters.AgentId);
+            }
         }
 
         // Order by game (player name), then message ID for sequential grouping

@@ -475,12 +475,7 @@ public partial class GameDetails : IAsyncDisposable
                 MessageFeedbackResponse? feedback = await response.Content.ReadFromJsonAsync<MessageFeedbackResponse>();
                 if (feedback != null)
                 {
-                    if (feedback != null)
-                    {
-                        _messageFeedback[messageId] = feedback;
-                        StateHasChanged();
-                    }
-
+                    _messageFeedback[messageId] = feedback;
                     StateHasChanged();
                 }
             }
@@ -529,11 +524,6 @@ public partial class GameDetails : IAsyncDisposable
 
                 foreach (var (msgId, fb) in metadata.Feedback)
                 {
-                    // Convert DTO to DTO (identical types now? No, metadata.Feedback item is MessageFeedbackResponse?)
-                    // Wait, MessagesMetadataResponse (Step 561) likely maps to MessageFeedbackResponse now?
-                    // I verified MetadataResponse in Step 561: "items.Select(tc => new MessageToolCallInfo" implies it wasn't.
-                    // But metadata.Feedback values are MessageFeedbackResponse (implied from API).
-                    // So I'll just assign it?
                     _messageFeedback[msgId] = fb;
                 }
 
