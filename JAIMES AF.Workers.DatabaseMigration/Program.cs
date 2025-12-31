@@ -5,6 +5,7 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceLayer;
+using MattEland.Jaimes.ServiceLayer.Services;
 using System.Diagnostics;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
@@ -34,7 +35,8 @@ builder.Configuration
 builder.Services.AddJaimesRepositories(builder.Configuration);
 
 // Add registration services
-builder.Services.AddJaimesServices();
+builder.Services.AddScoped<IToolRegistrar, ToolRegistrar>();
+builder.Services.AddScoped<IEvaluatorRegistrar, EvaluatorRegistrar>();
 
 // Configure OpenTelemetry ActivitySource
 const string activitySourceName = "Jaimes.Workers.DatabaseMigration";
