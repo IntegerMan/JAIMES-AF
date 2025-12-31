@@ -114,4 +114,42 @@ public class EvaluatorService(IDbContextFactory<JaimesDbContext> contextFactory)
             PageSize = pageSize
         };
     }
+
+    /// <inheritdoc />
+    public async Task<EvaluatorItemDto?> GetEvaluatorByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        var evaluator = await context.Evaluators
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
+
+        if (evaluator == null) return null;
+
+        // Fetch statistics for this evaluator
+        var stats = await context.MessageEvaluationMetrics
+            .AsNoTracking()
+            .Where(m => m.EvaluatorId == id)
+            .GroupBy(m => m.EvaluatorId)
+            .Select(g => new
+            {
+                MetricCount = g.Count(),
+                AverageScore = g.Average(m => m.Score),
+                PassCount = g.Count(m => m.Score >= 3),
+                FailCount = g.Count(m => m.Score < 3)
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return new EvaluatorItemDto
+        {
+            Id = evaluator.Id,
+            Name = evaluator.Name,
+            Description = evaluator.Description,
+            CreatedAt = evaluator.CreatedAt,
+            MetricCount = stats?.MetricCount ?? 0,
+            AverageScore = stats?.AverageScore,
+            PassCount = stats?.PassCount ?? 0,
+            FailCount = stats?.FailCount ?? 0
+        };
+    }
 }

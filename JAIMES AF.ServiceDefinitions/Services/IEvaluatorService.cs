@@ -24,4 +24,12 @@ public interface IEvaluatorService
         int? instructionVersionId = null,
         Guid? gameId = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets a single evaluator by its unique identifier.
+    /// </summary>
+    /// <param name="id">The evaluator ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The evaluator details, or null if not found.</returns>
+    Task<EvaluatorItemDto?> GetEvaluatorByIdAsync(int id, CancellationToken cancellationToken = default);
 }

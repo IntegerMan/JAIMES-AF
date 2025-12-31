@@ -46,7 +46,15 @@
                                 <MudCardHeader>
                                     <CardHeaderContent>
                                         <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-                                            <MudText Typo="Typo.h6">@metric.MetricName</MudText>
+                                            <MudStack Spacing="0">
+                                                <MudText Typo="Typo.h6">@metric.MetricName</MudText>
+                                                @if (metric.EvaluatorId.HasValue)
+                                                {
+                                                    <MudLink Typo="Typo.caption" Href="@($"/admin/metrics?evaluatorId={metric.EvaluatorId}")">
+                                                        @metric.EvaluatorName
+                                                    </MudLink>
+                                                }
+                                            </MudStack>
                                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                                                 <MudChip T="string" Color="@GetScoreColor(metric.Score)" Size="Size.Medium">
                                                     @metric.Score.ToString("F1")

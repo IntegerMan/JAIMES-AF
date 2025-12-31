@@ -104,8 +104,8 @@ public static partial class MessageMapper
 
     [MapperIgnoreSource(nameof(MessageEvaluationMetric.EvaluationModel))]
     [MapperIgnoreSource(nameof(MessageEvaluationMetric.Message))]
-    [MapperIgnoreSource(nameof(MessageEvaluationMetric.Evaluator))]
-    [MapperIgnoreSource(nameof(MessageEvaluationMetric.EvaluatorId))]
+    [MapProperty(nameof(MessageEvaluationMetric.EvaluatorId), nameof(MessageEvaluationMetricResponse.EvaluatorId))]
+    [MapProperty("Evaluator.Name", nameof(MessageEvaluationMetricResponse.EvaluatorName))]
     public static partial MessageEvaluationMetricResponse ToResponse(MessageEvaluationMetric metric);
 
     [MapperIgnoreSource(nameof(MessageFeedback.Message))]

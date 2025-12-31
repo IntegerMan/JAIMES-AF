@@ -25,12 +25,15 @@ public static class ServiceCollectionExtensions
 
         services.Scan(scan => scan
             .FromAssemblies([
-                typeof(EvaluatorRegistrar).Assembly,
-                typeof(Microsoft.Extensions.AI.Evaluation.Quality.RelevanceTruthAndCompletenessEvaluator).Assembly
+                typeof(EvaluatorRegistrar).Assembly
             ])
             .AddClasses(classes => classes.AssignableTo<Microsoft.Extensions.AI.Evaluation.IEvaluator>())
             .AsImplementedInterfaces()
             .WithSingletonLifetime());
+
+        services
+            .AddSingleton<Microsoft.Extensions.AI.Evaluation.IEvaluator,
+                Microsoft.Extensions.AI.Evaluation.Quality.RelevanceTruthAndCompletenessEvaluator>();
 
 
         // Configure our AI Agent

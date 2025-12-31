@@ -4,6 +4,7 @@ using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel;
 
 namespace MattEland.Jaimes.ServiceLayer.Services;
 
@@ -17,25 +18,12 @@ public class EvaluatorRegistrar(IDbContextFactory<JaimesDbContext> contextFactor
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
-        // Clear existing evaluators to handle the schema change (from metric names to class names)
-        // Also clear EvaluatorId in MessageEvaluationMetrics to avoid foreign key issues
-        await context.Database.ExecuteSqlRawAsync("UPDATE \"MessageEvaluationMetrics\" SET \"EvaluatorId\" = NULL",
-            cancellationToken);
-        await context.Database.ExecuteSqlRawAsync("DELETE FROM \"Evaluators\"", cancellationToken);
+        // Note: No longer wiping existing evaluators to preserve IDs and linkages.
 
-        // Reset identity if supported (PostgreSQL syntax)
-        if (string.Equals(context.Database.ProviderName, "Npgsql.EntityFrameworkCore.PostgreSQL",
-                StringComparison.Ordinal))
-        {
-            await context.Database.ExecuteSqlRawAsync("ALTER SEQUENCE \"Evaluators_Id_seq\" RESTART WITH 1",
-                cancellationToken);
-        }
+        // Scan for IEvaluator implementations in our own assemblies
+        List<Assembly> assembliesToScan = [Assembly.GetExecutingAssembly()];
 
-        // Scan for IEvaluator implementations
-        List<Assembly> assembliesToScan =
-            [Assembly.GetExecutingAssembly(), typeof(RelevanceTruthAndCompletenessEvaluator).Assembly];
-
-        // Try to load the worker assembly if it's available (might not be in migration context)
+        // Try to load the worker assembly if it's available
         Assembly? workerAssembly = TryLoadAssembly("MattEland.Jaimes.Workers.AssistantMessageWorker");
         if (workerAssembly != null)
         {
@@ -51,25 +39,119 @@ public class EvaluatorRegistrar(IDbContextFactory<JaimesDbContext> contextFactor
             .Distinct()
             .ToList();
 
+        // Manually include the RTC evaluator as it's in an external assembly we're no longer scanning
+        evaluatorTypes.Add(typeof(RelevanceTruthAndCompletenessEvaluator));
+
         foreach (var type in evaluatorTypes)
         {
             // We register the CLASS name as the Evaluator name
             string name = type.Name;
 
-            // Check if it's already registered (shouldn't happen with the DELETE above but good practice)
-            if (await context.Evaluators.AnyAsync(e => e.Name == name, cancellationToken)) continue;
+            // Check if it's already registered
+            var existingEvaluator =
+                await context.Evaluators.FirstOrDefaultAsync(e => e.Name == name, cancellationToken);
 
-            string description = $"Auto-detected evaluator class: {type.Name}";
+            // Get description from DescriptionAttribute if available
+            var descriptionAttribute = type.GetCustomAttribute<DescriptionAttribute>();
+            string description = descriptionAttribute?.Description ?? $"Auto-detected evaluator class: {type.Name}";
 
-            context.Evaluators.Add(new Evaluator
+            // Hardcoded description for RTC as it's from an external library
+            if (type == typeof(RelevanceTruthAndCompletenessEvaluator))
             {
-                Name = name,
-                Description = description,
-                CreatedAt = DateTime.UtcNow
-            });
+                description =
+                    "Evaluates assistant responses for Relevance to the prompt, Truthfulness relative to context, and Completeness regarding the user's intent.";
+            }
+
+            if (existingEvaluator == null)
+            {
+                context.Evaluators.Add(new Evaluator
+                {
+                    Name = name,
+                    Description = description,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                existingEvaluator.Description = description;
+            }
         }
 
         await context.SaveChangesAsync(cancellationToken);
+
+        // Perform re-linkage for any orphaned metrics
+        await ReLinkOrphanedMetricsAsync(context, evaluatorTypes, cancellationToken);
+    }
+
+    private async Task ReLinkOrphanedMetricsAsync(JaimesDbContext context, List<Type> evaluatorTypes,
+        CancellationToken cancellationToken)
+    {
+        // Fetch all registered evaluators to get their IDs
+        var evaluators = await context.Evaluators.ToListAsync(cancellationToken);
+        var evaluatorMap = evaluators.ToDictionary(e => e.Name, e => e.Id);
+
+        // Identify which metrics belong to which evaluator classes
+        var metricToEvaluatorMap = new Dictionary<string, int>();
+        foreach (var type in evaluatorTypes)
+        {
+            if (evaluatorMap.TryGetValue(type.Name, out int id))
+            {
+                // Instantiate the evaluator temporarily to get its metric names
+                // This is a bit heavy but ensures accuracy.
+                // Alternatively, we could hardcode these or use a convention.
+                try
+                {
+                    // Many evaluators have a parameterless constructor or one that can be mocked
+                    // If this fails, we skip it and hope for the best.
+                    if (Activator.CreateInstance(type) is Microsoft.Extensions.AI.Evaluation.IEvaluator evaluator)
+                    {
+                        foreach (var metricName in evaluator.EvaluationMetricNames)
+                        {
+                            metricToEvaluatorMap[metricName] = id;
+                        }
+                    }
+                }
+                catch
+                {
+                    // Fallback for evaluators without parameterless constructors
+                    // We'll try to match by naming convention if nothing else
+                    if (type == typeof(RelevanceTruthAndCompletenessEvaluator))
+                    {
+                        metricToEvaluatorMap["Relevance"] = id;
+                        metricToEvaluatorMap["Truth"] = id;
+                        metricToEvaluatorMap["Completeness"] = id;
+                    }
+                    else if (type.Name.EndsWith("Evaluator", StringComparison.Ordinal))
+                    {
+                        string possibleMetricName = type.Name.Replace("Evaluator", "", StringComparison.Ordinal);
+                        if (!metricToEvaluatorMap.ContainsKey(possibleMetricName))
+                        {
+                            metricToEvaluatorMap[possibleMetricName] = id;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Update metrics that have no EvaluatorId
+        var orphanedMetrics = await context.MessageEvaluationMetrics
+            .Where(m => m.EvaluatorId == null)
+            .ToListAsync(cancellationToken);
+
+        bool changed = false;
+        foreach (var metric in orphanedMetrics)
+        {
+            if (metricToEvaluatorMap.TryGetValue(metric.MetricName, out int evaluatorId))
+            {
+                metric.EvaluatorId = evaluatorId;
+                changed = true;
+            }
+        }
+
+        if (changed)
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
     }
 
     private static Assembly? TryLoadAssembly(string name)
