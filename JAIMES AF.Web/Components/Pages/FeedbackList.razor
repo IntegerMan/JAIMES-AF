@@ -41,7 +41,7 @@
             </PropertyColumn>
             <PropertyColumn Property="x => x.Comment" Title="Comment">
                 <CellTemplate>
-                    <MudLink Href="@($"/admin/feedback/{context.Item.Id}")" Typo="Typo.body2" Color="Color.Inherit" Underline="Underline.Hover">
+                    <MudLink Href="@($"/admin/feedback/{context.Item.Id}")" Typo="Typo.body2" Underline="Underline.Hover">
                         @context.Item.Comment
                     </MudLink>
                 </CellTemplate>
@@ -77,11 +77,24 @@
             <PropertyColumn Property="x => x.GamePlayerName" Title="Player" />
             <PropertyColumn Property="x => x.GameScenarioName" Title="Scenario" />
             <PropertyColumn Property="x => x.GameRulesetId" Title="Ruleset" />
-            <PropertyColumn Property="x => x.AgentVersion" Title="Agent Version" />
+            <PropertyColumn Property="x => x.AgentVersion" Title="Agent Version">
+                <CellTemplate>
+                    @if (!string.IsNullOrEmpty(context.Item.AgentId) && !string.IsNullOrEmpty(context.Item.AgentVersion))
+                    {
+                        <MudLink Href="@($"/agents/{context.Item.AgentId}/instruction-versions")" Typo="Typo.body2">
+                            @context.Item.AgentVersion
+                        </MudLink>
+                    }
+                    else if (!string.IsNullOrEmpty(context.Item.AgentVersion))
+                    {
+                        @context.Item.AgentVersion
+                    }
+                </CellTemplate>
+            </PropertyColumn>
             <TemplateColumn Title="Actions">
                 <CellTemplate>
                     <div class="d-flex">
-                        <MudTooltip Text="View Details">
+                        <MudTooltip Text="View Details" Placement="Placement.Top">
                             <MudIconButton Icon="@Icons.Material.Filled.Visibility" 
                                            Color="Color.Primary" 
                                            Size="Size.Small"
@@ -89,7 +102,7 @@
                         </MudTooltip>
                         @if (context.Item.GameId != Guid.Empty)
                         {
-                            <MudTooltip Text="View Game">
+                            <MudTooltip Text="View Game" Placement="Placement.Top">
                                 <MudIconButton Icon="@Icons.Material.Filled.Games" 
                                                Color="Color.Secondary" 
                                                Size="Size.Small"

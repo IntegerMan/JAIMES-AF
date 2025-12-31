@@ -233,6 +233,9 @@ public class DatabaseInitializer(ActivitySource activitySource, ILogger<Database
             // Save all changes at once
             await context.SaveChangesAsync(CancellationToken.None);
             seedActivity?.SetTag("db.seed.success", true);
+
+            // Seed scenario agents
+            await SeedScenarioAgentsAsync(context, logger);
         }
         catch (Exception ex)
         {
@@ -244,14 +247,94 @@ public class DatabaseInitializer(ActivitySource activitySource, ILogger<Database
         }
     }
 
+    private async Task SeedScenarioAgentsAsync(JaimesDbContext context, ILogger? logger)
+    {
+        try
+        {
+            // Define default mappings: ScenarioId -> AgentId
+            var scenarioMappings = new Dictionary<string, string>
+            {
+                { "islandTest", "defaultGameMaster" },
+                { "codemashKalahari", "defaultGameMaster" }
+            };
+
+            foreach (var (scenarioId, agentId) in scenarioMappings)
+            {
+                // Verify scenario exists
+                var scenario = await context.Scenarios.FindAsync([scenarioId], CancellationToken.None);
+                if (scenario == null)
+                {
+                    logger?.LogWarning("Cannot seed ScenarioAgent: Scenario {ScenarioId} not found", scenarioId);
+                    continue;
+                }
+
+                // Verify agent exists
+                var agent = await context.Agents.FindAsync([agentId], CancellationToken.None);
+                if (agent == null)
+                {
+                    logger?.LogWarning("Cannot seed ScenarioAgent: Agent {AgentId} not found", agentId);
+                    continue;
+                }
+
+                // Get active instruction version for the agent
+                var instructionVersion = await context.AgentInstructionVersions
+                    .Where(iv => iv.AgentId == agentId && iv.IsActive)
+                    .OrderByDescending(iv => iv.CreatedAt)
+                    .FirstOrDefaultAsync(CancellationToken.None);
+
+                if (instructionVersion == null)
+                {
+                    logger?.LogWarning(
+                        "Cannot seed ScenarioAgent: No active instruction version found for Agent {AgentId}", agentId);
+                    continue;
+                }
+
+                // Check if mapping already exists
+                var existingMapping = await context.ScenarioAgents
+                    .FirstOrDefaultAsync(sa => sa.ScenarioId == scenarioId && sa.AgentId == agentId,
+                        CancellationToken.None);
+
+                if (existingMapping == null)
+                {
+                    // Create new mapping
+                    context.ScenarioAgents.Add(new ScenarioAgent
+                    {
+                        ScenarioId = scenarioId,
+                        AgentId = agentId,
+                        InstructionVersionId = instructionVersion.Id
+                    });
+                    logger?.LogInformation("Seeded ScenarioAgent: {ScenarioId} -> {AgentId} (Version: {Version})",
+                        scenarioId, agentId, instructionVersion.Id);
+                }
+                else
+                {
+                    // Update instruction version if needed (ensure it points to the latest active version)
+                    if (existingMapping.InstructionVersionId != instructionVersion.Id)
+                    {
+                        existingMapping.InstructionVersionId = instructionVersion.Id;
+                        logger?.LogInformation(
+                            "Updated ScenarioAgent: {ScenarioId} -> {AgentId} to use Version: {Version}",
+                            scenarioId, agentId, instructionVersion.Id);
+                    }
+                }
+            }
+
+            await context.SaveChangesAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "Failed to seed scenario agents");
+        }
+    }
+
     private async Task CleanupDuplicateAgentsAsync(JaimesDbContext context)
     {
-        var defaultAgentNames = new[] {"Default Game Master", "Story Narrator", "Dungeon Master"};
+        var defaultAgentNames = new[] { "Default Game Master", "Story Narrator", "Dungeon Master" };
         var expectedIds = new Dictionary<string, string>
         {
-            {"Default Game Master", "defaultGameMaster"},
-            {"Story Narrator", "narrator"},
-            {"Dungeon Master", "dungeonMaster"}
+            { "Default Game Master", "defaultGameMaster" },
+            { "Story Narrator", "narrator" },
+            { "Dungeon Master", "dungeonMaster" }
         };
 
         foreach (var agentName in defaultAgentNames)

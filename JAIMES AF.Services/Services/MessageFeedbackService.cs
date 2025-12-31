@@ -78,7 +78,10 @@ public class MessageFeedbackService(IDbContextFactory<JaimesDbContext> contextFa
             .ThenInclude(m => m!.Game)
             .ThenInclude(g => g!.Scenario)
             .Include(mf => mf.Message)
+            .Include(mf => mf.Message)
             .ThenInclude(m => m!.ToolCalls)
+            .Include(mf => mf.Message)
+            .ThenInclude(m => m!.InstructionVersion)
             .Include(mf => mf.InstructionVersion);
 
         // Apply isPositive filter if specified
@@ -111,8 +114,10 @@ public class MessageFeedbackService(IDbContextFactory<JaimesDbContext> contextFa
                 IsPositive = mf.IsPositive,
                 Comment = mf.Comment,
                 CreatedAt = mf.CreatedAt,
-                InstructionVersionId = mf.InstructionVersionId,
-                AgentVersion = mf.InstructionVersion?.VersionNumber,
+                InstructionVersionId = mf.InstructionVersionId ?? mf.Message?.InstructionVersionId,
+                AgentId = mf.InstructionVersion?.AgentId ??
+                          mf.Message?.InstructionVersion?.AgentId ?? mf.Message?.AgentId,
+                AgentVersion = mf.InstructionVersion?.VersionNumber ?? mf.Message?.InstructionVersion?.VersionNumber,
                 GameId = mf.Message?.GameId ?? Guid.Empty,
                 GamePlayerName = mf.Message?.Game?.Player?.Name,
                 GameScenarioName = mf.Message?.Game?.Scenario?.Name,
@@ -144,6 +149,8 @@ public class MessageFeedbackService(IDbContextFactory<JaimesDbContext> contextFa
             .ThenInclude(g => g!.Scenario)
             .Include(mf => mf.Message)
             .ThenInclude(m => m!.ToolCalls)
+            .Include(mf => mf.Message)
+            .ThenInclude(m => m!.InstructionVersion)
             .Include(mf => mf.InstructionVersion)
             .FirstOrDefaultAsync(mf => mf.Id == id, cancellationToken);
 
@@ -156,8 +163,9 @@ public class MessageFeedbackService(IDbContextFactory<JaimesDbContext> contextFa
             IsPositive = mf.IsPositive,
             Comment = mf.Comment,
             CreatedAt = mf.CreatedAt,
-            InstructionVersionId = mf.InstructionVersionId,
-            AgentVersion = mf.InstructionVersion?.VersionNumber,
+            InstructionVersionId = mf.InstructionVersionId ?? mf.Message?.InstructionVersionId,
+            AgentId = mf.InstructionVersion?.AgentId ?? mf.Message?.InstructionVersion?.AgentId ?? mf.Message?.AgentId,
+            AgentVersion = mf.InstructionVersion?.VersionNumber ?? mf.Message?.InstructionVersion?.VersionNumber,
             GameId = mf.Message?.GameId ?? Guid.Empty,
             GamePlayerName = mf.Message?.Game?.Player?.Name,
             GameScenarioName = mf.Message?.Game?.Scenario?.Name,

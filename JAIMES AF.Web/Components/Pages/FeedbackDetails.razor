@@ -97,7 +97,17 @@
                             @if (!string.IsNullOrEmpty(_feedback.AgentVersion))
                             {
                                 <MudText Typo="Typo.caption" Class="text-muted">
-                                    <strong>Agent Version:</strong> @_feedback.AgentVersion
+                                    <strong>Agent Version:</strong>
+                                    @if (!string.IsNullOrEmpty(_feedback.AgentId))
+                                    {
+                                        <MudLink Href="@($"/agents/{_feedback.AgentId}/instruction-versions")" Typo="Typo.caption">
+                                            @_feedback.AgentVersion
+                                        </MudLink>
+                                    }
+                                    else
+                                    {
+                                        @_feedback.AgentVersion
+                                    }
                                 </MudText>
                             }
                         </MudStack>
