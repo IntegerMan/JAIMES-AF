@@ -1,0 +1,217 @@
+@page "/admin/evaluators"
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MudBlazor
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<PageTitle>Evaluators</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+    </MudStack>
+    <MudText Typo="Typo.h4" Class="mb-2">Evaluators</MudText>
+    <MudText Typo="Typo.body2" Class="mb-4 text-muted">
+        View registered evaluators and their aggregate metrics. Click an evaluator name to see detailed evaluation metrics.
+    </MudText>
+
+    <MudDataGrid T="EvaluatorItemDto"
+                 ServerData="ServerReload"
+                 Filterable="false"
+                 Hover="true"
+                 Dense="true"
+                 Striped="true">
+        <Columns>
+            <PropertyColumn Property="x => x.Name" Title="Evaluator">
+                <CellTemplate>
+                    <MudLink Href="@($"/admin/metrics?metricName={Uri.EscapeDataString(context.Item.Name)}")" Typo="Typo.body2">
+                        <strong>@context.Item.Name</strong>
+                    </MudLink>
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.Description" Title="Description">
+                <CellTemplate>
+                    @if (!string.IsNullOrEmpty(context.Item.Description))
+                    {
+                        <MudTooltip Text="@context.Item.Description" Placement="Placement.Top">
+                            <MudText Typo="Typo.body2" Style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                @context.Item.Description
+                            </MudText>
+                        </MudTooltip>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Class="text-muted">No description</MudText>
+                    }
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.MetricCount" Title="Metrics">
+                <CellTemplate>
+                    <MudChip T="string" Color="Color.Primary" Size="Size.Small">
+                        @context.Item.MetricCount.ToString("N0")
+                    </MudChip>
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.AverageScore" Title="Avg Score" Sortable="true">
+                <CellTemplate>
+                    @if (context.Item.AverageScore.HasValue)
+                    {
+                        <MudChip T="string" Color="@GetScoreColor(context.Item.AverageScore.Value)" Size="Size.Small">
+                            @context.Item.AverageScore.Value.ToString("F2")
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Class="text-muted">N/A</MudText>
+                    }
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.PassCount" Title="Pass" Sortable="true">
+                <CellTemplate>
+                    @if (context.Item.PassCount > 0)
+                    {
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@Icons.Material.Filled.Check" Color="Color.Success" Size="Size.Small" />
+                            <MudText Typo="Typo.body2">@context.Item.PassCount.ToString("N0")</MudText>
+                        </MudStack>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2">0</MudText>
+                    }
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.FailCount" Title="Fail" Sortable="true">
+                <CellTemplate>
+                    @if (context.Item.FailCount > 0)
+                    {
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@Icons.Material.Filled.Close" Color="Color.Error" Size="Size.Small" />
+                            <MudText Typo="Typo.body2">@context.Item.FailCount.ToString("N0")</MudText>
+                        </MudStack>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2">0</MudText>
+                    }
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.CreatedAt" Title="Registered">
+                <CellTemplate>
+                    <MudText Typo="Typo.body2">@context.Item.CreatedAt.ToLocalTime().ToString("d")</MudText>
+                </CellTemplate>
+            </PropertyColumn>
+            <TemplateColumn Title="Actions">
+                <CellTemplate>
+                    <MudTooltip Text="View Metrics">
+                        <MudIconButton Icon="@Icons.Material.Filled.PieChart" 
+                                       Color="Color.Primary" 
+                                       Size="Size.Small"
+                                       Href="@($"/admin/metrics?metricName={Uri.EscapeDataString(context.Item.Name)}")" />
+                    </MudTooltip>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="EvaluatorItemDto" />
+        </PagerContent>
+        <NoRecordsContent>
+            <MudText Typo="Typo.body1" Class="pa-4">
+                No evaluators registered. Evaluators are automatically registered when the application starts.
+            </MudText>
+        </NoRecordsContent>
+    </MudDataGrid>
+</MudContainer>
+
+@code {
+    /// <summary>
+    /// Optional agent ID to filter results.
+    /// </summary>
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? AgentId { get; set; }
+
+    /// <summary>
+    /// Optional instruction version ID to filter results.
+    /// </summary>
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public int? InstructionVersionId { get; set; }
+
+    /// <summary>
+    /// Optional game ID to filter results.
+    /// </summary>
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public Guid? GameId { get; set; }
+
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override void OnInitialized()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Admin", href: "/admin"),
+            new BreadcrumbItem("Evaluators", href: null, disabled: true)
+        };
+    }
+
+    private async Task<GridData<EvaluatorItemDto>> ServerReload(GridState<EvaluatorItemDto> state)
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient("Api");
+
+            int page = state.Page + 1;
+            int pageSize = state.PageSize;
+
+            var queryParams = new List<string>
+            {
+                $"page={page}",
+                $"pageSize={pageSize}"
+            };
+
+            if (!string.IsNullOrEmpty(AgentId))
+                queryParams.Add($"agentId={Uri.EscapeDataString(AgentId)}");
+            if (InstructionVersionId.HasValue)
+                queryParams.Add($"instructionVersionId={InstructionVersionId.Value}");
+            if (GameId.HasValue)
+                queryParams.Add($"gameId={GameId.Value}");
+
+            string queryString = string.Join("&", queryParams);
+            var response = await client.GetFromJsonAsync<EvaluatorListResponse>($"/admin/evaluators?{queryString}");
+
+            if (response != null)
+            {
+                return new GridData<EvaluatorItemDto>
+                {
+                    TotalItems = response.TotalCount,
+                    Items = response.Items
+                };
+            }
+        }
+        catch (Exception)
+        {
+            // Handle error (maybe show snackbar)
+        }
+
+        return new GridData<EvaluatorItemDto>
+        {
+            TotalItems = 0,
+            Items = []
+        };
+    }
+
+    private static Color GetScoreColor(double score)
+    {
+        return score switch
+        {
+            >= 4 => Color.Success,
+            >= 3 => Color.Info,
+            >= 2 => Color.Warning,
+            _ => Color.Error
+        };
+    }
+}
