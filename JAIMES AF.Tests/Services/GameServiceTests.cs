@@ -1,4 +1,3 @@
-using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceLayer.Services;
 
 namespace MattEland.Jaimes.Tests.Services;
@@ -29,6 +28,27 @@ public class GameServiceTests : IAsyncLifetime
             RulesetId = "test-ruleset",
             Name = "Unspecified",
             InitialGreeting = null
+        });
+        _context.Agents.Add(new Agent
+        {
+            Id = "test-agent",
+            Name = "Test Agent",
+            Role = "Game Master"
+        });
+        _context.AgentInstructionVersions.Add(new AgentInstructionVersion
+        {
+            Id = 1,
+            AgentId = "test-agent",
+            VersionNumber = "1.0",
+            Instructions = "Test instructions",
+            ModelId = 1
+        });
+        _context.Models.Add(new Model
+        {
+            Id = 1,
+            Name = "Test Model",
+            Provider = "Test",
+            Endpoint = "http://test"
         });
         _context.ScenarioAgents.Add(new ScenarioAgent
         {
@@ -191,7 +211,7 @@ public class GameServiceTests : IAsyncLifetime
 
         // Assert
         result.ShouldNotBeNull();
-        result!.Messages.ShouldNotBeNull();
+        result.Messages.ShouldNotBeNull();
         result.Messages.Length.ShouldBe(3);
         result.Messages[0].Text.ShouldBe("First message");
         result.Messages[0].Id.ShouldBeGreaterThan(0);
@@ -250,7 +270,7 @@ public class GameServiceTests : IAsyncLifetime
 
         // Assert - Messages should be ordered by Id, not CreatedAt
         result.ShouldNotBeNull();
-        result!.Messages.ShouldNotBeNull();
+        result.Messages.ShouldNotBeNull();
         result.Messages.Length.ShouldBe(3);
         result.Messages[0].Id.ShouldBeLessThan(result.Messages[1].Id);
         result.Messages[1].Id.ShouldBeLessThan(result.Messages[2].Id);
@@ -319,6 +339,12 @@ public class GameServiceTests : IAsyncLifetime
             RulesetId = "test-ruleset",
             Name = "Test Scenario",
             InitialGreeting = customGreeting
+        });
+        _context.ScenarioAgents.Add(new ScenarioAgent
+        {
+            ScenarioId = "scenario-with-greeting",
+            AgentId = "test-agent",
+            InstructionVersionId = 1
         });
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 

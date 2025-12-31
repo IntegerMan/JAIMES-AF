@@ -157,6 +157,12 @@
     [Parameter]
     public double? MaxScore { get; set; }
 
+    /// <summary>
+    /// Optional evaluator ID to filter results.
+    /// </summary>
+    [Parameter]
+    public int? EvaluatorId { get; set; }
+
     private static Color GetScoreColor(double score)
     {
         return score switch
@@ -212,6 +218,8 @@
                 queryParams.Add($"minScore={MinScore.Value}");
             if (MaxScore.HasValue)
                 queryParams.Add($"maxScore={MaxScore.Value}");
+            if (EvaluatorId.HasValue)
+                queryParams.Add($"evaluatorId={EvaluatorId.Value}");
 
             string queryString = string.Join("&", queryParams);
             var response = await client.GetFromJsonAsync<EvaluationMetricListResponse>($"/admin/metrics?{queryString}");

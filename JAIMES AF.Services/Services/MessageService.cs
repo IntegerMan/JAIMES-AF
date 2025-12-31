@@ -80,6 +80,7 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
         foreach (var message in allMessages)
         {
             var dto = message.ToContextDto();
+            dto.InstructionVersionNumber = message.InstructionVersion?.VersionNumber;
             dto.Metrics = metrics
                 .Where(m => m.MessageId == message.Id)
                 .Select(MessageMapper.ToResponse)
