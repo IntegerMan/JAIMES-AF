@@ -3,7 +3,7 @@ using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.ServiceLayer;
 using MattEland.Jaimes.Workers.AssistantMessageWorker.Services;
-using Microsoft.Extensions.AI.Evaluation.Quality;
+using Microsoft.Extensions.AI.Evaluation;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
@@ -37,8 +37,18 @@ builder.Services.AddJaimesServices();
 // Configure chat client for evaluation
 builder.Services.AddChatClient(builder.Configuration, "TextGenerationModel");
 
-// Register RelevanceTruthAndCompletenessEvaluator as singleton
+// Register evaluators
 builder.Services.AddSingleton<RelevanceTruthAndCompletenessEvaluator>();
+builder.Services.Configure<BrevityEvaluatorOptions>(builder.Configuration.GetSection("Evaluation:Brevity"));
+builder.Services.AddSingleton<BrevityEvaluator>();
+
+// Register CompositeEvaluator as the primary IEvaluator
+builder.Services.AddSingleton<IEvaluator>(sp =>
+    new CompositeEvaluator(
+    [
+        sp.GetRequiredService<RelevanceTruthAndCompletenessEvaluator>(),
+        sp.GetRequiredService<BrevityEvaluator>()
+    ]));
 
 // Register evaluation service
 builder.Services.AddScoped<IMessageEvaluationService, MessageEvaluationService>();
