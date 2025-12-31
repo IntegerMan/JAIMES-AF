@@ -19,5 +19,5 @@ public class ToolCallFullDetailResponse : ToolCallDetailDto
     /// The conversation context surrounding this tool call.
     /// This should include the message that made the tool call and preceding messages.
     /// </summary>
-    public List<MessageResponse> ContextMessages { get; init; } = [];
+    public List<MessageContextDto> ContextMessages { get; init; } = [];
 }

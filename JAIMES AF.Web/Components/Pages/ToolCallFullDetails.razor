@@ -58,47 +58,7 @@
             
             <MudItem xs="12" md="6">
                  <MudText Typo="Typo.h6" Class="mb-3">Conversation Context</MudText>
-                 <div style="max-height: 80vh; overflow-y: auto; padding-right: 8px;">
-                      @if (_toolCall.ContextMessages.Any())
-                      {
-                          @foreach(var msg in _toolCall.ContextMessages)
-                          {
-                              List<string> paragraphs = ChatHelpers.SplitIntoParagraphs(msg.Text).ToList();
-                              @foreach ((string paragraph, int index) in paragraphs.Select((p, i) => (p, i)))
-                              {
-                                  bool isFirstParagraph = index == 0;
-                                  bool isLastParagraph = index == paragraphs.Count - 1;
-                                  bool isTarget = msg.Id == _toolCall.MessageId;
-
-                                  @if (msg.Participant == ChatParticipant.Player) // User message
-                                  {
-                                      <UserChatMessage 
-                                          Text="@paragraph" 
-                                          IsFirstParagraph="@isFirstParagraph"
-                                          IsLastParagraph="@isLastParagraph"
-                                          MessageId="@msg.Id"
-                                          Sentiment="@msg.Sentiment"
-                                          ReadOnly="true"
-                                          Highlighted="@isTarget" />
-                                  }
-                                  else // Assistant message
-                                  {
-                                      <AssistantChatMessage
-                                          Text="@paragraph"
-                                          MessageId="@msg.Id"
-                                          IsFirstParagraph="@isFirstParagraph"
-                                          IsLastParagraph="@isLastParagraph"
-                                          ReadOnly="true"
-                                          Highlighted="@isTarget" />
-                                  }
-                              }
-                          }
-                      }
-                      else
-                      {
-                          <MudText Typo="Typo.body2" Class="text-muted">No context messages available.</MudText>
-                      }
-                 </div>
+                 <ReadOnlyConversation MessageId="@_toolCall.MessageId" ContextCount="5" />
             </MudItem>
         </MudGrid>
     }
