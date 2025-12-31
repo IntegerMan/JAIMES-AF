@@ -216,7 +216,7 @@
             if (!string.IsNullOrEmpty(ToolName))
                 queryParams.Add($"toolName={Uri.EscapeDataString(ToolName)}");
             if (!string.IsNullOrEmpty(AgentVersion))
-                queryParams.Add($"agentVersion={Uri.EscapeDataString(AgentVersion)}");
+                queryParams.Add($"agentId={Uri.EscapeDataString(AgentVersion)}");
             if (Sentiment.HasValue)
                 queryParams.Add($"sentiment={Sentiment.Value}");
             if (HasFeedback.HasValue)
