@@ -213,9 +213,9 @@
     
     private void OnFeedbackIconClicked()
     {
-         if (ReadOnly && MessageId.HasValue)
+         if (ReadOnly && Feedback != null)
          {
-             NavigationManager.NavigateTo($"/admin/feedback?messageId={MessageId}");
+             NavigationManager.NavigateTo($"/admin/feedback/{Feedback.Id}");
          }
     }
 
