@@ -1,5 +1,3 @@
-using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MudBlazor;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 
@@ -13,7 +11,7 @@ public partial class AgentDetails
     private string? _errorMessage;
     private List<BreadcrumbItem> _breadcrumbs = new();
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
         _breadcrumbs = new List<BreadcrumbItem>
         {
@@ -37,12 +35,12 @@ public partial class AgentDetails
 
         _isLoading = true;
         _errorMessage = null;
-        
+
         try
         {
             // Load agent details
             _agent = await Http.GetFromJsonAsync<AgentResponse>($"/agents/{AgentId}");
-            
+
             if (_agent != null)
             {
                 // Update breadcrumbs with agent name

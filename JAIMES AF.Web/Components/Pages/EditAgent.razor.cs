@@ -1,5 +1,3 @@
-using MattEland.Jaimes.ServiceDefinitions.Requests;
-using MattEland.Jaimes.ServiceDefinitions.Responses;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 
@@ -24,7 +22,7 @@ public partial class EditAgent
     private string? _errorMessage;
     private List<BreadcrumbItem> _breadcrumbs = new();
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
         _breadcrumbs = new List<BreadcrumbItem>
         {
