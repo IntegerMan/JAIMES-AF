@@ -15,11 +15,9 @@
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
     <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" 
-                       OnClick="GoBack"
-                       Variant="Variant.Text" />
-        <MudText Typo="Typo.h4">Message Evaluation Metrics</MudText>
+        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
     </MudStack>
+    <MudText Typo="Typo.h4" Class="mb-4">Message Evaluation Metrics</MudText>
     
     @if (_isLoading)
     {
@@ -35,15 +33,7 @@
     }
     else
     {
-        @if (_gameId.HasValue)
-        {
-            <MudButton Href="@($"/games/{_gameId}")" 
-                       Variant="Variant.Text" 
-                       StartIcon="@Icons.Material.Filled.ArrowBack" 
-                       Class="mb-4">
-                Back to Game
-            </MudButton>
-        }
+
         
         <MudGrid>
             <MudItem xs="12" md="6">
@@ -113,7 +103,18 @@
             </MudItem>
             
             <MudItem xs="12" md="6">
-                <MudText Typo="Typo.h6" Class="mb-3">Conversation Context</MudText>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
+                    <MudText Typo="Typo.h6">Conversation Context</MudText>
+                    @if (_gameId.HasValue)
+                    {
+                        <MudButton Href="@($"/games/{_gameId}")" 
+                                   Variant="Variant.Text" 
+                                   StartIcon="@Icons.Material.Filled.Gamepad" 
+                                   Color="Color.Primary">
+                            View Game
+                        </MudButton>
+                    }
+                </MudStack>
                 <div style="max-height: 80vh; overflow-y: auto; padding-right: 8px;">
                     @if (_contextMessages != null)
                     {
@@ -227,16 +228,21 @@
         }
     }
 
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Dashboard", href: "/admin"),
+            new BreadcrumbItem("Metrics", href: "/admin/metrics"),
+            new BreadcrumbItem($"Message {MessageId}", href: null, disabled: true)
+        };
+    }
+
     private void GoBack()
     {
-        if (_gameId.HasValue)
-        {
-            NavigationManager.NavigateTo($"/games/{_gameId}");
-        }
-        else
-        {
-            NavigationManager.NavigateTo("/admin/metrics");
-        }
+        // Deprecated
     }
 
     private static Color GetScoreColor(double score)
