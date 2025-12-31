@@ -152,9 +152,14 @@
 </div>
 
 @code {
-    private async Task OnToolCallClicked(int messageId)
+    private void OnToolCallClicked(int messageId)
     {
-        await ShowToolCallsDialogAsync(messageId);
+        if (_messageToolCalls.TryGetValue(messageId, out List<MessageToolCallResponse>? toolCalls) &&
+            toolCalls != null &&
+            toolCalls.Count > 0)
+        {
+             NavigationManager.NavigateTo($"/admin/tool-calls/{toolCalls[0].Id}");
+        }
     }
     
     private async Task OnFeedbackClicked((int MessageId, bool IsPositive) args)

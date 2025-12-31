@@ -32,7 +32,9 @@
         <Columns>
             <PropertyColumn Property="x => x.CreatedAt" Title="Time">
                 <CellTemplate>
-                    @context.Item.CreatedAt.ToLocalTime().ToString("g")
+                    <MudLink Href="@($"/admin/tool-calls/{context.Item.Id}")">
+                        @context.Item.CreatedAt.ToLocalTime().ToString("g")
+                    </MudLink>
                 </CellTemplate>
             </PropertyColumn>
             <PropertyColumn Property="x => x.GameName" Title="Game">
@@ -101,7 +103,7 @@
                         @if (context.Item.GameId.HasValue)
                         {
                             <MudTooltip Text="Go to Game">
-                                <MudIconButton Icon="@Icons.Material.Filled.VideogameAsset" 
+                                <MudIconButton Icon="@Icons.Material.Filled.Gamepad" 
                                                Color="Color.Secondary" 
                                                Size="Size.Small"
                                                Href="@($"/games/{context.Item.GameId}")"

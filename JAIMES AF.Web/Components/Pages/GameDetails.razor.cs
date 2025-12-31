@@ -500,35 +500,6 @@ public partial class GameDetails : IAsyncDisposable
 
 
     /// <summary>
-    /// Shows the tool calls dialog for a message.
-    /// </summary>
-    private async Task ShowToolCallsDialogAsync(int messageId)
-    {
-        if (!_messageToolCalls.TryGetValue(messageId, out List<MessageToolCallResponse>? toolCalls) ||
-            toolCalls == null ||
-            toolCalls.Count == 0)
-        {
-            await DialogService.ShowMessageBox("No Tool Calls", "This message has no tool calls.", "OK");
-            return;
-        }
-
-        var parameters = new DialogParameters<ToolCallsDialog>
-        {
-            { nameof(ToolCallsDialog.ToolCalls), toolCalls }
-        };
-
-        var options = new DialogOptions
-        {
-            CloseOnEscapeKey = true,
-            MaxWidth = MaxWidth.Large,
-            FullWidth = true
-        };
-
-        IDialogReference? dialogRef = await DialogService.ShowAsync<ToolCallsDialog>("Tool Calls", parameters, options);
-        await dialogRef.Result;
-    }
-
-    /// <summary>
     /// Shows the evaluation metrics page for a message.
     /// </summary>
     private void ShowMetricsDialogAsync(int messageId)
