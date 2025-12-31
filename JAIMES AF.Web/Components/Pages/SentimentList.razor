@@ -33,6 +33,18 @@
                  Dense="true"
                  Striped="true">
         <Columns>
+            <PropertyColumn Property="x => x.CreatedAt" Title="Created">
+                <CellTemplate>
+                    @context.Item.CreatedAt.ToLocalTime().ToString("g")
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.MessagePreview" Title="Message">
+                <CellTemplate>
+                    <MudLink Href="@($"/admin/sentiments/{context.Item.Id}")" Typo="Typo.body2" Underline="Underline.Hover">
+                        @(TruncateMessage(context.Item.MessagePreview, 70))
+                    </MudLink>
+                </CellTemplate>
+            </PropertyColumn>
             <PropertyColumn Property="x => x.Sentiment" Title="Sentiment" Sortable="false">
                 <CellTemplate>
                     <SentimentIcon Sentiment="@context.Item.Sentiment"
@@ -43,6 +55,23 @@
                                    IsAdminContext="true"
                                    ShowViewDetails="true"
                                    OnSentimentChanged="@(() => InvokeAsync(StateHasChanged))" />
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.Confidence" Title="Confidence">
+                <CellTemplate>
+                    @if (context.Item.Confidence.HasValue)
+                    {
+                        <MudText Typo="Typo.body2">@((context.Item.Confidence.Value * 100).ToString("F0"))%</MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Class="text-muted">N/A</MudText>
+                    }
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.UpdatedAt" Title="Modified">
+                <CellTemplate>
+                    @context.Item.UpdatedAt.ToLocalTime().ToString("g")
                 </CellTemplate>
             </PropertyColumn>
             <PropertyColumn Property="x => x.SentimentSource" Title="Source" Sortable="false">
@@ -59,47 +88,7 @@
                     <MudChip T="string" Color="@color" Size="Size.Small">@label</MudChip>
                 </CellTemplate>
             </PropertyColumn>
-            <PropertyColumn Property="x => x.Confidence" Title="Confidence">
-                <CellTemplate>
-                    @if (context.Item.Confidence.HasValue)
-                    {
-                        <MudText Typo="Typo.body2">@((context.Item.Confidence.Value * 100).ToString("F0"))%</MudText>
-                    }
-                    else
-                    {
-                        <MudText Typo="Typo.caption" Class="text-muted">N/A</MudText>
-                    }
-                </CellTemplate>
-            </PropertyColumn>
-            <PropertyColumn Property="x => x.CreatedAt" Title="Created">
-                <CellTemplate>
-                    <MudLink Href="@($"/admin/sentiments/{context.Item.Id}")" Typo="Typo.body2" Underline="Underline.Hover">
-                        @context.Item.CreatedAt.ToLocalTime().ToString("g")
-                    </MudLink>
-                </CellTemplate>
-            </PropertyColumn>
-            <PropertyColumn Property="x => x.UpdatedAt" Title="Modified">
-                <CellTemplate>
-                    @context.Item.UpdatedAt.ToLocalTime().ToString("g")
-                </CellTemplate>
-            </PropertyColumn>
-            <PropertyColumn Property="x => x.GamePlayerName" Title="Player" />
-            <PropertyColumn Property="x => x.GameScenarioName" Title="Scenario" />
-            <PropertyColumn Property="x => x.AgentVersion" Title="Agent Version">
-                <CellTemplate>
-                    @if (!string.IsNullOrEmpty(context.Item.AgentId) && !string.IsNullOrEmpty(context.Item.AgentVersion))
-                    {
-                        <MudLink Href="@($"/agents/{context.Item.AgentId}/instruction-versions")" Typo="Typo.body2">
-                            @context.Item.AgentVersion
-                        </MudLink>
-                    }
-                    else if (!string.IsNullOrEmpty(context.Item.AgentVersion))
-                    {
-                        @context.Item.AgentVersion
-                    }
-                </CellTemplate>
-            </PropertyColumn>
-            <TemplateColumn Title="Feedback">
+            <TemplateColumn Title="Prior Message Feedback">
                 <CellTemplate>
                     @if (context.Item.HasFeedback)
                     {
@@ -118,6 +107,22 @@
                     }
                 </CellTemplate>
             </TemplateColumn>
+            <PropertyColumn Property="x => x.GamePlayerName" Title="Player" />
+            <PropertyColumn Property="x => x.GameScenarioName" Title="Scenario" />
+            <PropertyColumn Property="x => x.AgentVersion" Title="Agent Version">
+                <CellTemplate>
+                    @if (!string.IsNullOrEmpty(context.Item.AgentId) && !string.IsNullOrEmpty(context.Item.AgentVersion))
+                    {
+                        <MudLink Href="@($"/agents/{context.Item.AgentId}/instruction-versions")" Typo="Typo.body2">
+                            @context.Item.AgentVersion
+                        </MudLink>
+                    }
+                    else if (!string.IsNullOrEmpty(context.Item.AgentVersion))
+                    {
+                        @context.Item.AgentVersion
+                    }
+                </CellTemplate>
+            </PropertyColumn>
             <TemplateColumn Title="Actions">
                 <CellTemplate>
                     <div class="d-flex">
@@ -182,6 +187,13 @@
             new BreadcrumbItem("Admin", href: "/admin"),
             new BreadcrumbItem("Sentiments", href: null, disabled: true)
         };
+    }
+
+    private string TruncateMessage(string? message, int maxLength)
+    {
+        if (string.IsNullOrEmpty(message)) return "(No message)";
+        if (message.Length <= maxLength) return message;
+        return message[..maxLength] + "...";
     }
 
     private async Task<GridData<SentimentListItemDto>> ServerReload(GridState<SentimentListItemDto> state)

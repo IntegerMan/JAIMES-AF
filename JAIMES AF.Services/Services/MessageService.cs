@@ -24,10 +24,8 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
             throw new ArgumentException($"Message {messageId} not found", nameof(messageId));
         }
 
-        // Get the last N messages for this game up to and including the target message
-        // We order by ID descending to get the most recent ones, then take count, then reverse to chronological order
-        // Note: We filter by GameId to ensure we're only looking at the relevant conversation
-        List<Message> messages = await context.Messages
+        // Get messages before and up to the target message (context leading up to it)
+        List<Message> messagesBefore = await context.Messages
             .AsNoTracking()
             .Where(m => m.GameId == targetMessage.GameId && m.Id <= messageId)
             .OrderByDescending(m => m.Id)
@@ -39,8 +37,24 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
             .Include(m => m.InstructionVersion)
             .ToListAsync(cancellationToken);
 
+        // Also get messages after the target message (to capture the assistant response with feedback)
+        List<Message> messagesAfter = await context.Messages
+            .AsNoTracking()
+            .Where(m => m.GameId == targetMessage.GameId && m.Id > messageId)
+            .OrderBy(m => m.Id)
+            .Take(2) // Get the next 2 messages (typically the assistant response)
+            .Include(m => m.Player)
+            .Include(m => m.ChatHistory)
+            .Include(m => m.ToolCalls)
+            .Include(m => m.MessageSentiment)
+            .ToListAsync(cancellationToken);
+
+        // Combine: reverse the 'before' list to chronological order, then add 'after' messages
+        messagesBefore.Reverse();
+        var allMessages = messagesBefore.Concat(messagesAfter).ToList();
+
         // Fetch metrics and feedback manually since navigation properties aren't configured
-        var messageIds = messages.Select(m => m.Id).ToList();
+        var messageIds = allMessages.Select(m => m.Id).ToList();
 
         var metrics = await context.MessageEvaluationMetrics
             .AsNoTracking()
@@ -52,11 +66,8 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
             .Where(f => messageIds.Contains(f.MessageId))
             .ToListAsync(cancellationToken);
 
-        // Reverse to return them in chronological order
-        messages.Reverse();
-
         var dtos = new List<MessageContextDto>();
-        foreach (var message in messages)
+        foreach (var message in allMessages)
         {
             var dto = message.ToContextDto();
             dto.Metrics = metrics

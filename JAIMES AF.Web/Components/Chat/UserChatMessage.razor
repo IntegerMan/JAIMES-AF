@@ -17,8 +17,21 @@
         <MudChatFooter Class="d-flex justify-content-end align-items-center gap-2 mt-1">
             @if (MessageId.HasValue && Sentiment.HasValue)
             {
-                if (ReadOnly)
+                @if (ReadOnly && NavigateOnClick && SentimentId.HasValue)
                 {
+                    @* Read-only mode with clickable navigation to details *@
+                    <MudTooltip Text="@GetClickableTooltipText()" Placement="Placement.Top">
+                        <MudIconButton Icon="@GetSentimentIcon()"
+                                       Color="@GetSentimentColor()"
+                                       Size="Size.Small"
+                                       Variant="Variant.Text"
+                                       Class="pa-0"
+                                       OnClick="ViewDetails" />
+                    </MudTooltip>
+                }
+                else if (ReadOnly)
+                {
+                    @* Read-only mode without navigation *@
                     <MudTooltip Text="@GetSentimentTooltipText()" Placement="Placement.Top">
                         <MudIcon Icon="@GetSentimentIcon()"
                                  Color="@GetSentimentColor()"
@@ -27,6 +40,7 @@
                 }
                 else
                 {
+                    @* Editable mode with menu *@
                     <MudMenu AnchorOrigin="Origin.TopCenter" TransformOrigin="Origin.BottomCenter" Dense="true">
                         <ActivatorContent>
                             <MudTooltip Text="@GetSentimentTooltipText()" Placement="Placement.Top">
@@ -99,6 +113,12 @@
     [Parameter]
     public int? SentimentId { get; set; }
 
+    /// <summary>
+    /// When true and in ReadOnly mode, clicking the sentiment icon navigates to the details page.
+    /// </summary>
+    [Parameter]
+    public bool NavigateOnClick { get; set; }
+
     private string GetSentimentIcon() => Sentiment switch
     {
         > 0 => Icons.Material.Filled.ThumbUp,
@@ -169,5 +189,10 @@
         }
 
         return $"{sentimentLabel} Sentiment";
+    }
+
+    private string GetClickableTooltipText()
+    {
+        return GetSentimentTooltipText() + " - Click to view details";
     }
 }
