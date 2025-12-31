@@ -40,7 +40,17 @@ builder.Services.AddChatClient(builder.Configuration, "TextGenerationModel");
 
 // Configure evaluators
 builder.Services.Configure<BrevityEvaluatorOptions>(builder.Configuration.GetSection("Evaluation:Brevity"));
+builder.Services.AddSingleton<BrevityEvaluator>();
+builder.Services.AddSingleton<PlayerAgencyEvaluator>();
 
+// Register CompositeEvaluator as the primary IEvaluator
+builder.Services.AddSingleton<IEvaluator>(sp =>
+    new CompositeEvaluator(
+    [
+        sp.GetRequiredService<RelevanceTruthAndCompletenessEvaluator>(),
+        sp.GetRequiredService<BrevityEvaluator>(),
+        sp.GetRequiredService<PlayerAgencyEvaluator>()
+    ]));
 // Register evaluation service
 builder.Services.AddScoped<IMessageEvaluationService, MessageEvaluationService>();
 
