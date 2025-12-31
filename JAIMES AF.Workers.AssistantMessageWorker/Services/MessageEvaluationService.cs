@@ -1,12 +1,13 @@
+using System.Linq;
 using System.Text.Json;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefaults;
+using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
-using MattEland.Jaimes.ServiceDefinitions.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
-using Microsoft.Extensions.AI.Evaluation.Quality;
 using Microsoft.Extensions.AI.Evaluation.Reporting;
 
 namespace MattEland.Jaimes.Workers.AssistantMessageWorker.Services;
@@ -16,7 +17,7 @@ namespace MattEland.Jaimes.Workers.AssistantMessageWorker.Services;
 /// </summary>
 public class MessageEvaluationService(
     IDbContextFactory<JaimesDbContext> contextFactory,
-    RelevanceTruthAndCompletenessEvaluator evaluator,
+    IEvaluator evaluator,
     IChatClient chatClient,
     TextGenerationModelOptions modelOptions,
     IEvaluationResultStore resultStore,
@@ -93,17 +94,12 @@ public class MessageEvaluationService(
 
             DateTime evaluatedAt = DateTime.UtcNow;
 
-            // Extract and store each metric using the metric names from the evaluator
-            string[] metricNames = new[]
-            {
-                RelevanceTruthAndCompletenessEvaluator.RelevanceMetricName,
-                RelevanceTruthAndCompletenessEvaluator.TruthMetricName,
-                RelevanceTruthAndCompletenessEvaluator.CompletenessMetricName
-            };
+            // Extract and store each metric from the evaluator
+            IEnumerable<string> metricNames = evaluator.EvaluationMetricNames;
 
             foreach (string metricName in metricNames)
             {
-                if (result.Get<NumericMetric>(metricName) is { Value: not null } metric)
+                if (result.Get<NumericMetric>(metricName) is {Value: not null} metric)
                 {
                     // Serialize any additional metadata if available
                     string? diagnosticsJson = null;
@@ -112,8 +108,9 @@ public class MessageEvaluationService(
                         // Try to get any additional context from the result
                         var diagnostics = new Dictionary<string, object?>
                         {
-                            { "MetricName", metricName },
-                            { "EvaluatedAt", evaluatedAt }
+                            {"MetricName", metricName},
+                            {"EvaluatedAt", evaluatedAt},
+                            {"Messages", metric.Diagnostics?.Select(d => d.Message).ToList() ?? []}
                         };
                         diagnosticsJson = JsonSerializer.Serialize(diagnostics);
                     }
@@ -127,7 +124,7 @@ public class MessageEvaluationService(
                         MessageId = message.Id,
                         MetricName = metricName,
                         Score = metric.Value.Value,
-                        Remarks = null, // NumericMetric doesn't expose reasoning/remarks directly
+                        Remarks = metric.Reason,
                         EvaluatedAt = evaluatedAt,
                         Diagnostics = diagnosticsJson,
                         EvaluationModelId = evaluationModel?.Id
@@ -156,6 +153,7 @@ public class MessageEvaluationService(
                             MessageId = message.Id,
                             MetricName = metricName,
                             Score = metric.Value.Value,
+                            Remarks = metric.Reason,
                             EvaluatedAt = evaluatedAt
                         }
                         : null;
