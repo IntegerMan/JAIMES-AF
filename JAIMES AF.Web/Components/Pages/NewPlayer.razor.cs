@@ -16,9 +16,16 @@ public partial class NewPlayer
     private bool _isLoading = true;
     private bool _isSaving = false;
     private string? _errorMessage;
+    private List<BreadcrumbItem> _breadcrumbs = new();
 
     protected override async Task OnInitializedAsync()
     {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Players", href: "/players"),
+            new BreadcrumbItem("New Player", href: null, disabled: true)
+        };
         await LoadRulesetsAsync();
     }
 

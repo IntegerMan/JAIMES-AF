@@ -8,6 +8,9 @@
 <PageTitle>Instruction Versions</PageTitle>
 
 <MudPaper Class="pa-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+    </MudStack>
 	<MudText Typo="Typo.h4">Instruction Versions for Agent: @_agentId</MudText>
 
 	<MudButton Variant="Variant.Filled" Color="Color.Primary" Href="@($"/agents/{_agentId}/instruction-versions/new")" Class="mb-4">

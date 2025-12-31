@@ -12,6 +12,17 @@ public partial class NewRuleset
     private string _name = string.Empty;
     private bool _isSaving = false;
     private string? _errorMessage;
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override void OnInitialized()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Rulesets", href: "/rulesets"),
+            new BreadcrumbItem("New Ruleset", href: null, disabled: true)
+        };
+    }
 
     private bool IsFormValid()
     {

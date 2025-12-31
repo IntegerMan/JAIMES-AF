@@ -15,9 +15,16 @@ public partial class NewGame
     private bool _isLoading = true;
     private bool _isCreating = false;
     private string? _errorMessage;
+    private List<BreadcrumbItem> _breadcrumbs = new();
 
     protected override async Task OnInitializedAsync()
     {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Games", href: "/games"),
+            new BreadcrumbItem("New Game", href: null, disabled: true)
+        };
         await LoadDataAsync();
     }
 
@@ -79,7 +86,8 @@ public partial class NewGame
                 PlayerId = _selectedPlayerId
             };
 
-            logger.LogInformation("Creating game with ScenarioId: {ScenarioId}, PlayerId: {PlayerId}", _selectedScenarioId, _selectedPlayerId);
+            logger.LogInformation("Creating game with ScenarioId: {ScenarioId}, PlayerId: {PlayerId}",
+                _selectedScenarioId, _selectedPlayerId);
             HttpResponseMessage response = await Http.PostAsJsonAsync("/games/", request);
 
             logger.LogInformation("Game creation response received. StatusCode: {StatusCode}", response.StatusCode);
@@ -116,7 +124,8 @@ public partial class NewGame
                     logger.LogWarning(ex, "Failed to read error response body");
                 }
 
-                logger.LogError("Game creation failed. StatusCode: {StatusCode}, ReasonPhrase: {ReasonPhrase}, Body: {Body}",
+                logger.LogError(
+                    "Game creation failed. StatusCode: {StatusCode}, ReasonPhrase: {ReasonPhrase}, Body: {Body}",
                     response.StatusCode, response.ReasonPhrase, body);
                 _errorMessage =
                     $"Failed to create game: {response.ReasonPhrase}{(string.IsNullOrEmpty(body) ? string.Empty : " - " + body)}";

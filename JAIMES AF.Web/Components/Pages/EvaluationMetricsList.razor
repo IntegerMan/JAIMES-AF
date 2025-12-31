@@ -11,6 +11,9 @@
 <PageTitle>Evaluation Metrics</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+    </MudStack>
     <MudText Typo="Typo.h4" Class="mb-2">Evaluation Metrics</MudText>
     <MudText Typo="Typo.body2" Class="mb-4 text-muted">
         View AI response evaluation metrics and quality scores across all messages.
@@ -173,6 +176,18 @@
     [Parameter]
     [SupplyParameterFromQuery]
     public Guid? GameId { get; set; }
+
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override void OnInitialized()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Admin", href: "/admin"),
+            new BreadcrumbItem("Metrics", href: null, disabled: true)
+        };
+    }
 
     private async Task<GridData<EvaluationMetricListItemDto>> ServerReload(GridState<EvaluationMetricListItemDto> state)
     {

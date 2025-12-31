@@ -10,6 +10,9 @@
 
 <div class="game-details-page-wrapper">
 	<MudContainer MaxWidth="MaxWidth.Large" Class="game-details-wrapper">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+            <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+        </MudStack>
 		@if (_isLoading)
 		{
 			<MudProgressCircular Indeterminate="true" Class="my-4"/>
@@ -24,22 +27,23 @@
 		}
 		else
 		{
+            if (_game != null) UpdateBreadcrumbs($"{_game.ScenarioName} - {_game.PlayerName}");
 			<div class="game-header">
 				<MudText Typo="Typo.h5" Class="mb-0">Game details</MudText>
 				<MudText Typo="Typo.body2" Class="text-muted">
-					<strong>@_game.PlayerName</strong> playing <strong>@_game.ScenarioName</strong>
+					<strong>@_game!.PlayerName</strong> playing <strong>@_game!.ScenarioName</strong>
 				</MudText>
 				<MudText Typo="Typo.body2" Class="text-muted">
-					Ruleset: <strong>@_game.RulesetName</strong> (@_game.RulesetId)
+					Ruleset: <strong>@_game!.RulesetName</strong> (@_game!.RulesetId)
 				</MudText>
 				<MudText Typo="Typo.body2" Class="text-muted">
-					Created: @ToLocalTime(_game.CreatedAt).ToString("g")
-					@if (_game.LastPlayedAt.HasValue)
+					Created: @ToLocalTime(_game!.CreatedAt).ToString("g")
+					@if (_game!.LastPlayedAt.HasValue)
 					{
-						<span> | Last played: @ToLocalTime(_game.LastPlayedAt.Value).ToString("g")</span>
+						<span> | Last played: @ToLocalTime(_game!.LastPlayedAt.Value).ToString("g")</span>
 					}
 				</MudText>
-				<MudText Typo="Typo.body2" Class="text-muted">Game @_game.GameId</MudText>
+				<MudText Typo="Typo.body2" Class="text-muted">Game @_game!.GameId</MudText>
 			</div>
 
 			<div id="chat-scroll-container" class="chat-scroll">
@@ -161,6 +165,26 @@
     private void OnMetricsClicked(int messageId)
     {
         ShowMetricsDialogAsync(messageId);
+    }
+
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Initial breadcrumb state
+        UpdateBreadcrumbs("Game Details");
+        await base.OnInitializedAsync();
+    }
+    
+    // Helper to update breadcrumbs
+    private void UpdateBreadcrumbs(string gameName)
+    {
+         _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Games", href: "/games"),
+            new BreadcrumbItem(gameName, href: null, disabled: true)
+        };
     }
 }
 

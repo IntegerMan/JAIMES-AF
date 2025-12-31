@@ -6,8 +6,15 @@ public partial class Games
     private bool _isLoading = true;
     private string? _errorMessage;
 
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
     protected override async Task OnInitializedAsync()
     {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Games", href: null, disabled: true)
+        };
         await LoadGamesAsync();
     }
 
@@ -74,6 +81,7 @@ public partial class Games
         {
             utcTime = DateTime.SpecifyKind(utcTime, DateTimeKind.Utc);
         }
+
         return utcTime.ToLocalTime();
     }
 }

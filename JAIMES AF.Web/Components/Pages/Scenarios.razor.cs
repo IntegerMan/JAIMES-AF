@@ -9,8 +9,15 @@ public partial class Scenarios
 
     protected override async Task OnInitializedAsync()
     {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Scenarios", href: null, disabled: true)
+        };
         await LoadScenariosAsync();
     }
+
+    private List<BreadcrumbItem> _breadcrumbs = new();
 
     private async Task LoadScenariosAsync()
     {
@@ -43,7 +50,8 @@ public partial class Scenarios
     {
         try
         {
-            var agentsResponse = await Http.GetFromJsonAsync<ScenarioAgentListResponse>($"/scenarios/{scenarioId}/agents");
+            var agentsResponse =
+                await Http.GetFromJsonAsync<ScenarioAgentListResponse>($"/scenarios/{scenarioId}/agents");
             var agentInfos = new List<string>();
 
             if (agentsResponse?.ScenarioAgents != null)
@@ -55,8 +63,11 @@ public partial class Scenarios
                     if (agent != null)
                     {
                         // Get instruction version details
-                        var version = await Http.GetFromJsonAsync<AgentInstructionVersionResponse>($"/agents/{scenarioAgent.AgentId}/instruction-versions/{scenarioAgent.InstructionVersionId}");
-                        string versionDisplay = version != null ? $"{agent.Name} ({version.VersionNumber})" : $"{agent.Name} (v?)";
+                        var version = await Http.GetFromJsonAsync<AgentInstructionVersionResponse>(
+                            $"/agents/{scenarioAgent.AgentId}/instruction-versions/{scenarioAgent.InstructionVersionId}");
+                        string versionDisplay = version != null
+                            ? $"{agent.Name} ({version.VersionNumber})"
+                            : $"{agent.Name} (v?)";
                         agentInfos.Add(versionDisplay);
                     }
                 }

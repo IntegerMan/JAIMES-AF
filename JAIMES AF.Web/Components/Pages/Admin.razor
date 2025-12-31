@@ -5,6 +5,9 @@
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
 	<MudPaper Class="pa-8" Elevation="2">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+            <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+        </MudStack>
 		<MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">Admin</MudText>
 		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">Administrative tools and utilities
 		</MudText>
@@ -150,3 +153,15 @@
 	</MudPaper>
 </MudContainer>
 
+@code {
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override void OnInitialized()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Admin", href: null, disabled: true)
+        };
+    }
+}

@@ -9,6 +9,9 @@
 <PageTitle>Feedback Reports</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+    </MudStack>
     <MudText Typo="Typo.h4" Class="mb-2">Feedback Reports</MudText>
     
     @if (!string.IsNullOrEmpty(ToolName) || IsPositive.HasValue)
@@ -129,6 +132,18 @@
     [Parameter]
     [SupplyParameterFromQuery]
     public bool? IsPositive { get; set; }
+
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override void OnInitialized()
+    {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Admin", href: "/admin"),
+            new BreadcrumbItem("Feedback", href: null, disabled: true)
+        };
+    }
 
     private async Task<GridData<FeedbackListItemDto>> ServerReload(GridState<FeedbackListItemDto> state)
     {

@@ -6,8 +6,15 @@ public partial class Rulesets
     private bool _isLoading = true;
     private string? _errorMessage;
 
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
     protected override async Task OnInitializedAsync()
     {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Rulesets", href: null, disabled: true)
+        };
         await LoadRulesetsAsync();
     }
 
