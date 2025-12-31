@@ -460,45 +460,68 @@ public class GameAwareAgent(
         if (aiMessageEntities.Count > 0)
         {
             Message lastAiMessage = aiMessageEntities.Last();
-            
+
             // Get tracker from the current request's service provider, not from the new scope
             IToolCallTracker? toolCallTracker = context?.RequestServices?.GetService<IToolCallTracker>();
             if (toolCallTracker != null)
             {
                 IReadOnlyList<ToolCallRecord> toolCalls = await toolCallTracker.GetToolCallsAsync();
-                _logger.LogInformation("Retrieved {ToolCallCount} tool call(s) from tracker for message {MessageId} in game {GameId}",
+                _logger.LogInformation(
+                    "Retrieved {ToolCallCount} tool call(s) from tracker for message {MessageId} in game {GameId}",
                     toolCalls.Count, lastAiMessage.Id, gameId);
-                
+
                 if (toolCalls.Count > 0)
                 {
-                    _logger.LogInformation("Saving {ToolCallCount} tool call(s) for message {MessageId} in game {GameId}",
+                    _logger.LogInformation(
+                        "Saving {ToolCallCount} tool call(s) for message {MessageId} in game {GameId}",
                         toolCalls.Count, lastAiMessage.Id, gameId);
 
-                    List<MessageToolCall> toolCallEntities = toolCalls.Select(tc => new MessageToolCall
+                    // Load tools for lookup
+                    var tools = await dbContext.Tools
+                        .ToDictionaryAsync(t => t.Name.ToLower(), t => t.Id, cancellationToken);
+
+                    List<MessageToolCall> toolCallEntities = toolCalls.Select(tc =>
                     {
-                        MessageId = lastAiMessage.Id,
-                        ToolName = tc.ToolName,
-                        InputJson = tc.InputJson,
-                        OutputJson = tc.OutputJson,
-                        CreatedAt = tc.CreatedAt,
-                        InstructionVersionId = instructionVersionId
+                        tools.TryGetValue(tc.ToolName.ToLower(), out int toolIdValue);
+                        int? toolId = toolIdValue > 0 ? toolIdValue : null;
+
+                        if (toolId == null)
+                        {
+                            _logger.LogWarning(
+                                "Tool '{ToolName}' not found in database. Registration might be missing.", tc.ToolName);
+                        }
+
+                        return new MessageToolCall
+                        {
+                            MessageId = lastAiMessage.Id,
+                            ToolName = tc.ToolName,
+                            InputJson = tc.InputJson,
+                            OutputJson = tc.OutputJson,
+                            CreatedAt = tc.CreatedAt,
+                            InstructionVersionId = instructionVersionId,
+                            ToolId = toolId
+                        };
                     }).ToList();
 
                     dbContext.MessageToolCalls.AddRange(toolCallEntities);
                     await dbContext.SaveChangesAsync(cancellationToken);
-                    _logger.LogInformation("Saved {ToolCallCount} tool call(s) for message {MessageId}", toolCalls.Count, lastAiMessage.Id);
+                    _logger.LogInformation("Saved {ToolCallCount} tool call(s) for message {MessageId}",
+                        toolCalls.Count, lastAiMessage.Id);
 
                     // Clear the tracker after persistence
                     await toolCallTracker.ClearAsync();
                 }
                 else
                 {
-                    _logger.LogDebug("No tool calls found in tracker for message {MessageId} in game {GameId}", lastAiMessage.Id, gameId);
+                    _logger.LogDebug("No tool calls found in tracker for message {MessageId} in game {GameId}",
+                        lastAiMessage.Id, gameId);
                 }
             }
             else
             {
-                _logger.LogWarning("IToolCallTracker not found in request services for message {MessageId} in game {GameId}", lastAiMessage.Id, gameId);
+                _logger.LogWarning(
+                    "IToolCallTracker not found in request services for message {MessageId} in game {GameId}",
+                    lastAiMessage.Id, gameId);
             }
         }
 

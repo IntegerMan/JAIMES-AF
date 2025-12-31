@@ -11,7 +11,6 @@ namespace MattEland.Jaimes.ServiceLayer.Services;
 /// </summary>
 public class ToolUsageService(
     IDbContextFactory<JaimesDbContext> contextFactory,
-    IToolRegistry toolRegistry,
     IMessageService messageService) : IToolUsageService
 {
     /// <inheritdoc />
@@ -24,6 +23,11 @@ public class ToolUsageService(
         CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        // Get all tools from the database
+        List<Tool> registeredTools = await context.Tools
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
 
         // Build the base query for tool calls with optional filters
         IQueryable<MessageToolCall> toolCallQuery = context.MessageToolCalls
@@ -116,9 +120,6 @@ public class ToolUsageService(
 
         int eligibleMessagesCount = await eligibleMessagesQuery.CountAsync(cancellationToken);
 
-        // Get all registered tools from the registry
-        IReadOnlyList<ToolMetadata> registeredTools = toolRegistry.GetAllTools();
-
         // Create a list of all tools, including those without calls
         List<ToolUsageItemDto> allToolItems = registeredTools
             .Select(tool =>
@@ -146,7 +147,7 @@ public class ToolUsageService(
             .ThenBy(x => x.ToolName)
             .ToList();
 
-        // Include any tools that were called but aren't in the registry (for backwards compatibility)
+        // Include any tools that were called but aren't in the Tools table (for backwards compatibility/orphaned data)
         var unregisteredTools = toolCallStats.Keys
             .Where(name => !registeredTools.Any(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase)))
             .Select(name =>
@@ -269,8 +270,10 @@ public class ToolUsageService(
             };
         }).ToList();
 
-        // Get tool metadata from registry
-        ToolMetadata? toolMetadata = toolRegistry.GetTool(toolName);
+        // Get tool metadata from Tools table
+        Tool? tool = await context.Tools
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Name.ToLower() == toolName.ToLower(), cancellationToken);
 
         return new ToolCallDetailListResponse
         {
@@ -279,7 +282,7 @@ public class ToolUsageService(
             Page = page,
             PageSize = pageSize,
             ToolName = toolName,
-            ToolDescription = toolMetadata?.Description
+            ToolDescription = tool?.Description
         };
     }
 

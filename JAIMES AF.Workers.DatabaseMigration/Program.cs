@@ -3,6 +3,8 @@ using MattEland.Jaimes.ServiceDefaults;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using MattEland.Jaimes.ServiceDefinitions.Services;
+using MattEland.Jaimes.ServiceLayer;
 using System.Diagnostics;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
@@ -30,6 +32,9 @@ builder.Configuration
 
 // Add PostgreSQL with EF Core
 builder.Services.AddJaimesRepositories(builder.Configuration);
+
+// Add registration services
+builder.Services.AddJaimesServices();
 
 // Configure OpenTelemetry ActivitySource
 const string activitySourceName = "Jaimes.Workers.DatabaseMigration";
@@ -63,7 +68,20 @@ logger.LogInformation("Starting Database Migration Worker");
 try
 {
     await host.ApplyMigrationsAsync();
-    logger.LogInformation("Database migrations completed successfully. Exiting migration worker.");
+    logger.LogInformation("Database migrations completed successfully.");
+
+    // Auto-register tools and evaluators
+    using var scope = host.Services.CreateScope();
+    var toolRegistrar = scope.ServiceProvider.GetRequiredService<IToolRegistrar>();
+    var evaluatorRegistrar = scope.ServiceProvider.GetRequiredService<IEvaluatorRegistrar>();
+
+    logger.LogInformation("Registering tools in database...");
+    await toolRegistrar.RegisterToolsAsync();
+
+    logger.LogInformation("Registering evaluators in database...");
+    await evaluatorRegistrar.RegisterEvaluatorsAsync();
+
+    logger.LogInformation("Tool and evaluator registration completed. Exiting migration worker.");
 }
 catch (Exception ex)
 {

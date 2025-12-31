@@ -97,10 +97,25 @@ public class MessageEvaluationService(
             // Extract and store each metric from the evaluator
             IEnumerable<string> metricNames = evaluator.EvaluationMetricNames;
 
+            // Load evaluators for lookup (small table, so this is fine)
+            var evaluators = await context.Evaluators
+                .ToDictionaryAsync(e => e.Name.ToLower(), e => e.Id, cancellationToken);
+
             foreach (string metricName in metricNames)
             {
-                if (result.Get<NumericMetric>(metricName) is {Value: not null} metric)
+                if (result.Get<NumericMetric>(metricName) is { Value: not null } metric)
                 {
+                    // Match to evaluator ID
+                    evaluators.TryGetValue(metricName.ToLower(), out int evaluatorIdValue);
+                    int? evaluatorId = evaluatorIdValue > 0 ? evaluatorIdValue : null;
+
+                    if (evaluatorId == null)
+                    {
+                        logger.LogWarning(
+                            "Evaluator metric '{MetricName}' not found in database. Registration might be missing.",
+                            metricName);
+                    }
+
                     // Serialize any additional metadata if available
                     string? diagnosticsJson = null;
                     try
@@ -108,9 +123,9 @@ public class MessageEvaluationService(
                         // Try to get any additional context from the result
                         var diagnostics = new Dictionary<string, object?>
                         {
-                            {"MetricName", metricName},
-                            {"EvaluatedAt", evaluatedAt},
-                            {"Messages", metric.Diagnostics?.Select(d => d.Message).ToList() ?? []}
+                            { "MetricName", metricName },
+                            { "EvaluatedAt", evaluatedAt },
+                            { "Messages", metric.Diagnostics?.Select(d => d.Message).ToList() ?? [] }
                         };
                         diagnosticsJson = JsonSerializer.Serialize(diagnostics);
                     }
@@ -127,16 +142,18 @@ public class MessageEvaluationService(
                         Remarks = metric.Reason,
                         EvaluatedAt = evaluatedAt,
                         Diagnostics = diagnosticsJson,
-                        EvaluationModelId = evaluationModel?.Id
+                        EvaluationModelId = evaluationModel?.Id,
+                        EvaluatorId = evaluatorId
                     };
 
                     context.MessageEvaluationMetrics.Add(evaluationMetric);
 
                     logger.LogDebug(
-                        "Stored evaluation metric: MessageId={MessageId}, MetricName={MetricName}, Score={Score}",
+                        "Stored evaluation metric: MessageId={MessageId}, MetricName={MetricName}, Score={Score}, EvaluatorId={EvaluatorId}",
                         message.Id,
                         metricName,
-                        metric.Value.Value);
+                        metric.Value.Value,
+                        evaluatorId);
                 }
             }
 

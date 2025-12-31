@@ -104,6 +104,8 @@ public static partial class MessageMapper
 
     [MapperIgnoreSource(nameof(MessageEvaluationMetric.EvaluationModel))]
     [MapperIgnoreSource(nameof(MessageEvaluationMetric.Message))]
+    [MapperIgnoreSource(nameof(MessageEvaluationMetric.Evaluator))]
+    [MapperIgnoreSource(nameof(MessageEvaluationMetric.EvaluatorId))]
     public static partial MessageEvaluationMetricResponse ToResponse(MessageEvaluationMetric metric);
 
     [MapperIgnoreSource(nameof(MessageFeedback.Message))]
@@ -112,5 +114,7 @@ public static partial class MessageMapper
 
     [MapperIgnoreSource(nameof(MessageToolCall.Message))]
     [MapperIgnoreSource(nameof(MessageToolCall.InstructionVersion))]
+    [MapperIgnoreSource(nameof(MessageToolCall.Tool))]
+    [MapperIgnoreSource(nameof(MessageToolCall.ToolId))]
     private static partial MessageToolCallResponse ToResponse(MessageToolCall toolCall);
 }
