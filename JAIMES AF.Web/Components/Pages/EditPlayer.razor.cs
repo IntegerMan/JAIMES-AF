@@ -24,6 +24,7 @@ public partial class EditPlayer
         _breadcrumbs = new List<BreadcrumbItem>
         {
             new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Content", href: null, disabled: true),
             new BreadcrumbItem("Players", href: "/players"),
             new BreadcrumbItem("Edit Player", href: null, disabled: true)
         };
@@ -60,6 +61,7 @@ public partial class EditPlayer
             _breadcrumbs = new List<BreadcrumbItem>
             {
                 new BreadcrumbItem("Home", href: "/"),
+                new BreadcrumbItem("Content", href: null, disabled: true),
                 new BreadcrumbItem("Players", href: "/players"),
                 new BreadcrumbItem(playerResponse.Name, href: null, disabled: true),
                 new BreadcrumbItem("Edit", href: null, disabled: true)

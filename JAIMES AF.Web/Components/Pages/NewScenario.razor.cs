@@ -25,6 +25,7 @@ public partial class NewScenario
         _breadcrumbs = new List<BreadcrumbItem>
         {
             new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Content", href: null, disabled: true),
             new BreadcrumbItem("Scenarios", href: "/scenarios"),
             new BreadcrumbItem("New Scenario", href: null, disabled: true)
         };

@@ -27,6 +27,7 @@ public partial class EditAgent
         _breadcrumbs = new List<BreadcrumbItem>
         {
             new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Admin", href: "/admin"),
             new BreadcrumbItem("Agents", href: "/agents"),
             new BreadcrumbItem("Edit Agent", href: null, disabled: true)
         };
@@ -54,6 +55,7 @@ public partial class EditAgent
             _breadcrumbs = new List<BreadcrumbItem>
             {
                 new BreadcrumbItem("Home", href: "/"),
+                new BreadcrumbItem("Admin", href: "/admin"),
                 new BreadcrumbItem("Agents", href: "/agents"),
                 new BreadcrumbItem(agent.Name, href: null, disabled: true),
                 new BreadcrumbItem("Edit", href: null, disabled: true)

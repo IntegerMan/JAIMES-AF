@@ -19,6 +19,7 @@ public partial class NewRuleset
         _breadcrumbs = new List<BreadcrumbItem>
         {
             new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Admin", href: "/admin"),
             new BreadcrumbItem("Rulesets", href: "/rulesets"),
             new BreadcrumbItem("New Ruleset", href: null, disabled: true)
         };

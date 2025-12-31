@@ -23,6 +23,7 @@ public partial class NewPlayer
         _breadcrumbs = new List<BreadcrumbItem>
         {
             new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Content", href: null, disabled: true),
             new BreadcrumbItem("Players", href: "/players"),
             new BreadcrumbItem("New Player", href: null, disabled: true)
         };

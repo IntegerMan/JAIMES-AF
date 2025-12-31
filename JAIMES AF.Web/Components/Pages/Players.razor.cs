@@ -13,6 +13,7 @@ public partial class Players
         _breadcrumbs = new List<BreadcrumbItem>
         {
             new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Content", href: null, disabled: true),
             new BreadcrumbItem("Players", href: null, disabled: true)
         };
         await LoadPlayersAsync();

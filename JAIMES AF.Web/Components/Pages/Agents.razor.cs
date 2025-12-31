@@ -15,6 +15,7 @@ public partial class Agents
         _breadcrumbs = new List<BreadcrumbItem>
         {
             new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Admin", href: "/admin"),
             new BreadcrumbItem("Agents", href: null, disabled: true)
         };
         await LoadAgentsAsync();

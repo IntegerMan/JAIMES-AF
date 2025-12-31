@@ -10,12 +10,20 @@ public partial class PlayerSentimentTest
 
 	private GameInfoResponse[] _games = [];
 	private Guid? _selectedGameId;
-	private bool _isLoading = false;
+	private bool _isLoading;
 	private string? _errorMessage;
 	private string? _toolOutput;
+	private List<BreadcrumbItem> _breadcrumbs = new();
 
 	protected override async Task OnInitializedAsync()
 	{
+		_breadcrumbs = new List<BreadcrumbItem>
+		{
+			new BreadcrumbItem("Home", href: "/"),
+			new BreadcrumbItem("Tools", href: null, disabled: true),
+			new BreadcrumbItem("Player Sentiment", href: null, disabled: true)
+		};
+
 		await LoadGamesAsync();
 	}
 
@@ -81,11 +89,11 @@ public partial class PlayerSentimentTest
 
 			// Format results as the tool would
 			List<string> resultTexts = new();
-			
+
 			// Add average sentiment at the beginning
 			resultTexts.Add($"Average Sentiment: {averageLabel} ({averageSentiment:F2})");
 			resultTexts.Add(string.Empty); // Empty line separator
-			
+
 			foreach (MessageResponse message in messagesWithSentiment)
 			{
 				string sentimentLabel = message.Sentiment switch

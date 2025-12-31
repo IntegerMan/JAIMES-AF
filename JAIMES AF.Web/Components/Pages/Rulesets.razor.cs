@@ -13,6 +13,7 @@ public partial class Rulesets
         _breadcrumbs = new List<BreadcrumbItem>
         {
             new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Admin", href: "/admin"),
             new BreadcrumbItem("Rulesets", href: null, disabled: true)
         };
         await LoadRulesetsAsync();

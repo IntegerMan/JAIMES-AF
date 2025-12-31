@@ -22,6 +22,7 @@ public partial class EditRuleset
         _breadcrumbs = new List<BreadcrumbItem>
         {
             new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Admin", href: "/admin"),
             new BreadcrumbItem("Rulesets", href: "/rulesets"),
             new BreadcrumbItem("Edit Ruleset", href: null, disabled: true)
         };
@@ -49,6 +50,7 @@ public partial class EditRuleset
             _breadcrumbs = new List<BreadcrumbItem>
             {
                 new BreadcrumbItem("Home", href: "/"),
+                new BreadcrumbItem("Admin", href: "/admin"),
                 new BreadcrumbItem("Rulesets", href: "/rulesets"),
                 new BreadcrumbItem(rulesetResponse.Name, href: null, disabled: true),
                 new BreadcrumbItem("Edit", href: null, disabled: true)

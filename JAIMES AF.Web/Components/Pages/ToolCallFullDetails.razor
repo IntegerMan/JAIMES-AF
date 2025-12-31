@@ -39,9 +39,26 @@
         </MudStack>
         
         <MudGrid>
-            <MudItem xs="12">
-                 <MudText Typo="Typo.h5" Class="mb-2">Conversation Context</MudText>
-                 <MudPaper Class="pa-4 custom-scroll" Style="max-height: 500px; overflow-y: auto;">
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.h6" Class="mb-3">Tool Invocations</MudText>
+                <div style="max-height: 80vh; overflow-y: auto; padding-right: 8px;">
+                    <MudStack Spacing="3">
+                        <MudText Typo="Typo.h6" Class="mb-1">Input Payload</MudText>
+                        <MudPaper Class="pa-3" Elevation="2">
+                            <pre style="white-space: pre-wrap; font-family: monospace; font-size: 0.875rem;">@FormatJson(_toolCall.InputJson)</pre>
+                        </MudPaper>
+
+                        <MudText Typo="Typo.h6" Class="mt-4 mb-2">Output Result</MudText>
+                        <MudPaper Class="pa-3" Elevation="2">
+                            <pre style="white-space: pre-wrap; font-family: monospace; font-size: 0.875rem;">@FormatJson(_toolCall.OutputJson)</pre>
+                        </MudPaper>
+                    </MudStack>
+                </div>
+            </MudItem>
+            
+            <MudItem xs="12" md="6">
+                 <MudText Typo="Typo.h6" Class="mb-3">Conversation Context</MudText>
+                 <div style="max-height: 80vh; overflow-y: auto; padding-right: 8px;">
                       @if (_toolCall.ContextMessages.Any())
                       {
                           @foreach(var msg in _toolCall.ContextMessages)
@@ -81,20 +98,7 @@
                       {
                           <MudText Typo="Typo.body2" Class="text-muted">No context messages available.</MudText>
                       }
-                 </MudPaper>
-            </MudItem>
-            
-            <MudItem xs="12" md="6">
-                <MudText Typo="Typo.h6" Class="mt-4 mb-2">Input Payload</MudText>
-                <MudPaper Class="pa-3" Elevation="2">
-                    <pre style="white-space: pre-wrap; font-family: monospace; font-size: 0.875rem;">@FormatJson(_toolCall.InputJson)</pre>
-                </MudPaper>
-            </MudItem>
-             <MudItem xs="12" md="6">
-                <MudText Typo="Typo.h6" Class="mt-4 mb-2">Output Result</MudText>
-                <MudPaper Class="pa-3" Elevation="2">
-                     <pre style="white-space: pre-wrap; font-family: monospace; font-size: 0.875rem;">@FormatJson(_toolCall.OutputJson)</pre>
-                </MudPaper>
+                 </div>
             </MudItem>
         </MudGrid>
     }

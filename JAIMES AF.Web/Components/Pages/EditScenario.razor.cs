@@ -46,6 +46,7 @@ public partial class EditScenario
         _breadcrumbs = new List<BreadcrumbItem>
         {
             new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Content", href: null, disabled: true),
             new BreadcrumbItem("Scenarios", href: "/scenarios"),
             new BreadcrumbItem("Edit Scenario", href: null, disabled: true)
         };
@@ -92,6 +93,7 @@ public partial class EditScenario
             _breadcrumbs = new List<BreadcrumbItem>
             {
                 new BreadcrumbItem("Home", href: "/"),
+                new BreadcrumbItem("Content", href: null, disabled: true),
                 new BreadcrumbItem("Scenarios", href: "/scenarios"),
                 new BreadcrumbItem(scenarioResponse.Name, href: null, disabled: true),
                 new BreadcrumbItem("Edit", href: null, disabled: true)

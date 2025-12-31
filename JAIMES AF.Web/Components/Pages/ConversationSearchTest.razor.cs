@@ -13,13 +13,22 @@ public partial class ConversationSearchTest
     private Guid? _selectedGameId;
     private string _searchQuery = string.Empty;
     private int _limit = 5;
-    private bool _isSearching = false;
+    private bool _isSearching;
     private string? _errorMessage;
     private ConversationSearchResponse? _searchResult;
     private string? _toolOutput;
 
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
     protected override async Task OnInitializedAsync()
     {
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Tools", href: null, disabled: true),
+            new BreadcrumbItem("Conversation Search", href: null, disabled: true)
+        };
+
         await LoadGamesAsync();
     }
 
@@ -77,7 +86,7 @@ public partial class ConversationSearchTest
             if (response.IsSuccessStatusCode)
             {
                 _searchResult = await response.Content.ReadFromJsonAsync<ConversationSearchResponse>();
-                
+
                 // Format the output as the tool would return it
                 if (_searchResult != null && _searchResult.Results.Length > 0)
                 {
@@ -89,11 +98,13 @@ public partial class ConversationSearchTest
                         // Add previous message if available
                         if (result.PreviousMessage != null)
                         {
-                            messageParts.Add($"[Previous] {result.PreviousMessage.ParticipantName}: {result.PreviousMessage.Text}");
+                            messageParts.Add(
+                                $"[Previous] {result.PreviousMessage.ParticipantName}: {result.PreviousMessage.Text}");
                         }
 
                         // Add matched message
-                        messageParts.Add($"[Matched - Relevancy: {result.Relevancy:F2}] {result.MatchedMessage.ParticipantName}: {result.MatchedMessage.Text}");
+                        messageParts.Add(
+                            $"[Matched - Relevancy: {result.Relevancy:F2}] {result.MatchedMessage.ParticipantName}: {result.MatchedMessage.Text}");
 
                         // Add next message if available
                         if (result.NextMessage != null)

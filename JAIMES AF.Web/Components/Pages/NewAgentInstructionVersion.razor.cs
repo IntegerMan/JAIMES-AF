@@ -1,4 +1,5 @@
 using MattEland.Jaimes.ServiceDefinitions.Requests;
+using MudBlazor;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 
@@ -23,8 +24,9 @@ public partial class NewAgentInstructionVersion
         _breadcrumbs = new List<BreadcrumbItem>
         {
             new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Admin", href: "/admin"),
             new BreadcrumbItem("Agents", href: "/agents"),
-            new BreadcrumbItem($"Agent {AgentId}", href: $"/agents/{AgentId}/edit"),
+            new BreadcrumbItem($"Agent {AgentId}", href: null, disabled: true),
             new BreadcrumbItem("Instructions", href: $"/agents/{AgentId}/instruction-versions"),
             new BreadcrumbItem("New", href: null, disabled: true)
         };

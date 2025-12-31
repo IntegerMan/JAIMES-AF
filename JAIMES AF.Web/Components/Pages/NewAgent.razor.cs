@@ -18,6 +18,7 @@ public partial class NewAgent
         _breadcrumbs = new List<BreadcrumbItem>
         {
             new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Admin", href: "/admin"),
             new BreadcrumbItem("Agents", href: "/agents"),
             new BreadcrumbItem("New Agent", href: null, disabled: true)
         };
