@@ -19,7 +19,7 @@
         {
             <MudChatFooter Class="feedback-footer">
                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                    @if (!string.IsNullOrEmpty(AgentId))
+                    @if (!string.IsNullOrEmpty(AgentId) && !IsScriptedMessage)
                     {
                         <MudTooltip Text="@($"{AgentName} v{VersionNumber}")">
                             <MudIconButton Icon="@Icons.Material.Filled.SmartToy"

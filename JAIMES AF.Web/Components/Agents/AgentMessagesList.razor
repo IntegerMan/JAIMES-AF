@@ -1,0 +1,102 @@
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Chat
+@inject HttpClient Http
+@inject ILoggerFactory LoggerFactory
+
+<MudDataGrid Items="_messages" Filterable="true" Groupable="true" Loading="_isLoading">
+    <Columns>
+        <PropertyColumn Property="x => x.GameId" Title="Game" Grouping="true">
+            <GroupTemplate>
+                <MudStack Row="true" AlignItems="AlignItems.Center">
+                    <MudText Typo="Typo.h6">
+                        <MudLink Href="@($"/games/{context.Grouping.Key}")">Game Details</MudLink>
+                    </MudText>
+                    <MudChip Size="Size.Small" Color="Color.Primary">@context.Grouping.Count() Messages</MudChip>
+                </MudStack>
+            </GroupTemplate>
+        </PropertyColumn>
+
+        @if (VersionId == null)
+        {
+            <TemplateColumn Title="Version" Sortable="true">
+                <CellTemplate>
+                    <MudLink Href="@($"/agents/{AgentId}/versions/{context.Item.InstructionVersionId}")">
+                        v@(context.Item.InstructionVersionId) <!-- Ideally we'd have VersionNumber, but ID is fallback -->
+                    </MudLink>
+                </CellTemplate>
+            </TemplateColumn>
+        }
+
+        <PropertyColumn Property="x => x.CreatedAt" Title="Time" Sortable="true" Format="yyyy-MM-dd HH:mm:ss"/>
+
+        <TemplateColumn Title="Message">
+            <CellTemplate>
+                <MudText Typo="Typo.body2">
+                    @(context.Item.Text.Length > 100 ? context.Item.Text.Substring(0, 100) + "..." : context.Item.Text)
+                </MudText>
+                @if (context.Item.Metrics != null && context.Item.Metrics.Any())
+                {
+                    <MudLink Href="@($"/admin/metrics/{context.Item.Id}")" Typo="Typo.caption" Color="Color.Secondary">View Metrics</MudLink>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+
+        <TemplateColumn Title="Status">
+            <CellTemplate>
+                <MessageIndicators
+                    Feedback="@context.Item.Feedback"
+                    Metrics="@context.Item.Metrics"
+                    ToolCallCount="@(context.Item.ToolCalls?.Count ?? 0)"
+                    ToolCalls="@context.Item.ToolCalls"
+                    ReadOnly="true"
+                    ShowFeedbackButtons="false"
+                    MessageId="@context.Item.Id"
+                    ExemptFromProcessing="false"/>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <PagerContent>
+        <MudDataGridPager T="MessageContextDto"/>
+    </PagerContent>
+</MudDataGrid>
+
+@code {
+    [Parameter] public string AgentId { get; set; } = string.Empty;
+    [Parameter] public int? VersionId { get; set; }
+
+    private List<MessageContextDto> _messages = new();
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMessagesAsync();
+    }
+
+    private async Task LoadMessagesAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            string url = $"/agents/{AgentId}/messages";
+            if (VersionId.HasValue)
+            {
+                url += $"?versionId={VersionId}";
+            }
+
+            var result = await Http.GetFromJsonAsync<List<MessageContextDto>>(url);
+            if (result != null)
+            {
+                _messages = result;
+            }
+        }
+        catch (Exception ex)
+        {
+            LoggerFactory.CreateLogger("AgentMessagesList").LogError(ex, "Failed to load messages");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+}

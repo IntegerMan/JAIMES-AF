@@ -9,7 +9,8 @@ namespace MattEland.Jaimes.ServiceLayer.Services;
 
 public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) : IMessageService
 {
-    public async Task<IEnumerable<MessageContextDto>> GetMessageContextAsync(int messageId, int countBefore,
+    public async Task<IEnumerable<MessageContextDto>> GetMessageContextAsync(int messageId,
+        int countBefore,
         int countAfter,
         CancellationToken cancellationToken = default)
     {
@@ -77,6 +78,78 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
         foreach (var message in allMessages)
         {
             var dto = message.ToContextDto();
+            dto.Metrics = metrics
+                .Where(m => m.MessageId == message.Id)
+                .Select(MessageMapper.ToResponse)
+                .ToList();
+
+            var feedback = feedbacks.FirstOrDefault(f => f.MessageId == message.Id);
+            if (feedback != null)
+            {
+                dto.Feedback = MessageMapper.ToResponse(feedback);
+            }
+
+            dtos.Add(dto);
+        }
+
+        return dtos;
+    }
+
+    public async Task<IEnumerable<MessageContextDto>> GetMessagesByAgentAsync(Guid agentId,
+        int? versionId,
+        CancellationToken cancellationToken = default)
+    {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        string agentIdStr = agentId.ToString();
+
+        // Query messages
+        // Filter by AgentId AND IsScriptedMessage == false
+        var query = context.Messages
+            .AsNoTracking()
+            .Where(m => m.AgentId == agentIdStr && !m.IsScriptedMessage);
+
+        if (versionId.HasValue)
+        {
+            query = query.Where(m => m.InstructionVersionId == versionId.Value);
+        }
+
+        List<Message> messages = await query
+            .OrderBy(m => m.GameId)
+            .ThenBy(m => m.CreatedAt)
+            .Include(m => m.Player)
+            .Include(m => m.Game) // Include Game for title
+            .Include(m => m.ToolCalls)
+            .Include(m => m.MessageSentiment)
+            .Include(m => m.InstructionVersion)
+            .ToListAsync(cancellationToken);
+
+        // Fetch metrics and feedback
+        var messageIds = messages.Select(m => m.Id).ToList();
+
+        var metrics = await context.MessageEvaluationMetrics
+            .AsNoTracking()
+            .Where(m => messageIds.Contains(m.MessageId))
+            .ToListAsync(cancellationToken);
+
+        var feedbacks = await context.MessageFeedbacks
+            .AsNoTracking()
+            .Where(f => messageIds.Contains(f.MessageId))
+            .ToListAsync(cancellationToken);
+
+        var dtos = new List<MessageContextDto>();
+        foreach (var message in messages)
+        {
+            var dto = message.ToContextDto();
+
+            // Populate Game Title in DTO if available (assuming DTO has property or we map it)
+            // MessageContextDto doesn't explicitly have GameTitle, but MessageDto might not either.
+            // We might need to rely on GameId or add GameTitle to MessageDto/ContextDto.
+            // For now, let's proceed with standard mapping. The UI can fetch Game info or we use GameId.
+            // Wait, plan said "Group by Game". Filtering by GameId is easy. Displaying Game Title needs the title.
+            // MessageResponse has GameId?
+            // I'll check if I need to add GameTitle to DTO.
+
             dto.Metrics = metrics
                 .Where(m => m.MessageId == message.Id)
                 .Select(MessageMapper.ToResponse)

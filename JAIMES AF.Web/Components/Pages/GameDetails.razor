@@ -91,13 +91,23 @@
 
 						// Check previous assistant message for version switch
 						// Find the last assistant message before this one
+						bool foundPrevNonScripted = false;
 						for (int i = msgIndex - 1; i >= 0; i--)
 						{
 							var prevMsg = _messages[i];
 							int? prevMsgId = GetMessageId(i);
-							if (prevMsg.Role == ChatRole.Assistant && prevMsgId.HasValue &&
-							    _messageAgentInfo.TryGetValue(prevMsgId.Value, out var prevAgentInfo))
+
+							MessageAgentInfo? prevAgentInfo = null;
+							if (prevMsgId.HasValue) _messageAgentInfo.TryGetValue(prevMsgId.Value, out prevAgentInfo);
+							else _pendingMessageAgentInfo.TryGetValue(prevMsg, out prevAgentInfo);
+
+							if (prevMsg.Role == ChatRole.Assistant && prevAgentInfo != null)
 							{
+								// Skip scripted messages when looking for a version comparison
+								if (prevAgentInfo.IsScriptedMessage) continue;
+
+								foundPrevNonScripted = true;
+
 								// detected a switch if agent ID changed OR version ID changed
 								if (prevAgentInfo.AgentId != agentId ||
 								    prevAgentInfo.InstructionVersionId != instructionVersionId)
@@ -109,8 +119,8 @@
 							}
 						}
 
-						// If this is the VERY first assistant message, treat it as a "switch" (start)
-						if (!isVersionSwitch && !_messages.Take(msgIndex).Any(x => x.Role == ChatRole.Assistant))
+						// If this is the VERY first NON-SCRIPTED assistant message, treat it as a "switch" (start)
+						if (!isVersionSwitch && !foundPrevNonScripted)
 						{
 							isVersionSwitch = true;
 						}

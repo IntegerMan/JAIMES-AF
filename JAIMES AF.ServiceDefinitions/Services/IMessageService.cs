@@ -13,6 +13,19 @@ public interface IMessageService
     /// <param name="countAfter">The maximum number of messages to retrieve after the target message.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A list of MessageDto objects.</returns>
-    Task<IEnumerable<MessageContextDto>> GetMessageContextAsync(int messageId, int countBefore, int countAfter,
+    Task<IEnumerable<MessageContextDto>> GetMessageContextAsync(int messageId,
+        int countBefore,
+        int countAfter,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves a list of non-scripted messages for a specific agent and optional version.
+    /// </summary>
+    /// <param name="agentId">The ID of the agent.</param>
+    /// <param name="versionId">The optional instruction version ID.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A list of MessageContextDto objects.</returns>
+    Task<IEnumerable<MessageContextDto>> GetMessagesByAgentAsync(Guid agentId,
+        int? versionId,
         CancellationToken cancellationToken = default);
 }
