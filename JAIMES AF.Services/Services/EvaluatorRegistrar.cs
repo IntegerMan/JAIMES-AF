@@ -141,10 +141,27 @@ public class EvaluatorRegistrar(IDbContextFactory<JaimesDbContext> contextFactor
         bool changed = false;
         foreach (var metric in orphanedMetrics)
         {
+            // Try exact match first
             if (metricToEvaluatorMap.TryGetValue(metric.MetricName, out int evaluatorId))
             {
                 metric.EvaluatorId = evaluatorId;
                 changed = true;
+            }
+            else
+            {
+                // Try stripping (RTC) suffix or other suffixes
+                string strippedName = metric.MetricName;
+                int parenIndex = strippedName.IndexOf('(');
+                if (parenIndex > 0)
+                {
+                    strippedName = strippedName[..parenIndex].Trim();
+                }
+
+                if (metricToEvaluatorMap.TryGetValue(strippedName, out int strippedEvaluatorId))
+                {
+                    metric.EvaluatorId = strippedEvaluatorId;
+                    changed = true;
+                }
             }
         }
 
