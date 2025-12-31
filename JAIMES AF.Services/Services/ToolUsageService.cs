@@ -319,9 +319,9 @@ public class ToolUsageService(
                 $"{toolCall.Message.Game.Scenario?.Name ?? "Unknown Scenario"} - {toolCall.Message.Game.Player?.Name ?? "Unknown Player"}";
         }
 
-        // Get context messages (last 5 messages leading up to and including the tool call message)
+        // Get context messages (last 5 messages leading up to and including the tool call message, plus 1 after)
         IEnumerable<MessageContextDto> contextMessages =
-            await messageService.GetMessageContextAsync(toolCall.MessageId, 5, cancellationToken);
+            await messageService.GetMessageContextAsync(toolCall.MessageId, 5, 1, cancellationToken);
 
         return new ToolCallFullDetailResponse
         {

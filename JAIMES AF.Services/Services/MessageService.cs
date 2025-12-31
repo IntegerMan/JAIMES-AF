@@ -9,7 +9,8 @@ namespace MattEland.Jaimes.ServiceLayer.Services;
 
 public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) : IMessageService
 {
-    public async Task<IEnumerable<MessageContextDto>> GetMessageContextAsync(int messageId, int count,
+    public async Task<IEnumerable<MessageContextDto>> GetMessageContextAsync(int messageId, int countBefore,
+        int countAfter,
         CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -29,7 +30,7 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
             .AsNoTracking()
             .Where(m => m.GameId == targetMessage.GameId && m.Id <= messageId)
             .OrderByDescending(m => m.Id)
-            .Take(count)
+            .Take(countBefore)
             .Include(m => m.Player)
             .Include(m => m.ChatHistory)
             .Include(m => m.ToolCalls)
@@ -37,22 +38,27 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
             .Include(m => m.InstructionVersion)
             .ToListAsync(cancellationToken);
 
-        // Also get messages after the target message (to capture the assistant response with feedback)
-        List<Message> messagesAfter = await context.Messages
-            .AsNoTracking()
-            .Where(m => m.GameId == targetMessage.GameId && m.Id > messageId)
-            .OrderBy(m => m.Id)
-            .Take(2) // Get the next 2 messages (typically the assistant response)
-            .Include(m => m.Player)
-            .Include(m => m.ChatHistory)
-            .Include(m => m.ToolCalls)
-            .Include(m => m.MessageSentiment)
-            .Include(m => m.InstructionVersion)
-            .ToListAsync(cancellationToken);
-
-        // Combine: reverse the 'before' list to chronological order, then add 'after' messages
+        // Reverse to chronological order (oldest first)
         messagesBefore.Reverse();
-        var allMessages = messagesBefore.Concat(messagesAfter).ToList();
+        var allMessages = messagesBefore;
+
+        if (countAfter > 0)
+        {
+            // Also get messages after the target message (to capture the assistant response with feedback)
+            List<Message> messagesAfter = await context.Messages
+                .AsNoTracking()
+                .Where(m => m.GameId == targetMessage.GameId && m.Id > messageId)
+                .OrderBy(m => m.Id)
+                .Take(countAfter)
+                .Include(m => m.Player)
+                .Include(m => m.ChatHistory)
+                .Include(m => m.ToolCalls)
+                .Include(m => m.MessageSentiment)
+                .Include(m => m.InstructionVersion)
+                .ToListAsync(cancellationToken);
+
+            allMessages = allMessages.Concat(messagesAfter).ToList();
+        }
 
         // Fetch metrics and feedback manually since navigation properties aren't configured
         var messageIds = allMessages.Select(m => m.Id).ToList();

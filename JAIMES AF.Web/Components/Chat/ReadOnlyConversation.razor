@@ -66,6 +66,7 @@
 @code {
     [Parameter] public int MessageId { get; set; }
     [Parameter] public int ContextCount { get; set; } = 5;
+    [Parameter] public int ContextCountAfter { get; set; } = 0;
 
     private IEnumerable<MessageContextDto>? _messages;
     private bool _isLoading = true;
@@ -83,7 +84,7 @@
 
         try
         {
-            _messages = await Http.GetFromJsonAsync<IEnumerable<MessageContextDto>>($"/messages/{MessageId}/context?count={ContextCount}");
+            _messages = await Http.GetFromJsonAsync<IEnumerable<MessageContextDto>>($"/messages/{MessageId}/context?count={ContextCount}&countAfter={ContextCountAfter}");
             StateHasChanged();
         }
         catch (Exception ex)
