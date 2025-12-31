@@ -80,32 +80,9 @@ public partial class EditAgent
                 if (versionToLoad != null)
                 {
                     _instructions = versionToLoad.Instructions;
-                    // If we are basing off a specific version, we treat it as "new" content for the purpose of the form,
-                    // but we track original as active instructions for change detection if we were loading active.
-                    // Actually, simpler logic: 
-                    // If loading active, _original matches loaded.
-                    // If loading specific, _original matches loaded too? 
-                    // No, if I change nothing and click save, it shouldn't create a new version if it matches ACTIVE.
-                    // But if I load an OLD version, and save, it SHOULD create a new version even if it matches the old version (because the old version is not active).
-                    // So we probably want to load the ACTIVE version to set _originalInstructions for comparison, 
-                    // but set _instructions to the BaseVersionId content.
 
                     if (BaseVersionId.HasValue)
                     {
-                        // We are loading a specific version to edit. 
-                        // We should check what the ACTIVE version is to set _originalInstructions correctly for "no change" detection?
-                        // If I load v1 (which is old), and active is v2. 
-                        // v1 text != v2 text.
-                        // I want _instructions = v1 text.
-                        // If I click save, it compares _instructions vs _originalInstructions.
-                        // If _originalInstructions is v1 text, then no change detected -> no new version.
-                        // But we WANT a new version if v1 != v2 (active).
-
-                        // Actually, the requirement is "bases the new version off of this version's settings".
-                        // Usually this implies "I want to revert to this version" or "start editing from here".
-                        // In either case, if I just click save, I probably expect it to become the new active version.
-                        // So we should force a new version creation if BaseVersionId is present, UNLESS it happens to be identical to the CURRENT active version.
-
                         // Let's grab active version too to check against.
                         try
                         {
