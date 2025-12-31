@@ -10,6 +10,19 @@ namespace MattEland.Jaimes.Repositories.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // Update existing NULL values before making columns non-nullable
+            migrationBuilder.Sql(@"
+                UPDATE ""Messages"" 
+                SET ""AgentId"" = 'unknown' 
+                WHERE ""AgentId"" IS NULL;
+            ");
+
+            migrationBuilder.Sql(@"
+                UPDATE ""Messages"" 
+                SET ""InstructionVersionId"" = 0 
+                WHERE ""InstructionVersionId"" IS NULL;
+            ");
+
             migrationBuilder.AlterColumn<int>(
                 name: "InstructionVersionId",
                 table: "Messages",

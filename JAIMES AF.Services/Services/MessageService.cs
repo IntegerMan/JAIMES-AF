@@ -37,6 +37,7 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
             .Include(m => m.ToolCalls)
             .Include(m => m.MessageSentiment)
             .Include(m => m.InstructionVersion)
+            .Include(m => m.Agent)
             .ToListAsync(cancellationToken);
 
         // Reverse to chronological order (oldest first)
@@ -56,6 +57,7 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
                 .Include(m => m.ToolCalls)
                 .Include(m => m.MessageSentiment)
                 .Include(m => m.InstructionVersion)
+                .Include(m => m.Agent)
                 .ToListAsync(cancellationToken);
 
             allMessages = allMessages.Concat(messagesAfter).ToList();
@@ -143,14 +145,6 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
             var dto = message.ToContextDto();
             dto.GameTitle = message.Game?.Title;
             dto.InstructionVersionNumber = message.InstructionVersion?.VersionNumber;
-
-            // Populate Game Title in DTO if available (assuming DTO has property or we map it)
-            // MessageContextDto doesn't explicitly have GameTitle, but MessageDto might not either.
-            // We might need to rely on GameId or add GameTitle to MessageDto/ContextDto.
-            // For now, let's proceed with standard mapping. The UI can fetch Game info or we use GameId.
-            // Wait, plan said "Group by Game". Filtering by GameId is easy. Displaying Game Title needs the title.
-            // MessageResponse has GameId?
-            // I'll check if I need to add GameTitle to DTO.
 
             dto.Metrics = metrics
                 .Where(m => m.MessageId == message.Id)

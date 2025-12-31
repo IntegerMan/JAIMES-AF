@@ -17,7 +17,7 @@
     }
     else if (_messages != null)
     {
-        @foreach (var m in _messages)
+        @foreach ((var m, int msgIndex) in _messages.Select((msg, i) => (msg, i)))
         {
             List<string> paragraphs = ChatHelpers.SplitIntoParagraphs(m.Text).ToList();
             @foreach ((string paragraph, int index) in paragraphs.Select((p, i) => (p, i)))
@@ -31,7 +31,7 @@
                 {
                     // Check previous assistant message for version switch
                     var prevAssistantMsg = _messages
-                        .Take(index) // Take messages before this one
+                        .Take(msgIndex) // Take messages before this one
                         .Reverse() // Search backwards
                         .FirstOrDefault(msg => msg.PlayerId == null); // Find last assistant message
 
@@ -78,7 +78,7 @@
                         ToolCalls="@m.ToolCalls"
                         Highlighted="@isTargetMessage"
                         AgentId="@m.AgentId"
-                        AgentName="@m.AgentId"
+                        AgentName="@m.AgentName"
                         InstructionVersionId="@m.InstructionVersionId"
                         VersionNumber="@(m.InstructionVersionId.ToString())"
                         IsVersionSwitch="@isVersionSwitch"
