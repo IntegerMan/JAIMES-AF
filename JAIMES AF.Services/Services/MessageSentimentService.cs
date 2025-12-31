@@ -35,7 +35,10 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
             .Include(s => s.Message)
             .ThenInclude(m => m!.InstructionVersion)
             .Include(s => s.Message)
-            .ThenInclude(m => m!.NextMessage);
+            .ThenInclude(m => m!.NextMessage)
+            .Include(s => s.Message)
+            .ThenInclude(m => m!.PreviousMessage)
+            .ThenInclude(pm => pm!.ToolCalls);
 
         // Apply filters
         if (filters != null)
@@ -47,11 +50,10 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
 
             if (!string.IsNullOrEmpty(filters.ToolName))
             {
-                // Filter by user messages where the next assistant message used this tool
-                // For now, filter by tool calls on the message itself (user messages typically don't have tool calls,
-                // but we'll need to look at the response message)
+                // Filter by tool calls on the previous assistant message (the one the user is reacting to)
                 query = query.Where(s => s.Message != null &&
-                                         s.Message.ToolCalls.Any(tc =>
+                                         s.Message.PreviousMessage != null &&
+                                         s.Message.PreviousMessage.ToolCalls.Any(tc =>
                                              tc.ToolName.ToLower() == filters.ToolName.ToLower()));
             }
 
@@ -183,7 +185,8 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
                 GameRulesetId = s.Message?.Game?.RulesetId,
                 AgentVersion = s.Message?.InstructionVersion?.VersionNumber,
                 AgentId = s.Message?.InstructionVersion?.AgentId ?? s.Message?.AgentId,
-                ToolNames = s.Message?.ToolCalls?.Select(tc => tc.ToolName).Distinct().ToList(),
+                // Tool names from the previous assistant message (the one the user is reacting to)
+                ToolNames = s.Message?.PreviousMessage?.ToolCalls?.Select(tc => tc.ToolName).Distinct().ToList(),
                 HasFeedback = feedback != null,
                 FeedbackIsPositive = feedback?.IsPositive,
                 MessagePreview = s.Message?.Text is string text && text.Length > 50
@@ -220,6 +223,9 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
             .ThenInclude(m => m!.ToolCalls)
             .Include(s => s.Message)
             .ThenInclude(m => m!.InstructionVersion)
+            .Include(s => s.Message)
+            .ThenInclude(m => m!.PreviousMessage)
+            .ThenInclude(pm => pm!.ToolCalls)
             .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
 
         if (sentiment == null) return null;
@@ -267,7 +273,8 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
             GameRulesetId = sentiment.Message?.Game?.RulesetId,
             AgentVersion = sentiment.Message?.InstructionVersion?.VersionNumber,
             AgentId = sentiment.Message?.InstructionVersion?.AgentId ?? sentiment.Message?.AgentId,
-            ToolNames = sentiment.Message?.ToolCalls?.Select(tc => tc.ToolName).Distinct().ToList(),
+            // Tool names from the previous assistant message (the one the user is reacting to)
+            ToolNames = sentiment.Message?.PreviousMessage?.ToolCalls?.Select(tc => tc.ToolName).Distinct().ToList(),
             HasFeedback = feedback != null,
             FeedbackIsPositive = feedback?.IsPositive,
             FeedbackComment = feedback?.Comment,

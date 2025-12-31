@@ -97,10 +97,10 @@ else
     public bool ShowViewDetails { get; set; }
 
     /// <summary>
-    /// Callback when sentiment is changed.
+    /// Callback when sentiment is changed. Provides the new sentiment values.
     /// </summary>
     [Parameter]
-    public EventCallback OnSentimentChanged { get; set; }
+    public EventCallback<SentimentUpdate> OnSentimentChanged { get; set; }
 
     private string GetSentimentIcon() => Sentiment switch
     {
@@ -132,10 +132,13 @@ else
             
             if (response.IsSuccessStatusCode)
             {
-                Sentiment = newSentiment;
-                SentimentSource = IsAdminContext ? 2 : 1;
-                Confidence = 1.0;
-                await OnSentimentChanged.InvokeAsync();
+                // Notify parent with the new values instead of directly modifying parameters
+                await OnSentimentChanged.InvokeAsync(new SentimentUpdate
+                {
+                    Sentiment = newSentiment,
+                    SentimentSource = IsAdminContext ? 2 : 1,
+                    Confidence = 1.0
+                });
             }
             else
             {
@@ -174,5 +177,15 @@ else
         };
 
         return $"{sentimentLabel} Sentiment{sourceLabel}";
+    }
+
+    /// <summary>
+    /// Represents an update to sentiment values.
+    /// </summary>
+    public record SentimentUpdate
+    {
+        public int Sentiment { get; init; }
+        public int SentimentSource { get; init; }
+        public double Confidence { get; init; }
     }
 }

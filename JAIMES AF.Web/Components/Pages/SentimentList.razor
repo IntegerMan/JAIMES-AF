@@ -47,14 +47,14 @@
             </PropertyColumn>
             <PropertyColumn Property="x => x.Sentiment" Title="Sentiment" Sortable="false">
                 <CellTemplate>
-                    <SentimentIcon Sentiment="@context.Item.Sentiment"
+                <SentimentIcon Sentiment="@context.Item.Sentiment"
                                    SentimentSource="@context.Item.SentimentSource"
                                    Confidence="@context.Item.Confidence"
                                    MessageId="@context.Item.MessageId"
                                    SentimentId="@context.Item.Id"
                                    IsAdminContext="true"
                                    ShowViewDetails="true"
-                                   OnSentimentChanged="@(() => InvokeAsync(StateHasChanged))" />
+                                   OnSentimentChanged="@(update => { context.Item.Sentiment = update.Sentiment; context.Item.SentimentSource = update.SentimentSource; context.Item.Confidence = update.Confidence; StateHasChanged(); })" />
                 </CellTemplate>
             </PropertyColumn>
             <PropertyColumn Property="x => x.Confidence" Title="Confidence">
