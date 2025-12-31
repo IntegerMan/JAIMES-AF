@@ -66,15 +66,54 @@
 				@for (int msgIndex = 0; msgIndex < (_messages?.Count ?? 0); msgIndex++)
 				{
 					var m = _messages![msgIndex];
-					int capturedIndex = msgIndex; // Capture for lambda closure structure below
+					int capturedIndex = msgIndex; // Capture for lambda closure structure					// Calculate agent info and version switch logic
+					string? agentId = null;
+					string? agentName = null;
+					int? instructionVersionId = null;
+					string? versionNumber = null;
+					bool isVersionSwitch = false;
+					bool isExempt = msgIndex == 0; // First message is the system greeting and exempt from processing
+					int? messageId = GetMessageId(msgIndex);
+
+					if (m.Role == ChatRole.Assistant && messageId.HasValue && _messageAgentInfo.TryGetValue(messageId.Value, out var agentInfo))
+					{
+						agentId = agentInfo.AgentId;
+						agentName = agentInfo.AgentName ?? _agent?.Name; // Fallback to current agent name
+						instructionVersionId = agentInfo.InstructionVersionId;
+						versionNumber = agentInfo.VersionNumber ?? "1"; // Default to v1 if unknown
+
+						// Check previous assistant message for version switch
+						// Find the last assistant message before this one
+						for (int i = msgIndex - 1; i >= 0; i--)
+						{
+							var prevMsg = _messages[i];
+							int? prevMsgId = GetMessageId(i);
+							if (prevMsg.Role == ChatRole.Assistant && prevMsgId.HasValue &&
+							    _messageAgentInfo.TryGetValue(prevMsgId.Value, out var prevAgentInfo))
+							{
+								// detected a switch if agent ID changed OR version ID changed
+								if (prevAgentInfo.AgentId != agentId ||
+								    prevAgentInfo.InstructionVersionId != instructionVersionId)
+								{
+									isVersionSwitch = true;
+								}
+
+								break;
+							}
+						}
+
+						// If this is the VERY first assistant message, treat it as a "switch" (start)
+						if (!isVersionSwitch && !_messages.Take(msgIndex).Any(x => x.Role == ChatRole.Assistant))
+						{
+							isVersionSwitch = true;
+						}
+					}
 
 					// Skip empty messages
 					if (string.IsNullOrWhiteSpace(m.Text))
 					{
 						continue;
 					}
-
-					int? messageId = GetMessageId(msgIndex);
 
 					// Pre-calculate data needed for components (avoiding dictionary lookups in render loop logic where possible)
 					MessageFeedbackResponse? feedback = messageId.HasValue && _messageFeedback.TryGetValue(messageId.Value, out var fb) ? fb : null;
@@ -115,7 +154,13 @@
 									OnToolCallsClick="@OnToolCallClicked"
 									OnFeedbackClick="@OnFeedbackClicked"
 									OnMetricsClick="@OnMetricsClicked"
-									ReadOnly="false"/>
+									ReadOnly="false"
+									AgentId="@agentId"
+									AgentName="@agentName"
+									InstructionVersionId="@instructionVersionId"
+									VersionNumber="@versionNumber"
+									IsVersionSwitch="@isVersionSwitch"
+									ExemptFromProcessing="@isExempt"/>
 							}
 						}
 					}

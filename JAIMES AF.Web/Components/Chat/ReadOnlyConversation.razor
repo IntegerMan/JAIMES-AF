@@ -8,7 +8,7 @@
     @if (_isLoading)
     {
         <div class="d-flex justify-center my-4">
-            <MudProgressCircular Indeterminate="true" />
+            <MudProgressCircular Indeterminate="true"/>
         </div>
     }
     else if (!string.IsNullOrEmpty(_errorMessage))
@@ -26,10 +26,34 @@
                 bool isLastParagraph = index == paragraphs.Count - 1;
                 bool isTargetMessage = m.Id == MessageId;
 
+                bool isVersionSwitch = false;
+                if (m.PlayerId == null) // Assistant message
+                {
+                    // Check previous assistant message for version switch
+                    var prevAssistantMsg = _messages
+                        .Take(index) // Take messages before this one
+                        .Reverse() // Search backwards
+                        .FirstOrDefault(msg => msg.PlayerId == null); // Find last assistant message
+
+                    if (prevAssistantMsg != null)
+                    {
+                        if (prevAssistantMsg.AgentId != m.AgentId ||
+                            prevAssistantMsg.InstructionVersionId != m.InstructionVersionId)
+                        {
+                            isVersionSwitch = true;
+                        }
+                    }
+                    else
+                    {
+                        // No previous assistant message, so this is the first one
+                        isVersionSwitch = true;
+                    }
+                }
+
                 @if (m.PlayerId != null) // User message
                 {
-                    <UserChatMessage 
-                        Text="@paragraph" 
+                    <UserChatMessage
+                        Text="@paragraph"
                         IsFirstParagraph="@isFirstParagraph"
                         IsLastParagraph="@isLastParagraph"
                         MessageId="@m.Id"
@@ -39,7 +63,7 @@
                         SentimentId="@m.SentimentId"
                         ReadOnly="true"
                         NavigateOnClick="true"
-                        Highlighted="@isTargetMessage" />
+                        Highlighted="@isTargetMessage"/>
                 }
                 else // Assistant message
                 {
@@ -52,14 +76,19 @@
                         Metrics="@m.Metrics"
                         Feedback="@m.Feedback"
                         ToolCalls="@m.ToolCalls"
-                        Highlighted="@isTargetMessage" />
+                        Highlighted="@isTargetMessage"
+                        AgentId="@m.AgentId"
+                        AgentName="@m.AgentId"
+                        InstructionVersionId="@m.InstructionVersionId"
+                        VersionNumber="@(m.InstructionVersionId?.ToString())"
+                        IsVersionSwitch="@isVersionSwitch"/>
                 }
             }
         }
     }
     else
     {
-         <MudText Typo="Typo.body2" Class="text-muted">No context messages available.</MudText>
+        <MudText Typo="Typo.body2" Class="text-muted">No context messages available.</MudText>
     }
 </div>
 
@@ -96,4 +125,5 @@
             _isLoading = false;
         }
     }
+
 }

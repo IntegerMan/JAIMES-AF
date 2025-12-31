@@ -65,8 +65,9 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
             if (!string.IsNullOrEmpty(filters.AgentId))
             {
                 query = query.Where(s => s.Message != null &&
-                                         s.Message.InstructionVersion != null &&
-                                         s.Message.InstructionVersion.AgentId == filters.AgentId);
+                                         ((s.Message.InstructionVersion != null &&
+                                           s.Message.InstructionVersion.AgentId == filters.AgentId) ||
+                                          s.Message.AgentId == filters.AgentId));
             }
 
             if (filters.InstructionVersionId.HasValue)
@@ -175,7 +176,7 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
                 Id = s.Id,
                 MessageId = s.MessageId,
                 Sentiment = s.Sentiment,
-                SentimentSource = (int)s.SentimentSource,
+                SentimentSource = (int) s.SentimentSource,
                 Confidence = s.Confidence,
                 CreatedAt = s.CreatedAt,
                 UpdatedAt = s.UpdatedAt,
@@ -241,7 +242,7 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
                 var msg = await context.Messages
                     .AsNoTracking()
                     .Where(m => m.Id == sentiment.MessageId)
-                    .Select(m => new { m.NextMessageId })
+                    .Select(m => new {m.NextMessageId})
                     .FirstOrDefaultAsync(cancellationToken);
 
                 if (msg?.NextMessageId != null)
@@ -263,7 +264,7 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
             Id = sentiment.Id,
             MessageId = sentiment.MessageId,
             Sentiment = sentiment.Sentiment,
-            SentimentSource = (int)sentiment.SentimentSource,
+            SentimentSource = (int) sentiment.SentimentSource,
             Confidence = sentiment.Confidence,
             CreatedAt = sentiment.CreatedAt,
             UpdatedAt = sentiment.UpdatedAt,

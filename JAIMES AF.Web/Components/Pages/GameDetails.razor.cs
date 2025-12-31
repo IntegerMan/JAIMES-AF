@@ -25,6 +25,7 @@ public partial class GameDetails : IAsyncDisposable
     private Dictionary<int, List<MessageToolCallResponse>> _messageToolCalls = new();
     private Dictionary<int, List<MessageEvaluationMetricResponse>> _messageMetrics = new();
     private Dictionary<int, MessageSentimentInfo> _messageSentiment = new();
+    private Dictionary<int, MessageAgentInfo> _messageAgentInfo = new();
     private AIAgent? _agent;
 
     private GameStateResponse? _game;
@@ -99,6 +100,25 @@ public partial class GameDetails : IAsyncDisposable
 
             // Batch load all metadata (Feedback, ToolCalls, Metrics, Sentiment)
             await LoadMessagesMetadataAsync(orderedMessages.Select(m => m.Id).ToList());
+
+            // Track agent info per message
+            _messageAgentInfo.Clear();
+            foreach (var message in orderedMessages)
+            {
+                if ((!string.IsNullOrEmpty(message.AgentId) || message.InstructionVersionId.HasValue) &&
+                    message.Participant == ChatParticipant.GameMaster)
+                {
+                    _messageAgentInfo[message.Id] = new MessageAgentInfo
+                    {
+                        AgentId = message.AgentId,
+                        // We don't have the agent name in the message response directly unless we fetch it separately
+                        // But we can fallback to AgentId if needed. Ideally MessageResponse should have AgentName.
+                        // For now we'll do our best.
+                        InstructionVersionId = message.InstructionVersionId,
+                        // We don't have version number either.
+                    };
+                }
+            }
 
             // Create AG-UI client for this game
             HttpClient aguiHttpClient = HttpClientFactory.CreateClient("AGUI");
@@ -789,4 +809,15 @@ public class MessageSentimentInfo
     public int Sentiment { get; set; }
     public double? Confidence { get; set; }
     public int? SentimentSource { get; set; }
+}
+
+/// <summary>
+/// Helper class to store agent info for messages.
+/// </summary>
+public class MessageAgentInfo
+{
+    public string? AgentId { get; set; }
+    public string? AgentName { get; set; }
+    public int? InstructionVersionId { get; set; }
+    public string? VersionNumber { get; set; }
 }
