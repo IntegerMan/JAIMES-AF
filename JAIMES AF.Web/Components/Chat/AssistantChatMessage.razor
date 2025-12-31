@@ -24,7 +24,7 @@
                         <MudTooltip Text="@($"{AgentName} v{VersionNumber}")">
                             <MudIconButton Icon="@Icons.Material.Filled.SmartToy"
                                            Size="Size.Small"
-                                           Color="@(IsVersionSwitch ? Color.Primary : Color.Inherit)"
+                                           Color="@(IsVersionSwitch ? Color.Primary : Color.Default)"
                                            Href="@($"/agents/{AgentId}/versions/{InstructionVersionId}")"/>
                         </MudTooltip>
                     }

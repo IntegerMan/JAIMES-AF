@@ -365,7 +365,9 @@ public partial class GameDetails : IAsyncDisposable
                     _pendingMessageAgentInfo[normalizedMessage] = new MessageAgentInfo
                     {
                         AgentId = _defaultAgentId, // Use default from history
-                        AgentName = !string.IsNullOrWhiteSpace(message.AuthorName)
+                        // Ignore generic game-ID names from the agent runner if we have a real name
+                        AgentName = (!string.IsNullOrWhiteSpace(message.AuthorName) &&
+                                     !message.AuthorName.StartsWith("game-", StringComparison.OrdinalIgnoreCase))
                             ? message.AuthorName
                             : _defaultAgentName,
                         IsScriptedMessage = false // Live messages are generally not scripted

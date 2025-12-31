@@ -22,6 +22,12 @@
 		@if (!_isLoading)
 		{
 			<MudForm>
+				<MudTextField @bind-Value="_title"
+				              Label="Game Title (Optional)"
+				              Variant="Variant.Outlined"
+				              Class="mb-4"
+				              Disabled="_isCreating"/>
+
 				<MudSelect T="string"
 				           @bind-Value="_selectedScenarioId"
 				           Label="Scenario"
@@ -35,12 +41,6 @@
 						<MudSelectItem Value="@scenario.Id">@GetScenarioDisplayName(scenario)</MudSelectItem>
 					}
 				</MudSelect>
-
-				<MudTextField @bind-Value="_title"
-				              Label="Game Title (Optional)"
-				              Variant="Variant.Outlined"
-				              Class="mb-4"
-				              Disabled="_isCreating"/>
 
 				<MudSelect T="string"
 				           @bind-Value="_selectedPlayerId"
