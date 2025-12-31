@@ -6,8 +6,10 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.ServiceDiscovery;
+using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+using System;
 using System.Diagnostics;
 using System.Diagnostics.Tracing;
 using OpenTelemetry.Exporter;
@@ -51,6 +53,10 @@ public static class Extensions
     public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder)
         where TBuilder : IHostApplicationBuilder
     {
+        // Enable unencrypted HTTP/2 support to allow gRPC to talk to the Aspire Dashboard's OTLP endpoint (H2C)
+        // This is crucial for local development where TLS is not used between services and the dashboard.
+        AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+
         // Initialize internal diagnostic logger to debug OTLP export failures
         if (_otelListener == null)
         {
@@ -82,8 +88,7 @@ public static class Extensions
                     .AddMeter("Jaimes.Agents.Tools")
                     .AddMeter("Microsoft.EntityFrameworkCore")
                     .AddMeter("Npgsql")
-                    .AddRuntimeInstrumentation()
-                    .AddOtlpExporter(options => { options.Protocol = OtlpExportProtocol.HttpProtobuf; });
+                    .AddRuntimeInstrumentation();
             })
             .WithTracing(tracing =>
             {
@@ -107,13 +112,8 @@ public static class Extensions
                     .AddSource("Microsoft.Extensions.AI")
                     .AddSource("Microsoft.Agents.AI");
 
-                // Processor disabled - it's filtering out all traces
-                // Need to investigate why the processor is too aggressive
-                // tracing.AddProcessor(new BlazorActivityFilteringProcessor());
-
                 // Add ASP.NET Core instrumentation with minimal filtering
                 // Temporarily only filtering health checks to diagnose trace capture issues
-                // Reference: https://github.com/open-telemetry/opentelemetry-dotnet-contrib/blob/main/src/OpenTelemetry.Instrumentation.AspNetCore/README.md
                 tracing.AddAspNetCoreInstrumentation(options =>
                     {
                         options.Filter = context =>
@@ -130,7 +130,6 @@ public static class Extensions
                                 return false;
 
                             // Allow all other requests for now (including Blazor/SignalR)
-                            // We'll add back filtering once we confirm traces are working
                             return true;
                         };
                     })
@@ -148,8 +147,7 @@ public static class Extensions
                     .AddRedisInstrumentation()
                     // Uncomment the following line to enable gRPC instrumentation (requires the OpenTelemetry.Instrumentation.GrpcNetClient package)
                     //.AddGrpcClientInstrumentation()
-                    .AddHttpClientInstrumentation()
-                    .AddOtlpExporter(options => { options.Protocol = OtlpExportProtocol.HttpProtobuf; });
+                    .AddHttpClientInstrumentation();
             });
 
         builder.AddOpenTelemetryExporters();
@@ -160,21 +158,41 @@ public static class Extensions
     private static TBuilder AddOpenTelemetryExporters<TBuilder>(this TBuilder builder)
         where TBuilder : IHostApplicationBuilder
     {
-        var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
+        var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]
+                           ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
+        var otlpProtocol = builder.Configuration["OTEL_EXPORTER_OTLP_PROTOCOL"]
+                           ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_PROTOCOL");
 
-        // Log the endpoint being used (or lack thereof) to help debug "all or nothing" telemetry issues
+        Console.WriteLine($"[Telemetry] Startup Configuration:");
+        Console.WriteLine($"  - OTEL_EXPORTER_OTLP_ENDPOINT: {otlpEndpoint ?? "(not set)"}");
+        Console.WriteLine($"  - OTEL_EXPORTER_OTLP_PROTOCOL: {otlpProtocol ?? "(not set)"}");
+
+        // Log all OTEL-related variables to see what Aspire is doing
+        var envVars = Environment.GetEnvironmentVariables();
+        foreach (string key in envVars.Keys)
+        {
+            if (key.StartsWith("OTEL_", StringComparison.OrdinalIgnoreCase) ||
+                key.StartsWith("ASPIRE_", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine($"  - EnvVar {key}: {envVars[key]}");
+            }
+        }
+
         if (!string.IsNullOrWhiteSpace(otlpEndpoint))
         {
-            Console.WriteLine($"[Telemetry] configuring OTLP exporter with endpoint: {otlpEndpoint}");
-        }
-        else
-        {
-            Console.WriteLine(
-                "[Telemetry] OTEL_EXPORTER_OTLP_ENDPOINT is checking - no explicit endpoint found.");
-        }
+            // If gRPC is causing HTTP_1_1_REQUIRED, it means the server on that port wants HTTP/1.1.
+            // We'll try to use HttpProtobuf (OTLP/HTTP) which uses HTTP/1.1.
+            // We set it in the environment so that the parameterless UseOtlpExporter() picks it up.
+            if (string.IsNullOrWhiteSpace(otlpProtocol) ||
+                otlpProtocol.Equals("grpc", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine(
+                    "[Telemetry] Forcing OTEL_EXPORTER_OTLP_PROTOCOL to http/protobuf to resolve HTTP_1_1_REQUIRED conflict.");
+                Environment.SetEnvironmentVariable("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf");
+            }
 
-        // Exporter is now configured inline in WithMetrics and WithTracing
-        // to ensure the correct protocol (HttpProtobuf) is used.
+            builder.Services.AddOpenTelemetry().UseOtlpExporter();
+        }
 
         return builder;
     }
@@ -261,23 +279,19 @@ public static class Extensions
         {
             base.OnEventWritten(eventData);
 
-            // Only log Warnings and Errors to avoid flooding the console with Debug logs
-            if (eventData.Level == EventLevel.Warning || eventData.Level == EventLevel.Error ||
-                eventData.Level == EventLevel.Critical)
+            // Log everything for now to see what's happening
+            string message;
+            if (eventData.Message != null && eventData.Payload != null)
             {
-                string message;
-                if (eventData.Message != null && eventData.Payload != null)
-                {
-                    message = string.Format(eventData.Message, eventData.Payload.ToArray());
-                }
-                else
-                {
-                    message = eventData.Message ?? "Unknown OpenTelemetry Event";
-                }
-
-                Console.WriteLine(
-                    $"[OpenTelemetry Diagnostics] [{eventData.Level}] {eventData.EventSource.Name}: {message}");
+                message = string.Format(eventData.Message, eventData.Payload.ToArray());
             }
+            else
+            {
+                message = eventData.Message ?? "Unknown OpenTelemetry Event";
+            }
+
+            Console.WriteLine(
+                $"[OpenTelemetry Diagnostics] [{eventData.Level}] {eventData.EventSource.Name}: {message}");
         }
     }
 
