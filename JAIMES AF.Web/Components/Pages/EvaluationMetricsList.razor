@@ -29,13 +29,13 @@
         </MudAlert>
     }
 
-    <AdminFilters 
+    <AdminFilters
         MetricName="@MetricName"
         Passed="@Passed"
         MinScore="@MinScore"
         MaxScore="@MaxScore"
         GameId="@GameId"
-        OnClearFilters="ClearFilters" />
+        OnClearFilters="ClearFilters"/>
 
     <MudDataGrid T="EvaluationMetricListItemDto"
                  ServerData="ServerReload"
@@ -47,15 +47,20 @@
                  GroupExpanded="true">
         <Columns>
 
-            <PropertyColumn Property="x => x.GamePlayerName" Title="Game" Groupable="true" Grouping="true">
+            <PropertyColumn Property="x => x.GameId" Title="Game" Groupable="true" Grouping="true">
                 <CellTemplate>
-                    <MudLink Href="@($"/games/{context.Item.GameId}")">@context.Item.GamePlayerName</MudLink>
+                    <MudLink Href="@($"/games/{context.Item.GameId}")">
+                        @(context.Item.GamePlayerName ?? "Player") in @(context.Item.GameScenarioName ?? "Scenario") (@(context.Item.GameRulesetId ?? "Unknown"))
+                    </MudLink>
                 </CellTemplate>
                 <GroupTemplate>
                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                        <MudIcon Icon="@Icons.Material.Filled.SportsEsports" Size="Size.Small" />
+                        <MudIcon Icon="@Icons.Material.Filled.SportsEsports" Size="Size.Small"/>
                         <MudLink Href="@($"/games/{context.Grouping.First().GameId}")" Typo="Typo.subtitle1">
-                            <strong>@context.Grouping.Key</strong>
+                            @{
+                                var first = context.Grouping.First();
+                                <strong>@(first.GamePlayerName ?? "Player") in @(first.GameScenarioName ?? "Scenario") (@(first.GameRulesetId ?? "Unknown"))</strong>
+                            }
                         </MudLink>
                         <MudText Typo="Typo.caption" Class="text-muted">(@context.Grouping.Count() metrics)</MudText>
                     </MudStack>
@@ -69,7 +74,7 @@
                 </CellTemplate>
                 <GroupTemplate>
                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                        <MudIcon Icon="@Icons.Material.Filled.Message" Size="Size.Small" />
+                        <MudIcon Icon="@Icons.Material.Filled.Message" Size="Size.Small"/>
                         <MudLink Href="@($"/admin/metrics/{context.Grouping.Key}")" Typo="Typo.body1">
                             <strong>@(context.Grouping.First().MessagePreview ?? $"Message {context.Grouping.Key}")</strong>
                         </MudLink>
@@ -122,31 +127,31 @@
                         @if (!string.IsNullOrEmpty(context.Item.Diagnostics))
                         {
                             <MudTooltip Text="View Diagnostics">
-                                <MudIconButton Icon="@Icons.Material.Filled.Biotech" 
-                                               Color="Color.Info" 
+                                <MudIconButton Icon="@Icons.Material.Filled.Biotech"
+                                               Color="Color.Info"
                                                Size="Size.Small"
-                                               OnClick="@(() => ShowDiagnosticsAsync(context.Item))" />
+                                               OnClick="@(() => ShowDiagnosticsAsync(context.Item))"/>
                             </MudTooltip>
                         }
                         <MudTooltip Text="View All Message Metrics">
-                            <MudIconButton Icon="@Icons.Material.Filled.PieChart" 
-                                           Color="Color.Secondary" 
+                            <MudIconButton Icon="@Icons.Material.Filled.PieChart"
+                                           Color="Color.Secondary"
                                            Size="Size.Small"
-                                           Href="@($"/admin/metrics/{context.Item.MessageId}")" />
+                                           Href="@($"/admin/metrics/{context.Item.MessageId}")"/>
                         </MudTooltip>
                         <MudTooltip Text="View Game">
-                            <MudIconButton Icon="@Icons.Material.Filled.SportsEsports" 
-                                           Color="Color.Primary" 
+                            <MudIconButton Icon="@Icons.Material.Filled.SportsEsports"
+                                           Color="Color.Primary"
                                            Size="Size.Small"
                                            Href="@($"/games/{context.Item.GameId}")"
-                                           Target="_blank" />
+                                           Target="_blank"/>
                         </MudTooltip>
                     </MudStack>
                 </CellTemplate>
             </TemplateColumn>
         </Columns>
         <PagerContent>
-            <MudDataGridPager T="EvaluationMetricListItemDto" />
+            <MudDataGridPager T="EvaluationMetricListItemDto"/>
         </PagerContent>
         <NoRecordsContent>
             <MudText Typo="Typo.body1" Class="pa-4">
@@ -157,25 +162,15 @@
 </MudContainer>
 
 @code {
-    [Parameter]
-    [SupplyParameterFromQuery]
-    public string? MetricName { get; set; }
+    [Parameter] [SupplyParameterFromQuery] public string? MetricName { get; set; }
 
-    [Parameter]
-    [SupplyParameterFromQuery]
-    public bool? Passed { get; set; }
+    [Parameter] [SupplyParameterFromQuery] public bool? Passed { get; set; }
 
-    [Parameter]
-    [SupplyParameterFromQuery]
-    public double? MinScore { get; set; }
+    [Parameter] [SupplyParameterFromQuery] public double? MinScore { get; set; }
 
-    [Parameter]
-    [SupplyParameterFromQuery]
-    public double? MaxScore { get; set; }
+    [Parameter] [SupplyParameterFromQuery] public double? MaxScore { get; set; }
 
-    [Parameter]
-    [SupplyParameterFromQuery]
-    public Guid? GameId { get; set; }
+    [Parameter] [SupplyParameterFromQuery] public Guid? GameId { get; set; }
 
     private List<BreadcrumbItem> _breadcrumbs = new();
 
@@ -222,7 +217,7 @@
             {
                 // Order by MessageId for sequential grouping
                 var orderedItems = response.Items.OrderBy(x => x.MessageId).ToList();
-                
+
                 return new GridData<EvaluationMetricListItemDto>
                 {
                     TotalItems = response.TotalCount,
@@ -262,8 +257,8 @@
     {
         var parameters = new DialogParameters<DiagnosticsDialog>
         {
-            { nameof(DiagnosticsDialog.MetricName), item.MetricName },
-            { nameof(DiagnosticsDialog.Diagnostics), item.Diagnostics }
+            {nameof(DiagnosticsDialog.MetricName), item.MetricName},
+            {nameof(DiagnosticsDialog.Diagnostics), item.Diagnostics}
         };
 
         var options = new DialogOptions
@@ -275,4 +270,5 @@
 
         await DialogService.ShowAsync<DiagnosticsDialog>("Diagnostics", parameters, options);
     }
+
 }

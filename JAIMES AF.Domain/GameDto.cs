@@ -3,6 +3,7 @@ namespace MattEland.Jaimes.Domain;
 public class GameDto
 {
     public required Guid GameId { get; init; }
+    public string? Title { get; init; }
     public MessageDto[]? Messages { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime? LastPlayedAt { get; init; }

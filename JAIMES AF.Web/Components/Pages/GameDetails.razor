@@ -10,9 +10,9 @@
 
 <div class="game-details-page-wrapper">
 	<MudContainer MaxWidth="MaxWidth.Large" Class="game-details-wrapper">
-        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-            <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
-        </MudStack>
+		<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+			<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+		</MudStack>
 		@if (_isLoading)
 		{
 			<MudProgressCircular Indeterminate="true" Class="my-4"/>
@@ -27,30 +27,46 @@
 		}
 		else
 		{
-            if (_game != null) UpdateBreadcrumbs($"{_game.ScenarioName} - {_game.PlayerName}");
+			if (_game != null) UpdateBreadcrumbs(_game.Title ?? $"{_game.PlayerName} in {_game.ScenarioName}");
 			<div class="game-header">
-				<MudText Typo="Typo.h5" Class="mb-0">Game details</MudText>
-				<MudText Typo="Typo.body2" Class="text-muted">
-					<strong>@_game!.PlayerName</strong> playing <strong>@_game!.ScenarioName</strong>
-				</MudText>
-				<MudText Typo="Typo.body2" Class="text-muted">
-					Ruleset: <strong>@_game!.RulesetName</strong> (@_game!.RulesetId)
-				</MudText>
-				<MudText Typo="Typo.body2" Class="text-muted">
-					Created: @ToLocalTime(_game!.CreatedAt).ToString("g")
-					@if (_game!.LastPlayedAt.HasValue)
-					{
-						<span> | Last played: @ToLocalTime(_game!.LastPlayedAt.Value).ToString("g")</span>
-					}
-				</MudText>
-				<MudText Typo="Typo.body2" Class="text-muted">Game @_game!.GameId</MudText>
+				@if (_isEditingTitle)
+				{
+					<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Style="width: 100%;">
+						<MudTextField @bind-Value="_editableTitle"
+						              Variant="Variant.Outlined"
+						              Margin="Margin.Dense"
+						              FullWidth="true"
+						              Immediate="true"
+						              Placeholder="Enter game title"
+						              Style="flex-grow: 1;"/>
+						<MudIconButton Icon="@Icons.Material.Filled.Check"
+						               Color="Color.Success"
+						               Size="Size.Small"
+						               Disabled="@_isSavingTitle"
+						               OnClick="SaveTitleAndExitEditModeAsync"/>
+						<MudIconButton Icon="@Icons.Material.Filled.Close"
+						               Color="Color.Error"
+						               Size="Size.Small"
+						               OnClick="CancelTitleEdit"/>
+					</MudStack>
+				}
+				else
+				{
+					<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+						<MudText Typo="Typo.h5">@(_game!.Title ?? $"{_game.PlayerName} in {_game.ScenarioName}")</MudText>
+						<MudIconButton Icon="@Icons.Material.Filled.Edit"
+						               Size="Size.Small"
+						               Color="Color.Default"
+						               OnClick="EnterTitleEditMode"/>
+					</MudStack>
+				}
 			</div>
 
 			<div id="chat-scroll-container" class="chat-scroll">
 				@for (int msgIndex = 0; msgIndex < (_messages?.Count ?? 0); msgIndex++)
 				{
 					var m = _messages![msgIndex];
-                    int capturedIndex = msgIndex; // Capture for lambda closure structure below
+					int capturedIndex = msgIndex; // Capture for lambda closure structure below
 
 					// Skip empty messages
 					if (string.IsNullOrWhiteSpace(m.Text))
@@ -59,63 +75,63 @@
 					}
 
 					int? messageId = GetMessageId(msgIndex);
-					
+
 					// Pre-calculate data needed for components (avoiding dictionary lookups in render loop logic where possible)
 					MessageFeedbackResponse? feedback = messageId.HasValue && _messageFeedback.TryGetValue(messageId.Value, out var fb) ? fb : null;
 					List<MessageToolCallResponse>? toolCalls = messageId.HasValue && _messageToolCalls.TryGetValue(messageId.Value, out var tc) ? tc : null;
 					List<MessageEvaluationMetricResponse>? metrics = messageId.HasValue && _messageMetrics.TryGetValue(messageId.Value, out var met) ? met : null;
-                    MessageSentimentInfo? sentimentInfo = messageId.HasValue && _messageSentiment.TryGetValue(messageId.Value, out var si) ? si : null;
+					MessageSentimentInfo? sentimentInfo = messageId.HasValue && _messageSentiment.TryGetValue(messageId.Value, out var si) ? si : null;
 
 					List<string> paragraphs = ChatHelpers.SplitIntoParagraphs(m.Text).ToList();
 					@foreach ((string paragraph, int index) in paragraphs.Select((p, i) => (p, i)))
 					{
 						bool isFirstParagraph = index == 0;
 						bool isLastParagraph = index == paragraphs.Count - 1;
-						
+
 						@if (m.Role == ChatRole.User)
 						{
-						    <UserChatMessage 
-						        Text="@paragraph" 
-						        IsFirstParagraph="@isFirstParagraph"
-						        IsLastParagraph="@isLastParagraph"
-						        MessageId="@messageId"
-                                Sentiment="@sentimentInfo?.Sentiment"
-                                Confidence="@sentimentInfo?.Confidence"
-                                SentimentSource="@sentimentInfo?.SentimentSource"
-                                SentimentId="@sentimentInfo?.SentimentId" />
+							<UserChatMessage
+								Text="@paragraph"
+								IsFirstParagraph="@isFirstParagraph"
+								IsLastParagraph="@isLastParagraph"
+								MessageId="@messageId"
+								Sentiment="@sentimentInfo?.Sentiment"
+								Confidence="@sentimentInfo?.Confidence"
+								SentimentSource="@sentimentInfo?.SentimentSource"
+								SentimentId="@sentimentInfo?.SentimentId"/>
 						}
 						else
 						{
 							@if (!string.IsNullOrWhiteSpace(paragraph))
 							{
-								    <AssistantChatMessage
-								        Text="@paragraph"
-								        MessageId="@messageId"
-								        IsFirstParagraph="@isFirstParagraph"
-								        IsLastParagraph="@isLastParagraph"
-								        ToolCalls="@toolCalls"
-                                        Metrics="@metrics"
-								        Feedback="@feedback"
-								        OnToolCallsClick="@OnToolCallClicked"
-								        OnFeedbackClick="@OnFeedbackClicked"
-								        OnMetricsClick="@OnMetricsClicked"
-								        ReadOnly="false" />
+								<AssistantChatMessage
+									Text="@paragraph"
+									MessageId="@messageId"
+									IsFirstParagraph="@isFirstParagraph"
+									IsLastParagraph="@isLastParagraph"
+									ToolCalls="@toolCalls"
+									Metrics="@metrics"
+									Feedback="@feedback"
+									OnToolCallsClick="@OnToolCallClicked"
+									OnFeedbackClick="@OnFeedbackClicked"
+									OnMetricsClick="@OnMetricsClicked"
+									ReadOnly="false"/>
 							}
 						}
 					}
 
-                    @if (_failedMessageIndex == msgIndex && !string.IsNullOrEmpty(_errorMessage))
-                    {
-                        <MudChat ChatPosition="ChatBubblePosition.End">
-                            <MudChatBubble Color="Color.Error">
-                                <MudIcon Icon="@Icons.Material.Filled.Error" Class="mr-2" Size="Size.Small"/>
-                                @_errorMessage
-                                <MudButton Size="Size.Small" Color="Color.Inherit" OnClick="@(() => RetryMessageAsync(capturedIndex))" Variant="Variant.Text">
-                                    Retry
-                                </MudButton>
-                            </MudChatBubble>
-                        </MudChat>
-                    }
+					@if (_failedMessageIndex == msgIndex && !string.IsNullOrEmpty(_errorMessage))
+					{
+						<MudChat ChatPosition="ChatBubblePosition.End">
+							<MudChatBubble Color="Color.Error">
+								<MudIcon Icon="@Icons.Material.Filled.Error" Class="mr-2" Size="Size.Small"/>
+								@_errorMessage
+								<MudButton Size="Size.Small" Color="Color.Inherit" OnClick="@(() => RetryMessageAsync(capturedIndex))" Variant="Variant.Text">
+									Retry
+								</MudButton>
+							</MudChatBubble>
+						</MudChat>
+					}
 				}
 
 				@if (_isSending)
@@ -153,44 +169,46 @@
 </div>
 
 @code {
-    private void OnToolCallClicked(int messageId)
-    {
-        if (_messageToolCalls.TryGetValue(messageId, out List<MessageToolCallResponse>? toolCalls) &&
-            toolCalls != null &&
-            toolCalls.Count > 0)
-        {
-             NavigationManager.NavigateTo($"/admin/tool-calls/{toolCalls[0].Id}");
-        }
-    }
-    
-    private async Task OnFeedbackClicked((int MessageId, bool IsPositive) args)
-    {
-        await ShowFeedbackDialogAsync(args.MessageId, args.IsPositive);
-    }
 
-    private void OnMetricsClicked(int messageId)
-    {
-        ShowMetricsDialogAsync(messageId);
-    }
+	private void OnToolCallClicked(int messageId)
+	{
+		if (_messageToolCalls.TryGetValue(messageId, out List<MessageToolCallResponse>? toolCalls) &&
+		    toolCalls != null &&
+		    toolCalls.Count > 0)
+		{
+			NavigationManager.NavigateTo($"/admin/tool-calls/{toolCalls[0].Id}");
+		}
+	}
 
-    private List<BreadcrumbItem> _breadcrumbs = new();
+	private async Task OnFeedbackClicked((int MessageId, bool IsPositive) args)
+	{
+		await ShowFeedbackDialogAsync(args.MessageId, args.IsPositive);
+	}
 
-    protected override async Task OnInitializedAsync()
-    {
-        // Initial breadcrumb state
-        UpdateBreadcrumbs("Game Details");
-        await base.OnInitializedAsync();
-    }
-    
-    // Helper to update breadcrumbs
-    private void UpdateBreadcrumbs(string gameName)
-    {
-         _breadcrumbs = new List<BreadcrumbItem>
-        {
-            new BreadcrumbItem("Home", href: "/"),
-            new BreadcrumbItem("Games", href: "/games"),
-            new BreadcrumbItem(gameName, href: null, disabled: true)
-        };
-    }
+	private void OnMetricsClicked(int messageId)
+	{
+		ShowMetricsDialogAsync(messageId);
+	}
+
+	private List<BreadcrumbItem> _breadcrumbs = new();
+
+	protected override async Task OnInitializedAsync()
+	{
+		// Initial breadcrumb state
+		UpdateBreadcrumbs("Game Details");
+		await base.OnInitializedAsync();
+	}
+
+	// Helper to update breadcrumbs
+	private void UpdateBreadcrumbs(string gameName)
+	{
+		_breadcrumbs = new List<BreadcrumbItem>
+		{
+			new BreadcrumbItem("Home", href: "/"),
+			new BreadcrumbItem("Games", href: "/games"),
+			new BreadcrumbItem(gameName, href: null, disabled: true)
+		};
+	}
+
 }
 

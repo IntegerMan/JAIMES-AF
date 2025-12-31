@@ -74,9 +74,13 @@
                     @context.Item.CreatedAt.ToLocalTime().ToString("g")
                 </CellTemplate>
             </PropertyColumn>
-            <PropertyColumn Property="x => x.GamePlayerName" Title="Player"/>
-            <PropertyColumn Property="x => x.GameScenarioName" Title="Scenario"/>
-            <PropertyColumn Property="x => x.GameRulesetId" Title="Ruleset"/>
+            <TemplateColumn Title="Game">
+                <CellTemplate>
+                    <MudLink Href="@($"/games/{context.Item.GameId}")">
+                        @(context.Item.GamePlayerName ?? "Player") in @(context.Item.GameScenarioName ?? "Scenario") (@(context.Item.GameRulesetId ?? "Unknown"))
+                    </MudLink>
+                </CellTemplate>
+            </TemplateColumn>
             <PropertyColumn Property="x => x.AgentVersion" Title="Agent Version">
                 <CellTemplate>
                     @if (!string.IsNullOrEmpty(context.Item.AgentId))

@@ -7,9 +7,9 @@
 <PageTitle>Games</PageTitle>
 
 <MudPaper Class="pa-4">
-    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
-    </MudStack>
+	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+	</MudStack>
 	<MudText Typo="Typo.h4">Games</MudText>
 
 	<MudText Class="mb-4">This page lists your current in-progress games and allows you to start a new game.</MudText>
@@ -33,7 +33,8 @@
 
 		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && (_games is null || _games.Length == 0))
 		{
-			<MudText Class="mb-4">No games yet.
+			<MudText Class="mb-4">
+				No games yet.
 				<MudLink Href="/games/new">Create a new game</MudLink>
 			</MudText>
 		}
@@ -43,9 +44,7 @@
 			<MudTable Items="_games" Dense="true" Hover="true">
 				<HeaderContent>
 					<MudTh></MudTh>
-					<MudTh>Scenario</MudTh>
-					<MudTh>Ruleset</MudTh>
-					<MudTh>Player</MudTh>
+					<MudTh>Title</MudTh>
 					<MudTh>Created</MudTh>
 					<MudTh>Last Played</MudTh>
 					<MudTh align="Align.Right">Actions</MudTh>
@@ -57,9 +56,9 @@
 							Load
 						</MudButton>
 					</MudTd>
-					<MudTd>@context.ScenarioName</MudTd>
-					<MudTd>@context.RulesetName</MudTd>
-					<MudTd>@context.PlayerName</MudTd>
+					<MudTd>
+						<MudLink Href="@($"/games/{context.GameId}")">@context.Title</MudLink>
+					</MudTd>
 					<MudTd>@ToLocalTime(context.CreatedAt).ToString("g")</MudTd>
 					<MudTd>@(context.LastPlayedAt.HasValue ? ToLocalTime(context.LastPlayedAt.Value).ToString("g") : "Never")</MudTd>
 					<MudTd align="Align.Right">
