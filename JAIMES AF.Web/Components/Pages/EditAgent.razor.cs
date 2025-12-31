@@ -7,6 +7,8 @@ public partial class EditAgent
 {
     [Parameter] public string AgentId { get; set; } = string.Empty;
 
+    [Parameter] [SupplyParameterFromQuery] public int? BaseVersionId { get; set; }
+
     [Inject] public HttpClient Http { get; set; } = null!;
 
     [Inject] public ILoggerFactory LoggerFactory { get; set; } = null!;
@@ -61,48 +63,110 @@ public partial class EditAgent
                 new BreadcrumbItem("Edit", href: null, disabled: true)
             };
 
-            // Load the active instruction version for editing
+            // Load instructions - either from base version (if specified) or active version
             try
             {
-                var activeVersion =
-                    await Http.GetFromJsonAsync<AgentInstructionVersionResponse>(
-                        $"/agents/{AgentId}/instruction-versions/active");
-                if (activeVersion != null)
+                AgentInstructionVersionResponse? versionToLoad = null;
+
+                if (BaseVersionId.HasValue)
                 {
-                    _instructions = activeVersion.Instructions;
-                    _originalInstructions = activeVersion.Instructions;
+                    versionToLoad = await Http.GetFromJsonAsync<AgentInstructionVersionResponse>(
+                        $"/agents/{AgentId}/instruction-versions/{BaseVersionId}");
+                }
+                else
+                {
+                    versionToLoad = await Http.GetFromJsonAsync<AgentInstructionVersionResponse>(
+                        $"/agents/{AgentId}/instruction-versions/active");
+                }
+
+                if (versionToLoad != null)
+                {
+                    _instructions = versionToLoad.Instructions;
+                    // If we are basing off a specific version, we treat it as "new" content for the purpose of the form,
+                    // but we track original as active instructions for change detection if we were loading active.
+                    // Actually, simpler logic: 
+                    // If loading active, _original matches loaded.
+                    // If loading specific, _original matches loaded too? 
+                    // No, if I change nothing and click save, it shouldn't create a new version if it matches ACTIVE.
+                    // But if I load an OLD version, and save, it SHOULD create a new version even if it matches the old version (because the old version is not active).
+                    // So we probably want to load the ACTIVE version to set _originalInstructions for comparison, 
+                    // but set _instructions to the BaseVersionId content.
+
+                    if (BaseVersionId.HasValue)
+                    {
+                        // We are loading a specific version to edit. 
+                        // We should check what the ACTIVE version is to set _originalInstructions correctly for "no change" detection?
+                        // If I load v1 (which is old), and active is v2. 
+                        // v1 text != v2 text.
+                        // I want _instructions = v1 text.
+                        // If I click save, it compares _instructions vs _originalInstructions.
+                        // If _originalInstructions is v1 text, then no change detected -> no new version.
+                        // But we WANT a new version if v1 != v2 (active).
+
+                        // Actually, the requirement is "bases the new version off of this version's settings".
+                        // Usually this implies "I want to revert to this version" or "start editing from here".
+                        // In either case, if I just click save, I probably expect it to become the new active version.
+                        // So we should force a new version creation if BaseVersionId is present, UNLESS it happens to be identical to the CURRENT active version.
+
+                        // Let's grab active version too to check against.
+                        try
+                        {
+                            var active = await Http.GetFromJsonAsync<AgentInstructionVersionResponse>(
+                                $"/agents/{AgentId}/instruction-versions/active");
+                            _originalInstructions = active?.Instructions ?? string.Empty;
+                        }
+                        catch
+                        {
+                            _originalInstructions = string.Empty;
+                        }
+                    }
+                    else
+                    {
+                        // Standard edit flow
+                        _originalInstructions = versionToLoad.Instructions;
+                    }
+
+                    _instructions = versionToLoad.Instructions;
                 }
             }
             catch (HttpRequestException ex) when (ex.Message.Contains("404"))
             {
-                // Agent has no active instruction version - create a default one
-                var logger = LoggerFactory.CreateLogger("EditAgent");
-                logger.LogWarning("Agent {AgentId} has no active instruction version, creating default one", AgentId);
-
-                var defaultInstructions =
-                    $"You are {agent.Name}, a {agent.Role}. Provide helpful and engaging responses.";
-                var createVersionRequest = new CreateAgentInstructionVersionRequest
+                if (!BaseVersionId.HasValue)
                 {
-                    VersionNumber = "v1.0",
-                    Instructions = defaultInstructions
-                };
+                    // Agent has no active instruction version - create a default one
+                    var logger = LoggerFactory.CreateLogger("EditAgent");
+                    logger.LogWarning("Agent {AgentId} has no active instruction version, creating default one",
+                        AgentId);
 
-                var createResponse =
-                    await Http.PostAsJsonAsync($"/agents/{AgentId}/instruction-versions", createVersionRequest);
-                if (createResponse.IsSuccessStatusCode)
-                {
-                    var createdVersion =
-                        await createResponse.Content.ReadFromJsonAsync<AgentInstructionVersionResponse>();
-                    if (createdVersion != null)
+                    var defaultInstructions =
+                        $"You are {agent.Name}, a {agent.Role}. Provide helpful and engaging responses.";
+                    var createVersionRequest = new CreateAgentInstructionVersionRequest
                     {
-                        _instructions = createdVersion.Instructions;
-                        _originalInstructions = createdVersion.Instructions;
+                        VersionNumber = "v1.0",
+                        Instructions = defaultInstructions
+                    };
+
+                    var createResponse =
+                        await Http.PostAsJsonAsync($"/agents/{AgentId}/instruction-versions", createVersionRequest);
+                    if (createResponse.IsSuccessStatusCode)
+                    {
+                        var createdVersion =
+                            await createResponse.Content.ReadFromJsonAsync<AgentInstructionVersionResponse>();
+                        if (createdVersion != null)
+                        {
+                            _instructions = createdVersion.Instructions;
+                            _originalInstructions = createdVersion.Instructions;
+                        }
+                    }
+                    else
+                    {
+                        _errorMessage =
+                            "Agent has no instruction versions and failed to create a default one. Please create an instruction version manually.";
                     }
                 }
                 else
                 {
-                    _errorMessage =
-                        "Agent has no instruction versions and failed to create a default one. Please create an instruction version manually.";
+                    _errorMessage = $"Version {BaseVersionId} not found.";
                 }
             }
         }

@@ -3,7 +3,6 @@
 
 @inject HttpClient Http
 @inject ILoggerFactory LoggerFactory
-@inject NavigationManager Navigation
 
 <PageTitle>Agent Version Details</PageTitle>
 
@@ -53,7 +52,7 @@
                 </MudItem>
             </MudGrid>
 
-            <MudDivider Class="my-4" />
+            <MudDivider Class="my-4"/>
 
             <MudText Typo="Typo.h6" Class="mb-3">Instructions</MudText>
             <MudPaper Class="pa-4" Elevation="1" Style="background-color: var(--mud-palette-background-grey);">
@@ -61,11 +60,11 @@
             </MudPaper>
 
             <MudStack Row="true" Class="mt-4">
-                <MudButton Variant="Variant.Text" 
-                           Color="Color.Primary" 
-                           StartIcon="@Icons.Material.Filled.ArrowBack"
-                           Href="@($"/agents/{AgentId}")">
-                    Back to Agent
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Edit"
+                           Href="@($"/agents/{AgentId}/edit?baseVersionId={VersionId}")">
+                    Create New Version
                 </MudButton>
             </MudStack>
         }
