@@ -88,10 +88,10 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
                 }
                 else
                 {
-                    query = query.Where(s => s.Message == null ||
-                                             !s.Message.NextMessageId.HasValue ||
-                                             !context.MessageFeedbacks.Any(f =>
-                                                 f.MessageId == s.Message.NextMessageId.Value));
+                    query = query.Where(s => s.Message != null &&
+                                             (!s.Message.NextMessageId.HasValue ||
+                                              !context.MessageFeedbacks.Any(f =>
+                                                  f.MessageId == s.Message.NextMessageId.Value)));
                 }
             }
 
