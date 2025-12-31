@@ -76,29 +76,11 @@ public class EvaluatorService(IDbContextFactory<JaimesDbContext> contextFactory)
                     FailCount = g.Count(m => m.Score < 3)
                 });
 
-        // Also group by metric name for evaluators without EvaluatorId
-        var statsByMetricName = metricsWithEvaluators
-            .GroupBy(m => m.MetricName, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(
-                g => g.Key,
-                g => new
-                {
-                    MetricCount = g.Count(),
-                    AverageScore = g.Average(m => m.Score),
-                    PassCount = g.Count(m => m.Score >= 3),
-                    FailCount = g.Count(m => m.Score < 3)
-                },
-                StringComparer.OrdinalIgnoreCase);
-
         // Map evaluators to DTOs with statistics
         List<EvaluatorItemDto> allItems = evaluators
             .Select(e =>
             {
-                // Try to get stats by EvaluatorId first, then fall back to metric name
-                bool hasStatsById = statsByEvaluatorId.TryGetValue(e.Id, out var statsById);
-                bool hasStatsByName = statsByMetricName.TryGetValue(e.Name, out var statsByName);
-
-                var stats = hasStatsById ? statsById : (hasStatsByName ? statsByName : null);
+                statsByEvaluatorId.TryGetValue(e.Id, out var stats);
 
                 return new EvaluatorItemDto
                 {

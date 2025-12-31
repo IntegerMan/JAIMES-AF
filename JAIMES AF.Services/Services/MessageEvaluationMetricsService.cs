@@ -75,6 +75,11 @@ public class MessageEvaluationMetricsService(IDbContextFactory<JaimesDbContext> 
                                          m.Message.InstructionVersionId == filters.InstructionVersionId.Value);
             }
 
+            if (filters.EvaluatorId.HasValue)
+            {
+                query = query.Where(m => m.EvaluatorId == filters.EvaluatorId.Value);
+            }
+
             if (!string.IsNullOrEmpty(filters.AgentId))
             {
                 query = query.Where(m => m.Message != null &&

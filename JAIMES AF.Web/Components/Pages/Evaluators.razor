@@ -25,7 +25,7 @@
         <Columns>
             <PropertyColumn Property="x => x.Name" Title="Evaluator">
                 <CellTemplate>
-                    <MudLink Href="@($"/admin/metrics?metricName={Uri.EscapeDataString(context.Item.Name)}")" Typo="Typo.body2">
+                    <MudLink Href="@($"/admin/metrics?evaluatorId={context.Item.Id}")" Typo="Typo.body2">
                         <strong>@context.Item.Name</strong>
                     </MudLink>
                 </CellTemplate>
@@ -108,7 +108,7 @@
                         <MudIconButton Icon="@Icons.Material.Filled.PieChart" 
                                        Color="Color.Primary" 
                                        Size="Size.Small"
-                                       Href="@($"/admin/metrics?metricName={Uri.EscapeDataString(context.Item.Name)}")" />
+                                       Href="@($"/admin/metrics?evaluatorId={context.Item.Id}")" />
                     </MudTooltip>
                 </CellTemplate>
             </TemplateColumn>

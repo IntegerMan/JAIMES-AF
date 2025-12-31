@@ -2,7 +2,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
 using Microsoft.Extensions.Options;
 
-namespace MattEland.Jaimes.Workers.AssistantMessageWorker.Services;
+namespace MattEland.Jaimes.ServiceLayer.Evaluators;
 
 /// <summary>
 /// An evaluator that grades responses by their brevity relative to a target length.

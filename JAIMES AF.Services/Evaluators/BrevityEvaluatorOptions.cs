@@ -1,4 +1,4 @@
-namespace MattEland.Jaimes.Workers.AssistantMessageWorker.Services;
+namespace MattEland.Jaimes.ServiceLayer.Evaluators;
 
 /// <summary>
 /// Options for the brevity evaluator.

@@ -37,7 +37,8 @@ public class ListMessageEvaluationMetricsEndpoint : EndpointWithoutRequest<Evalu
             MetricName = Query<string?>("metricName", false),
             MinScore = Query<double?>("minScore", false),
             MaxScore = Query<double?>("maxScore", false),
-            Passed = Query<bool?>("passed", false)
+            Passed = Query<bool?>("passed", false),
+            EvaluatorId = Query<int?>("evaluatorId", false)
         };
 
         EvaluationMetricListResponse response =

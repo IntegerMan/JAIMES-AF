@@ -62,6 +62,11 @@ public class AdminFilterParams
     public int? FeedbackType { get; set; }
 
     /// <summary>
+    /// Filter by evaluator ID.
+    /// </summary>
+    public int? EvaluatorId { get; set; }
+
+    /// <summary>
     /// Filter by whether the AI response has any feedback.
     /// </summary>
     public bool? HasFeedback { get; set; }
