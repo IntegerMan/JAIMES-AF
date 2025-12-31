@@ -116,6 +116,7 @@ public partial class GameDetails : IAsyncDisposable
                         // For now we'll do our best.
                         InstructionVersionId = message.InstructionVersionId,
                         // We don't have version number either.
+                        IsScriptedMessage = message.IsScriptedMessage
                     };
                 }
             }
@@ -820,4 +821,5 @@ public class MessageAgentInfo
     public string? AgentName { get; set; }
     public int? InstructionVersionId { get; set; }
     public string? VersionNumber { get; set; }
+    public bool IsScriptedMessage { get; set; }
 }

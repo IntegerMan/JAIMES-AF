@@ -12,10 +12,13 @@ public class Message
     public Player? Player { get; set; }
 
     // Reference to the agent and instruction version used to generate this message
-    public string? AgentId { get; set; }
+    public required string AgentId { get; set; }
     public Agent? Agent { get; set; }
-    public int? InstructionVersionId { get; set; }
+    public required int InstructionVersionId { get; set; }
     public AgentInstructionVersion? InstructionVersion { get; set; }
+
+    // Indicates if this message is a scripted message (e.g. system greeting) and exempt from processing
+    public bool IsScriptedMessage { get; set; }
 
     public Game? Game { get; set; }
     public Guid? ChatHistoryId { get; set; }

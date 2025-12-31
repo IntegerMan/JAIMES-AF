@@ -11,6 +11,7 @@ public record MessageResponse
     public string? AgentId { get; set; }
 
     public int? InstructionVersionId { get; set; }
+    public bool IsScriptedMessage { get; set; }
 
     // Sentiment analysis result: -1 (negative), 0 (neutral), 1 (positive), null (not analyzed)
     public int? Sentiment { get; set; }

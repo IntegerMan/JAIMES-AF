@@ -51,6 +51,17 @@ public class GameService(
             ? scenario.InitialGreeting
             : "Welcome to the adventure!";
 
+        // Find the scenario agent to attribute the system message to
+        ScenarioAgent? scenarioAgent = await context.ScenarioAgents
+            .AsNoTracking()
+            .FirstOrDefaultAsync(sa => sa.ScenarioId == scenarioId, cancellationToken);
+
+        if (scenarioAgent == null)
+        {
+            throw new InvalidOperationException(
+                $"Scenario '{scenarioId}' does not have an associated agent. Cannot create game.");
+        }
+
         // Create the initial message immediately (no AI call needed)
         // This message is displayed to the user and will be included as context
         // when the player sends their first message to the agent
@@ -59,7 +70,10 @@ public class GameService(
             GameId = game.Id,
             Text = greetingText,
             PlayerId = null, // System message, not from player
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            IsScriptedMessage = true,
+            AgentId = scenarioAgent.AgentId,
+            InstructionVersionId = scenarioAgent.InstructionVersionId
         };
 
         context.Messages.Add(message);

@@ -28,6 +28,12 @@
                                            Href="@($"/agents/{AgentId}/versions/{InstructionVersionId}")"/>
                         </MudTooltip>
                     }
+                    @if (IsScriptedMessage)
+                    {
+                        <MudTooltip Text="This is a scripted message">
+                            <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" Color="Color.Default"/>
+                        </MudTooltip>
+                    }
                     <MessageIndicators
                         Feedback="@Feedback"
                         Metrics="@Metrics"
@@ -79,5 +85,6 @@
     [Parameter] public string? VersionNumber { get; set; }
     [Parameter] public bool IsVersionSwitch { get; set; }
     [Parameter] public bool ExemptFromProcessing { get; set; }
+    [Parameter] public bool IsScriptedMessage { get; set; }
 }
 

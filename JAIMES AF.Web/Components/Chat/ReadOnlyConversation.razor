@@ -80,8 +80,9 @@
                         AgentId="@m.AgentId"
                         AgentName="@m.AgentId"
                         InstructionVersionId="@m.InstructionVersionId"
-                        VersionNumber="@(m.InstructionVersionId?.ToString())"
-                        IsVersionSwitch="@isVersionSwitch"/>
+                        VersionNumber="@(m.InstructionVersionId.ToString())"
+                        IsVersionSwitch="@isVersionSwitch"
+                        IsScriptedMessage="@m.IsScriptedMessage"/>
                 }
             }
         }

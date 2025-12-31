@@ -21,7 +21,9 @@ public class MessageRepositoryTests : RepositoryTestBase
         {
             GameId = game.Id,
             Text = "Test message",
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            AgentId = "test-agent",
+            InstructionVersionId = 1
         };
 
         // Act
@@ -55,13 +57,17 @@ public class MessageRepositoryTests : RepositoryTestBase
         {
             GameId = game.Id,
             Text = "First message",
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            AgentId = "test-agent",
+            InstructionVersionId = 1
         };
         Message message2 = new()
         {
             GameId = game.Id,
             Text = "Second message",
-            CreatedAt = DateTime.UtcNow.AddSeconds(1)
+            CreatedAt = DateTime.UtcNow.AddSeconds(1),
+            AgentId = "test-agent",
+            InstructionVersionId = 1
         };
         Context.Messages.AddRange(message1, message2);
         await Context.SaveChangesAsync(TestContext.Current.CancellationToken);

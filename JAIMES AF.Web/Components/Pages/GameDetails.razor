@@ -72,7 +72,7 @@
 					int? instructionVersionId = null;
 					string? versionNumber = null;
 					bool isVersionSwitch = false;
-					bool isExempt = msgIndex == 0; // First message is the system greeting and exempt from processing
+					bool isExempt = false;
 					int? messageId = GetMessageId(msgIndex);
 
 					if (m.Role == ChatRole.Assistant && messageId.HasValue && _messageAgentInfo.TryGetValue(messageId.Value, out var agentInfo))
@@ -81,6 +81,7 @@
 						agentName = agentInfo.AgentName ?? _agent?.Name; // Fallback to current agent name
 						instructionVersionId = agentInfo.InstructionVersionId;
 						versionNumber = agentInfo.VersionNumber ?? "1"; // Default to v1 if unknown
+						isExempt = agentInfo.IsScriptedMessage;
 
 						// Check previous assistant message for version switch
 						// Find the last assistant message before this one
@@ -160,7 +161,8 @@
 									InstructionVersionId="@instructionVersionId"
 									VersionNumber="@versionNumber"
 									IsVersionSwitch="@isVersionSwitch"
-									ExemptFromProcessing="@isExempt"/>
+									ExemptFromProcessing="@isExempt"
+									IsScriptedMessage="@isExempt"/>
 							}
 						}
 					}
