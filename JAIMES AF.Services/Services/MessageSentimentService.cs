@@ -228,17 +228,27 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
         MessageFeedback? feedback = null;
         if (sentiment.Message != null)
         {
-            int? nextMessageId = await context.Messages
-                .Where(m => m.GameId == sentiment.Message.GameId && m.Id > sentiment.MessageId)
-                .OrderBy(m => m.Id)
-                .Select(m => (int?)m.Id)
-                .FirstOrDefaultAsync(cancellationToken);
+            // Ensure we have the NextMessageId loaded
+            if (sentiment.Message.NextMessageId == null)
+            {
+                // Try to load it if it wasn't eagerly loaded (though we added Include above, checking just in case)
+                var msg = await context.Messages
+                    .AsNoTracking()
+                    .Where(m => m.Id == sentiment.MessageId)
+                    .Select(m => new { m.NextMessageId })
+                    .FirstOrDefaultAsync(cancellationToken);
 
-            if (nextMessageId.HasValue)
+                if (msg?.NextMessageId != null)
+                {
+                    sentiment.Message.NextMessageId = msg.NextMessageId;
+                }
+            }
+
+            if (sentiment.Message.NextMessageId.HasValue)
             {
                 feedback = await context.MessageFeedbacks
                     .AsNoTracking()
-                    .FirstOrDefaultAsync(f => f.MessageId == nextMessageId.Value, cancellationToken);
+                    .FirstOrDefaultAsync(f => f.MessageId == sentiment.Message.NextMessageId.Value, cancellationToken);
             }
         }
 
