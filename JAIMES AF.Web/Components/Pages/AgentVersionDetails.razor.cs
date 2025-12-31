@@ -14,8 +14,12 @@ public partial class AgentVersionDetails
     private string? _errorMessage;
     private List<BreadcrumbItem> _breadcrumbs = new();
 
-    protected override async Task OnInitializedAsync()
+    private int? _previousVersionId;
+    private int? _nextVersionId;
+
+    protected override async Task OnParametersSetAsync()
     {
+        // Re-construct breadcrumbs on parameter change (or let LoadData handle it)
         _breadcrumbs = new List<BreadcrumbItem>
         {
             new BreadcrumbItem("Home", href: "/"),
@@ -46,26 +50,56 @@ public partial class AgentVersionDetails
             var agent = await Http.GetFromJsonAsync<AgentResponse>($"/agents/{AgentId}");
             _agentName = agent?.Name;
 
-            // Load version details
-            _version = await Http.GetFromJsonAsync<AgentInstructionVersionResponse>(
-                $"/agents/{AgentId}/instruction-versions/{VersionId}");
+            // Load all versions to determine navigation
+            var versionsResp = await Http.GetFromJsonAsync<AgentInstructionVersionListResponse>(
+                $"/agents/{AgentId}/instruction-versions");
 
-            if (_version != null && _agentName != null)
+            var versions = versionsResp?.InstructionVersions?.OrderBy(v => v.CreatedAt).ToList() ??
+                           new List<AgentInstructionVersionResponse>();
+
+            _version = versions.FirstOrDefault(v => v.Id == VersionId);
+
+            if (_version != null)
             {
-                // Update breadcrumbs with proper names
-                _breadcrumbs = new List<BreadcrumbItem>
+                // Calculate Previous (Older) and Next (Newer)
+                // versions is ordered by CreatedAt (Oldest first)
+                var currentIndex = versions.IndexOf(_version);
+
+                if (currentIndex > 0)
                 {
-                    new BreadcrumbItem("Home", href: "/"),
-                    new BreadcrumbItem("Admin", href: "/admin"),
-                    new BreadcrumbItem("Agents", href: "/agents"),
-                    new BreadcrumbItem(_agentName, href: $"/agents/{AgentId}"),
-                    new BreadcrumbItem($"Version {_version.VersionNumber}", href: null, disabled: true)
-                };
+                    _previousVersionId = versions[currentIndex - 1].Id;
+                }
+                else
+                {
+                    _previousVersionId = null;
+                }
+
+                if (currentIndex < versions.Count - 1)
+                {
+                    _nextVersionId = versions[currentIndex + 1].Id;
+                }
+                else
+                {
+                    _nextVersionId = null;
+                }
+
+                if (_agentName != null)
+                {
+                    // Update breadcrumbs with proper names
+                    _breadcrumbs = new List<BreadcrumbItem>
+                    {
+                        new BreadcrumbItem("Home", href: "/"),
+                        new BreadcrumbItem("Admin", href: "/admin"),
+                        new BreadcrumbItem("Agents", href: "/agents"),
+                        new BreadcrumbItem(_agentName, href: $"/agents/{AgentId}"),
+                        new BreadcrumbItem($"Version {_version.VersionNumber}", href: null, disabled: true)
+                    };
+                }
             }
-        }
-        catch (HttpRequestException ex) when (ex.Message.Contains("404"))
-        {
-            _errorMessage = "Agent version not found.";
+            else
+            {
+                _errorMessage = "Agent version not found.";
+            }
         }
         catch (Exception ex)
         {
