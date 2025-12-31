@@ -31,6 +31,18 @@ public class GameService(
                 $"Player '{playerId}' uses ruleset '{player.RulesetId}' but scenario '{scenarioId}' uses ruleset '{scenario.RulesetId}'. They must use the same ruleset.",
                 nameof(scenarioId));
 
+        // Validate that the scenario has an associated agent BEFORE creating the game
+        // This prevents orphaned game records if the scenario is misconfigured
+        ScenarioAgent? scenarioAgent = await context.ScenarioAgents
+            .AsNoTracking()
+            .FirstOrDefaultAsync(sa => sa.ScenarioId == scenarioId, cancellationToken);
+
+        if (scenarioAgent == null)
+        {
+            throw new InvalidOperationException(
+                $"Scenario '{scenarioId}' does not have an associated agent. Cannot create game.");
+        }
+
         // Use the ruleset from the player (which we've validated matches the scenario)
         string rulesetId = player.RulesetId;
 
@@ -52,17 +64,6 @@ public class GameService(
         string greetingText = !string.IsNullOrWhiteSpace(scenario.InitialGreeting)
             ? scenario.InitialGreeting
             : "Welcome to the adventure!";
-
-        // Find the scenario agent to attribute the system message to
-        ScenarioAgent? scenarioAgent = await context.ScenarioAgents
-            .AsNoTracking()
-            .FirstOrDefaultAsync(sa => sa.ScenarioId == scenarioId, cancellationToken);
-
-        if (scenarioAgent == null)
-        {
-            throw new InvalidOperationException(
-                $"Scenario '{scenarioId}' does not have an associated agent. Cannot create game.");
-        }
 
         // Create the initial message immediately (no AI call needed)
         // This message is displayed to the user and will be included as context

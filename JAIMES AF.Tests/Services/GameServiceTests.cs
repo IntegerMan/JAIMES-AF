@@ -360,6 +360,35 @@ public class GameServiceTests : IAsyncLifetime
         gameDto.Messages[0].ParticipantName.ShouldBe("Game Master");
     }
 
+    [Fact]
+    public async Task CreateGameAsync_ThrowsException_WhenScenarioHasNoAgent_WithoutCreatingGame()
+    {
+        // Arrange - Create a scenario WITHOUT a ScenarioAgent
+        _context.Scenarios.Add(new Scenario
+        {
+            Id = "scenario-without-agent",
+            RulesetId = "test-ruleset",
+            Name = "Misconfigured Scenario"
+        });
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Get initial game count
+        int initialGameCount = await _context.Games.CountAsync(TestContext.Current.CancellationToken);
+
+        // Act & Assert
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(async () =>
+            await _gameService.CreateGameAsync("scenario-without-agent",
+                "test-player",
+                null,
+                TestContext.Current.CancellationToken)
+        );
+        exception.Message.ShouldContain("does not have an associated agent");
+
+        // Verify no game was created (no orphaned record)
+        int finalGameCount = await _context.Games.CountAsync(TestContext.Current.CancellationToken);
+        finalGameCount.ShouldBe(initialGameCount, "Game count should not increase when ScenarioAgent validation fails");
+    }
+
 
     // Test factory that returns the same context instance (for testing)
     private class TestDbContextFactory(DbContextOptions<JaimesDbContext> options) : IDbContextFactory<JaimesDbContext>
