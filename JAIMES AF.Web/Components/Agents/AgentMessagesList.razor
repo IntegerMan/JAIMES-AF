@@ -6,6 +6,11 @@
 <MudDataGrid Items="_messages" Filterable="true" Groupable="true" Loading="_isLoading">
     <Columns>
         <PropertyColumn Property="x => x.GameId" Title="Game" Grouping="true">
+            <CellTemplate>
+                <MudLink Href="@($"/games/{context.Item.GameId}")">
+                    @(context.Item.GameTitle ?? "Game Details")
+                </MudLink>
+            </CellTemplate>
             <GroupTemplate>
                 <MudStack Row="true" AlignItems="AlignItems.Center">
                     <MudText Typo="Typo.h6">
