@@ -17,6 +17,9 @@ IConfiguration configuration = new ConfigurationBuilder()
     .AddEnvironmentVariables()
     .Build();
 
+var otlpProtocol = configuration["AppConfig:OtlpProtocol"] ?? "grpc";
+var otlpEndpoint = "http://localhost:19287";
+
 // Parse TextGenerationModel configuration
 var textGenConfig = new ModelProviderConfig(
     Provider: configuration["TextGenerationModel:Provider"] ?? "Ollama",
@@ -76,6 +79,7 @@ IResourceBuilder<ProjectResource> databaseMigrationWorker = builder
     .WithReference(postgresdb)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
+    .WithOtlpProtocol(otlpProtocol, otlpEndpoint)
     .WithParentRelationship(workersGroup);
 
 // Conditionally create Ollama container only if needed
@@ -145,6 +149,7 @@ IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIME
             DisplayText = "📃 Swagger"
         })
     .WithHttpHealthCheck("/health")
+    .WithOtlpProtocol(otlpProtocol, otlpEndpoint)
     .WithUrlForEndpoint("http",
         static _ => new ResourceUrlAnnotation
         {
@@ -211,6 +216,7 @@ builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")
             DisplayText = "👤 Players"
         })
     .WithReference(apiService)
+    .WithOtlpProtocol(otlpProtocol, otlpEndpoint)
     .WaitFor(apiService);
 
 IResourceBuilder<ProjectResource> documentCrackerWorker = builder
@@ -222,6 +228,7 @@ IResourceBuilder<ProjectResource> documentCrackerWorker = builder
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
+    .WithOtlpProtocol(otlpProtocol, otlpEndpoint)
     .WithParentRelationship(workersGroup);
 
 IResourceBuilder<ProjectResource> documentChangeDetector = builder
@@ -233,6 +240,7 @@ IResourceBuilder<ProjectResource> documentChangeDetector = builder
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
+    .WithOtlpProtocol(otlpProtocol, otlpEndpoint)
     .WithParentRelationship(workersGroup);
 
 IResourceBuilder<ProjectResource> documentChunkingWorker = builder
@@ -247,6 +255,7 @@ IResourceBuilder<ProjectResource> documentChunkingWorker = builder
     .WaitFor(postgres)
     .WaitFor(postgresdb)
     .WaitFor(qdrant)
+    .WithOtlpProtocol(otlpProtocol, otlpEndpoint)
     .WithParentRelationship(workersGroup)
     .WithEnvironment(context =>
     {
@@ -269,6 +278,7 @@ IResourceBuilder<ProjectResource> documentEmbeddingWorker = builder
     .WaitFor(postgres)
     .WaitFor(postgresdb)
     .WaitFor(qdrant)
+    .WithOtlpProtocol(otlpProtocol, otlpEndpoint)
     .WithParentRelationship(workersGroup)
     .WithEnvironment(context =>
     {
@@ -288,6 +298,7 @@ IResourceBuilder<ProjectResource> userMessageWorker = builder
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
+    .WithOtlpProtocol(otlpProtocol, otlpEndpoint)
     .WithParentRelationship(workersGroup);
 
 IResourceBuilder<ProjectResource> assistantMessageWorker = builder
@@ -300,6 +311,7 @@ IResourceBuilder<ProjectResource> assistantMessageWorker = builder
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
+    .WithOtlpProtocol(otlpProtocol, otlpEndpoint)
     .WithParentRelationship(workersGroup)
     .WithEnvironment(context =>
     {
@@ -325,6 +337,7 @@ IResourceBuilder<ProjectResource> conversationEmbeddingWorker = builder
     .WaitFor(postgres)
     .WaitFor(postgresdb)
     .WaitFor(qdrant)
+    .WithOtlpProtocol(otlpProtocol, otlpEndpoint)
     .WithParentRelationship(workersGroup)
     .WithEnvironment(context =>
     {

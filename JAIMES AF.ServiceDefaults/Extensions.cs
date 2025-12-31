@@ -10,6 +10,8 @@ using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using System;
+using System.Diagnostics;
+using System.Diagnostics.Tracing;
 using OpenTelemetry.Exporter;
 
 namespace MattEland.Jaimes.ServiceDefaults;
@@ -54,6 +56,12 @@ public static class Extensions
         // Enable unencrypted HTTP/2 support to allow gRPC to talk to the Aspire Dashboard's OTLP endpoint (H2C)
         // This is crucial for local development where TLS is not used between services and the dashboard.
         AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+
+        // Initialize internal diagnostic logger to debug OTLP export failures
+        if (_otelListener == null)
+        {
+            _otelListener = new OpenTelemetryConsoleLogger();
+        }
 
         builder.Logging.AddOpenTelemetry(logging =>
         {
@@ -153,12 +161,40 @@ public static class Extensions
         var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]
                            ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
 
+        // OpenTelemetry standard configuration usually gives Environment Variables precedence over appsettings.json.
+        // If Aspire injects 'grpc' into the environment, that will win unless we explicitly handle it.
+        var otlpProtocol = builder.Configuration["OTEL_EXPORTER_OTLP_PROTOCOL"];
+
+        Console.WriteLine($"[Telemetry] Resolved Configuration:");
+        Console.WriteLine($"  - OTEL_EXPORTER_OTLP_ENDPOINT: {otlpEndpoint ?? "(not set)"}");
+        Console.WriteLine($"  - OTEL_EXPORTER_OTLP_PROTOCOL: {otlpProtocol ?? "(not set)"}");
+
         if (!string.IsNullOrWhiteSpace(otlpEndpoint))
         {
-            // The Aspire Dashboard port 19287 appears to behave as an HTTP/1.1 listener,
-            // or the client fails gRPC/H2C negotiation. Using OTLP/HTTP (HttpProtobuf)
-            // resolves the "HTTP_1_1_REQUIRED" and connection reset issues consistently.
-            builder.Services.AddOpenTelemetry().UseOtlpExporter(OtlpExportProtocol.HttpProtobuf, new Uri(otlpEndpoint));
+            // Default to Grpc as requested.
+            var protocol = OtlpExportProtocol.Grpc;
+
+            if (!string.IsNullOrWhiteSpace(otlpProtocol))
+            {
+                if (otlpProtocol.Equals("grpc", StringComparison.OrdinalIgnoreCase))
+                {
+                    protocol = OtlpExportProtocol.Grpc;
+                }
+                else if (otlpProtocol.Equals("http/protobuf", StringComparison.OrdinalIgnoreCase))
+                {
+                    protocol = OtlpExportProtocol.HttpProtobuf;
+                }
+                else
+                {
+                    // Error level validation as requested
+                    Console.WriteLine(
+                        $"[Telemetry] ERROR: Unrecognized OTLP protocol '{otlpProtocol}'. Defaulting to {protocol}. " +
+                        "Supported values: 'grpc', 'http/protobuf'.");
+                }
+            }
+
+            Console.WriteLine($"[Telemetry] Final Protocol Choice: {protocol}");
+            builder.Services.AddOpenTelemetry().UseOtlpExporter(protocol, new Uri(otlpEndpoint));
         }
 
         return builder;
@@ -223,4 +259,42 @@ public static class Extensions
                  args.Outcome.Result?.StatusCode <= (System.Net.HttpStatusCode) 599));
         };
     }
+
+    /// <summary>
+    /// EventListener that listens for OpenTelemetry internal diagnostics and prints them to the Console.
+    /// This helps debug silent failures like OTLP export issues.
+    /// </summary>
+    private class OpenTelemetryConsoleLogger : EventListener
+    {
+        protected override void OnEventSourceCreated(EventSource eventSource)
+        {
+            base.OnEventSourceCreated(eventSource);
+
+            if (eventSource.Name.StartsWith("OpenTelemetry", StringComparison.OrdinalIgnoreCase))
+            {
+                // Enable verbose logging for everything OpenTelemetry
+                EnableEvents(eventSource, EventLevel.Verbose, EventKeywords.All);
+            }
+        }
+
+        protected override void OnEventWritten(EventWrittenEventArgs eventData)
+        {
+            base.OnEventWritten(eventData);
+
+            string message;
+            if (eventData.Message != null && eventData.Payload != null)
+            {
+                message = string.Format(eventData.Message, eventData.Payload.ToArray());
+            }
+            else
+            {
+                message = eventData.Message ?? "Unknown OpenTelemetry Event";
+            }
+
+            Console.WriteLine(
+                $"[OpenTelemetry Diagnostics] [{eventData.Level}] {eventData.EventSource.Name}: {message}");
+        }
+    }
+
+    private static OpenTelemetryConsoleLogger? _otelListener;
 }

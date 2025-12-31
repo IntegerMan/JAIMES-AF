@@ -1,4 +1,4 @@
-using Aspire.Hosting;
+
 
 
 namespace MattEland.Jaimes.AppHost;
@@ -126,5 +126,30 @@ internal static class AppHostHelpers
         {
             setVariable(legacyKey, externalEndpoint);
         }
+    }
+
+    /// <summary>
+    /// Configures the OTLP protocol for the resource, aggressively overriding all variants.
+    /// </summary>
+    internal static IResourceBuilder<T> WithOtlpProtocol<T>(this IResourceBuilder<T> builder,
+        string? protocol,
+        string? endpoint)
+        where T : IResourceWithEnvironment
+    {
+        if (!string.IsNullOrWhiteSpace(protocol))
+        {
+            // Set the global default and signal-specific overrides
+            builder.WithEnvironment("OTEL_EXPORTER_OTLP_PROTOCOL", protocol);
+            builder.WithEnvironment("OTEL_EXPORTER_OTLP_TRACES_PROTOCOL", protocol);
+            builder.WithEnvironment("OTEL_EXPORTER_OTLP_METRICS_PROTOCOL", protocol);
+            builder.WithEnvironment("OTEL_EXPORTER_OTLP_LOGS_PROTOCOL", protocol);
+
+            if (!string.IsNullOrWhiteSpace(endpoint))
+            {
+                builder.WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", endpoint);
+            }
+        }
+
+        return builder;
     }
 }
