@@ -9,7 +9,9 @@
             <GroupTemplate>
                 <MudStack Row="true" AlignItems="AlignItems.Center">
                     <MudText Typo="Typo.h6">
-                        <MudLink Href="@($"/games/{context.Grouping.Key}")">Game Details</MudLink>
+                        <MudLink Href="@($"/games/{context.Grouping.Key}")">
+                            @(context.Grouping.FirstOrDefault()?.GameTitle ?? "Game Details")
+                        </MudLink>
                     </MudText>
                     <MudChip Size="Size.Small" Color="Color.Primary">@context.Grouping.Count() Messages</MudChip>
                 </MudStack>
@@ -21,7 +23,7 @@
             <TemplateColumn Title="Version" Sortable="true">
                 <CellTemplate>
                     <MudLink Href="@($"/agents/{AgentId}/versions/{context.Item.InstructionVersionId}")">
-                        v@(context.Item.InstructionVersionId) <!-- Ideally we'd have VersionNumber, but ID is fallback -->
+                        @(context.Item.InstructionVersionNumber ?? $"v{context.Item.InstructionVersionId}")
                     </MudLink>
                 </CellTemplate>
             </TemplateColumn>
@@ -34,10 +36,6 @@
                 <MudText Typo="Typo.body2">
                     @(context.Item.Text.Length > 100 ? context.Item.Text.Substring(0, 100) + "..." : context.Item.Text)
                 </MudText>
-                @if (context.Item.Metrics != null && context.Item.Metrics.Any())
-                {
-                    <MudLink Href="@($"/admin/metrics/{context.Item.Id}")" Typo="Typo.caption" Color="Color.Secondary">View Metrics</MudLink>
-                }
             </CellTemplate>
         </TemplateColumn>
 

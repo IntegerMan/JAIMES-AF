@@ -141,6 +141,8 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
         foreach (var message in messages)
         {
             var dto = message.ToContextDto();
+            dto.GameTitle = message.Game?.Title;
+            dto.InstructionVersionNumber = message.InstructionVersion?.VersionNumber;
 
             // Populate Game Title in DTO if available (assuming DTO has property or we map it)
             // MessageContextDto doesn't explicitly have GameTitle, but MessageDto might not either.

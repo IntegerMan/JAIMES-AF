@@ -97,6 +97,8 @@ public static partial class MessageMapper
     [MapProperty(nameof(Message.Player),
         nameof(MessageDto.ParticipantName),
         Use = nameof(MapParticipantNameFromPlayer))]
+    [MapperIgnoreTarget(nameof(MessageContextDto.GameTitle))]
+    [MapperIgnoreTarget(nameof(MessageContextDto.InstructionVersionNumber))]
     [MapperIgnoreTarget(nameof(MessageContextDto.Metrics))]
     [MapperIgnoreTarget(nameof(MessageContextDto.Feedback))]
     [MapperIgnoreSource(nameof(Message.Game))]
