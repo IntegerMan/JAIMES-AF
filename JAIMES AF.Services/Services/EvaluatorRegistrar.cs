@@ -11,7 +11,8 @@ namespace MattEland.Jaimes.ServiceLayer.Services;
 /// <summary>
 /// Implementation of IEvaluatorRegistrar that scans for available evaluators and their metrics.
 /// </summary>
-public class EvaluatorRegistrar(IDbContextFactory<JaimesDbContext> contextFactory) : IEvaluatorRegistrar
+public class EvaluatorRegistrar(
+    IDbContextFactory<JaimesDbContext> contextFactory) : IEvaluatorRegistrar
 {
     /// <inheritdoc />
     public async Task RegisterEvaluatorsAsync(CancellationToken cancellationToken = default)
@@ -91,43 +92,24 @@ public class EvaluatorRegistrar(IDbContextFactory<JaimesDbContext> contextFactor
         var evaluatorMap = evaluators.ToDictionary(e => e.Name, e => e.Id);
 
         // Identify which metrics belong to which evaluator classes
-        var metricToEvaluatorMap = new Dictionary<string, int>();
+        var metricToEvaluatorMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         foreach (var type in evaluatorTypes)
         {
             if (evaluatorMap.TryGetValue(type.Name, out int id))
             {
-                // Instantiate the evaluator temporarily to get its metric names
-                // This is a bit heavy but ensures accuracy.
-                // Alternatively, we could hardcode these or use a convention.
-                try
+                // Map by known types or naming convention
+                if (type == typeof(RelevanceTruthAndCompletenessEvaluator))
                 {
-                    // Many evaluators have a parameterless constructor or one that can be mocked
-                    // If this fails, we skip it and hope for the best.
-                    if (Activator.CreateInstance(type) is Microsoft.Extensions.AI.Evaluation.IEvaluator evaluator)
-                    {
-                        foreach (var metricName in evaluator.EvaluationMetricNames)
-                        {
-                            metricToEvaluatorMap[metricName] = id;
-                        }
-                    }
+                    metricToEvaluatorMap["Relevance"] = id;
+                    metricToEvaluatorMap["Truth"] = id;
+                    metricToEvaluatorMap["Completeness"] = id;
                 }
-                catch
+                else if (type.Name.EndsWith("Evaluator", StringComparison.Ordinal))
                 {
-                    // Fallback for evaluators without parameterless constructors
-                    // We'll try to match by naming convention if nothing else
-                    if (type == typeof(RelevanceTruthAndCompletenessEvaluator))
+                    string possibleMetricName = type.Name.Replace("Evaluator", "", StringComparison.Ordinal);
+                    if (!metricToEvaluatorMap.ContainsKey(possibleMetricName))
                     {
-                        metricToEvaluatorMap["Relevance"] = id;
-                        metricToEvaluatorMap["Truth"] = id;
-                        metricToEvaluatorMap["Completeness"] = id;
-                    }
-                    else if (type.Name.EndsWith("Evaluator", StringComparison.Ordinal))
-                    {
-                        string possibleMetricName = type.Name.Replace("Evaluator", "", StringComparison.Ordinal);
-                        if (!metricToEvaluatorMap.ContainsKey(possibleMetricName))
-                        {
-                            metricToEvaluatorMap[possibleMetricName] = id;
-                        }
+                        metricToEvaluatorMap[possibleMetricName] = id;
                     }
                 }
             }

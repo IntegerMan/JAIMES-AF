@@ -106,6 +106,13 @@ ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 
 await host.WaitForMigrationsAsync();
 
+// Register evaluators in the database
+using (IServiceScope scope = host.Services.CreateScope())
+{
+    IEvaluatorRegistrar registrar = scope.ServiceProvider.GetRequiredService<IEvaluatorRegistrar>();
+    await registrar.RegisterEvaluatorsAsync();
+}
+
 logger.LogInformation("Starting Assistant Message Worker");
 
 await host.RunAsync();
