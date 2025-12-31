@@ -18,23 +18,24 @@ public class ListGamesEndpoint : Ep.NoReq.Res<ListGamesResponse>
         GameDto[] games = await GameService.GetGamesAsync(ct);
 
         await Send.OkAsync(new ListGamesResponse
-        {
-            Games = games
-                .OrderByDescending(g => g.LastPlayedAt ?? g.CreatedAt)
-                .Select(g => new GameInfoResponse
-                {
-                    GameId = g.GameId,
-                    ScenarioId = g.Scenario.Id,
-                    ScenarioName = g.Scenario.Name,
-                    RulesetId = g.Ruleset.Id,
-                    RulesetName = g.Ruleset.Name,
-                    PlayerId = g.Player.Id,
-                    PlayerName = g.Player.Name,
-                    CreatedAt = g.CreatedAt,
-                    LastPlayedAt = g.LastPlayedAt
-                })
-                .ToArray()
-        },
+            {
+                Games = games
+                    .OrderByDescending(g => g.LastPlayedAt ?? g.CreatedAt)
+                    .Select(g => new GameInfoResponse
+                    {
+                        GameId = g.GameId,
+                        Title = g.Title,
+                        ScenarioId = g.Scenario.Id,
+                        ScenarioName = g.Scenario.Name,
+                        RulesetId = g.Ruleset.Id,
+                        RulesetName = g.Ruleset.Name,
+                        PlayerId = g.Player.Id,
+                        PlayerName = g.Player.Name,
+                        CreatedAt = g.CreatedAt,
+                        LastPlayedAt = g.LastPlayedAt
+                    })
+                    .ToArray()
+            },
             ct);
     }
 }

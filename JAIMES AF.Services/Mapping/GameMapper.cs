@@ -10,7 +10,7 @@ public static partial class GameMapper
             .OrderBy(m => m.Id)
             .Select(m => m.ToDto())
             .ToArray();
-        
+
         DateTime? lastPlayedAt = messages?.Length > 0
             ? messages.Max(m => m.CreatedAt)
             : null;
@@ -24,9 +24,20 @@ public static partial class GameMapper
     /// </summary>
     public static GameDto ToDto(this Game game, DateTime? lastPlayedAt, MessageDto[]? messages = null)
     {
+        // Generate default title if not set: "PlayerName in ScenarioName (RulesetId)"
+        string? title = game.Title;
+        if (string.IsNullOrEmpty(title))
+        {
+            string playerName = game.Player?.Name ?? game.PlayerId;
+            string scenarioName = game.Scenario?.Name ?? game.ScenarioId;
+            string rulesetAbbrev = game.RulesetId;
+            title = $"{playerName} in {scenarioName} ({rulesetAbbrev})";
+        }
+
         return new GameDto
         {
             GameId = game.Id,
+            Title = title,
             CreatedAt = game.CreatedAt,
             LastPlayedAt = lastPlayedAt,
             Ruleset = game.Ruleset?.ToDto() ?? new RulesetDto

@@ -33,6 +33,11 @@ public partial class GameDetails : IAsyncDisposable
     private int? _failedMessageIndex;
     private HubConnection? _hubConnection;
 
+    // Title editing
+    private string? _editableTitle;
+    private bool _isSavingTitle = false;
+    private bool _isEditingTitle = false;
+
 
     private readonly MessageResponse _userMessage = new()
     {
@@ -90,7 +95,7 @@ public partial class GameDetails : IAsyncDisposable
                     new ChatMessage(m.Participant == ChatParticipant.Player ? ChatRole.User : ChatRole.Assistant,
                         m.Text))
                 .ToList();
-            _messageIds = orderedMessages.Select(m => (int?)m.Id).ToList();
+            _messageIds = orderedMessages.Select(m => (int?) m.Id).ToList();
 
             // Batch load all metadata (Feedback, ToolCalls, Metrics, Sentiment)
             await LoadMessagesMetadataAsync(orderedMessages.Select(m => m.Id).ToList());
@@ -100,6 +105,9 @@ public partial class GameDetails : IAsyncDisposable
             string serverUrl = $"{aguiHttpClient.BaseAddress}games/{GameId}/chat";
             AGUIChatClient chatClient = new(aguiHttpClient, serverUrl);
             _agent = chatClient.CreateAIAgent(name: $"game-{GameId}", description: "Game Chat Agent");
+
+            // Initialize editable title
+            _editableTitle = _game?.Title;
 
             // AGUI manages threads via ConversationId automatically
             // Don't deserialize server-side threads as they use MessageStore which conflicts with AGUI's ConversationId
@@ -117,6 +125,76 @@ public partial class GameDetails : IAsyncDisposable
             if (_messages.Count > 0) _shouldScrollToBottom = true;
             StateHasChanged();
         }
+    }
+
+    /// <summary>
+    /// Saves the game title via the API.
+    /// </summary>
+    private async Task SaveTitleAsync()
+    {
+        if (_game == null || _isSavingTitle) return;
+
+        _isSavingTitle = true;
+        try
+        {
+            HttpClient httpClient = HttpClientFactory.CreateClient("Api");
+            var request = new UpdateGameRequest {Title = _editableTitle};
+            var response = await httpClient.PutAsJsonAsync($"/games/{GameId}", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var updatedGame = await response.Content.ReadFromJsonAsync<GameInfoResponse>();
+                if (updatedGame != null)
+                {
+                    // Update local game state with new title
+                    _game = _game with {Title = updatedGame.Title};
+                    UpdateBreadcrumbs(_game.Title ?? $"{_game.PlayerName} in {_game.ScenarioName}");
+                }
+            }
+            else
+            {
+                _logger?.LogError("Failed to save title: {StatusCode}", response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to save game title");
+        }
+        finally
+        {
+            _isSavingTitle = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Enters title edit mode.
+    /// </summary>
+    private void EnterTitleEditMode()
+    {
+        _editableTitle = _game?.Title ?? $"{_game?.PlayerName} in {_game?.ScenarioName}";
+        _isEditingTitle = true;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Cancels title edit mode without saving.
+    /// </summary>
+    private void CancelTitleEdit()
+    {
+        _isEditingTitle = false;
+        _editableTitle = _game?.Title;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Saves the title and exits edit mode.
+    /// </summary>
+    private async Task SaveTitleAndExitEditModeAsync()
+    {
+        await SaveTitleAsync();
+        _isEditingTitle = false;
+        StateHasChanged();
     }
 
     private async Task SendMessageAsync()
@@ -145,7 +223,8 @@ public partial class GameDetails : IAsyncDisposable
             _messageIds.Add(null); // User messages don't have database IDs yet
             currentMessageIndex = _messages.Count - 1;
 
-            _logger?.LogInformation("Sending message {Text} from User (first message: {IsFirst})", messageText,
+            _logger?.LogInformation("Sending message {Text} from User (first message: {IsFirst})",
+                messageText,
                 isFirstPlayerMessage);
 
             // Scroll to bottom after adding user message and showing typing indicator
@@ -223,12 +302,14 @@ public partial class GameDetails : IAsyncDisposable
                     {
                         _logger?.LogDebug(
                             "Message has invalid role '{Role}' but AuthorName '{AuthorName}', inferring Assistant role",
-                            roleString, message.AuthorName);
+                            roleString,
+                            message.AuthorName);
                         normalizedRole = ChatRole.Assistant;
                     }
                     else
                     {
-                        _logger?.LogWarning("Skipping message with invalid role: '{Role}', Text: '{Text}'", roleString,
+                        _logger?.LogWarning("Skipping message with invalid role: '{Role}', Text: '{Text}'",
+                            roleString,
                             message.Text);
                         continue;
                     }
@@ -421,8 +502,8 @@ public partial class GameDetails : IAsyncDisposable
         IDialogReference? dialogRef = null;
         var parameters = new DialogParameters<FeedbackDialog>
         {
-            { nameof(FeedbackDialog.MessageId), messageId },
-            { nameof(FeedbackDialog.PreSelectedFeedback), isPositive },
+            {nameof(FeedbackDialog.MessageId), messageId},
+            {nameof(FeedbackDialog.PreSelectedFeedback), isPositive},
             {
                 nameof(FeedbackDialog.OnFeedbackSubmitted), EventCallback.Factory.Create<FeedbackSubmission?>(this,
                     async (FeedbackSubmission? feedback) =>
@@ -514,7 +595,7 @@ public partial class GameDetails : IAsyncDisposable
         {
             HttpClient httpClient = HttpClientFactory.CreateClient("Api");
 
-            var request = new MessagesMetadataRequest { MessageIds = messageIds };
+            var request = new MessagesMetadataRequest {MessageIds = messageIds};
             var response = await httpClient.PostAsJsonAsync("/messages/metadata", request);
 
             if (response.IsSuccessStatusCode)
@@ -588,80 +669,83 @@ public partial class GameDetails : IAsyncDisposable
                 .Build();
 
             // Handle message updates
-            _hubConnection.On<MessageUpdateNotification>("MessageUpdated", async notification =>
-            {
-                _logger?.LogDebug(
-                    "Received {UpdateType} update for message {MessageId}",
-                    notification.UpdateType,
-                    notification.MessageId);
-
-                await InvokeAsync(async () =>
+            _hubConnection.On<MessageUpdateNotification>("MessageUpdated",
+                async notification =>
                 {
-                    // Update local state based on update type
-                    if (notification.UpdateType == MessageUpdateType.SentimentAnalyzed &&
-                        notification.Sentiment.HasValue)
+                    _logger?.LogDebug(
+                        "Received {UpdateType} update for message {MessageId}",
+                        notification.UpdateType,
+                        notification.MessageId);
+
+                    await InvokeAsync(async () =>
                     {
-                        // Store sentiment info
-                        _messageSentiment[notification.MessageId] = new MessageSentimentInfo
+                        // Update local state based on update type
+                        if (notification.UpdateType == MessageUpdateType.SentimentAnalyzed &&
+                            notification.Sentiment.HasValue)
                         {
-                            Sentiment = notification.Sentiment.Value,
-                            Confidence = notification.SentimentConfidence,
-                            SentimentSource = notification.SentimentSource
-                        };
-
-                        // Match by content using text from notification
-                        // Only proceed if we don't already have this message ID mapped
-                        if (!_messageIds.Contains(notification.MessageId) &&
-                            !string.IsNullOrWhiteSpace(notification.MessageText))
-                        {
-                            string normalizedText = notification.MessageText.Trim();
-
-                            for (int i = 0; i < _messages.Count; i++)
+                            // Store sentiment info
+                            _messageSentiment[notification.MessageId] = new MessageSentimentInfo
                             {
-                                if (_messageIds[i] == null &&
-                                    _messages[i].Role == ChatRole.User &&
-                                    _messages[i].Text.Trim().Equals(normalizedText, StringComparison.Ordinal))
+                                Sentiment = notification.Sentiment.Value,
+                                Confidence = notification.SentimentConfidence,
+                                SentimentSource = notification.SentimentSource
+                            };
+
+                            // Match by content using text from notification
+                            // Only proceed if we don't already have this message ID mapped
+                            if (!_messageIds.Contains(notification.MessageId) &&
+                                !string.IsNullOrWhiteSpace(notification.MessageText))
+                            {
+                                string normalizedText = notification.MessageText.Trim();
+
+                                for (int i = 0; i < _messages.Count; i++)
                                 {
-                                    _messageIds[i] = notification.MessageId;
-                                    _logger?.LogDebug(
-                                        "Assigned User message ID {MessageId} to index {Index} by content matching",
-                                        notification.MessageId, i);
-                                    break;
+                                    if (_messageIds[i] == null &&
+                                        _messages[i].Role == ChatRole.User &&
+                                        _messages[i].Text.Trim().Equals(normalizedText, StringComparison.Ordinal))
+                                    {
+                                        _messageIds[i] = notification.MessageId;
+                                        _logger?.LogDebug(
+                                            "Assigned User message ID {MessageId} to index {Index} by content matching",
+                                            notification.MessageId,
+                                            i);
+                                        break;
+                                    }
                                 }
                             }
                         }
-                    }
-                    else if (notification.UpdateType == MessageUpdateType.MetricsEvaluated &&
-                             notification.Metrics != null)
-                    {
-                        _messageMetrics[notification.MessageId] = notification.Metrics;
-
-                        // Match by content using text from notification
-                        // Only proceed if we don't already have this message ID mapped
-                        if (!_messageIds.Contains(notification.MessageId) &&
-                            !string.IsNullOrWhiteSpace(notification.MessageText))
+                        else if (notification.UpdateType == MessageUpdateType.MetricsEvaluated &&
+                                 notification.Metrics != null)
                         {
-                            string normalizedText = notification.MessageText.Trim();
+                            _messageMetrics[notification.MessageId] = notification.Metrics;
 
-                            for (int i = 0; i < _messages.Count; i++)
+                            // Match by content using text from notification
+                            // Only proceed if we don't already have this message ID mapped
+                            if (!_messageIds.Contains(notification.MessageId) &&
+                                !string.IsNullOrWhiteSpace(notification.MessageText))
                             {
-                                if (_messageIds[i] == null &&
-                                    _messages[i].Role == ChatRole.Assistant &&
-                                    _messages[i].Text.Trim().Equals(normalizedText, StringComparison.Ordinal))
+                                string normalizedText = notification.MessageText.Trim();
+
+                                for (int i = 0; i < _messages.Count; i++)
                                 {
-                                    _messageIds[i] = notification.MessageId;
-                                    _logger?.LogDebug(
-                                        "Assigned Assistant message ID {MessageId} to index {Index} by content matching",
-                                        notification.MessageId, i);
-                                    break;
+                                    if (_messageIds[i] == null &&
+                                        _messages[i].Role == ChatRole.Assistant &&
+                                        _messages[i].Text.Trim().Equals(normalizedText, StringComparison.Ordinal))
+                                    {
+                                        _messageIds[i] = notification.MessageId;
+                                        _logger?.LogDebug(
+                                            "Assigned Assistant message ID {MessageId} to index {Index} by content matching",
+                                            notification.MessageId,
+                                            i);
+                                        break;
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    StateHasChanged();
+                        StateHasChanged();
+                    });
                 });
-            });
 
             // Start connection
             await _hubConnection.StartAsync();

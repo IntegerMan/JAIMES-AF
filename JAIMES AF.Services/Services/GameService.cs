@@ -128,7 +128,7 @@ public class GameService(
         Dictionary<Guid, DateTime> lastPlayedAtByGameId = await context.Messages
             .AsNoTracking()
             .GroupBy(m => m.GameId)
-            .Select(g => new { GameId = g.Key, LastPlayedAt = g.Max(m => m.CreatedAt) })
+            .Select(g => new {GameId = g.Key, LastPlayedAt = g.Max(m => m.CreatedAt)})
             .ToDictionaryAsync(x => x.GameId, x => x.LastPlayedAt, cancellationToken);
 
         // Map games to DTOs, using the pre-calculated LastPlayedAt values
@@ -142,6 +142,31 @@ public class GameService(
             .ToArray();
     }
 
+
+    public async Task<GameDto?> UpdateGameAsync(Guid gameId,
+        string? title,
+        CancellationToken cancellationToken = default)
+    {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        Game? game = await context.Games
+            .Include(g => g.Scenario)
+            .Include(g => g.Player)
+            .Include(g => g.Ruleset)
+            .FirstOrDefaultAsync(g => g.Id == gameId, cancellationToken);
+
+        if (game == null) return null;
+
+        game.Title = title;
+        await context.SaveChangesAsync(cancellationToken);
+
+        // Calculate lastPlayedAt for the DTO
+        DateTime? lastPlayedAt = await context.Messages
+            .Where(m => m.GameId == gameId)
+            .MaxAsync(m => (DateTime?) m.CreatedAt, cancellationToken);
+
+        return game.ToDto(lastPlayedAt);
+    }
 
     public async Task DeleteGameAsync(Guid gameId, CancellationToken cancellationToken = default)
     {

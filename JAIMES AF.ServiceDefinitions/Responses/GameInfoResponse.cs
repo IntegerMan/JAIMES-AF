@@ -3,6 +3,7 @@ namespace MattEland.Jaimes.ServiceDefinitions.Responses;
 public record GameInfoResponse
 {
     public required Guid GameId { get; init; }
+    public string? Title { get; init; }
 
     // Scenario
     public required string ScenarioId { get; init; }
