@@ -1,10 +1,6 @@
 @page "/admin/metrics"
-@using MattEland.Jaimes.ServiceDefinitions.Responses
 @using MattEland.Jaimes.Web.Components.Shared
 @using MudBlazor
-@using System.Linq
-@inject IHttpClientFactory HttpClientFactory
-@inject IDialogService DialogService
 @inject NavigationManager NavigationManager
 @rendermode InteractiveServer
 
@@ -15,9 +11,6 @@
         <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
     </MudStack>
     <MudText Typo="Typo.h4" Class="mb-2">Evaluation Metrics</MudText>
-    <MudText Typo="Typo.body2" Class="mb-4 text-muted">
-        View AI response evaluation metrics and quality scores across all messages.
-    </MudText>
 
     @if (_evaluator != null)
     {
@@ -38,12 +31,12 @@
         </MudPaper>
     }
 
-    @if (GameId.HasValue)
+    @if (!string.IsNullOrEmpty(GroupingInfo))
     {
-        <MudAlert Severity="Severity.Info" Class="mb-4">
-            <MudStack Row="true" AlignItems="AlignItems.Center">
-                <MudText>Filtering by game:</MudText>
-                <MudLink Href="@($"/games/{GameId}")">View Game</MudLink>
+        <MudAlert Severity="Severity.Info" Class="mb-3" Dense="true">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.Info"/>
+                <MudText>@GroupingInfo</MudText>
             </MudStack>
         </MudAlert>
     }
@@ -57,140 +50,14 @@
         EvaluatorId="@EvaluatorId"
         OnClearFilters="ClearFilters" />
 
-    <MudDataGrid T="EvaluationMetricListItemDto"
-                 ServerData="ServerReload"
-                 Filterable="false"
-                 Hover="true"
-                 Dense="true"
-                 Striped="true"
-                 Groupable="true"
-                 GroupExpanded="true">
-        <Columns>
-
-            <PropertyColumn Property="x => x.GameId" Title="Game" Groupable="true" Grouping="true">
-                <CellTemplate>
-                    <MudLink Href="@($"/games/{context.Item.GameId}")">
-                        @(context.Item.GamePlayerName ?? "Player") in @(context.Item.GameScenarioName ?? "Scenario") (@(context.Item.GameRulesetId ?? "Unknown"))
-                    </MudLink>
-                </CellTemplate>
-                <GroupTemplate>
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                        <MudIcon Icon="@Icons.Material.Filled.SportsEsports" Size="Size.Small"/>
-                        <MudLink Href="@($"/games/{context.Grouping.First().GameId}")" Typo="Typo.subtitle1">
-                            @{
-                                var first = context.Grouping.First();
-                                <strong>@(first.GamePlayerName ?? "Player") in @(first.GameScenarioName ?? "Scenario") (@(first.GameRulesetId ?? "Unknown"))</strong>
-                            }
-                        </MudLink>
-                        <MudText Typo="Typo.caption" Class="text-muted">(@context.Grouping.Count() metrics)</MudText>
-                    </MudStack>
-                </GroupTemplate>
-            </PropertyColumn>
-            <PropertyColumn Property="x => x.MessageId" Title="Message" Groupable="true" Grouping="true">
-                <CellTemplate>
-                    <MudLink Href="@($"/admin/metrics/{context.Item.MessageId}")">
-                        @((context.Item.MessagePreview?.Length > 20 ? context.Item.MessagePreview[..20] + "..." : context.Item.MessagePreview) ?? $"Message {context.Item.MessageId}")
-                    </MudLink>
-                </CellTemplate>
-                <GroupTemplate>
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                        <MudIcon Icon="@Icons.Material.Filled.Message" Size="Size.Small"/>
-                        <MudLink Href="@($"/admin/metrics/{context.Grouping.Key}")" Typo="Typo.body1">
-                            <strong>@(context.Grouping.First().MessagePreview ?? $"Message {context.Grouping.Key}")</strong>
-                        </MudLink>
-                    </MudStack>
-                </GroupTemplate>
-            </PropertyColumn>
-            <PropertyColumn Property="x => x.MetricName" Title="Metric">
-                <CellTemplate>
-                    <strong>@context.Item.MetricName</strong>
-                </CellTemplate>
-            </PropertyColumn>
-            <PropertyColumn Property="x => x.EvaluatorName" Title="Evaluator">
-                <CellTemplate>
-                    @if (context.Item.EvaluatorId.HasValue)
-                    {
-                        <MudLink Href="@($"/admin/evaluators")">@context.Item.EvaluatorName</MudLink>
-                    }
-                    else
-                    {
-                        <MudText Typo="Typo.caption" Class="text-muted">Direct Metric</MudText>
-                    }
-                </CellTemplate>
-            </PropertyColumn>
-            <PropertyColumn Property="x => x.Score" Title="Score">
-                <CellTemplate>
-                    <MudChip T="string" Color="@GetScoreColor(context.Item.Score)" Size="Size.Small">
-                        @context.Item.Score.ToString("F1")
-                    </MudChip>
-                </CellTemplate>
-            </PropertyColumn>
-            <PropertyColumn Property="x => x.Passed" Title="Status" Sortable="false">
-                <CellTemplate>
-                    @if (context.Item.Passed)
-                    {
-                        <MudChip T="string" Color="Color.Success" Size="Size.Small">Pass</MudChip>
-                    }
-                    else
-                    {
-                        <MudChip T="string" Color="Color.Error" Size="Size.Small">Fail</MudChip>
-                    }
-                </CellTemplate>
-            </PropertyColumn>
-            <PropertyColumn Property="x => x.Remarks" Title="Remarks">
-                <CellTemplate>
-                    @if (!string.IsNullOrEmpty(context.Item.Remarks))
-                    {
-                        <MudTooltip Text="@context.Item.Remarks" Placement="Placement.Top">
-                            <MudText Typo="Typo.body2" Style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                @context.Item.Remarks
-                            </MudText>
-                        </MudTooltip>
-                    }
-                    else
-                    {
-                        <MudText Typo="Typo.caption" Class="text-muted">No remarks provided</MudText>
-                    }
-                </CellTemplate>
-            </PropertyColumn>
-            <TemplateColumn Title="Actions">
-                <CellTemplate>
-                    <MudStack Row="true" Spacing="0">
-                        @if (!string.IsNullOrEmpty(context.Item.Diagnostics))
-                        {
-                            <MudTooltip Text="View Diagnostics">
-                                <MudIconButton Icon="@Icons.Material.Filled.Biotech"
-                                               Color="Color.Info"
-                                               Size="Size.Small"
-                                               OnClick="@(() => ShowDiagnosticsAsync(context.Item))"/>
-                            </MudTooltip>
-                        }
-                        <MudTooltip Text="View All Message Metrics">
-                            <MudIconButton Icon="@Icons.Material.Filled.PieChart"
-                                           Color="Color.Secondary"
-                                           Size="Size.Small"
-                                           Href="@($"/admin/metrics/{context.Item.MessageId}")"/>
-                        </MudTooltip>
-                        <MudTooltip Text="View Game">
-                            <MudIconButton Icon="@Icons.Material.Filled.SportsEsports"
-                                           Color="Color.Primary"
-                                           Size="Size.Small"
-                                           Href="@($"/games/{context.Item.GameId}")"
-                                           Target="_blank"/>
-                        </MudTooltip>
-                    </MudStack>
-                </CellTemplate>
-            </TemplateColumn>
-        </Columns>
-        <PagerContent>
-            <MudDataGridPager T="EvaluationMetricListItemDto"/>
-        </PagerContent>
-        <NoRecordsContent>
-            <MudText Typo="Typo.body1" Class="pa-4">
-                No evaluation metrics found. Metrics will appear here after assistant messages are evaluated.
-            </MudText>
-        </NoRecordsContent>
-    </MudDataGrid>
+    <MetricsGrid AgentId="@AgentId"
+                 InstructionVersionId="@InstructionVersionId"
+                 GameId="@GameId"
+                 MetricName="@MetricName"
+                 Passed="@Passed"
+                 MinScore="@MinScore"
+                 MaxScore="@MaxScore"
+                 EvaluatorId="@EvaluatorId"/>
 </MudContainer>
 
 @code {
@@ -208,8 +75,12 @@
     [SupplyParameterFromQuery]
     public int? EvaluatorId { get; set; }
 
+    [Parameter] [SupplyParameterFromQuery] public string? AgentId { get; set; }
+
+    [Parameter] [SupplyParameterFromQuery] public int? InstructionVersionId { get; set; }
     private List<BreadcrumbItem> _breadcrumbs = new();
     private EvaluatorItemDto? _evaluator;
+    private string? GroupingInfo = "Results are grouped by Game and Message. Click row headers to expand/collapse groups.";
 
     protected override async Task OnParametersSetAsync()
     {
@@ -247,93 +118,10 @@
         };
     }
 
-    private async Task<GridData<EvaluationMetricListItemDto>> ServerReload(GridState<EvaluationMetricListItemDto> state)
-    {
-        try
-        {
-            var client = HttpClientFactory.CreateClient("Api");
-
-            int page = state.Page + 1;
-            int pageSize = state.PageSize;
-
-            var queryParams = new List<string>
-            {
-                $"page={page}",
-                $"pageSize={pageSize}"
-            };
-
-            if (!string.IsNullOrEmpty(MetricName))
-                queryParams.Add($"metricName={Uri.EscapeDataString(MetricName)}");
-            if (Passed.HasValue)
-                queryParams.Add($"passed={Passed.Value.ToString().ToLower()}");
-            if (MinScore.HasValue)
-                queryParams.Add($"minScore={MinScore.Value}");
-            if (MaxScore.HasValue)
-                queryParams.Add($"maxScore={MaxScore.Value}");
-            if (GameId.HasValue)
-                queryParams.Add($"gameId={GameId.Value}");
-            if (EvaluatorId.HasValue)
-                queryParams.Add($"evaluatorId={EvaluatorId.Value}");
-
-            string queryString = string.Join("&", queryParams);
-            var response = await client.GetFromJsonAsync<EvaluationMetricListResponse>($"/admin/metrics?{queryString}");
-
-            if (response != null)
-            {
-                // Order by MessageId for sequential grouping
-                var orderedItems = response.Items.OrderBy(x => x.MessageId).ToList();
-
-                return new GridData<EvaluationMetricListItemDto>
-                {
-                    TotalItems = response.TotalCount,
-                    Items = orderedItems
-                };
-            }
-        }
-        catch (Exception)
-        {
-            // Handle error
-        }
-
-        return new GridData<EvaluationMetricListItemDto>
-        {
-            TotalItems = 0,
-            Items = []
-        };
-    }
 
     private void ClearFilters()
     {
         NavigationManager.NavigateTo("/admin/metrics");
-    }
-
-    private static Color GetScoreColor(double score)
-    {
-        return score switch
-        {
-            >= 4 => Color.Success,
-            >= 3 => Color.Info,
-            >= 2 => Color.Warning,
-            _ => Color.Error
-        };
-    }
-
-    private async Task ShowDiagnosticsAsync(EvaluationMetricListItemDto item)
-    {
-        var parameters = new DialogParameters<DiagnosticsDialog>
-        {
-            {nameof(DiagnosticsDialog.MetricName), item.MetricName},
-            {nameof(DiagnosticsDialog.Diagnostics), item.Diagnostics}
-        };
-
-        var options = new DialogOptions
-        {
-            CloseOnEscapeKey = true,
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true
-        };
-
-        await DialogService.ShowAsync<DiagnosticsDialog>("Diagnostics", parameters, options);
     }
 
 }

@@ -1,0 +1,224 @@
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MudBlazor
+@inject IHttpClientFactory HttpClientFactory
+
+<MudDataGrid T="SentimentListItemDto"
+             ServerData="ServerReload"
+             Filterable="false"
+             Hover="true"
+             Dense="true"
+             Striped="true">
+    <Columns>
+        <PropertyColumn Property="x => x.CreatedAt" Title="Created">
+            <CellTemplate>
+                @context.Item.CreatedAt.ToLocalTime().ToString("g")
+            </CellTemplate>
+        </PropertyColumn>
+        <PropertyColumn Property="x => x.MessagePreview" Title="Message Preview">
+            <CellTemplate>
+                <MudLink Href="@($"/admin/sentiments/{context.Item.MessageId}")" Typo="Typo.body2" Underline="Underline.Hover">
+                    @(TruncateMessage(context.Item.MessagePreview ?? "", 70))
+                </MudLink>
+            </CellTemplate>
+        </PropertyColumn>
+        <PropertyColumn Property="x => x.Sentiment" Title="Sentiment" Sortable="false">
+            <CellTemplate>
+                <SentimentIcon Sentiment="@context.Item.Sentiment"/>
+            </CellTemplate>
+        </PropertyColumn>
+        <PropertyColumn Property="x => x.Confidence" Title="Confidence">
+            <CellTemplate>
+                @if (context.Item.Confidence.HasValue)
+                {
+                    <MudProgressLinear Color="Color.Primary"
+                                       Value="@(context.Item.Confidence.Value * 100)"
+                                       Max="100"
+                                       Style="width: 80px; height: 8px;"/>
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption" Class="text-muted">N/A</MudText>
+                }
+            </CellTemplate>
+        </PropertyColumn>
+        <PropertyColumn Property="x => x.UpdatedAt" Title="Modified">
+            <CellTemplate>
+                @context.Item.UpdatedAt.ToLocalTime().ToString("g")
+            </CellTemplate>
+        </PropertyColumn>
+        <PropertyColumn Property="x => x.SentimentSource" Title="Source">
+            <CellTemplate>
+                @{
+                    var (label, color) = context.Item.SentimentSource switch
+                    {
+                        1 => ("User", Color.Info),
+                        2 => ("AI", Color.Secondary),
+                        _ => ("System", Color.Default)
+                    };
+                }
+                <MudChip T="string" Color="@color" Size="Size.Small">@label</MudChip>
+            </CellTemplate>
+        </PropertyColumn>
+        <TemplateColumn Title="Prior Message Feedback">
+            <CellTemplate>
+                @if (context.Item.HasFeedback)
+                {
+                    @if (context.Item.FeedbackIsPositive == true)
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Success" Size="Size.Small"/>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.ThumbDown" Color="Color.Error" Size="Size.Small"/>
+                    }
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="x => x.GamePlayerName" Title="Player"/>
+        <PropertyColumn Property="x => x.GameScenarioName" Title="Scenario"/>
+        <PropertyColumn Property="x => x.AgentVersion" Title="Agent Version">
+            <CellTemplate>
+                @if (!string.IsNullOrEmpty(context.Item.AgentId) && !string.IsNullOrEmpty(context.Item.AgentVersion))
+                {
+                    <MudLink Href="@($"/agents/{context.Item.AgentId}")" Typo="Typo.body2">
+                        @context.Item.AgentVersion
+                    </MudLink>
+                }
+                else if (!string.IsNullOrEmpty(context.Item.AgentVersion))
+                {
+                    @context.Item.AgentVersion
+                }
+            </CellTemplate>
+        </PropertyColumn>
+        <TemplateColumn Title="Actions">
+            <CellTemplate>
+                <div class="d-flex">
+                    <MudTooltip Text="View Details" Placement="Placement.Top">
+                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       Href="@($"/admin/sentiments/{context.Item.MessageId}")"/>
+                    </MudTooltip>
+                    @if (context.Item.GameId != Guid.Empty)
+                    {
+                        <MudTooltip Text="View Game" Placement="Placement.Top">
+                            <MudIconButton Icon="@Icons.Material.Filled.Games"
+                                           Color="Color.Secondary"
+                                           Size="Size.Small"
+                                           Href="@($"/games/{context.Item.GameId}")"/>
+                        </MudTooltip>
+                    }
+                </div>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <PagerContent>
+        <MudDataGridPager T="SentimentListItemDto"/>
+    </PagerContent>
+    <NoRecordsContent>
+        <MudText Typo="Typo.body1" Class="pa-4">
+            No sentiment records found.
+        </MudText>
+    </NoRecordsContent>
+</MudDataGrid>
+
+@code {
+
+    /// <summary>
+    /// Optional agent ID to filter results.
+    /// </summary>
+    [Parameter]
+    public string? AgentId { get; set; }
+
+    /// <summary>
+    /// Optional instruction version ID to filter results.
+    /// </summary>
+    [Parameter]
+    public int? InstructionVersionId { get; set; }
+
+    /// <summary>
+    /// Optional game ID to filter results.
+    /// </summary>
+    [Parameter]
+    public Guid? GameId { get; set; }
+
+    /// <summary>
+    /// Optional tool name to filter results.
+    /// </summary>
+    [Parameter]
+    public string? ToolName { get; set; }
+
+    /// <summary>
+    /// Optional sentiment filter: -1 (negative), 0 (neutral), 1 (positive).
+    /// </summary>
+    [Parameter]
+    public int? Sentiment { get; set; }
+
+    /// <summary>
+    /// Optional filter for feedback presence.
+    /// </summary>
+    [Parameter]
+    public bool? HasFeedback { get; set; }
+
+    private static string TruncateMessage(string message, int maxLength)
+    {
+        if (string.IsNullOrEmpty(message)) return "";
+        if (message.Length <= maxLength) return message;
+        return message[..maxLength] + "...";
+    }
+
+    private async Task<GridData<SentimentListItemDto>> ServerReload(GridState<SentimentListItemDto> state)
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient("Api");
+
+            // MudDataGrid uses 0-based index, API uses 1-based page
+            int page = state.Page + 1;
+            int pageSize = state.PageSize;
+
+            // Build query string with optional filters
+            var queryParams = new List<string>
+            {
+                $"page={page}",
+                $"pageSize={pageSize}"
+            };
+
+            if (!string.IsNullOrEmpty(AgentId))
+                queryParams.Add($"agentId={Uri.EscapeDataString(AgentId)}");
+            if (InstructionVersionId.HasValue)
+                queryParams.Add($"instructionVersionId={InstructionVersionId.Value}");
+            if (GameId.HasValue)
+                queryParams.Add($"gameId={GameId.Value}");
+            if (!string.IsNullOrEmpty(ToolName))
+                queryParams.Add($"toolName={Uri.EscapeDataString(ToolName)}");
+            if (Sentiment.HasValue)
+                queryParams.Add($"sentiment={Sentiment.Value}");
+            if (HasFeedback.HasValue)
+                queryParams.Add($"hasFeedback={HasFeedback.Value.ToString().ToLower()}");
+
+            string queryString = string.Join("&", queryParams);
+            var response = await client.GetFromJsonAsync<SentimentListResponse>($"/admin/sentiments?{queryString}");
+
+            if (response != null)
+            {
+                return new GridData<SentimentListItemDto>
+                {
+                    TotalItems = response.TotalCount,
+                    Items = response.Items
+                };
+            }
+        }
+        catch (Exception)
+        {
+            // Handle error (maybe show snackbar)
+        }
+
+        return new GridData<SentimentListItemDto>
+        {
+            TotalItems = 0,
+            Items = []
+        };
+    }
+
+}

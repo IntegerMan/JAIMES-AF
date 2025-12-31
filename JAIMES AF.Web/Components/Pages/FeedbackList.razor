@@ -1,10 +1,6 @@
 @page "/admin/feedback"
-@using MattEland.Jaimes.ServiceDefinitions.Responses
-@using MattEland.Jaimes.Web.Components.Pages
 @using MattEland.Jaimes.Web.Components.Shared
 @using MudBlazor
-@inject IDialogService DialogService
-@inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager NavigationManager
 @rendermode InteractiveServer
 
@@ -18,122 +14,14 @@
 
     <AdminFilters ToolName="@ToolName"
                   IsPositive="@IsPositive"
+                  AgentVersion="@AgentId"
                   OnClearFilters="ClearFilters"/>
 
-    <MudDataGrid T="FeedbackListItemDto"
-                 ServerData="ServerReload"
-                 Filterable="false"
-                 Hover="true"
-                 Dense="true"
-                 Striped="true">
-        <Columns>
-            <PropertyColumn Property="x => x.IsPositive" Title="Type" Sortable="false">
-                <CellTemplate>
-                    @if (context.Item.IsPositive)
-                    {
-                        <MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Success"/>
-                    }
-                    else
-                    {
-                        <MudIcon Icon="@Icons.Material.Filled.ThumbDown" Color="Color.Error"/>
-                    }
-                </CellTemplate>
-            </PropertyColumn>
-            <PropertyColumn Property="x => x.Comment" Title="Comment">
-                <CellTemplate>
-                    <MudLink Href="@($"/admin/feedback/{context.Item.Id}")" Typo="Typo.body2" Underline="Underline.Hover">
-                        @context.Item.Comment
-                    </MudLink>
-                </CellTemplate>
-            </PropertyColumn>
-            <TemplateColumn Title="Tools Involved">
-                <CellTemplate>
-                    @if (context.Item.ToolNames != null && context.Item.ToolNames.Any())
-                    {
-                        <MudStack Row="true" Spacing="1">
-                            @foreach (var tool in context.Item.ToolNames.Take(3))
-                            {
-                                <MudLink Href="@($"/admin/tools/{Uri.EscapeDataString(tool)}")" Typo="Typo.body2">
-                                    <MudChip T="string" Color="Color.Secondary" Size="Size.Small">@tool</MudChip>
-                                </MudLink>
-                            }
-                            @if (context.Item.ToolNames.Count > 3)
-                            {
-                                <MudChip T="string" Color="Color.Default" Size="Size.Small">+@(context.Item.ToolNames.Count - 3) more</MudChip>
-                            }
-                        </MudStack>
-                    }
-                    else
-                    {
-                        <MudText Typo="Typo.caption" Class="text-muted">None</MudText>
-                    }
-                </CellTemplate>
-            </TemplateColumn>
-            <PropertyColumn Property="x => x.CreatedAt" Title="Date">
-                <CellTemplate>
-                    @context.Item.CreatedAt.ToLocalTime().ToString("g")
-                </CellTemplate>
-            </PropertyColumn>
-            <TemplateColumn Title="Game">
-                <CellTemplate>
-                    <MudLink Href="@($"/games/{context.Item.GameId}")">
-                        @(context.Item.GamePlayerName ?? "Player") in @(context.Item.GameScenarioName ?? "Scenario") (@(context.Item.GameRulesetId ?? "Unknown"))
-                    </MudLink>
-                </CellTemplate>
-            </TemplateColumn>
-            <PropertyColumn Property="x => x.AgentVersion" Title="Agent Version">
-                <CellTemplate>
-                    @if (!string.IsNullOrEmpty(context.Item.AgentId))
-                    {
-                        <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
-                            <MudLink Href="@($"/agents/{context.Item.AgentId}")" Typo="Typo.body2">
-                                @context.Item.AgentId
-                            </MudLink>
-                            @if (!string.IsNullOrEmpty(context.Item.AgentVersion) && context.Item.InstructionVersionId.HasValue)
-                            {
-                                <MudText Typo="Typo.body2">/</MudText>
-                                <MudLink Href="@($"/agents/{context.Item.AgentId}/versions/{context.Item.InstructionVersionId}")" Typo="Typo.body2">
-                                    @context.Item.AgentVersion
-                                </MudLink>
-                            }
-                            else if (!string.IsNullOrEmpty(context.Item.AgentVersion))
-                            {
-                                <MudText Typo="Typo.body2">(@context.Item.AgentVersion)</MudText>
-                            }
-                        </MudStack>
-                    }
-                    else if (!string.IsNullOrEmpty(context.Item.AgentVersion))
-                    {
-                        @context.Item.AgentVersion
-                    }
-                </CellTemplate>
-            </PropertyColumn>
-            <TemplateColumn Title="Actions">
-                <CellTemplate>
-                    <div class="d-flex">
-                        <MudTooltip Text="View Details" Placement="Placement.Top">
-                            <MudIconButton Icon="@Icons.Material.Filled.Visibility"
-                                           Color="Color.Primary"
-                                           Size="Size.Small"
-                                           Href="@($"/admin/feedback/{context.Item.Id}")"/>
-                        </MudTooltip>
-                        @if (context.Item.GameId != Guid.Empty)
-                        {
-                            <MudTooltip Text="View Game" Placement="Placement.Top">
-                                <MudIconButton Icon="@Icons.Material.Filled.Games"
-                                               Color="Color.Secondary"
-                                               Size="Size.Small"
-                                               Href="@($"/games/{context.Item.GameId}")"/>
-                            </MudTooltip>
-                        }
-                    </div>
-                </CellTemplate>
-            </TemplateColumn>
-        </Columns>
-        <PagerContent>
-            <MudDataGridPager T="FeedbackListItemDto"/>
-        </PagerContent>
-    </MudDataGrid>
+    <FeedbackGrid AgentId="@AgentId"
+                  InstructionVersionId="@InstructionVersionId"
+                  ToolName="@ToolName"
+                  IsPositive="@IsPositive"
+                  GameId="@GameId"/>
 </MudContainer>
 
 @code {
@@ -152,6 +40,27 @@
     [SupplyParameterFromQuery]
     public bool? IsPositive { get; set; }
 
+    /// <summary>
+    /// Optional agent ID to filter results.
+    /// </summary>
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? AgentId { get; set; }
+
+    /// <summary>
+    /// Optional instruction version ID to filter results.
+    /// </summary>
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public int? InstructionVersionId { get; set; }
+
+    /// <summary>
+    /// Optional game ID to filter results.
+    /// </summary>
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public Guid? GameId { get; set; }
+
     private List<BreadcrumbItem> _breadcrumbs = new();
 
     protected override void OnInitialized()
@@ -164,57 +73,9 @@
         };
     }
 
-    private async Task<GridData<FeedbackListItemDto>> ServerReload(GridState<FeedbackListItemDto> state)
-    {
-        try
-        {
-            var client = HttpClientFactory.CreateClient("Api");
-
-            // MudDataGrid uses 0-based index, API uses 1-based page
-            int page = state.Page + 1;
-            int pageSize = state.PageSize;
-
-            // Build query string with optional filters
-            var queryParams = new List<string>
-            {
-                $"page={page}",
-                $"pageSize={pageSize}"
-            };
-
-            if (!string.IsNullOrEmpty(ToolName))
-                queryParams.Add($"toolName={Uri.EscapeDataString(ToolName)}");
-            if (IsPositive.HasValue)
-                queryParams.Add($"isPositive={IsPositive.Value.ToString().ToLower()}");
-
-            string queryString = string.Join("&", queryParams);
-            var response = await client.GetFromJsonAsync<FeedbackListResponse>($"/admin/feedback?{queryString}");
-
-            if (response != null)
-            {
-                return new GridData<FeedbackListItemDto>
-                {
-                    TotalItems = response.TotalCount,
-                    Items = response.Items
-                };
-            }
-        }
-        catch (Exception)
-        {
-            // Handle error (maybe show snackbar)
-        }
-
-        return new GridData<FeedbackListItemDto>
-        {
-            TotalItems = 0,
-            Items = []
-        };
-    }
-
-
     private void ClearFilters()
     {
         NavigationManager.NavigateTo("/admin/feedback");
     }
 
 }
-
