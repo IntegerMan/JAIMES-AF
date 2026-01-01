@@ -219,6 +219,39 @@ public class GameService(
 
         if (title != null) game.Title = title;
 
+        // Determine effective agent ID for validation
+        string? effectiveAgentId = agentId ?? game.AgentId;
+
+        if (effectiveAgentId == null)
+        {
+            // Fallback to scenario agent if no override is present
+            effectiveAgentId = await context.ScenarioAgents
+                .Where(sa => sa.ScenarioId == game.ScenarioId)
+                .Select(sa => sa.AgentId)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
+        if (instructionVersionId.HasValue)
+        {
+            // If we STILL don't have an agent (shouldn't happen), we can't validate version ownership
+            if (string.IsNullOrEmpty(effectiveAgentId))
+            {
+                throw new InvalidOperationException(
+                    "Cannot validate instruction version because no agent is associated with this game or scenario.");
+            }
+
+            // Validate that the version belongs to the effective agent
+            bool versionExistsForAgent = await context.AgentInstructionVersions
+                .AnyAsync(v => v.Id == instructionVersionId.Value && v.AgentId == effectiveAgentId, cancellationToken);
+
+            if (!versionExistsForAgent)
+            {
+                throw new ArgumentException(
+                    $"Instruction version '{instructionVersionId.Value}' does not belong to agent '{effectiveAgentId}'.",
+                    nameof(instructionVersionId));
+            }
+        }
+
         // If agentId is provided, we treat it as a reconfiguration of the game's agent
         // allowing setting InstructionVersionId to null (meaning "Use Latest")
         if (agentId != null)

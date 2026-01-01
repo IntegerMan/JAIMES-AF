@@ -966,10 +966,7 @@ public partial class GameDetails : IAsyncDisposable
         {
             await LoadAvailableVersionsAsync(agentId);
             // Default to Dynamic/Latest (null) when agent changes
-            if (_availableVersions.Count > 0)
-            {
-                await SaveAgentSelectionAsync();
-            }
+            await SaveAgentSelectionAsync();
         }
 
         StateHasChanged();

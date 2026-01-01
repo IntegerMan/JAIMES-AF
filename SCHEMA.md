@@ -261,7 +261,7 @@ A game scenario that defines the setting, plot, and rules for a game session.
 Links scenarios to agents with specific instruction versions. This allows different scenarios to use the same agent with different instruction versions.
 
 ### Game
-An instance of a scenario being played by a player. Tracks the current state via `MostRecentHistoryId`. Can optionally override the scenario's default `AgentId` and `InstructionVersionId`.
+An instance of a scenario being played by a player. Tracks the current state via `MostRecentHistoryId`. Can optionally override the agent and instruction version specified by the scenario (defined via ScenarioAgent mapping).
 
 ### Player
 A human player who can participate in games. Associated with a specific `Ruleset`.
