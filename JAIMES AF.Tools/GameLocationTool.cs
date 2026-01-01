@@ -40,7 +40,16 @@ public class GameLocationTool(GameDto game, IServiceProvider serviceProvider)
 
         if (location == null)
         {
-            return $"Location '{locationName}' was not found in this game. You may need to create it first using the location management tool.";
+            // Get list of valid locations to help the AI
+            LocationListResponse allLocations = await locationService.GetLocationsAsync(_game.GameId);
+            if (allLocations.TotalCount == 0)
+            {
+                return
+                    $"Location '{locationName}' was not found. No locations exist in this game yet. Use the location management tool to create it first.";
+            }
+
+            string validNames = string.Join("', '", allLocations.Locations.Select(l => l.Name));
+            return $"Location '{locationName}' was not found. Valid locations are: '{validNames}'.";
         }
 
         return await FormatLocationDetailsAsync(location, locationService);
@@ -65,7 +74,8 @@ public class GameLocationTool(GameDto game, IServiceProvider serviceProvider)
 
         if (response.TotalCount == 0)
         {
-            return "No locations have been established in this game yet. Use the location management tool to create new locations as the story unfolds.";
+            return
+                "No locations have been established in this game yet. Use the location management tool to create new locations as the story unfolds.";
         }
 
         List<string> locationStrings = [];
@@ -83,7 +93,8 @@ public class GameLocationTool(GameDto game, IServiceProvider serviceProvider)
         return $"Known locations ({response.TotalCount}):\n\n" + string.Join("\n\n", locationStrings);
     }
 
-    private static async Task<string> FormatLocationDetailsAsync(LocationResponse location, ILocationService locationService)
+    private static async Task<string> FormatLocationDetailsAsync(LocationResponse location,
+        ILocationService locationService)
     {
         List<string> parts =
         [

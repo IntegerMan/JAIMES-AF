@@ -65,6 +65,12 @@ public class GameLocationToolTests
         mockLocationService.Setup(s =>
                 s.GetLocationByNameAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((LocationResponse?)null);
+        mockLocationService.Setup(s => s.GetLocationsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new LocationListResponse
+            {
+                Locations = [new LocationResponse { Id = 1, Name = "Village", Description = "A quiet village" }],
+                TotalCount = 1
+            });
 
         Mock<IServiceScope> mockScope = new();
         mockScope.Setup(s => s.ServiceProvider.GetService(typeof(ILocationService)))
@@ -83,6 +89,7 @@ public class GameLocationToolTests
 
         // Assert
         result.ShouldContain("was not found");
+        result.ShouldContain("Village"); // Should list valid locations
     }
 
     [Fact]
