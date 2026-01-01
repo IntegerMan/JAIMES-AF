@@ -1,0 +1,101 @@
+@page "/admin/locations/{LocationId:int}/edit"
+@rendermode InteractiveServer
+
+<PageTitle>Edit Location</PageTitle>
+
+<MudPaper Class="pa-4">
+	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+	</MudStack>
+
+	@if (_isLoading)
+	{
+		<div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+			<MudProgressCircular Indeterminate="true"/>
+		</div>
+	}
+
+	@if (!_isLoading && !string.IsNullOrEmpty(_errorMessage))
+	{
+		<MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+	}
+
+	@if (!_isLoading && _location != null)
+	{
+		<MudText Typo="Typo.h4" Class="mb-4">Edit: @_location.Name</MudText>
+
+		<MudForm @ref="_form" @bind-IsValid="@_isValid">
+			<MudGrid>
+				<MudItem xs="12" md="8">
+					<MudPaper Class="pa-4 mb-4" Elevation="1">
+						<MudTextField @bind-Value="_name"
+						              Label="Name"
+						              Variant="Variant.Outlined"
+						              Required="true"
+						              RequiredError="Name is required"
+						              MaxLength="200"
+						              Counter="200"
+						              Class="mb-4"
+						              HelperText="The location's name (max 200 characters)"
+						              Disabled="true"/>
+
+						<MudTextField @bind-Value="_description"
+						              Label="Description"
+						              Variant="Variant.Outlined"
+						              Required="true"
+						              RequiredError="Description is required"
+						              Lines="4"
+						              Class="mb-4"
+						              HelperText="The player-facing description of this location"/>
+
+						<MudTextField @bind-Value="_appearance"
+						              Label="Appearance"
+						              Variant="Variant.Outlined"
+						              Lines="3"
+						              Class="mb-4"
+						              HelperText="Physical appearance description (optional)"/>
+
+						<MudTextField @bind-Value="_storytellerNotes"
+						              Label="Storyteller Notes"
+						              Variant="Variant.Outlined"
+						              Lines="3"
+						              Class="mb-4"
+						              HelperText="Private notes for the AI storyteller (hidden from player)"/>
+					</MudPaper>
+
+					<MudStack Row="true" Spacing="2">
+						<MudButton Variant="Variant.Filled"
+						           Color="Color.Primary"
+						           OnClick="SaveAsync"
+						           Disabled="@(!_isValid || _isSaving)"
+						           StartIcon="@Icons.Material.Filled.Save">
+							@if (_isSaving)
+							{
+								<MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2"/>
+							}
+							Save Changes
+						</MudButton>
+						<MudButton Variant="Variant.Outlined"
+						           Href="@($"/admin/locations/{LocationId}")">
+							Cancel
+						</MudButton>
+					</MudStack>
+				</MudItem>
+
+				<MudItem xs="12" md="4">
+					<MudPaper Class="pa-4" Elevation="1">
+						<MudText Typo="Typo.h6" Class="mb-3">Information</MudText>
+						<MudText Typo="Typo.body2"><strong>Created:</strong> @_location.CreatedAt.ToString("g")</MudText>
+						<MudText Typo="Typo.body2"><strong>Updated:</strong> @_location.UpdatedAt.ToString("g")</MudText>
+						<MudText Typo="Typo.body2"><strong>Events:</strong> @_location.EventCount</MudText>
+						<MudText Typo="Typo.body2"><strong>Nearby Locations:</strong> @_location.NearbyLocationCount</MudText>
+
+						<MudAlert Severity="Severity.Info" Class="mt-4" Dense="true">
+							Location names cannot be changed after creation. Events and nearby links are managed by the AI during gameplay.
+						</MudAlert>
+					</MudPaper>
+				</MudItem>
+			</MudGrid>
+		</MudForm>
+	}
+</MudPaper>
