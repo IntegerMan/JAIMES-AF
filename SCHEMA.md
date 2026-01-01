@@ -53,6 +53,11 @@ erDiagram
 
     RagSearchQuery ||--o{ RagSearchResultChunk : "produced"
 
+    Game ||--o{ Location : "has"
+    Location ||--o{ LocationEvent : "has events"
+    Location ||--o{ NearbyLocation : "nearby from"
+    Location ||--o{ NearbyLocation : "nearby to"
+
     ScenarioAgent {
         string ScenarioId FK
         string AgentId FK
@@ -244,6 +249,33 @@ erDiagram
         datetime CreatedAt
         int InstructionVersionId FK "nullable"
     }
+
+    Location {
+        int Id PK
+        Guid GameId FK
+        string Name
+        string Description
+        string StorytellerNotes "nullable"
+        string Appearance "nullable"
+        datetime CreatedAt
+        datetime UpdatedAt
+    }
+
+    LocationEvent {
+        int Id PK
+        int LocationId FK
+        string EventName
+        string EventDescription
+        datetime CreatedAt
+    }
+
+    NearbyLocation {
+        int SourceLocationId PK_FK
+        int TargetLocationId PK_FK
+        string Distance "nullable"
+        string TravelNotes "nullable"
+        string StorytellerNotes "nullable"
+    }
 ```
 
 ## Core Entities
@@ -316,6 +348,17 @@ Diagnostic record of a RAG search performed, including the query text and filter
 
 ### RagSearchResultChunk
 Records which `DocumentChunk`s were retrieved for a specific `RagSearchQuery` and their relevancy scores.
+
+## Location Tracking
+
+### Location
+A named location within a game world, scoped to a single game. Locations help the AI storyteller maintain consistent world-building. Names are unique within each game.
+
+### LocationEvent
+Significant events that have occurred at a location. Used by the AI to reference past happenings and maintain narrative consistency.
+
+### NearbyLocation
+Links two locations as being near each other, with optional distance and travel information. Includes `StorytellerNotes` for the AI to hide secrets from players.
 
 ## Business Rules
 
