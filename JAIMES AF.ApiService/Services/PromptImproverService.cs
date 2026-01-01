@@ -255,10 +255,20 @@ public class PromptImproverService(
                 userMessage,
                 cancellationToken);
 
+            string trimmedPrompt = improvedPrompt.Trim();
+            if (string.IsNullOrWhiteSpace(trimmedPrompt))
+            {
+                return new GenerateImprovedPromptResponse
+                {
+                    Success = false,
+                    Error = "The AI returned an empty response when generating the improved prompt. Please try again."
+                };
+            }
+
             return new GenerateImprovedPromptResponse
             {
                 Success = true,
-                ImprovedPrompt = improvedPrompt.Trim()
+                ImprovedPrompt = trimmedPrompt
             };
         }
         catch (Exception ex)
