@@ -19,6 +19,8 @@ public class PromptImproverService(
     ILogger<PromptImproverService> logger)
 {
     private const int MaxItemsToAnalyze = 50;
+    private const int MessageBatchSize = 20; // Messages per batch
+    private const int MaxMessageBatches = 5; // Maximum batches to analyze (100 messages total)
 
     /// <summary>
     /// Generates insights based on the specified insight type.
@@ -34,6 +36,7 @@ public class PromptImproverService(
             "feedback" => await GenerateFeedbackInsightsAsync(agentId, versionId, cancellationToken),
             "metrics" => await GenerateMetricsInsightsAsync(agentId, versionId, cancellationToken),
             "sentiment" => await GenerateSentimentInsightsAsync(agentId, versionId, cancellationToken),
+            "messages" => await GenerateMessageInsightsAsync(agentId, versionId, cancellationToken),
             _ => new GenerateInsightsResponse
             {
                 Success = false,
@@ -269,6 +272,137 @@ public class PromptImproverService(
     }
 
     /// <summary>
+    /// Generates insights from conversation message fragments.
+    /// Analyzes messages in batches, then summarizes the batch insights.
+    /// </summary>
+    public async Task<GenerateInsightsResponse> GenerateMessageInsightsAsync(
+        string agentId,
+        int versionId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+            // Get messages for this agent version
+            List<Message> messages = await context.Messages
+                .Where(m => m.AgentId == agentId && m.InstructionVersionId == versionId)
+                .OrderByDescending(m => m.CreatedAt)
+                .Take(MessageBatchSize * MaxMessageBatches)
+                .ToListAsync(cancellationToken);
+
+            if (messages.Count == 0)
+            {
+                return new GenerateInsightsResponse
+                {
+                    Success = true,
+                    InsightType = "messages",
+                    ItemsAnalyzed = 0,
+                    Insights = "No message data available for analysis."
+                };
+            }
+
+            // Get the current prompt for context
+            string currentPrompt = await GetCurrentPromptAsync(context, versionId, cancellationToken);
+
+            // Split messages into batches
+            List<List<Message>> batches = SplitIntoBatches(messages, MessageBatchSize);
+
+            // Analyze each batch in parallel
+            List<Task<string>> batchTasks = batches
+                .Select(batch => AnalyzeMessageBatchAsync(batch, currentPrompt, cancellationToken))
+                .ToList();
+
+            string[] batchInsights = await Task.WhenAll(batchTasks);
+
+            // If only one batch, return its insights directly
+            if (batchInsights.Length == 1)
+            {
+                return new GenerateInsightsResponse
+                {
+                    Success = true,
+                    InsightType = "messages",
+                    ItemsAnalyzed = messages.Count,
+                    Insights = batchInsights[0].Trim()
+                };
+            }
+
+            // Summarize all batch insights into final coaching message
+            string finalInsights = await SummarizeBatchInsightsAsync(batchInsights, cancellationToken);
+
+            string trimmedInsights = finalInsights.Trim();
+            if (string.IsNullOrWhiteSpace(trimmedInsights))
+            {
+                return new GenerateInsightsResponse
+                {
+                    Success = false,
+                    InsightType = "messages",
+                    Error = "The AI returned an empty response for message insights. Please try again."
+                };
+            }
+
+            return new GenerateInsightsResponse
+            {
+                Success = true,
+                InsightType = "messages",
+                ItemsAnalyzed = messages.Count,
+                Insights = trimmedInsights
+            };
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to generate message insights for agent {AgentId} version {VersionId}",
+                agentId, versionId);
+            return new GenerateInsightsResponse
+            {
+                Success = false,
+                InsightType = "messages",
+                Error = ex.Message
+            };
+        }
+    }
+
+    /// <summary>
+    /// Analyzes a single batch of messages and returns coaching insights.
+    /// </summary>
+    private async Task<string> AnalyzeMessageBatchAsync(
+        List<Message> messages,
+        string currentPrompt,
+        CancellationToken cancellationToken)
+    {
+        string userMessage = BuildMessageInsightsPrompt(messages, currentPrompt);
+
+        return await GetAiResponseAsync(
+            PromptImproverSystemPrompts.MessageInsightsPrompt,
+            userMessage,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Summarizes insights from multiple message batches into a final coaching message.
+    /// </summary>
+    private async Task<string> SummarizeBatchInsightsAsync(
+        string[] batchInsights,
+        CancellationToken cancellationToken)
+    {
+        StringBuilder sb = new();
+        sb.AppendLine("## Batch Insights to Synthesize");
+        sb.AppendLine();
+
+        for (int i = 0; i < batchInsights.Length; i++)
+        {
+            sb.AppendLine($"### Batch {i + 1}");
+            sb.AppendLine(batchInsights[i]);
+            sb.AppendLine();
+        }
+
+        return await GetAiResponseAsync(
+            PromptImproverSystemPrompts.MessageInsightsSummaryPrompt,
+            sb.ToString(),
+            cancellationToken);
+    }
+
+    /// <summary>
     /// Generates an improved prompt based on all collected insights.
     /// </summary>
     public async Task<GenerateImprovedPromptResponse> GenerateImprovedPromptAsync(
@@ -422,6 +556,30 @@ public class PromptImproverService(
     }
 
     /// <summary>
+    /// Builds the prompt for message insights generation.
+    /// </summary>
+    public static string BuildMessageInsightsPrompt(List<Message> messages, string currentPrompt)
+    {
+        StringBuilder sb = new();
+        sb.AppendLine("## Current Agent Prompt");
+        sb.AppendLine(currentPrompt);
+        sb.AppendLine();
+        sb.AppendLine("## Conversation Fragments");
+        sb.AppendLine();
+
+        foreach (Message message in messages)
+        {
+            sb.AppendLine("---");
+            sb.AppendLine($"**Message {message.Id}** ({message.CreatedAt:yyyy-MM-dd HH:mm})");
+            sb.AppendLine();
+            sb.AppendLine(message.Text);
+            sb.AppendLine();
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
     /// Builds the input for improved prompt generation.
     /// </summary>
     public static string BuildImprovedPromptInput(GenerateImprovedPromptRequest request)
@@ -459,9 +617,31 @@ public class PromptImproverService(
             sb.AppendLine();
         }
 
+        if (!string.IsNullOrWhiteSpace(request.MessageInsights))
+        {
+            sb.AppendLine("## Insights from Conversation Messages");
+            sb.AppendLine(request.MessageInsights);
+            sb.AppendLine();
+        }
+
         sb.AppendLine("Generate an improved version of the prompt that addresses the insights above.");
 
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Splits a list into batches of specified size.
+    /// </summary>
+    private static List<List<T>> SplitIntoBatches<T>(List<T> items, int batchSize)
+    {
+        List<List<T>> batches = new();
+
+        for (int i = 0; i < items.Count; i += batchSize)
+        {
+            batches.Add(items.Skip(i).Take(batchSize).ToList());
+        }
+
+        return batches;
     }
 
     #endregion

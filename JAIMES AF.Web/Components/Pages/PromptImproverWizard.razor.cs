@@ -31,9 +31,11 @@ public partial class PromptImproverWizard : IDisposable
     private string? _feedbackInsights;
     private string? _metricsInsights;
     private string? _sentimentInsights;
+    private string? _messageInsights;
     private bool _isGeneratingFeedback;
     private bool _isGeneratingMetrics;
     private bool _isGeneratingSentiment;
+    private bool _isGeneratingMessages;
 
     // User feedback
     private string _userFeedback = string.Empty;
@@ -44,7 +46,8 @@ public partial class PromptImproverWizard : IDisposable
 
     private bool HasAnyInsights => !string.IsNullOrEmpty(_feedbackInsights) ||
                                    !string.IsNullOrEmpty(_metricsInsights) ||
-                                   !string.IsNullOrEmpty(_sentimentInsights);
+                                   !string.IsNullOrEmpty(_sentimentInsights) ||
+                                   !string.IsNullOrEmpty(_messageInsights);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -133,7 +136,8 @@ public partial class PromptImproverWizard : IDisposable
                         var feedbackTask = GenerateFeedbackInsightsAsync(token);
                         var metricsTask = GenerateMetricsInsightsAsync(token);
                         var sentimentTask = GenerateSentimentInsightsAsync(token);
-                        await Task.WhenAll(feedbackTask, metricsTask, sentimentTask);
+                        var messagesTask = GenerateMessageInsightsAsync(token);
+                        await Task.WhenAll(feedbackTask, metricsTask, sentimentTask, messagesTask);
                     });
                 }
                 catch (ObjectDisposedException)
@@ -167,6 +171,7 @@ public partial class PromptImproverWizard : IDisposable
         _feedbackInsights = null;
         _metricsInsights = null;
         _sentimentInsights = null;
+        _messageInsights = null;
         _userFeedback = string.Empty;
         _improvedPrompt = string.Empty;
         _currentPrompt = string.Empty;
@@ -174,6 +179,7 @@ public partial class PromptImproverWizard : IDisposable
         _isGeneratingFeedback = false;
         _isGeneratingMetrics = false;
         _isGeneratingSentiment = false;
+        _isGeneratingMessages = false;
         _isGeneratingPrompt = false;
     }
 
@@ -330,6 +336,57 @@ public partial class PromptImproverWizard : IDisposable
         }
     }
 
+    private async Task GenerateMessageInsightsAsync(CancellationToken cancellationToken = default)
+    {
+        _isGeneratingMessages = true;
+        StateHasChanged();
+
+        try
+        {
+            var request = new GenerateInsightsRequest { InsightType = "messages" };
+            var response = await Http.PostAsJsonAsync(
+                $"/agents/{AgentId}/instruction-versions/{_effectiveVersionId}/generate-insights",
+                request, cancellationToken);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<GenerateInsightsResponse>(cancellationToken);
+                if (cancellationToken.IsCancellationRequested) return;
+
+                if (result?.Success == true)
+                {
+                    _messageInsights = result.Insights;
+                }
+                else
+                {
+                    Snackbar.Add(result?.Error ?? "Failed to generate message insights", Severity.Error);
+                }
+            }
+            else
+            {
+                if (cancellationToken.IsCancellationRequested) return;
+                Snackbar.Add("Failed to generate message insights", Severity.Error);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            /* Normal behavior on navigation */
+        }
+        catch (Exception ex)
+        {
+            if (cancellationToken.IsCancellationRequested) return;
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                _isGeneratingMessages = false;
+                StateHasChanged();
+            }
+        }
+    }
+
     private async Task GenerateImprovedPromptAsync()
     {
         _isGeneratingPrompt = true;
@@ -343,7 +400,8 @@ public partial class PromptImproverWizard : IDisposable
                 UserFeedback = string.IsNullOrWhiteSpace(_userFeedback) ? null : _userFeedback,
                 FeedbackInsights = _feedbackInsights,
                 MetricsInsights = _metricsInsights,
-                SentimentInsights = _sentimentInsights
+                SentimentInsights = _sentimentInsights,
+                MessageInsights = _messageInsights
             };
 
             var response = await Http.PostAsJsonAsync(
@@ -494,6 +552,13 @@ public partial class PromptImproverWizard : IDisposable
         {
             sb.AppendLine("## Insights from Sentiment Analysis");
             sb.AppendLine(_sentimentInsights);
+            sb.AppendLine();
+        }
+
+        if (!string.IsNullOrWhiteSpace(_messageInsights))
+        {
+            sb.AppendLine("## Insights from Conversation Messages");
+            sb.AppendLine(_messageInsights);
             sb.AppendLine();
         }
 
