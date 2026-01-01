@@ -28,4 +28,14 @@ public interface IMessageUpdateNotifier
     /// <param name="cancellationToken">Cancellation token.</param>
     Task NotifyMetricsEvaluatedAsync(int messageId, Guid gameId, List<MessageEvaluationMetricResponse> metrics,
         string messageText, bool hasMissingEvaluators, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Notifies clients that tool calls have been processed for a message.
+    /// </summary>
+    Task NotifyToolCallsProcessedAsync(
+        int messageId,
+        Guid gameId,
+        bool hasToolCalls,
+        string? messageText = null,
+        CancellationToken cancellationToken = default);
 }

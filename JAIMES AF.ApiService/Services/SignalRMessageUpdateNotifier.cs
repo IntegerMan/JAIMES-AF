@@ -47,6 +47,22 @@ public class SignalRMessageUpdateNotifier(
         await BroadcastUpdateAsync(notification);
     }
 
+    public async Task NotifyToolCallsProcessedAsync(int messageId, Guid gameId, bool hasToolCalls,
+        string? messageText = null,
+        CancellationToken cancellationToken = default)
+    {
+        MessageUpdateNotification notification = new()
+        {
+            MessageId = messageId,
+            GameId = gameId,
+            UpdateType = MessageUpdateType.ToolCallsProcessed,
+            HasToolCalls = hasToolCalls,
+            MessageText = messageText
+        };
+
+        await BroadcastUpdateAsync(notification);
+    }
+
     private async Task BroadcastUpdateAsync(MessageUpdateNotification notification)
     {
         string groupName = MessageHub.GetGameGroupName(notification.GameId);

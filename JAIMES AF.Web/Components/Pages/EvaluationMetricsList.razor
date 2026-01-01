@@ -116,8 +116,8 @@
     {
         return score switch
         {
-            >= 0.8 => Color.Success,
-            >= 0.5 => Color.Warning,
+            >= 4.0 => Color.Success,
+            >= 3.0 => Color.Warning,
             _ => Color.Error
         };
     }

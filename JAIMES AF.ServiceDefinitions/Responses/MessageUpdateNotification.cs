@@ -51,6 +51,11 @@ public record MessageUpdateNotification
     /// Optional flag indicating if the message is missing evaluators.
     /// </summary>
     public bool? HasMissingEvaluators { get; init; }
+
+    /// <summary>
+    /// Optional flag indicating if the message has tool calls.
+    /// </summary>
+    public bool? HasToolCalls { get; init; }
 }
 
 /// <summary>
@@ -66,5 +71,10 @@ public enum MessageUpdateType
     /// <summary>
     /// Evaluation metrics calculated for an assistant message.
     /// </summary>
-    MetricsEvaluated
+    MetricsEvaluated,
+
+    /// <summary>
+    /// Tool calls processed for an assistant message.
+    /// </summary>
+    ToolCallsProcessed
 }

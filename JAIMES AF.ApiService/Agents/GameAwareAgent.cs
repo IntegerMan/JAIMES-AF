@@ -19,10 +19,14 @@ public class GameAwareAgent(
     IServiceProvider serviceProvider,
     IHttpContextAccessor httpContextAccessor,
     ILogger<GameAwareAgent> logger) : AIAgent
+
 {
     private readonly IServiceProvider _serviceProvider = serviceProvider;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
     private readonly ILogger<GameAwareAgent> _logger = logger;
+
+    private readonly IMessageUpdateNotifier _messageUpdateNotifier =
+        serviceProvider.GetRequiredService<IMessageUpdateNotifier>();
 
     public override async Task<AgentRunResponse> RunAsync(
         IEnumerable<ChatMessage> messages,
@@ -437,7 +441,7 @@ public class GameAwareAgent(
             .Where(m => m.GameId == gameId)
             .OrderByDescending(m => m.CreatedAt)
             .ThenByDescending(m => m.Id)
-            .Select(m => new {m.AgentId, m.InstructionVersionId})
+            .Select(m => new { m.AgentId, m.InstructionVersionId })
             .FirstOrDefaultAsync(cancellationToken);
 
         if (lastMessageEntry != null)
@@ -517,28 +521,29 @@ public class GameAwareAgent(
                         .ToDictionaryAsync(t => t.Name.ToLower(), t => t.Id, cancellationToken);
 
                     List<MessageToolCall> toolCallEntities = toolCalls.Select(tc =>
-                    {
-                        tools.TryGetValue(tc.ToolName.ToLower(), out int toolIdValue);
-                        int? toolId = toolIdValue > 0 ? toolIdValue : null;
-
-                        if (toolId == null)
                         {
-                            _logger.LogWarning(
-                                "Tool '{ToolName}' not found in database. Registration might be missing.", tc.ToolName);
-                        }
+                            tools.TryGetValue(tc.ToolName.ToLower(), out int toolIdValue);
+                            int? toolId = toolIdValue > 0 ? toolIdValue : null;
 
-                        return new MessageToolCall
-                        {
-                            MessageId = lastAiMessage.Id,
-                            ToolName = tc.ToolName,
-                            InputJson = tc.InputJson,
-                            OutputJson = tc.OutputJson,
-                            CreatedAt = tc.CreatedAt,
-                            InstructionVersionId = instructionVersionId,
-                            ToolId = toolId
-                        };
-                    })
-                    .ToList();
+                            if (toolId == null)
+                            {
+                                _logger.LogWarning(
+                                    "Tool '{ToolName}' not found in database. Registration might be missing.",
+                                    tc.ToolName);
+                            }
+
+                            return new MessageToolCall
+                            {
+                                MessageId = lastAiMessage.Id,
+                                ToolName = tc.ToolName,
+                                InputJson = tc.InputJson,
+                                OutputJson = tc.OutputJson,
+                                CreatedAt = tc.CreatedAt,
+                                InstructionVersionId = instructionVersionId,
+                                ToolId = toolId
+                            };
+                        })
+                        .ToList();
 
                     dbContext.MessageToolCalls.AddRange(toolCallEntities);
                     await dbContext.SaveChangesAsync(cancellationToken);
@@ -548,6 +553,22 @@ public class GameAwareAgent(
 
                     // Clear the tracker after persistence
                     await toolCallTracker.ClearAsync();
+
+                    // Notify clients via SignalR
+                    try
+                    {
+                        await _messageUpdateNotifier.NotifyToolCallsProcessedAsync(
+                            lastAiMessage.Id,
+                            gameId,
+                            true,
+                            lastAiMessage.Text,
+                            cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to notify clients of tool calls for message {MessageId}",
+                            lastAiMessage.Id);
+                    }
                 }
                 else
                 {

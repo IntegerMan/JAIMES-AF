@@ -812,6 +812,32 @@ public partial class GameDetails : IAsyncDisposable
                                 }
                             }
                         }
+                        else if (notification.UpdateType == MessageUpdateType.ToolCallsProcessed &&
+                                 notification.HasToolCalls == true)
+                        {
+                            // Fetch metadata for this message immediately to get the tool calls
+                            // Since the notification payload doesn't contain the full tool call data,
+                            // we need to reload metadata for this specific message
+                            await LoadMessagesMetadataAsync(new List<int> { notification.MessageId });
+
+                            // Match by content if ID is not yet known locally (rare for tool calls but possible)
+                            if (!_messageIds.Contains(notification.MessageId) &&
+                                !string.IsNullOrWhiteSpace(notification.MessageText))
+                            {
+                                string normalizedText = notification.MessageText.Trim();
+
+                                for (int i = 0; i < _messages.Count; i++)
+                                {
+                                    if (_messageIds[i] == null &&
+                                        _messages[i].Role == ChatRole.Assistant &&
+                                        _messages[i].Text.Trim().Equals(normalizedText, StringComparison.Ordinal))
+                                    {
+                                        _messageIds[i] = notification.MessageId;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
 
                         StateHasChanged();
                     });

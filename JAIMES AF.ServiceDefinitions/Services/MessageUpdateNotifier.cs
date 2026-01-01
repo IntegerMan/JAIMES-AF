@@ -53,6 +53,22 @@ public class MessageUpdateNotifier : IMessageUpdateNotifier
         await SendNotificationAsync(notification, cancellationToken);
     }
 
+    public async Task NotifyToolCallsProcessedAsync(int messageId, Guid gameId, bool hasToolCalls,
+        string? messageText = null,
+        CancellationToken cancellationToken = default)
+    {
+        MessageUpdateNotification notification = new()
+        {
+            MessageId = messageId,
+            GameId = gameId,
+            UpdateType = MessageUpdateType.ToolCallsProcessed,
+            HasToolCalls = hasToolCalls,
+            MessageText = messageText
+        };
+
+        await SendNotificationAsync(notification, cancellationToken);
+    }
+
     private async Task SendNotificationAsync(MessageUpdateNotification notification,
         CancellationToken cancellationToken)
     {
