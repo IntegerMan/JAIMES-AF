@@ -45,33 +45,13 @@ public class GameAwareAgentFactory
         }
 
         // Get instructions from InstructionService (combines base agent instructions with scenario instructions)
-        // This ensures consistency with GameAwareAgent.GetOrCreateGameAgentAsync
         using IServiceScope scope = _serviceProvider.CreateScope();
         IInstructionService instructionService = scope.ServiceProvider.GetRequiredService<IInstructionService>();
 
-        string? systemPrompt;
-        if (!string.IsNullOrEmpty(gameDto.AgentId) && gameDto.InstructionVersionId.HasValue)
+        string? systemPrompt = await instructionService.GetInstructionsForGameAsync(gameId, cancellationToken);
+        if (string.IsNullOrWhiteSpace(systemPrompt))
         {
-            // Use specific agent version if overridden in the game
-            var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<JaimesDbContext>>();
-            await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
-
-            var agentVersion = await dbContext.AgentInstructionVersions
-                .AsNoTracking()
-                .FirstOrDefaultAsync(av => av.AgentId == gameDto.AgentId && av.Id == gameDto.InstructionVersionId.Value,
-                    cancellationToken);
-
-            systemPrompt = agentVersion?.Instructions;
-
-            // Still include scenario instructions if any
-            if (!string.IsNullOrWhiteSpace(gameDto.Scenario.ScenarioInstructions))
-            {
-                systemPrompt = $"{systemPrompt}\n\n---\n\n{gameDto.Scenario.ScenarioInstructions}";
-            }
-        }
-        else
-        {
-            systemPrompt = await instructionService.GetInstructionsAsync(gameDto.Scenario.Id, cancellationToken);
+            systemPrompt = "You are a helpful game master assistant.";
         }
 
         if (string.IsNullOrWhiteSpace(systemPrompt))

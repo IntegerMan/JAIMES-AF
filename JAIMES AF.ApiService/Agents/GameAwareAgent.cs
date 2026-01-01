@@ -238,7 +238,7 @@ public class GameAwareAgent(
             gameDto.Player.Name);
 
         // Get instructions from InstructionService
-        string? systemPrompt = await instructionService.GetInstructionsAsync(gameDto.Scenario.Id, cancellationToken);
+        string? systemPrompt = await instructionService.GetInstructionsForGameAsync(gameId, cancellationToken);
         if (string.IsNullOrWhiteSpace(systemPrompt))
         {
             _logger.LogWarning("Game {GameId} has no instructions configured, using default", gameId);
@@ -425,8 +425,9 @@ public class GameAwareAgent(
             throw new InvalidOperationException($"Scenario '{gameDto.Scenario.Id}' has no associated agent.");
         }
 
-        string agentId = scenarioAgent.AgentId;
-        int instructionVersionId = scenarioAgent.InstructionVersionId;
+        // Use the effective agent ID and version ID from the game DTO (which includes fallbacks)
+        string agentId = gameDto.AgentId ?? scenarioAgent.AgentId;
+        int instructionVersionId = gameDto.InstructionVersionId ?? scenarioAgent.InstructionVersionId;
 
         // Determine context agent (Agent ID and Version) for the User Message
         // User requests that User messages inherit these from the message being replied to (the last message in the game)

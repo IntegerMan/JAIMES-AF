@@ -27,3 +27,4 @@ public class AgentInstructionVersion
     public ICollection<ScenarioAgent> ScenarioAgents { get; set; } = new List<ScenarioAgent>();
 }
 
+

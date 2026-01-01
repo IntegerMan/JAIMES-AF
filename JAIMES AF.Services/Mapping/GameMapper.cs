@@ -58,8 +58,12 @@ public static partial class GameMapper
                 Name = game.PlayerId
             },
             Messages = messages,
-            AgentId = game.AgentId,
-            InstructionVersionId = game.InstructionVersionId
+            AgentId = game.AgentId ?? game.Scenario?.ScenarioAgents?.FirstOrDefault()?.AgentId,
+            AgentName = game.Agent?.Name ?? game.Scenario?.ScenarioAgents?.FirstOrDefault()?.Agent?.Name,
+            InstructionVersionId = game.InstructionVersionId ??
+                                   game.Scenario?.ScenarioAgents?.FirstOrDefault()?.InstructionVersionId,
+            VersionNumber = game.InstructionVersion?.VersionNumber ??
+                            game.Scenario?.ScenarioAgents?.FirstOrDefault()?.InstructionVersion?.VersionNumber
         };
     }
 

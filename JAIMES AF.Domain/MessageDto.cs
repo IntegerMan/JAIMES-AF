@@ -10,6 +10,7 @@ public class MessageDto
     public required string AgentId { get; init; }
     public string? AgentName { get; init; }
     public required int InstructionVersionId { get; init; }
+    public string? VersionNumber { get; init; }
     public bool IsScriptedMessage { get; init; }
 
     // Sentiment analysis result: -1 (negative), 0 (neutral), 1 (positive), null (not analyzed)

@@ -128,6 +128,8 @@ public class GameService(
             .ThenInclude(iv => iv!.Model)
             .Include(g => g.Scenario)
             .Include(g => g.Player)
+            .Include(g => g.Agent)
+            .Include(g => g.InstructionVersion)
             .Include(g => g.Ruleset)
             .FirstOrDefaultAsync(g => g.Id == gameId, cancellationToken);
 
@@ -144,8 +146,15 @@ public class GameService(
         Game[] games = await context.Games
             .AsNoTracking()
             .Include(g => g.Scenario)
+            .ThenInclude(s => s!.ScenarioAgents)
+            .ThenInclude(sa => sa!.Agent)
+            .Include(g => g.Scenario)
+            .ThenInclude(s => s!.ScenarioAgents)
+            .ThenInclude(sa => sa!.InstructionVersion)
             .Include(g => g.Player)
             .Include(g => g.Ruleset)
+            .Include(g => g.Agent)
+            .Include(g => g.InstructionVersion)
             .ToArrayAsync(cancellationToken);
 
         // Query max CreatedAt per game directly from Messages table (efficient database query)

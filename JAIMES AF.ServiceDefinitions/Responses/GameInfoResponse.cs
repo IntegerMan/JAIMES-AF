@@ -22,5 +22,7 @@ public record GameInfoResponse
     public DateTime? LastPlayedAt { get; init; }
 
     public string? AgentId { get; init; }
+    public string? AgentName { get; init; }
     public int? InstructionVersionId { get; init; }
+    public string? VersionNumber { get; init; }
 }

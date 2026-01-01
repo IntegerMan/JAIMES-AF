@@ -129,7 +129,7 @@ public partial class GameDetails : IAsyncDisposable
                         AgentId = message.AgentId,
                         AgentName = message.AgentName,
                         InstructionVersionId = message.InstructionVersionId,
-                        // We don't have version number either.
+                        VersionNumber = message.VersionNumber,
                         IsScriptedMessage = message.IsScriptedMessage
                     };
                     _messageAgentInfo[message.Id] = info;
@@ -169,6 +169,8 @@ public partial class GameDetails : IAsyncDisposable
             {
                 _selectedAgentId = _game.AgentId ?? _defaultAgentId;
                 _selectedVersionId = _game.InstructionVersionId ?? _defaultInstructionVersionId;
+                _defaultAgentName ??= _game.AgentName;
+                _defaultVersionNumber ??= _game.VersionNumber;
 
                 if (!string.IsNullOrEmpty(_selectedAgentId))
                 {
@@ -402,15 +404,21 @@ public partial class GameDetails : IAsyncDisposable
                 // For Assistant messages, populate pending agent info so the icon/name appears immediately
                 if (normalizedRole == ChatRole.Assistant)
                 {
+                    string? agentName = (!string.IsNullOrWhiteSpace(message.AuthorName) &&
+                                         !message.AuthorName.StartsWith("game-", StringComparison.OrdinalIgnoreCase))
+                        ? message.AuthorName
+                        : (_availableAgents.FirstOrDefault(a => a.Id == _selectedAgentId)?.Name ?? _defaultAgentName);
+
+                    string? versionNumber =
+                        _availableVersions.FirstOrDefault(v => v.Id == _selectedVersionId)?.VersionNumber ??
+                        _defaultVersionNumber;
+
                     _pendingMessageAgentInfo[normalizedMessage] = new MessageAgentInfo
                     {
-                        AgentId = _defaultAgentId, // Use default from history
-                        AgentName = (!string.IsNullOrWhiteSpace(message.AuthorName) &&
-                                     !message.AuthorName.StartsWith("game-", StringComparison.OrdinalIgnoreCase))
-                            ? message.AuthorName
-                            : _defaultAgentName,
-                        InstructionVersionId = _defaultInstructionVersionId,
-                        VersionNumber = _defaultVersionNumber,
+                        AgentId = _selectedAgentId ?? _defaultAgentId,
+                        AgentName = agentName,
+                        InstructionVersionId = _selectedVersionId ?? _defaultInstructionVersionId,
+                        VersionNumber = versionNumber,
                         IsScriptedMessage = false // Live messages are generally not scripted
                     };
                 }

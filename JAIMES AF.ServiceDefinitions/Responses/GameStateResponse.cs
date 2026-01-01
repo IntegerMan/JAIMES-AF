@@ -22,5 +22,7 @@ public record GameStateResponse
     public string? ThreadJson { get; init; }
 
     public string? AgentId { get; init; }
+    public string? AgentName { get; init; }
     public int? InstructionVersionId { get; init; }
+    public string? VersionNumber { get; init; }
 }
