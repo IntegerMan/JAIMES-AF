@@ -1,8 +1,14 @@
+using Markdig;
+
 namespace MattEland.Jaimes.Web.Components.Helpers;
 
 public static class ChatHelpers
 {
     private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(250);
+
+    private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
+        .DisableHtml()
+        .Build();
 
     private static readonly Regex HeaderRemovalRegex = new(
         @"^\s*#+\s.*$",
@@ -37,7 +43,7 @@ public static class ChatHelpers
         // Clean up multiple consecutive empty lines that may result from header removal
         filteredMarkdown = EmptyLineCleanupRegex.Replace(filteredMarkdown, "\n\n");
 
-        return Markdown.ToHtml(filteredMarkdown);
+        return Markdown.ToHtml(filteredMarkdown, Pipeline);
     }
 
     // Checks if a paragraph looks like a header (e.g., "**Opening Message:**" or "# Header")

@@ -10,7 +10,7 @@
     </TitleContent>
     <DialogContent>
         <MudPaper Class="pa-4" Elevation="0" Style="max-height: 500px; overflow-y: auto;">
-            @((MarkupString)Markdown.ToHtml(Content ?? "No insights available."))
+            @((MarkupString)Markdown.ToHtml(Content ?? "No insights available.", Pipeline))
         </MudPaper>
         @if (ItemCount > 0)
         {
@@ -25,6 +25,10 @@
 </MudDialog>
 
 @code {
+    private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
+        .DisableHtml()
+        .Build();
+
     [CascadingParameter]
     private IMudDialogInstance? MudDialog { get; set; }
 

@@ -311,15 +311,33 @@ public partial class PromptImproverWizard
 
     private async Task CopyToClipboard()
     {
-        await JS.InvokeVoidAsync("navigator.clipboard.writeText", _improvedPrompt);
-        Snackbar.Add("Copied to clipboard!", Severity.Info);
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", _improvedPrompt);
+            Snackbar.Add("Copied to clipboard!", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            LoggerFactory.CreateLogger("PromptImproverWizard")
+                .LogError(ex, "Failed to copy to clipboard");
+            Snackbar.Add("Failed to copy to clipboard. Ensure you are using HTTPS and have granted permission.", Severity.Error);
+        }
     }
 
-    private void ApplyImprovedPrompt()
+    private async Task ApplyImprovedPrompt()
     {
         // Navigate to edit page with the improved prompt stored in session
         // We need to store the prompt in session storage first
-        _ = StoreAndNavigateAsync();
+        try
+        {
+            await StoreAndNavigateAsync();
+        }
+        catch (Exception ex)
+        {
+            LoggerFactory.CreateLogger("PromptImproverWizard")
+                .LogError(ex, "Failed to store improved prompt in session storage");
+            Snackbar.Add("Failed to apply improved prompt. Your browser storage may be full or disabled.", Severity.Error);
+        }
     }
 
     private async Task StoreAndNavigateAsync()
