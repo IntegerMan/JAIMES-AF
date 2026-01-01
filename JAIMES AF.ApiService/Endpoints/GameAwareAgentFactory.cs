@@ -1,10 +1,10 @@
-using MattEland.Jaimes.ApiService.Agents;
 using MattEland.Jaimes.Agents.Helpers;
+using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Tools;
 using Microsoft.Agents.AI;
-using Microsoft.Agents.AI;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -53,10 +53,14 @@ public class GameAwareAgentFactory
         if (!string.IsNullOrEmpty(gameDto.AgentId) && gameDto.InstructionVersionId.HasValue)
         {
             // Use specific agent version if overridden in the game
-            var agentVersionRepo = scope.ServiceProvider
-                .GetRequiredService<MattEland.Jaimes.Repositories.Interfaces.IAgentInstructionVersionRepository>();
-            var agentVersion = await agentVersionRepo.GetByVersionIdAsync(gameDto.AgentId,
-                gameDto.InstructionVersionId.Value, cancellationToken);
+            var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<JaimesDbContext>>();
+            await using var dbContext = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+            var agentVersion = await dbContext.AgentInstructionVersions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(av => av.AgentId == gameDto.AgentId && av.Id == gameDto.InstructionVersionId.Value,
+                    cancellationToken);
+
             systemPrompt = agentVersion?.Instructions;
 
             // Still include scenario instructions if any
@@ -76,9 +80,12 @@ public class GameAwareAgentFactory
             systemPrompt = "You are a helpful game master assistant.";
         }
 
-        return new SimpleAIAgent(
-            client: _chatClient,
-            name: gameDto.Title ?? "Game Master",
-            instructions: systemPrompt);
+        // Create the agent using the same Jaimes-specific helper as GameAwareAgent
+        return _chatClient.CreateJaimesAgent(
+            _logger,
+            gameDto.Title ?? "Game Master",
+            systemPrompt,
+            null, // No tools needed for basic factory creation for AGUI consumption in this context
+            () => _serviceProvider);
     }
 }

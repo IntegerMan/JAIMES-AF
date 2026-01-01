@@ -884,6 +884,10 @@ public partial class GameDetails : IAsyncDisposable
             await _hubConnection.InvokeAsync("JoinGame", GameId);
             _logger?.LogDebug("Joined game group {GameId}", GameId);
         }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to connect to SignalR hub");
+        }
     }
 
     private async Task LoadAvailableAgentsAsync()

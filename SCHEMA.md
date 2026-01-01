@@ -89,6 +89,8 @@ erDiagram
         string RulesetId FK
         string ScenarioId FK
         string PlayerId FK
+        string AgentId FK "nullable override"
+        int InstructionVersionId FK "nullable override"
         datetime CreatedAt
         Guid MostRecentHistoryId FK "nullable"
     }
@@ -259,7 +261,7 @@ A game scenario that defines the setting, plot, and rules for a game session.
 Links scenarios to agents with specific instruction versions. This allows different scenarios to use the same agent with different instruction versions.
 
 ### Game
-An instance of a scenario being played by a player. Tracks the current state via `MostRecentHistoryId`.
+An instance of a scenario being played by a player. Tracks the current state via `MostRecentHistoryId`. Can optionally override the scenario's default `AgentId` and `InstructionVersionId`.
 
 ### Player
 A human player who can participate in games. Associated with a specific `Ruleset`.
@@ -326,6 +328,7 @@ Records which `DocumentChunk`s were retrieved for a specific `RagSearchQuery` an
 4. **Message Attribution**: Messages can be attributed to either players or agents, but not both. Agent-generated messages include a reference to the specific instruction version and model used.
 
 5. **Vector Storage**: Embeddings are stored in both Qdrant (for fast retrieval) and PostgreSQL (for persistence and relational queries).
+6. **Agent Overrides**: Games can optionally override the default agent and instruction version specified by the scenario. If these are set at the game level, subsequent AI messages will use the overridden agent and instructions.
 
 ## Migration Notes
 
