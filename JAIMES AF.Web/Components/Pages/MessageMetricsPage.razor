@@ -9,7 +9,12 @@
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager NavigationManager
 @inject HttpClient Http
+@inject IConfiguration Configuration
 @rendermode InteractiveServer
+@implements IAsyncDisposable
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.Extensions.Configuration
+@using MattEland.Jaimes.ServiceDefinitions.Requests
 
 <PageTitle>Message Evaluation Metrics</PageTitle>
 
@@ -41,6 +46,7 @@
                     of @_missingEvaluatorsResponse.TotalRegisteredEvaluators registered evaluators: 
                     @string.Join(", ", _missingEvaluatorsResponse.MissingEvaluators)
                 </MudText>
+                <MudSpacer />
                 <MudButton StartIcon="@Icons.Material.Filled.Refresh" 
                            Color="Color.Inherit" 
                            Variant="Variant.Outlined"
@@ -255,6 +261,8 @@
 
     private List<BreadcrumbItem> _breadcrumbs = new();
 
+    private HubConnection? _hubConnection;
+
     protected override async Task OnInitializedAsync()
     {
         _breadcrumbs = new List<BreadcrumbItem>
@@ -265,6 +273,47 @@
             new BreadcrumbItem("Metrics", href: "/admin/metrics"),
             new BreadcrumbItem($"Message {MessageId}", href: null, disabled: true)
         };
+
+        // Initialize SignalR using the API service URL, not the local web URL
+        string baseApiUrl = Configuration["ApiService:BaseAddress"] ?? "http://apiservice/";
+        if (!baseApiUrl.EndsWith("/")) baseApiUrl += "/";
+        var hubUrl = new Uri(new Uri(baseApiUrl), "hubs/messages");
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(hubUrl)
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On<MessageUpdateNotification>("ReceiveMessageUpdate", async (notification) =>
+        {
+            if (notification.MessageId == MessageId && notification.UpdateType == MessageUpdateType.MetricsEvaluated)
+            {
+                await InvokeAsync(async () =>
+                {
+                    await LoadMetricsAsync();
+                    await LoadMissingEvaluatorsAsync();
+                    StateHasChanged();
+                });
+            }
+        });
+
+        try
+        {
+            await _hubConnection.StartAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to connect to SignalR hub: {ex.Message}");
+            // Continue without real-time updates
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
     }
 
     private void GoBack()

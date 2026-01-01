@@ -53,9 +53,9 @@ public class MessageEvaluationMetricsService(IDbContextFactory<JaimesDbContext> 
             }
 
             // Note: Filters on MetricName, Score, and Passed are harder when starting from Messages.
-            // For now, if these filters are active, we'll filter messages to only those that have matching metrics.
-            if (!string.IsNullOrEmpty(filters.MetricName) || filters.MinScore.HasValue || filters.MaxScore.HasValue ||
-                filters.Passed.HasValue || filters.EvaluatorId.HasValue)
+            // We only want to filter the MESSAGE list if we are filtering by Score/Pass status (which implies checking existing metrics).
+            // If we are filtering by EvaluatorId or MetricName, we want to Keep all messages so we can show "Missing" rows for them.
+            if (filters.MinScore.HasValue || filters.MaxScore.HasValue || filters.Passed.HasValue)
             {
                 IQueryable<MessageEvaluationMetric> filteredMetricQuery =
                     context.MessageEvaluationMetrics.AsNoTracking();
