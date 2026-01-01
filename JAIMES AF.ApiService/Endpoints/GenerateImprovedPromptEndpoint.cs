@@ -1,7 +1,9 @@
 using FastEndpoints;
 using MattEland.Jaimes.ApiService.Services;
+using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
@@ -11,6 +13,7 @@ namespace MattEland.Jaimes.ApiService.Endpoints;
 public class GenerateImprovedPromptEndpoint : Endpoint<GenerateImprovedPromptRequest, GenerateImprovedPromptResponse>
 {
     public required PromptImproverService PromptImproverService { get; set; }
+    public required IAgentInstructionVersionsService InstructionVersionsService { get; set; }
 
     public override void Configure()
     {
@@ -36,6 +39,14 @@ public class GenerateImprovedPromptEndpoint : Endpoint<GenerateImprovedPromptReq
         if (string.IsNullOrEmpty(versionIdStr) || !int.TryParse(versionIdStr, out int versionId))
         {
             ThrowError("Invalid version ID format");
+            return;
+        }
+
+        AgentInstructionVersionDto?
+            version = await InstructionVersionsService.GetInstructionVersionAsync(versionId, ct);
+        if (version == null || version.AgentId != agentId)
+        {
+            await Send.NotFoundAsync(ct);
             return;
         }
 
