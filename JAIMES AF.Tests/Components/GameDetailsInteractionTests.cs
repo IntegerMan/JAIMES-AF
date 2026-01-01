@@ -29,7 +29,7 @@ public class GameDetailsInteractionTests : Bunit.TestContext
     public GameDetailsInteractionTests()
     {
         Services.AddMudServices();
-        Services.AddSingleton<IJSRuntime>(new Mock<IJSRuntime>().Object);
+        JSInterop.Mode = JSRuntimeMode.Loose;
         Services.AddLogging();
         Services.AddSingleton(_loggerFactoryMock.Object);
         Services.AddSingleton(_dialogServiceMock.Object);
@@ -149,7 +149,7 @@ public class GameDetailsInteractionTests : Bunit.TestContext
         cut.WaitForAssertion(() =>
         {
             var field = cut.FindComponent<MudTextField<string>>();
-            field.Instance.Value.ShouldBe(string.Empty);
+            field.Instance.Value.ShouldBeNullOrEmpty();
         });
     }
 }

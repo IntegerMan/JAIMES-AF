@@ -20,4 +20,3 @@ window.scrollToBottom = (elementId) => {
         });
     }
 };
-

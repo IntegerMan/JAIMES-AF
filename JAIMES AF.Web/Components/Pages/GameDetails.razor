@@ -218,8 +218,8 @@
 			<div class="message-bar">
 				<MudGrid Class="align-items-center">
 					<MudItem xs="10" sm="11">
-						<MudTextField @bind-Value="_userMessage.Text" Label="Message" Placeholder="Type a message..."
-						              FullWidth="true" Immediate="true" OnKeyDown="OnKeyDown"/>
+					<MudTextField @key="_chatInputKey" @ref="_chatInput" @bind-Value="_userMessage.Text" Label="Message" Placeholder="Type a message..."
+					              FullWidth="true" Immediate="true" TextUpdateSuppression="false" OnKeyDown="OnKeyDown"/>
 					</MudItem>
 					<MudItem xs="2" sm="1" Class="d-flex justify-end">
 						<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SendMessageAsync">

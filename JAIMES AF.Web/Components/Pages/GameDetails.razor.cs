@@ -58,6 +58,8 @@ public partial class GameDetails : IAsyncDisposable
     private bool _isSending = false;
     private bool _shouldScrollToBottom = false;
     private ILogger? _logger;
+    private Guid _chatInputKey = Guid.NewGuid();
+    private MudTextField<string>? _chatInput;
 
     // Hover state tracking for feedback buttons
     private int? _hoveredMessageId;
@@ -237,7 +239,19 @@ public partial class GameDetails : IAsyncDisposable
     {
         string message = _userMessage.Text;
         _userMessage.Text = string.Empty;
-        StateHasChanged(); // Ensure the UI reflects the empty textbox immediately
+
+        // Approach 7: Rotate the key to force Blazor to recreate the component, clearing its DOM state
+        _chatInputKey = Guid.NewGuid();
+        StateHasChanged();
+
+        // Ensure the new component is rendered before attempting to focus it
+        await Task.Yield();
+
+        if (_chatInput != null)
+        {
+            await _chatInput.FocusAsync();
+        }
+
         await SendMessagePrivateAsync(message);
     }
 
