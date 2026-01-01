@@ -409,9 +409,12 @@ public partial class GameDetails : IAsyncDisposable
                         ? message.AuthorName
                         : (_availableAgents.FirstOrDefault(a => a.Id == _selectedAgentId)?.Name ?? _defaultAgentName);
 
-                    string? versionNumber =
-                        _availableVersions.FirstOrDefault(v => v.Id == _selectedVersionId)?.VersionNumber ??
-                        _defaultVersionNumber;
+                    string? versionNumber = _selectedVersionId.HasValue
+                        ? _availableVersions.FirstOrDefault(v => v.Id == _selectedVersionId)?.VersionNumber
+                        : _availableVersions.FirstOrDefault(v => v.IsActive)
+                            ?.VersionNumber; // If dynamic, show active version
+
+                    versionNumber ??= _defaultVersionNumber;
 
                     _pendingMessageAgentInfo[normalizedMessage] = new MessageAgentInfo
                     {
@@ -962,10 +965,10 @@ public partial class GameDetails : IAsyncDisposable
         if (!string.IsNullOrEmpty(agentId))
         {
             await LoadAvailableVersionsAsync(agentId);
-            // Default to the latest version when agent changes
+            // Default to Dynamic/Latest (null) when agent changes
             if (_availableVersions.Count > 0)
             {
-                await OnVersionChanged(_availableVersions.First().Id);
+                await SaveAgentSelectionAsync();
             }
         }
 
@@ -977,7 +980,7 @@ public partial class GameDetails : IAsyncDisposable
         if (_selectedVersionId == versionId || _isChangingAgent) return;
 
         _selectedVersionId = versionId;
-        if (versionId.HasValue && !string.IsNullOrEmpty(_selectedAgentId))
+        if (!string.IsNullOrEmpty(_selectedAgentId))
         {
             await SaveAgentSelectionAsync();
         }
@@ -987,7 +990,7 @@ public partial class GameDetails : IAsyncDisposable
 
     private async Task SaveAgentSelectionAsync()
     {
-        if (_game == null || string.IsNullOrEmpty(_selectedAgentId) || !_selectedVersionId.HasValue) return;
+        if (_game == null || string.IsNullOrEmpty(_selectedAgentId)) return;
 
         _isChangingAgent = true;
         try
@@ -996,7 +999,7 @@ public partial class GameDetails : IAsyncDisposable
             var request = new UpdateGameRequest
             {
                 AgentId = _selectedAgentId,
-                InstructionVersionId = _selectedVersionId.Value
+                InstructionVersionId = _selectedVersionId
             };
             var response = await httpClient.PutAsJsonAsync($"/games/{GameId}", request);
 

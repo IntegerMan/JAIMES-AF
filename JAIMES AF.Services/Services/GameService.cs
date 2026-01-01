@@ -195,8 +195,18 @@ public class GameService(
         if (game == null) return null;
 
         if (title != null) game.Title = title;
-        if (agentId != null) game.AgentId = agentId;
-        if (instructionVersionId.HasValue) game.InstructionVersionId = instructionVersionId;
+
+        // If agentId is provided, we treat it as a reconfiguration of the game's agent
+        // allowing setting InstructionVersionId to null (meaning "Use Latest")
+        if (agentId != null)
+        {
+            game.AgentId = agentId;
+            game.InstructionVersionId = instructionVersionId;
+        }
+        else if (instructionVersionId.HasValue)
+        {
+            game.InstructionVersionId = instructionVersionId;
+        }
 
         await context.SaveChangesAsync(cancellationToken);
 

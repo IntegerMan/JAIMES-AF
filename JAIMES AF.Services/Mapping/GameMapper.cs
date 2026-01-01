@@ -59,11 +59,16 @@ public static partial class GameMapper
             },
             Messages = messages,
             AgentId = game.AgentId ?? game.Scenario?.ScenarioAgents?.FirstOrDefault()?.AgentId,
-            AgentName = game.Agent?.Name ?? game.Scenario?.ScenarioAgents?.FirstOrDefault()?.Agent?.Name,
-            InstructionVersionId = game.InstructionVersionId ??
-                                   game.Scenario?.ScenarioAgents?.FirstOrDefault()?.InstructionVersionId,
-            VersionNumber = game.InstructionVersion?.VersionNumber ??
-                            game.Scenario?.ScenarioAgents?.FirstOrDefault()?.InstructionVersion?.VersionNumber
+            AgentName = game.AgentId != null
+                ? game.Agent?.Name
+                : game.Scenario?.ScenarioAgents?.FirstOrDefault()?.Agent?.Name,
+            InstructionVersionId = game.AgentId != null
+                ? game.InstructionVersionId
+                : (game.InstructionVersionId ?? game.Scenario?.ScenarioAgents?.FirstOrDefault()?.InstructionVersionId),
+            VersionNumber = game.AgentId != null
+                ? game.InstructionVersion?.VersionNumber
+                : (game.InstructionVersion?.VersionNumber ?? game.Scenario?.ScenarioAgents?.FirstOrDefault()
+                    ?.InstructionVersion?.VersionNumber)
         };
     }
 

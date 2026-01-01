@@ -84,6 +84,12 @@
 							<MudSelect T="int?" Label="Version" Value="@_selectedVersionId" ValueChanged="OnVersionChanged"
 									  Variant="Variant.Outlined" Margin="Margin.Dense" Style="min-width: 120px;" Dense="true"
 									  Disabled="_isChangingAgent">
+								<MudSelectItem T="int?" Value="@(null)">
+									<div class="d-flex align-center">
+										Latest (Dynamic)
+										<MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Text" Class="ml-2">Auto-Update</MudChip>
+									</div>
+								</MudSelectItem>
 								@foreach (var version in _availableVersions)
 								{
 									<MudSelectItem T="int?" Value="@version.Id">

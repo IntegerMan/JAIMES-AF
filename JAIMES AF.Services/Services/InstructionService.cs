@@ -71,10 +71,32 @@ public class InstructionService(IDbContextFactory<JaimesDbContext> contextFactor
         if (gameData == null) return null;
 
         string? systemPrompt;
-        if (!string.IsNullOrEmpty(gameData.AgentId) && gameData.InstructionVersionId.HasValue)
+        if (!string.IsNullOrEmpty(gameData.AgentId))
         {
-            // Use specific agent version if overridden in the game
-            systemPrompt = gameData.OverrideInstructions;
+            if (gameData.InstructionVersionId.HasValue)
+            {
+                // Use specific agent version if overridden in the game
+                systemPrompt = gameData.OverrideInstructions;
+            }
+            else
+            {
+                // Dynamic resolution: Find the latest active version for this agent
+                var latestVersion = await context.AgentInstructionVersions
+                    .AsNoTracking()
+                    .Where(v => v.AgentId == gameData.AgentId && v.IsActive)
+                    .OrderByDescending(v => v.CreatedAt)
+                    .Select(v => new { v.Instructions })
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                systemPrompt = latestVersion?.Instructions;
+
+                if (string.IsNullOrEmpty(systemPrompt))
+                {
+                    // Fallback if no active version found (shouldn't happen in valid state)
+                    // Try to generate a default or warn
+                    systemPrompt = "You are a helpful assistant.";
+                }
+            }
 
             // Still include scenario instructions if any
             if (!string.IsNullOrWhiteSpace(gameData.ScenarioInstructions))

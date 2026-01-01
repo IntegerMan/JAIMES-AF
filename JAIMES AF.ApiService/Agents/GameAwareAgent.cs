@@ -427,7 +427,32 @@ public class GameAwareAgent(
 
         // Use the effective agent ID and version ID from the game DTO (which includes fallbacks)
         string agentId = gameDto.AgentId ?? scenarioAgent.AgentId;
-        int instructionVersionId = gameDto.InstructionVersionId ?? scenarioAgent.InstructionVersionId;
+        int? resolvedInstructionVersionId = gameDto.InstructionVersionId ??
+                                            (gameDto.AgentId == null ? scenarioAgent.InstructionVersionId : null);
+
+        // If version is null (Dynamic/Latest), resolve it now
+        if (!resolvedInstructionVersionId.HasValue)
+        {
+            // We need to look up the latest active version for the agent
+            var latestVersion = await dbContext.AgentInstructionVersions
+                .AsNoTracking()
+                .Where(v => v.AgentId == agentId && v.IsActive)
+                .OrderByDescending(v => v.CreatedAt)
+                .Select(v => new { v.Id })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (latestVersion != null)
+            {
+                resolvedInstructionVersionId = latestVersion.Id;
+            }
+            else
+            {
+                // Fallback to scenario default if resolution fails (safety net)
+                resolvedInstructionVersionId = scenarioAgent.InstructionVersionId;
+            }
+        }
+
+        int instructionVersionId = resolvedInstructionVersionId.Value;
 
         // Determine context agent (Agent ID and Version) for the User Message
         // User requests that User messages inherit these from the message being replied to (the last message in the game)
