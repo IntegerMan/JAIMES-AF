@@ -1,0 +1,88 @@
+@page "/tools/location-lookup"
+@rendermode InteractiveServer
+
+<PageTitle>Location Lookup Test</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+	</MudStack>
+	<MudPaper Class="pa-8" Elevation="2">
+		<MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">Location Lookup Test</MudText>
+		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">Test the GameLocationTool functionality
+		</MudText>
+
+		<MudText Typo="Typo.body1" Class="mb-6" Style="line-height: 1.75;">
+			Test the location lookup and listing tools. Select a game and look up locations by name or list all locations.
+		</MudText>
+
+		<MudDivider Class="my-6"/>
+
+		<MudPaper Class="pa-4" Elevation="1">
+			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-4">Game Selection</MudText>
+
+			<MudForm>
+				<MudSelect @bind-Value="_selectedGameId"
+				           Label="Game"
+				           Variant="Variant.Outlined"
+				           Class="mb-4"
+				           FullWidth="true"
+				           HelperText="Select a game to test location tools">
+					<MudSelectItem Value="@((Guid?) null)">Select a game...</MudSelectItem>
+					@foreach (GameInfoResponse game in _games)
+					{
+						<MudSelectItem Value="@((Guid?) game.GameId)">@FormatGameDisplay(game)</MudSelectItem>
+					}
+				</MudSelect>
+
+				<MudTextField @bind-Value="_locationName"
+				              Label="Location Name"
+				              Variant="Variant.Outlined"
+				              Class="mb-4"
+				              FullWidth="true"
+				              HelperText="Enter a location name to look up (leave empty to list all locations)"/>
+
+				<MudStack Row="true" Spacing="2">
+					<MudButton Variant="Variant.Filled"
+					           Color="Color.Primary"
+					           OnClick="LookupLocationAsync"
+					           Disabled="@(_isLoading || !_selectedGameId.HasValue || string.IsNullOrWhiteSpace(_locationName))">
+						@if (_isLoading)
+						{
+							<MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2"/>
+						}
+						Lookup Location
+					</MudButton>
+
+					<MudButton Variant="Variant.Filled"
+					           Color="Color.Secondary"
+					           OnClick="ListAllLocationsAsync"
+					           Disabled="@(_isLoading || !_selectedGameId.HasValue)">
+						@if (_isLoading)
+						{
+							<MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2"/>
+						}
+						List All Locations
+					</MudButton>
+				</MudStack>
+			</MudForm>
+		</MudPaper>
+
+		@if (!string.IsNullOrEmpty(_errorMessage))
+		{
+			<MudAlert Severity="Severity.Error" Class="mt-4">@_errorMessage</MudAlert>
+		}
+
+		@if (!string.IsNullOrEmpty(_toolOutput))
+		{
+			<MudDivider Class="my-6"/>
+
+			<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Tool Output</MudText>
+			<MudText Typo="Typo.body2" Class="mb-4 text-muted">This is the formatted output that the GameLocationTool returns to AI agents:</MudText>
+			<MudPaper Class="pa-4 mb-6" Elevation="1">
+				<MudText Typo="Typo.body1" Style="white-space: pre-wrap; font-family: monospace;">@_toolOutput</MudText>
+			</MudPaper>
+		}
+	</MudPaper>
+</MudContainer>
+
