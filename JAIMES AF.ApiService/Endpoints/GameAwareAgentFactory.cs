@@ -1,10 +1,13 @@
+using MattEland.Jaimes.ApiService.Agents;
 using MattEland.Jaimes.Agents.Helpers;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Tools;
 using Microsoft.Agents.AI;
+using Microsoft.Agents.AI;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
@@ -16,14 +19,14 @@ public class GameAwareAgentFactory
     private readonly IGameService _gameService;
     private readonly IChatClient _chatClient;
     private readonly ILogger<GameAwareAgentFactory> _logger;
-    private readonly IServiceProvider _serviceProvider;
     private readonly IChatHistoryService _chatHistoryService;
+    private readonly IServiceProvider _serviceProvider;
 
     public GameAwareAgentFactory(
         IGameService gameService,
         IChatClient chatClient,
-        ILogger<GameAwareAgentFactory> logger,
         IChatHistoryService chatHistoryService,
+        ILogger<GameAwareAgentFactory> logger,
         IServiceProvider serviceProvider)
     {
         _gameService = gameService;
@@ -35,7 +38,7 @@ public class GameAwareAgentFactory
 
     public async Task<AIAgent> CreateAgentForGameAsync(Guid gameId, CancellationToken cancellationToken = default)
     {
-        GameDto? gameDto = await _gameService.GetGameAsync(gameId, cancellationToken);
+        MattEland.Jaimes.Domain.GameDto? gameDto = await _gameService.GetGameAsync(gameId, cancellationToken);
         if (gameDto == null)
         {
             throw new ArgumentException($"Game '{gameId}' does not exist.", nameof(gameId));
@@ -45,89 +48,37 @@ public class GameAwareAgentFactory
         // This ensures consistency with GameAwareAgent.GetOrCreateGameAgentAsync
         using IServiceScope scope = _serviceProvider.CreateScope();
         IInstructionService instructionService = scope.ServiceProvider.GetRequiredService<IInstructionService>();
-        
-        string? systemPrompt = await instructionService.GetInstructionsAsync(gameDto.Scenario.Id, cancellationToken);
+
+        string? systemPrompt;
+        if (!string.IsNullOrEmpty(gameDto.AgentId) && gameDto.InstructionVersionId.HasValue)
+        {
+            // Use specific agent version if overridden in the game
+            var agentVersionRepo = scope.ServiceProvider
+                .GetRequiredService<MattEland.Jaimes.Repositories.Interfaces.IAgentInstructionVersionRepository>();
+            var agentVersion = await agentVersionRepo.GetByVersionIdAsync(gameDto.AgentId,
+                gameDto.InstructionVersionId.Value, cancellationToken);
+            systemPrompt = agentVersion?.Instructions;
+
+            // Still include scenario instructions if any
+            if (!string.IsNullOrWhiteSpace(gameDto.Scenario.ScenarioInstructions))
+            {
+                systemPrompt = $"{systemPrompt}\n\n---\n\n{gameDto.Scenario.ScenarioInstructions}";
+            }
+        }
+        else
+        {
+            systemPrompt = await instructionService.GetInstructionsAsync(gameDto.Scenario.Id, cancellationToken);
+        }
+
         if (string.IsNullOrWhiteSpace(systemPrompt))
         {
             _logger.LogWarning("Game {GameId} has no instructions configured, using default", gameId);
             systemPrompt = "You are a helpful game master assistant.";
         }
 
-        IChatClient instrumentedChatClient = _chatClient.WrapWithInstrumentation(_logger);
-
-        return instrumentedChatClient.CreateJaimesAgent(
-            _logger,
-            $"JaimesAgent-{gameId}",
-            systemPrompt,
-            CreateTools(gameDto));
-    }
-
-    public async Task<AgentThread?> GetOrCreateThreadAsync(Guid gameId, AIAgent agent, CancellationToken cancellationToken = default)
-    {
-        string? existingThreadJson = await _chatHistoryService.GetMostRecentThreadJsonAsync(gameId, cancellationToken);
-        if (!string.IsNullOrEmpty(existingThreadJson))
-        {
-            System.Text.Json.JsonElement jsonElement = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(existingThreadJson, System.Text.Json.JsonSerializerOptions.Web);
-            return agent.DeserializeThread(jsonElement, System.Text.Json.JsonSerializerOptions.Web);
-        }
-
-        return agent.GetNewThread();
-    }
-
-    private IList<AITool>? CreateTools(GameDto game)
-    {
-        List<AITool> toolList = [];
-
-        PlayerInfoTool playerInfoTool = new(game);
-        AIFunction playerInfoFunction = AIFunctionFactory.Create(
-            () => playerInfoTool.GetPlayerInfo(),
-            "GetPlayerInfo",
-            "Retrieves detailed information about the current player character in the game, including their name, unique identifier, and character description. Use this tool whenever you need to reference or describe the player character, their background, or their current state in the game world.");
-        toolList.Add(playerInfoFunction);
-
-        // Check if IRulesSearchService is available in the service provider
-        // We pass the service provider to RulesSearchTool so it can resolve the service on each call
-        // This avoids ObjectDisposedException when the tool outlives the scope that created it
-        using IServiceScope scope = _serviceProvider.CreateScope();
-        IRulesSearchService? rulesSearchService = scope.ServiceProvider.GetService<IRulesSearchService>();
-        if (rulesSearchService != null)
-        {
-            RulesSearchTool rulesSearchTool = new(game, _serviceProvider);
-            AIFunction rulesSearchFunction = AIFunctionFactory.Create(
-                (string query) => rulesSearchTool.SearchRulesAsync(query),
-                "SearchRules",
-                "Searches the ruleset's indexed rules to find answers to specific questions or queries. This is a rules search tool that gets answers from rules to specific questions or queries. Use this tool whenever you need to look up game rules, mechanics, or rule clarifications. The tool will search through the indexed rules for the current scenario's ruleset and return relevant information.");
-            toolList.Add(rulesSearchFunction);
-        }
-
-        // Add conversation search tool if the service is available
-        IConversationSearchService? conversationSearchService = scope.ServiceProvider.GetService<IConversationSearchService>();
-        if (conversationSearchService != null)
-        {
-            ConversationSearchTool conversationSearchTool = new(game, _serviceProvider);
-
-            AIFunction conversationSearchFunction = AIFunctionFactory.Create(
-                (string query) => conversationSearchTool.SearchConversationsAsync(query),
-                "SearchConversations",
-                "Searches the game's conversation history to find relevant past messages. This tool uses semantic search to find conversation messages from the current game that match your query. Results include the matched message along with the previous and next messages for context. Use this tool whenever you need to recall what was said earlier in the conversation, what the player mentioned, or any past events discussed in the game.");
-            toolList.Add(conversationSearchFunction);
-        }
-
-        // Add player sentiment tool if database context factory is available
-        IDbContextFactory<JaimesDbContext>? dbContextFactory =
-            scope.ServiceProvider.GetService<IDbContextFactory<JaimesDbContext>>();
-        if (dbContextFactory != null)
-        {
-            PlayerSentimentTool playerSentimentTool = new(game, _serviceProvider);
-
-            AIFunction playerSentimentFunction = AIFunctionFactory.Create(
-                () => playerSentimentTool.GetRecentSentimentsAsync(),
-                "GetPlayerSentiment",
-                "Retrieves the last 5 most recent sentiment analysis results for the player in the current game. This helps understand the player's frustration level and emotional state. Use this tool when you need to gauge how the player is feeling about the game or recent interactions.");
-            toolList.Add(playerSentimentFunction);
-        }
-
-        return toolList;
+        return new SimpleAIAgent(
+            client: _chatClient,
+            name: gameDto.Title ?? "Game Master",
+            instructions: systemPrompt);
     }
 }
-

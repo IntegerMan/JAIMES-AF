@@ -20,4 +20,7 @@ public record GameStateResponse
 
     // Thread JSON for restoring AgentThread state
     public string? ThreadJson { get; init; }
+
+    public string? AgentId { get; init; }
+    public int? InstructionVersionId { get; init; }
 }

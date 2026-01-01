@@ -59,6 +59,25 @@
 						               Color="Color.Default"
 						               OnClick="EnterTitleEditMode"/>
 					</MudStack>
+					<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+						<MudSelect T="string" Label="Agent" Value="@_selectedAgentId" ValueChanged="OnAgentChanged" 
+								  Variant="Variant.Outlined" Margin="Margin.Dense" Style="min-width: 200px;" Dense="true">
+							@foreach (var agent in _availableAgents)
+							{
+								<MudSelectItem Value="@agent.Id">@agent.Name</MudSelectItem>
+							}
+						</MudSelect>
+						@if (_availableVersions.Any())
+						{
+							<MudSelect T="int?" Label="Version" Value="@_selectedVersionId" ValueChanged="OnVersionChanged"
+									  Variant="Variant.Outlined" Margin="Margin.Dense" Style="min-width: 120px;" Dense="true">
+								@foreach (var version in _availableVersions)
+								{
+									<MudSelectItem T="int?" Value="@version.Id">v@(version.VersionNumber)</MudSelectItem>
+								}
+							</MudSelect>
+						}
+					</MudStack>
 				}
 			</div>
 

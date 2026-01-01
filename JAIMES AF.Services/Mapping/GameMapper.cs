@@ -57,7 +57,9 @@ public static partial class GameMapper
                 RulesetId = game.RulesetId,
                 Name = game.PlayerId
             },
-            Messages = messages
+            Messages = messages,
+            AgentId = game.AgentId,
+            InstructionVersionId = game.InstructionVersionId
         };
     }
 
