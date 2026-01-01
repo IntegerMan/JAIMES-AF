@@ -1,5 +1,6 @@
 @page "/admin/metrics"
 @using MattEland.Jaimes.Web.Components.Shared
+@using MattEland.Jaimes.Web.Components.Helpers
 @using MudBlazor
 @inject NavigationManager NavigationManager
 @inject IHttpClientFactory HttpClientFactory
@@ -23,23 +24,13 @@
                 <MudChip T="string" Color="Color.Primary" Size="Size.Small">@_evaluator.MetricCount.ToString("N0") Metrics</MudChip>
                 @if (_evaluator.AverageScore.HasValue)
                 {
-                    <MudChip T="string" Color="@GetScoreColor(_evaluator.AverageScore.Value)" Size="Size.Small">
+                    <MudChip T="string" Color="@MetricColorHelper.GetScoreColor(_evaluator.AverageScore.Value)" Size="Size.Small">
                         Avg: @_evaluator.AverageScore.Value.ToString("F2")
                     </MudChip>
                 }
             </MudStack>
             <MudText Typo="Typo.body1">@_evaluator.Description</MudText>
         </MudPaper>
-    }
-
-    @if (!string.IsNullOrEmpty(GroupingInfo))
-    {
-        <MudAlert Severity="Severity.Info" Class="mb-3" Dense="true">
-            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                <MudIcon Icon="@Icons.Material.Filled.Info"/>
-                <MudText>@GroupingInfo</MudText>
-            </MudStack>
-        </MudAlert>
     }
 
     <AdminFilters
@@ -79,8 +70,7 @@
     [Parameter] [SupplyParameterFromQuery] public int? InstructionVersionId { get; set; }
     private List<BreadcrumbItem> _breadcrumbs = new();
     private EvaluatorItemDto? _evaluator;
-    private string? GroupingInfo = "Results are grouped by Game and Message. Click row headers to expand/collapse groups.";
-
+  
     protected override async Task OnParametersSetAsync()
     {
         await LoadEvaluatorAsync();
@@ -123,14 +113,5 @@
         NavigationManager.NavigateTo("/admin/metrics");
     }
 
-    private static Color GetScoreColor(double score)
-    {
-        return score switch
-        {
-            >= 0.8 => Color.Success,
-            >= 0.5 => Color.Warning,
-            _ => Color.Error
-        };
-    }
 
 }

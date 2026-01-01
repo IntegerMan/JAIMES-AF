@@ -83,3 +83,9 @@ h1:focus {
     color: var(--mud-palette-primary);
     font-weight: 600;
 }
+
+/* Missing evaluator row styling */
+.missing-evaluator-row {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+    font-style: italic;
+}

@@ -27,4 +27,9 @@ public class MessageDto
     public string? ModelName { get; init; }
     public string? ModelProvider { get; init; }
     public string? ModelEndpoint { get; init; }
+
+    /// <summary>
+    /// True if this message is missing any registered evaluators.
+    /// </summary>
+    public bool HasMissingEvaluators { get; set; }
 }

@@ -38,7 +38,7 @@ public class MessageUpdateNotifier : IMessageUpdateNotifier
 
     public async Task NotifyMetricsEvaluatedAsync(int messageId, Guid gameId,
         List<MessageEvaluationMetricResponse> metrics, string messageText,
-        CancellationToken cancellationToken = default)
+        bool hasMissingEvaluators, CancellationToken cancellationToken = default)
     {
         MessageUpdateNotification notification = new()
         {
@@ -46,6 +46,23 @@ public class MessageUpdateNotifier : IMessageUpdateNotifier
             GameId = gameId,
             UpdateType = MessageUpdateType.MetricsEvaluated,
             Metrics = metrics,
+            MessageText = messageText,
+            HasMissingEvaluators = hasMissingEvaluators
+        };
+
+        await SendNotificationAsync(notification, cancellationToken);
+    }
+
+    public async Task NotifyToolCallsProcessedAsync(int messageId, Guid gameId, bool hasToolCalls,
+        string? messageText = null,
+        CancellationToken cancellationToken = default)
+    {
+        MessageUpdateNotification notification = new()
+        {
+            MessageId = messageId,
+            GameId = gameId,
+            UpdateType = MessageUpdateType.ToolCallsProcessed,
+            HasToolCalls = hasToolCalls,
             MessageText = messageText
         };
 

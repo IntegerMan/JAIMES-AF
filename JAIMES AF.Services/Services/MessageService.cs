@@ -63,6 +63,13 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
             allMessages = allMessages.Concat(messagesAfter).ToList();
         }
 
+        // Fetch registered evaluators once to check for missing ones
+        var registeredEvaluatorIds = await context.Evaluators
+            .AsNoTracking()
+            .Select(e => e.Id)
+            .ToListAsync(cancellationToken);
+        int totalEvaluatorCount = registeredEvaluatorIds.Count;
+
         // Fetch metrics and feedback manually since navigation properties aren't configured
         var messageIds = allMessages.Select(m => m.Id).ToList();
 
@@ -90,6 +97,19 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
             if (feedback != null)
             {
                 dto.Feedback = MessageMapper.ToResponse(feedback);
+            }
+
+
+            if (!message.IsScriptedMessage && message.PlayerId == null) // AI message
+            {
+                var msgMetrics = metrics.Where(m => m.MessageId == message.Id).ToList();
+                int msgEvaluatorCount = msgMetrics
+                    .Where(m => m.EvaluatorId.HasValue)
+                    .Select(m => m.EvaluatorId!.Value)
+                    .Distinct()
+                    .Count();
+
+                dto.HasMissingEvaluators = msgEvaluatorCount < totalEvaluatorCount;
             }
 
             dtos.Add(dto);
@@ -140,6 +160,13 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
             .Where(f => messageIds.Contains(f.MessageId))
             .ToListAsync(cancellationToken);
 
+        // Fetch registered evaluators once to check for missing ones
+        var registeredEvaluatorIds = await context.Evaluators
+            .AsNoTracking()
+            .Select(e => e.Id)
+            .ToListAsync(cancellationToken);
+        int totalEvaluatorCount = registeredEvaluatorIds.Count;
+
         var dtos = new List<MessageContextDto>();
         foreach (var message in messages)
         {
@@ -156,6 +183,17 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
             if (feedback != null)
             {
                 dto.Feedback = MessageMapper.ToResponse(feedback);
+            }
+
+            if (!message.IsScriptedMessage && message.PlayerId == null) // AI message
+            {
+                int msgEvaluatorCount = dto.Metrics
+                    .Where(m => m.EvaluatorId.HasValue)
+                    .Select(m => m.EvaluatorId!.Value)
+                    .Distinct()
+                    .Count();
+
+                dto.HasMissingEvaluators = msgEvaluatorCount < totalEvaluatorCount;
             }
 
             dtos.Add(dto);

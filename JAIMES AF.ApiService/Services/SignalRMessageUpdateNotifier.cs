@@ -32,7 +32,7 @@ public class SignalRMessageUpdateNotifier(
 
     public async Task NotifyMetricsEvaluatedAsync(int messageId, Guid gameId,
         List<MessageEvaluationMetricResponse> metrics, string messageText,
-        CancellationToken cancellationToken = default)
+        bool hasMissingEvaluators, CancellationToken cancellationToken = default)
     {
         MessageUpdateNotification notification = new()
         {
@@ -40,6 +40,23 @@ public class SignalRMessageUpdateNotifier(
             GameId = gameId,
             UpdateType = MessageUpdateType.MetricsEvaluated,
             Metrics = metrics,
+            MessageText = messageText,
+            HasMissingEvaluators = hasMissingEvaluators
+        };
+
+        await BroadcastUpdateAsync(notification);
+    }
+
+    public async Task NotifyToolCallsProcessedAsync(int messageId, Guid gameId, bool hasToolCalls,
+        string? messageText = null,
+        CancellationToken cancellationToken = default)
+    {
+        MessageUpdateNotification notification = new()
+        {
+            MessageId = messageId,
+            GameId = gameId,
+            UpdateType = MessageUpdateType.ToolCallsProcessed,
+            HasToolCalls = hasToolCalls,
             MessageText = messageText
         };
 
@@ -57,5 +74,6 @@ public class SignalRMessageUpdateNotifier(
             notification.GameId);
 
         await hubContext.Clients.Group(groupName).MessageUpdated(notification);
+        await hubContext.Clients.Group("admin").MessageUpdated(notification);
     }
 }

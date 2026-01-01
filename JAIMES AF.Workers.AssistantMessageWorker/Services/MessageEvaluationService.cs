@@ -29,12 +29,36 @@ public class MessageEvaluationService(
         Message message,
         string systemPrompt,
         List<Message> conversationContext,
+        IEnumerable<string>? evaluatorsToRun = null,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(message.Text))
         {
             logger.LogWarning("Cannot evaluate message {MessageId} - message text is empty", message.Id);
             return;
+        }
+
+        // Filter evaluators if specific ones are requested
+        IEnumerable<IEvaluator> activeEvaluators = evaluators;
+        if (evaluatorsToRun != null && evaluatorsToRun.Any())
+        {
+            var evaluatorNamesSet = new HashSet<string>(evaluatorsToRun, StringComparer.OrdinalIgnoreCase);
+            activeEvaluators = evaluators.Where(e => evaluatorNamesSet.Contains(e.GetType().Name)).ToList();
+
+            logger.LogInformation(
+                "Filtering evaluators for message {MessageId}: running {Count} of {Total} ({EvaluatorNames})",
+                message.Id,
+                activeEvaluators.Count(),
+                evaluators.Count(),
+                string.Join(", ", activeEvaluators.Select(e => e.GetType().Name)));
+
+            if (!activeEvaluators.Any())
+            {
+                logger.LogWarning(
+                    "No matching evaluators found for message {MessageId}. Requested: {RequestedEvaluators}",
+                    message.Id, string.Join(", ", evaluatorsToRun));
+                return;
+            }
         }
 
         try
@@ -67,8 +91,8 @@ public class MessageEvaluationService(
             // Create ChatConfiguration for the evaluator
             ChatConfiguration chatConfiguration = new(chatClient);
 
-            // Create a composite evaluator from all registered evaluators
-            IEvaluator compositeEvaluator = new CompositeEvaluator(evaluators);
+            // Create a composite evaluator from active evaluators (may be filtered)
+            IEvaluator compositeEvaluator = new CompositeEvaluator(activeEvaluators);
 
             // Create ReportingConfiguration to integrate with the new result store
             ReportingConfiguration reportConfig = new(
@@ -100,7 +124,7 @@ public class MessageEvaluationService(
 
             // Map metric names to their respective evaluator class names
             var metricToEvaluatorMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var evaluator in evaluators)
+            foreach (var evaluator in activeEvaluators)
             {
                 string className = evaluator.GetType().Name;
                 foreach (var metricName in evaluator.EvaluationMetricNames)
@@ -199,6 +223,15 @@ public class MessageEvaluationService(
                 .Cast<MessageEvaluationMetricResponse>()
                 .ToList();
 
+            // Calculate if all evaluators have run
+            var totalEvaluatorCount = await context.Evaluators.CountAsync(cancellationToken);
+            var msgEvaluatorCount = await context.MessageEvaluationMetrics
+                .Where(m => m.MessageId == message.Id && m.EvaluatorId.HasValue)
+                .Select(m => m.EvaluatorId)
+                .Distinct()
+                .CountAsync(cancellationToken);
+            bool hasMissingEvaluators = msgEvaluatorCount < totalEvaluatorCount;
+
             if (metricResponses.Count > 0)
             {
                 await messageUpdateNotifier.NotifyMetricsEvaluatedAsync(
@@ -206,6 +239,7 @@ public class MessageEvaluationService(
                     message.GameId,
                     metricResponses,
                     message.Text,
+                    hasMissingEvaluators,
                     cancellationToken);
             }
 

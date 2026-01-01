@@ -19,6 +19,7 @@ public class AssistantMessageConsumer(
         activity?.SetTag("message.id", message.MessageId);
         activity?.SetTag("message.game_id", message.GameId.ToString());
         activity?.SetTag("message.role", message.Role.ToString());
+        activity?.SetTag("message.evaluate_missing_only", message.EvaluateMissingOnly);
 
         try
         {
@@ -26,9 +27,10 @@ public class AssistantMessageConsumer(
             // No need to filter by role here
 
             logger.LogInformation(
-                "Processing assistant message: MessageId={MessageId}, GameId={GameId}",
+                "Processing assistant message: MessageId={MessageId}, GameId={GameId}, EvaluateMissingOnly={EvaluateMissingOnly}",
                 message.MessageId,
-                message.GameId);
+                message.GameId,
+                message.EvaluateMissingOnly);
 
             // Load message from database
             await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -118,11 +120,12 @@ public class AssistantMessageConsumer(
                 evaluationActivity?.SetTag("evaluation.context_message_count", conversationContext.Count);
                 evaluationActivity?.SetTag("evaluation.system_prompt_length", systemPrompt.Length);
 
-                // Perform evaluation
+                // Perform evaluation (optionally with filtered evaluators)
                 await evaluationService.EvaluateMessageAsync(
                     messageEntity,
                     systemPrompt,
                     conversationContext,
+                    message.EvaluatorsToRun,
                     cancellationToken);
 
                 evaluationActivity?.SetStatus(ActivityStatusCode.Ok);
@@ -135,17 +138,25 @@ public class AssistantMessageConsumer(
                 // Continue processing - don't fail the message if evaluation fails
             }
 
-            // Enqueue message for embedding
-            ConversationMessageReadyForEmbeddingMessage embeddingMessage = new()
+            // Enqueue message for embedding (skip if only evaluating missing evaluators)
+            if (!message.EvaluateMissingOnly)
             {
-                MessageId = messageEntity.Id,
-                GameId = messageEntity.GameId,
-                Text = messageEntity.Text ?? string.Empty,
-                Role = ChatRole.Assistant,
-                CreatedAt = messageEntity.CreatedAt
-            };
-            await messagePublisher.PublishAsync(embeddingMessage, cancellationToken);
-            logger.LogDebug("Enqueued assistant message {MessageId} for embedding", messageEntity.Id);
+                ConversationMessageReadyForEmbeddingMessage embeddingMessage = new()
+                {
+                    MessageId = messageEntity.Id,
+                    GameId = messageEntity.GameId,
+                    Text = messageEntity.Text ?? string.Empty,
+                    Role = ChatRole.Assistant,
+                    CreatedAt = messageEntity.CreatedAt
+                };
+                await messagePublisher.PublishAsync(embeddingMessage, cancellationToken);
+                logger.LogDebug("Enqueued assistant message {MessageId} for embedding", messageEntity.Id);
+            }
+            else
+            {
+                logger.LogDebug("Skipping embedding for message {MessageId} (EvaluateMissingOnly=true)",
+                    messageEntity.Id);
+            }
 
             activity?.SetStatus(ActivityStatusCode.Ok);
         }

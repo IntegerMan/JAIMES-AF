@@ -44,6 +44,7 @@ public class NotifyMessageUpdateEndpoint : Endpoint<MessageUpdateNotification>
             notification.GameId);
 
         await _hubContext.Clients.Group(groupName).MessageUpdated(notification);
+        await _hubContext.Clients.Group("admin").MessageUpdated(notification);
 
         await Send.NoContentAsync(ct);
     }

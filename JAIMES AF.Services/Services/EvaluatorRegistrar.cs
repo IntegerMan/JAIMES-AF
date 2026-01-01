@@ -31,26 +31,24 @@ public class EvaluatorRegistrar(
             assembliesToScan.Add(workerAssembly);
         }
 
-        var evaluatorTypes = assembliesToScan
+        var allTypes = assembliesToScan
             .Where(a => a != null)
             .SelectMany(a => a.GetTypes())
             .Where(t => typeof(Microsoft.Extensions.AI.Evaluation.IEvaluator).IsAssignableFrom(t) &&
                         !t.IsInterface &&
                         !t.IsAbstract)
-            .Distinct()
+            .Concat([typeof(RelevanceTruthAndCompletenessEvaluator)])
+            .GroupBy(t => t.Name)
+            .Select(g => g.First())
             .ToList();
 
-        // Manually include the RTC evaluator as it's in an external assembly we're no longer scanning
-        evaluatorTypes.Add(typeof(RelevanceTruthAndCompletenessEvaluator));
+        // Fetch existing into a case-insensitive dictionary
+        var existingEvaluators = await context.Evaluators
+            .ToDictionaryAsync(e => e.Name, e => e, StringComparer.OrdinalIgnoreCase);
 
-        foreach (var type in evaluatorTypes)
+        foreach (var type in allTypes)
         {
-            // We register the CLASS name as the Evaluator name
             string name = type.Name;
-
-            // Check if it's already registered
-            var existingEvaluator =
-                await context.Evaluators.FirstOrDefaultAsync(e => e.Name == name, cancellationToken);
 
             // Get description from DescriptionAttribute if available
             var descriptionAttribute = type.GetCustomAttribute<DescriptionAttribute>();
@@ -63,7 +61,7 @@ public class EvaluatorRegistrar(
                     "Evaluates assistant responses for Relevance to the prompt, Truthfulness relative to context, and Completeness regarding the user's intent.";
             }
 
-            if (existingEvaluator == null)
+            if (!existingEvaluators.TryGetValue(name, out var existingEvaluator))
             {
                 context.Evaluators.Add(new Evaluator
                 {
@@ -81,7 +79,7 @@ public class EvaluatorRegistrar(
         await context.SaveChangesAsync(cancellationToken);
 
         // Perform re-linkage for any orphaned metrics
-        await ReLinkOrphanedMetricsAsync(context, evaluatorTypes, cancellationToken);
+        await ReLinkOrphanedMetricsAsync(context, allTypes, cancellationToken);
     }
 
     private async Task ReLinkOrphanedMetricsAsync(JaimesDbContext context, List<Type> evaluatorTypes,

@@ -77,6 +77,22 @@ public class EvaluationMetricListItemDto
     /// </summary>
     public string? GameRulesetId { get; set; }
 
+
+    /// <summary>
+    /// The agent ID.
+    /// </summary>
+    public string? AgentId { get; set; }
+
+    /// <summary>
+    /// The name of the agent.
+    /// </summary>
+    public string? AgentName { get; set; }
+
+    /// <summary>
+    /// The agent instruction version ID.
+    /// </summary>
+    public int? InstructionVersionId { get; set; }
+
     /// <summary>
     /// The agent instruction version number.
     /// </summary>
@@ -86,4 +102,9 @@ public class EvaluationMetricListItemDto
     /// A short preview of the message content.
     /// </summary>
     public string? MessagePreview { get; set; }
+
+    /// <summary>
+    /// True if this is a placeholder for a missing evaluator.
+    /// </summary>
+    public bool IsMissing { get; set; }
 }

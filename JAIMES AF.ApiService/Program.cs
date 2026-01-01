@@ -5,6 +5,7 @@ using MattEland.Jaimes.ApiService.Hubs;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceLayer;
 using MattEland.Jaimes.Workers.Services;
+using MattEland.Jaimes.ApiService.Services;
 
 namespace MattEland.Jaimes.ApiService;
 
@@ -153,6 +154,7 @@ public class Program
 
         // Add SignalR for real-time message updates
         builder.Services.AddSignalR();
+        builder.Services.AddSingleton<IMessageUpdateNotifier, SignalRMessageUpdateNotifier>();
 
         WebApplication app = builder.Build();
 
@@ -168,6 +170,10 @@ public class Program
 
         // Map manual sentiment update endpoint
         app.MapUpdateMessageSentiment();
+
+        // Map evaluation maintenance endpoints
+        app.MapGetMissingEvaluatorsEndpoint();
+        app.MapTriggerReEvaluationEndpoint();
 
         // Map SignalR hub for real-time message updates
         app.MapHub<MessageHub>("/hubs/messages");

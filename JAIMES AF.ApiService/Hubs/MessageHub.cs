@@ -37,6 +37,24 @@ public class MessageHub : Hub<IMessageHubClient>
         _logger.LogDebug("Client {ConnectionId} left game group {GameId}", Context.ConnectionId, gameId);
     }
 
+    /// <summary>
+    /// Called when an admin client wants to subscribe to all updates.
+    /// </summary>
+    public async Task JoinAdmin()
+    {
+        await Groups.AddToGroupAsync(Context.ConnectionId, "admin");
+        _logger.LogDebug("Client {ConnectionId} joined admin group", Context.ConnectionId);
+    }
+
+    /// <summary>
+    /// Called when an admin client wants to unsubscribe from all updates.
+    /// </summary>
+    public async Task LeaveAdmin()
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, "admin");
+        _logger.LogDebug("Client {ConnectionId} left admin group", Context.ConnectionId);
+    }
+
     public override async Task OnConnectedAsync()
     {
         _logger.LogDebug("Client {ConnectionId} connected to MessageHub", Context.ConnectionId);

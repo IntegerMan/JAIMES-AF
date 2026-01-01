@@ -25,6 +25,7 @@ public partial class GameDetails : IAsyncDisposable
     private Dictionary<int, List<MessageToolCallResponse>> _messageToolCalls = new();
     private Dictionary<int, List<MessageEvaluationMetricResponse>> _messageMetrics = new();
     private Dictionary<int, MessageSentimentInfo> _messageSentiment = new();
+    private Dictionary<int, bool> _messageHasMissingEvaluators = new();
     private Dictionary<int, MessageAgentInfo> _messageAgentInfo = new();
     private Dictionary<ChatMessage, MessageAgentInfo> _pendingMessageAgentInfo = new();
     private string? _defaultAgentId;
@@ -101,7 +102,7 @@ public partial class GameDetails : IAsyncDisposable
                     new ChatMessage(m.Participant == ChatParticipant.Player ? ChatRole.User : ChatRole.Assistant,
                         m.Text))
                 .ToList();
-            _messageIds = orderedMessages.Select(m => (int?) m.Id).ToList();
+            _messageIds = orderedMessages.Select(m => (int?)m.Id).ToList();
 
             // Batch load all metadata (Feedback, ToolCalls, Metrics, Sentiment)
             await LoadMessagesMetadataAsync(orderedMessages.Select(m => m.Id).ToList());
@@ -173,7 +174,7 @@ public partial class GameDetails : IAsyncDisposable
         try
         {
             HttpClient httpClient = HttpClientFactory.CreateClient("Api");
-            var request = new UpdateGameRequest {Title = _editableTitle};
+            var request = new UpdateGameRequest { Title = _editableTitle };
             var response = await httpClient.PutAsJsonAsync($"/games/{GameId}", request);
 
             if (response.IsSuccessStatusCode)
@@ -182,7 +183,7 @@ public partial class GameDetails : IAsyncDisposable
                 if (updatedGame != null)
                 {
                     // Update local game state with new title
-                    _game = _game with {Title = updatedGame.Title};
+                    _game = _game with { Title = updatedGame.Title };
                     UpdateBreadcrumbs(_game.Title ?? $"{_game.PlayerName} in {_game.ScenarioName}");
                 }
             }
@@ -553,8 +554,8 @@ public partial class GameDetails : IAsyncDisposable
         IDialogReference? dialogRef = null;
         var parameters = new DialogParameters<FeedbackDialog>
         {
-            {nameof(FeedbackDialog.MessageId), messageId},
-            {nameof(FeedbackDialog.PreSelectedFeedback), isPositive},
+            { nameof(FeedbackDialog.MessageId), messageId },
+            { nameof(FeedbackDialog.PreSelectedFeedback), isPositive },
             {
                 nameof(FeedbackDialog.OnFeedbackSubmitted), EventCallback.Factory.Create<FeedbackSubmission?>(this,
                     async (FeedbackSubmission? feedback) =>
@@ -646,7 +647,7 @@ public partial class GameDetails : IAsyncDisposable
         {
             HttpClient httpClient = HttpClientFactory.CreateClient("Api");
 
-            var request = new MessagesMetadataRequest {MessageIds = messageIds};
+            var request = new MessagesMetadataRequest { MessageIds = messageIds };
             var response = await httpClient.PostAsJsonAsync("/messages/metadata", request);
 
             if (response.IsSuccessStatusCode)
@@ -681,6 +682,11 @@ public partial class GameDetails : IAsyncDisposable
                         Confidence = sent.Confidence,
                         SentimentSource = sent.SentimentSource
                     };
+                }
+
+                foreach (var (msgId, hasMissing) in metadata.HasMissingEvaluators)
+                {
+                    _messageHasMissingEvaluators[msgId] = hasMissing;
                 }
 
                 _logger?.LogInformation("Loaded metadata for {Count} messages", messageIds.Count);
@@ -770,6 +776,12 @@ public partial class GameDetails : IAsyncDisposable
                         {
                             _messageMetrics[notification.MessageId] = notification.Metrics;
 
+                            if (notification.HasMissingEvaluators.HasValue)
+                            {
+                                _messageHasMissingEvaluators[notification.MessageId] =
+                                    notification.HasMissingEvaluators.Value;
+                            }
+
                             // Match by content using text from notification
                             // Only proceed if we don't already have this message ID mapped
                             if (!_messageIds.Contains(notification.MessageId) &&
@@ -795,6 +807,32 @@ public partial class GameDetails : IAsyncDisposable
                                             "Assigned Assistant message ID {MessageId} to index {Index} by content matching",
                                             notification.MessageId,
                                             i);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        else if (notification.UpdateType == MessageUpdateType.ToolCallsProcessed &&
+                                 notification.HasToolCalls == true)
+                        {
+                            // Fetch metadata for this message immediately to get the tool calls
+                            // Since the notification payload doesn't contain the full tool call data,
+                            // we need to reload metadata for this specific message
+                            await LoadMessagesMetadataAsync(new List<int> { notification.MessageId });
+
+                            // Match by content if ID is not yet known locally (rare for tool calls but possible)
+                            if (!_messageIds.Contains(notification.MessageId) &&
+                                !string.IsNullOrWhiteSpace(notification.MessageText))
+                            {
+                                string normalizedText = notification.MessageText.Trim();
+
+                                for (int i = 0; i < _messages.Count; i++)
+                                {
+                                    if (_messageIds[i] == null &&
+                                        _messages[i].Role == ChatRole.Assistant &&
+                                        _messages[i].Text.Trim().Equals(normalizedText, StringComparison.Ordinal))
+                                    {
+                                        _messageIds[i] = notification.MessageId;
                                         break;
                                     }
                                 }
