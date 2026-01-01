@@ -1,0 +1,45 @@
+@using MudBlazor
+@using Markdig
+
+<MudDialog>
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Color="Color.Secondary"/>
+            <MudText Typo="Typo.h6">@Title</MudText>
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        <MudPaper Class="pa-4" Elevation="0" Style="max-height: 500px; overflow-y: auto;">
+            @((MarkupString)Markdown.ToHtml(Content ?? "No insights available.", Pipeline))
+        </MudPaper>
+        @if (ItemCount > 0)
+        {
+            <MudText Typo="Typo.caption" Class="text-muted mt-2">
+                Based on @ItemCount items analyzed
+            </MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
+        .DisableHtml()
+        .Build();
+
+    [CascadingParameter]
+    private IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public string? Content { get; set; }
+
+    [Parameter]
+    public int ItemCount { get; set; }
+
+    private void Close() => MudDialog?.Close();
+}

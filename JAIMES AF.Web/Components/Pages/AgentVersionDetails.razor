@@ -75,34 +75,61 @@
                 <MudText Style="white-space: pre-wrap; font-family: monospace;">@_version.Instructions</MudText>
             </MudPaper>
 
-            <MudStack Row="true" Class="mt-4">
+            <MudStack Row="true" Class="mt-4" Spacing="2">
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Primary"
                            StartIcon="@Icons.Material.Filled.Edit"
                            Href="@($"/agents/{AgentId}/edit?baseVersionId={VersionId}")">
                     Create New Version
                 </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Filled.AutoAwesome"
+                           Href="@($"/agents/{AgentId}/versions/{VersionId}/improve")">
+                    Improve
+                </MudButton>
             </MudStack>
 
             <MudDivider Class="my-4"/>
 
-            <MudText Typo="Typo.h5" Class="mb-3">Version Analysis</MudText>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
+                <MudText Typo="Typo.h5">Version Analysis</MudText>
+                @if (_activeTabIndex is 1 or 3 or 4)
+                {
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Secondary"
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.AutoAwesome"
+                               OnClick="GenerateInsightsForActiveTabAsync"
+                               Disabled="_isGeneratingInsights">
+                        @if (_isGeneratingInsights)
+                        {
+                            <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                            <span class="ms-2">Analyzing...</span>
+                        }
+                        else
+                        {
+                            <span>Generate Insights</span>
+                        }
+                    </MudButton>
+                }
+            </MudStack>
 
-            <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-3">
+            <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-3" @bind-ActivePanelIndex="_activeTabIndex">
                 <MudTabPanel Text="Messages">
                     <MattEland.Jaimes.Web.Components.Agents.AgentMessagesList AgentId="@AgentId" VersionId="@VersionId"/>
                 </MudTabPanel>
                 <MudTabPanel Text="Feedback">
-                    <MattEland.Jaimes.Web.Components.Shared.FeedbackGrid AgentId="@AgentId" InstructionVersionId="@VersionId"/>
+                    <MattEland.Jaimes.Web.Components.Shared.FeedbackGrid @ref="_feedbackGrid" AgentId="@AgentId" InstructionVersionId="@VersionId"/>
                 </MudTabPanel>
                 <MudTabPanel Text="Tool Usage">
                     <MattEland.Jaimes.Web.Components.Shared.ToolUsageGrid AgentId="@AgentId" InstructionVersionId="@VersionId"/>
                 </MudTabPanel>
                 <MudTabPanel Text="Metrics">
-                    <MattEland.Jaimes.Web.Components.Shared.MetricsGrid AgentId="@AgentId" InstructionVersionId="@VersionId"/>
+                    <MattEland.Jaimes.Web.Components.Shared.MetricsGrid @ref="_metricsGrid" AgentId="@AgentId" InstructionVersionId="@VersionId"/>
                 </MudTabPanel>
                 <MudTabPanel Text="Sentiment">
-                    <MattEland.Jaimes.Web.Components.Shared.SentimentGrid AgentId="@AgentId" InstructionVersionId="@VersionId"/>
+                    <MattEland.Jaimes.Web.Components.Shared.SentimentGrid @ref="_sentimentGrid" AgentId="@AgentId" InstructionVersionId="@VersionId"/>
                 </MudTabPanel>
             </MudTabs>
         }

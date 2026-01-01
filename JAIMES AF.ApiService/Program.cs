@@ -121,6 +121,9 @@ public class Program
         // Register DatabaseInitializer for DI
         builder.Services.AddSingleton<DatabaseInitializer>();
 
+        // Register PromptImproverService for AI-powered prompt improvement
+        builder.Services.AddScoped<MattEland.Jaimes.ApiService.Services.PromptImproverService>();
+
         // Configure Qdrant client for embedding management using centralized extension method
         // ApiService uses "qdrant" as default API key and allows fallback to localhost:6334
         builder.Services.AddQdrantClient(builder.Configuration,
