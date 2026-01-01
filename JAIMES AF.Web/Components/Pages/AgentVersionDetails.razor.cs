@@ -116,6 +116,7 @@ public partial class AgentVersionDetails
     // Tab and insights tracking
     private int _activeTabIndex;
     private bool _isGeneratingInsights;
+    private MattEland.Jaimes.Web.Components.Agents.AgentMessagesList? _messagesGrid;
     private MattEland.Jaimes.Web.Components.Shared.FeedbackGrid? _feedbackGrid;
     private MattEland.Jaimes.Web.Components.Shared.MetricsGrid? _metricsGrid;
     private MattEland.Jaimes.Web.Components.Shared.SentimentGrid? _sentimentGrid;
@@ -129,6 +130,10 @@ public partial class AgentVersionDetails
         {
             switch (_activeTabIndex)
             {
+                case 0: // Messages
+                    if (_messagesGrid != null)
+                        await _messagesGrid.GenerateInsightsAsync();
+                    break;
                 case 1: // Feedback
                     if (_feedbackGrid != null)
                         await _feedbackGrid.GenerateInsightsAsync();
