@@ -226,7 +226,7 @@ public class MessageEvaluationService(
             // Calculate if all evaluators have run
             var totalEvaluatorCount = evaluators.Count();
             var msgEvaluatorCount = await context.MessageEvaluationMetrics
-                .Where(m => m.MessageId == message.Id)
+                .Where(m => m.MessageId == message.Id && m.EvaluatorId.HasValue)
                 .Select(m => m.EvaluatorId)
                 .Distinct()
                 .CountAsync(cancellationToken);
