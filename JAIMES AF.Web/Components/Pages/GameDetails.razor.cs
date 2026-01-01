@@ -367,6 +367,14 @@ public partial class GameDetails : IAsyncDisposable
                 bool isExisting = messageIdToIndex.TryGetValue(tempId, out int msgIndex);
                 string accumulatedText = sb.ToString();
 
+                _logger?.LogInformation(
+                    "Stream update. Id: {Id}, TextUpdate: '{TextUpdate}', Acc: '{Acc}', Exists: {Exists}, Sending: {Sending}",
+                    tempId,
+                    update.Text,
+                    accumulatedText,
+                    isExisting,
+                    _isSending);
+
                 // Decide if we should show this message yet.
                 // We show it if we have text, OR if we have already established it.
                 // This keeps the "Typing..." indicator active until we have actual content.
@@ -446,7 +454,10 @@ public partial class GameDetails : IAsyncDisposable
                 // Force UI update
                 _shouldScrollToBottom = true;
                 await InvokeAsync(StateHasChanged);
+                await InvokeAsync(StateHasChanged);
             }
+
+            _logger?.LogInformation("Finished streaming loop");
         }
         catch (Exception ex)
         {
@@ -456,6 +467,7 @@ public partial class GameDetails : IAsyncDisposable
         }
         finally
         {
+            _logger?.LogInformation("Entering Finally block. IsSending: {IsSending}", _isSending);
             _isSending = false;
 
             // Don't reload game state here - SignalR will notify us when sentiment is analyzed

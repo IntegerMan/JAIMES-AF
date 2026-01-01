@@ -231,10 +231,89 @@ public static class TextGenerationServiceExtensions
             [System.Runtime.CompilerServices.EnumeratorCancellation]
             CancellationToken cancellationToken = default)
         {
-            // For streaming, we'd need to handle SSE (Server-Sent Events) from Ollama
-            // This is a simplified implementation that falls back to non-streaming
-            await Task.CompletedTask;
-            yield break;
+            // Convert ChatMessage collection to Ollama chat format
+            List<OllamaChatMessage> ollamaMessages = [];
+            foreach (ChatMessage message in messages)
+            {
+                string role;
+                if (message.Role == ChatRole.System)
+                    role = "system";
+                else if (message.Role == ChatRole.User)
+                    role = "user";
+                else if (message.Role == ChatRole.Assistant)
+                    role = "assistant";
+                else
+                    role = "user";
+
+                ollamaMessages.Add(new OllamaChatMessage
+                {
+                    Role = role,
+                    Content = message.Text ?? string.Empty
+                });
+            }
+
+            string requestUrl = $"{_endpoint}/api/chat";
+
+            OllamaChatRequest request = new()
+            {
+                Model = model,
+                Messages = ollamaMessages,
+                Stream = true
+            };
+
+            // Send streaming request
+            var httpRequest = new HttpRequestMessage(HttpMethod.Post, requestUrl)
+            {
+                Content = JsonContent.Create(request)
+            };
+
+            using HttpResponseMessage response = await httpClient.SendAsync(httpRequest,
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                string errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                logger.LogError("Failed to stream text. Status: {StatusCode}, Response: {Response}",
+                    response.StatusCode,
+                    errorContent);
+                response.EnsureSuccessStatusCode();
+            }
+
+            // Read SSE stream
+            using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using StreamReader reader = new(stream);
+
+            while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
+            {
+                string? line = await reader.ReadLineAsync(cancellationToken);
+                if (string.IsNullOrWhiteSpace(line)) continue;
+
+                OllamaChatResponse? chatResponse = null;
+                try
+                {
+                    chatResponse = System.Text.Json.JsonSerializer.Deserialize<OllamaChatResponse>(line);
+                }
+                catch (System.Text.Json.JsonException)
+                {
+                    // Ignore malformed JSON chunks
+                    continue;
+                }
+
+                if (chatResponse?.Message?.Content != null)
+                {
+                    yield return new ChatResponseUpdate
+                    {
+                        Role = ChatRole.Assistant,
+                        Contents = {new TextContent(chatResponse.Message.Content)}
+                    };
+                }
+
+                if (chatResponse?.Done == true)
+                {
+                    break;
+                }
+            }
         }
 
         public object? GetService(Type serviceType, object? serviceKey = null)
@@ -263,6 +342,8 @@ public static class TextGenerationServiceExtensions
             [JsonPropertyName("model")] public string? Model { get; init; }
 
             [JsonPropertyName("message")] public OllamaChatMessage? Message { get; init; }
+
+            [JsonPropertyName("done")] public bool Done { get; init; }
 
             [JsonPropertyName("usage")] public OllamaUsage? Usage { get; init; }
         }

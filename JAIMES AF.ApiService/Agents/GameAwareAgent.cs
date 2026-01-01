@@ -156,8 +156,28 @@ public class GameAwareAgent(
             if (update.Role == ChatRole.Assistant && !string.IsNullOrEmpty(update.Text))
             {
                 string messageKey = update.MessageId ?? "default";
-                // Keep the latest update for each message (it has the complete cumulative text)
-                assistantUpdatesByMessageId[messageKey] = update;
+
+                // Accumulate text since updates are deltas
+                if (assistantUpdatesByMessageId.TryGetValue(messageKey, out var existingUpdate))
+                {
+                    // Update the text on the existing update object (or create a new one with combined text)
+                    string combinedText = (existingUpdate.Text ?? "") + update.Text;
+
+                    // Create a new update record with the accumulated text
+                    assistantUpdatesByMessageId[messageKey] = new AgentRunResponseUpdate
+                    {
+                        Contents = {new TextContent(combinedText)},
+                        Role = update.Role,
+                        MessageId = update.MessageId,
+                        AuthorName = update.AuthorName ?? existingUpdate.AuthorName,
+                        ResponseId = update.ResponseId
+                    };
+                }
+                else
+                {
+                    // First chunk for this message
+                    assistantUpdatesByMessageId[messageKey] = update;
+                }
             }
 
             yield return update;
@@ -494,7 +514,7 @@ public class GameAwareAgent(
             .Where(m => m.GameId == gameId)
             .OrderByDescending(m => m.CreatedAt)
             .ThenByDescending(m => m.Id)
-            .Select(m => new { m.AgentId, m.InstructionVersionId })
+            .Select(m => new {m.AgentId, m.InstructionVersionId})
             .FirstOrDefaultAsync(cancellationToken);
         if (lastMessageEntry != null)
         {
@@ -621,7 +641,8 @@ public class GameAwareAgent(
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to notify clients of tool calls for message {MessageId}",
+                        _logger.LogWarning(ex,
+                            "Failed to notify clients of tool calls for message {MessageId}",
                             lastAiMessage.Id);
                     }
                 }
