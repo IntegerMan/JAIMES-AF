@@ -32,23 +32,43 @@
         <PropertyColumn Property="x => x.MessageId" Title="Message" Groupable="true" Grouping="true">
             <CellTemplate>
                 <MudLink Href="@($"/admin/metrics/{context.Item.MessageId}")">
-                    @context.Item.MessageId
+                     @if (!string.IsNullOrEmpty(context.Item.MessagePreview))
+                     {
+                         @context.Item.MessagePreview
+                     }
+                     else
+                     {
+                         @context.Item.MessageId
+                     }
                 </MudLink>
             </CellTemplate>
             <GroupTemplate>
                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                     <MudLink Href="@($"/admin/metrics/{context.Grouping.Key}")">
-                        Message @context.Grouping.Key
+                        @{
+                             var firstItem = context.Grouping.First();
+                             if (!string.IsNullOrEmpty(firstItem.MessagePreview))
+                             {
+                                 @firstItem.MessagePreview
+                             }
+                             else
+                             {
+                                 @($"Message {context.Grouping.Key}")
+                             }
+                        }
                     </MudLink>
                     <MudText Typo="Typo.caption" Class="text-muted">(@context.Grouping.Count() items)</MudText>
                     <MudSpacer />
-                    <MudButton StartIcon="@Icons.Material.Filled.Refresh" 
-                               Variant="Variant.Filled" 
-                               Color="Color.Primary" 
-                               Size="Size.Small"
-                               OnClick="@(async () => { if (context.Grouping.Key is int msgId) await TriggerReEvaluation(msgId); })">
-                        Re-evaluate Missing
-                    </MudButton>
+                    @if (context.Grouping.Any(x => x.IsMissing))
+                    {
+                        <MudButton StartIcon="@Icons.Material.Filled.Refresh" 
+                                   Variant="Variant.Filled" 
+                                   Color="Color.Primary" 
+                                   Size="Size.Small"
+                                   OnClick="@(async () => { if (context.Grouping.Key is int msgId) await TriggerReEvaluation(msgId); })">
+                            Re-evaluate Missing
+                        </MudButton>
+                    }
                 </MudStack>
             </GroupTemplate>
         </PropertyColumn>
