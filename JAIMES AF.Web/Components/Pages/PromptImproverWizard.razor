@@ -79,8 +79,8 @@
                 </MudText>
 
                 <MudGrid Spacing="3" Style="height: calc(100vh - 450px); min-height: 350px;">
-                    <MudItem xs="12" md="4">
-                        <MudPaper Class="pa-4" Elevation="2" Style="height: 100%; display: flex; flex-direction: column;">
+                    <MudItem xs="12" md="4" Style="height: 100%;">
+                        <MudPaper Class="pa-4" Elevation="2" Style="height: 100%; display: flex; flex-direction: column; overflow: hidden;">
                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
                                 <MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Primary" Size="Size.Medium"/>
                                 <MudText Typo="Typo.h6">Feedback</MudText>
@@ -93,7 +93,7 @@
                                     <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small"/>
                                 }
                             </MudStack>
-                            <div style="flex: 1; overflow-y: auto;">
+                            <div style="flex: 1; overflow-y: auto; min-height: 0;">
                                 @if (!string.IsNullOrEmpty(_feedbackInsights))
                                 {
                                     <MudText Typo="Typo.caption" Style="white-space: pre-wrap;">@_feedbackInsights</MudText>
@@ -106,8 +106,8 @@
                         </MudPaper>
                     </MudItem>
 
-                    <MudItem xs="12" md="4">
-                        <MudPaper Class="pa-4" Elevation="2" Style="height: 100%; display: flex; flex-direction: column;">
+                    <MudItem xs="12" md="4" Style="height: 100%;">
+                        <MudPaper Class="pa-4" Elevation="2" Style="height: 100%; display: flex; flex-direction: column; overflow: hidden;">
                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
                                 <MudIcon Icon="@Icons.Material.Filled.PieChart" Color="Color.Primary" Size="Size.Medium"/>
                                 <MudText Typo="Typo.h6">Metrics</MudText>
@@ -120,7 +120,7 @@
                                     <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small"/>
                                 }
                             </MudStack>
-                            <div style="flex: 1; overflow-y: auto;">
+                            <div style="flex: 1; overflow-y: auto; min-height: 0;">
                                 @if (!string.IsNullOrEmpty(_metricsInsights))
                                 {
                                     <MudText Typo="Typo.caption" Style="white-space: pre-wrap;">@_metricsInsights</MudText>
@@ -133,8 +133,8 @@
                         </MudPaper>
                     </MudItem>
 
-                    <MudItem xs="12" md="4">
-                        <MudPaper Class="pa-4" Elevation="2" Style="height: 100%; display: flex; flex-direction: column;">
+                    <MudItem xs="12" md="4" Style="height: 100%;">
+                        <MudPaper Class="pa-4" Elevation="2" Style="height: 100%; display: flex; flex-direction: column; overflow: hidden;">
                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
                                 <MudIcon Icon="@Icons.Material.Filled.Balance" Color="Color.Primary" Size="Size.Medium"/>
                                 <MudText Typo="Typo.h6">Sentiment</MudText>
@@ -147,7 +147,7 @@
                                     <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small"/>
                                 }
                             </MudStack>
-                            <div style="flex: 1; overflow-y: auto;">
+                            <div style="flex: 1; overflow-y: auto; min-height: 0;">
                                 @if (!string.IsNullOrEmpty(_sentimentInsights))
                                 {
                                     <MudText Typo="Typo.caption" Style="white-space: pre-wrap;">@_sentimentInsights</MudText>
@@ -225,7 +225,7 @@
                     Review and edit the improved prompt below, then apply it to open the edit page.
                 </MudText>
 
-                <MudPaper Class="pa-4 mb-4" Elevation="2" Style="border: 2px solid var(--mud-palette-secondary);">
+                <MudPaper Class="pa-4 mb-4" Elevation="2" Style="border: 2px solid var(--mud-palette-success);">
                     <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-2">
                         <MudText Typo="Typo.subtitle2">Improved Prompt</MudText>
                         <MudTooltip Text="Copy to clipboard">

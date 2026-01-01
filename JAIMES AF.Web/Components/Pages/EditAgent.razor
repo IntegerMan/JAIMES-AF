@@ -36,21 +36,21 @@
 				              Disabled="true"
 				              HelperText="Agent ID cannot be changed"/>
 
-				<MudTextField @bind-Value="_name"
-				              Label="Name"
-				              Variant="Variant.Outlined"
-				              Class="mb-4"
-				              Disabled="_isSaving"
-				              Required="true"
-				              RequiredError="Name is required"/>
+				<MudStack Row="true" Class="mb-4" Spacing="4">
+					<MudTextField Value="@_name"
+					              Label="Name"
+					              Variant="Variant.Outlined"
+					              Disabled="true"
+					              ReadOnly="true"
+					              Class="flex-grow-1"/>
 
-				<MudTextField @bind-Value="_role"
-				              Label="Role"
-				              Variant="Variant.Outlined"
-				              Class="mb-4"
-				              Disabled="_isSaving"
-				              Required="true"
-				              RequiredError="Role is required"/>
+					<MudTextField Value="@_role"
+					              Label="Role"
+					              Variant="Variant.Outlined"
+					              Disabled="true"
+					              ReadOnly="true"
+					              Class="flex-grow-1"/>
+				</MudStack>
 
 				<MudTextField @bind-Value="_instructions"
 				              Label="Instructions"
