@@ -256,7 +256,6 @@ erDiagram
         string Name
         string Description
         string StorytellerNotes "nullable"
-        string Appearance "nullable"
         datetime CreatedAt
         datetime UpdatedAt
     }
