@@ -305,7 +305,7 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
             CreatedAt = location.CreatedAt,
             UpdatedAt = location.UpdatedAt,
             EventCount = location.Events.Count,
-            NearbyLocationCount = location.NearbyLocationsAsSource.Count
+            NearbyLocationCount = location.NearbyLocationsAsSource.Count + location.NearbyLocationsAsTarget.Count
         };
     }
 }
