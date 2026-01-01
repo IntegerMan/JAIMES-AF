@@ -1,5 +1,6 @@
 @page "/admin/metrics"
 @using MattEland.Jaimes.Web.Components.Shared
+@using MattEland.Jaimes.Web.Components.Helpers
 @using MudBlazor
 @inject NavigationManager NavigationManager
 @inject IHttpClientFactory HttpClientFactory
@@ -23,7 +24,7 @@
                 <MudChip T="string" Color="Color.Primary" Size="Size.Small">@_evaluator.MetricCount.ToString("N0") Metrics</MudChip>
                 @if (_evaluator.AverageScore.HasValue)
                 {
-                    <MudChip T="string" Color="@GetScoreColor(_evaluator.AverageScore.Value)" Size="Size.Small">
+                    <MudChip T="string" Color="@MetricColorHelper.GetScoreColor(_evaluator.AverageScore.Value)" Size="Size.Small">
                         Avg: @_evaluator.AverageScore.Value.ToString("F2")
                     </MudChip>
                 }
@@ -112,15 +113,5 @@
         NavigationManager.NavigateTo("/admin/metrics");
     }
 
-    private static Color GetScoreColor(double score)
-    {
-        return score switch
-        {
-            >= 5.0 => Color.Success,
-            >= 4.0 => Color.Info,
-            >= 2.0 => Color.Warning,
-            _ => Color.Error
-        };
-    }
 
 }

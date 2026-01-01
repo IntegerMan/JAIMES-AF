@@ -1,7 +1,14 @@
 @using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.ServiceDefinitions.Requests
+@using MattEland.Jaimes.Web.Components.Helpers
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.Extensions.Configuration
 @using MudBlazor
 @inject IHttpClientFactory HttpClientFactory
 @inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+@inject IConfiguration Configuration
+@implements IAsyncDisposable
 
 <MudDataGrid T="EvaluationMetricListItemDto"
              ServerData="ServerReload"
@@ -61,13 +68,27 @@
                     <MudSpacer />
                     @if (context.Grouping.Any(x => x.IsMissing))
                     {
-                        <MudButton StartIcon="@Icons.Material.Filled.Refresh" 
-                                   Variant="Variant.Filled" 
-                                   Color="Color.Primary" 
-                                   Size="Size.Small"
-                                   OnClick="@(async () => { if (context.Grouping.Key is int msgId) await TriggerReEvaluation(msgId); })">
-                            Re-evaluate Missing
-                        </MudButton>
+                        var msgId = context.Grouping.Key as int? ?? 0;
+                        if (_reevaluatingMessageIds.Contains(msgId))
+                        {
+                            <MudButton StartIcon="@Icons.Material.Filled.HourglassEmpty" 
+                                       Variant="Variant.Outlined" 
+                                       Color="Color.Default" 
+                                       Size="Size.Small"
+                                       Disabled="true">
+                                Update Pending...
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudButton StartIcon="@Icons.Material.Filled.Refresh" 
+                                       Variant="Variant.Filled" 
+                                       Color="Color.Primary" 
+                                       Size="Size.Small"
+                                       OnClick="@(async () => await TriggerReEvaluation(msgId))">
+                                Re-evaluate Missing
+                            </MudButton>
+                        }
                     }
                 </MudStack>
             </GroupTemplate>
@@ -85,7 +106,7 @@
                 }
                 else
                 {
-                    <MudChip T="string" Color="@GetScoreColor(context.Item.Score)" Size="Size.Small">
+                    <MudChip T="string" Color="@MetricColorHelper.GetScoreColor(context.Item.Score)" Size="Size.Small">
                         @context.Item.Score.ToString("F2")
                     </MudChip>
                 }
@@ -207,15 +228,59 @@
     [Parameter]
     public int? EvaluatorId { get; set; }
 
-    private static Color GetScoreColor(double score)
+    private HashSet<int> _reevaluatingMessageIds = [];
+    private HubConnection? _hubConnection;
+
+    protected override async Task OnInitializedAsync()
     {
-        return score switch
+        // Initialize SignalR using the API service URL, not the local web URL
+        string baseApiUrl = Configuration["ApiService:BaseAddress"] ?? "http://apiservice/";
+        if (!baseApiUrl.EndsWith("/")) baseApiUrl += "/";
+        var hubUrl = new Uri(new Uri(baseApiUrl), "hubs/messages");
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(hubUrl)
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On<MessageUpdateNotification>("ReceiveMessageUpdate", async (notification) =>
         {
-            >= 5.0 => Color.Success,
-            >= 4.0 => Color.Info,
-            >= 2.0 => Color.Warning,
-            _ => Color.Error
-        };
+            if (notification.UpdateType == MessageUpdateType.MetricsEvaluated)
+            {
+               await InvokeAsync(async () =>
+               {
+                   // Remove from pending set
+                   if (_reevaluatingMessageIds.Contains(notification.MessageId))
+                   {
+                       _reevaluatingMessageIds.Remove(notification.MessageId);
+                       StateHasChanged(); // Force UI update immediately to allow button removal/update
+                   }
+                   
+                   // Reload data to show updated metrics
+                   if (_grid != null)
+                   {
+                       await _grid.ReloadServerData();
+                   }
+               });
+            }
+        });
+
+        try
+        {
+            await _hubConnection.StartAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to connect to SignalR hub: {ex.Message}");
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
     }
 
     private string GetRowClass(EvaluationMetricListItemDto item, int rowNumber)
@@ -225,6 +290,9 @@
 
     private async Task TriggerReEvaluation(int messageId)
     {
+        _reevaluatingMessageIds.Add(messageId);
+        StateHasChanged();
+
         try
         {
             var client = HttpClientFactory.CreateClient("Api");
@@ -238,11 +306,15 @@
             {
                 var error = await response.Content.ReadAsStringAsync();
                 Snackbar.Add($"Failed to trigger re-evaluation: {error}", Severity.Error);
+                _reevaluatingMessageIds.Remove(messageId); // Revert on failure
+                StateHasChanged();
             }
         }
         catch (Exception ex)
         {
             Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            _reevaluatingMessageIds.Remove(messageId); // Revert on error
+            StateHasChanged();
         }
     }
 

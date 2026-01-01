@@ -83,7 +83,7 @@
                                              }
                                          </MudStack>
                                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                                <MudChip T="string" Color="@GetScoreColor(metric.Score)" Size="Size.Medium">
+                                                <MudChip T="string" Color="@MetricColorHelper.GetScoreColor(metric.Score)" Size="Size.Medium">
                                                     @metric.Score.ToString("F1")
                                                 </MudChip>
                                                 @if (metric.Score >= 3)
@@ -321,16 +321,6 @@
         // Deprecated
     }
 
-    private static Color GetScoreColor(double score)
-    {
-        return score switch
-        {
-            >= 4 => Color.Success,
-            >= 3 => Color.Info,
-            >= 2 => Color.Warning,
-            _ => Color.Error
-        };
-    }
     
     // DTO for message metadata (simplified)
     private class MessageMetadataResponse
