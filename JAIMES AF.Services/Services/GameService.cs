@@ -58,6 +58,29 @@ public class GameService(
             InstructionVersionId = scenarioAgent.InstructionVersionId
         };
 
+        // Determine the specific version ID for the initial message
+        // If the game is dynamic (null), we must resolve the specific "Latest" version now for the message record
+        int initialMessageVersionId;
+        if (scenarioAgent.InstructionVersionId.HasValue)
+        {
+            initialMessageVersionId = scenarioAgent.InstructionVersionId.Value;
+        }
+        else
+        {
+            initialMessageVersionId = await context.AgentInstructionVersions
+                .AsNoTracking()
+                .Where(v => v.AgentId == scenarioAgent.AgentId && v.IsActive)
+                .OrderByDescending(v => v.CreatedAt)
+                .Select(v => v.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (initialMessageVersionId == 0)
+            {
+                throw new InvalidOperationException(
+                    $"No active instruction version found for agent '{scenarioAgent.AgentId}'. Cannot create game.");
+            }
+        }
+
         // Save the game first
         context.Games.Add(game);
         await context.SaveChangesAsync(cancellationToken);
@@ -78,7 +101,7 @@ public class GameService(
             CreatedAt = DateTime.UtcNow,
             IsScriptedMessage = true,
             AgentId = scenarioAgent.AgentId,
-            InstructionVersionId = scenarioAgent.InstructionVersionId
+            InstructionVersionId = initialMessageVersionId
         };
 
         context.Messages.Add(message);

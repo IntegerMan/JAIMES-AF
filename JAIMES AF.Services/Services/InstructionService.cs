@@ -20,11 +20,14 @@ public class InstructionService(IDbContextFactory<JaimesDbContext> contextFactor
                 ScenarioAgents = s.ScenarioAgents
                     .Select(sa => new
                     {
+                        sa.AgentId,
                         sa.InstructionVersionId,
-                        InstructionVersion = new
-                        {
-                            sa.InstructionVersion!.Instructions
-                        }
+                        InstructionVersion = sa.InstructionVersion == null
+                            ? null
+                            : new
+                            {
+                                sa.InstructionVersion.Instructions
+                            }
                     })
                     .FirstOrDefault()
             })
@@ -38,7 +41,30 @@ public class InstructionService(IDbContextFactory<JaimesDbContext> contextFactor
         if (scenarioAgent == null)
             return null;
 
-        string baseInstructions = scenarioAgent.InstructionVersion.Instructions;
+        string? baseInstructions;
+
+        if (scenarioAgent.InstructionVersionId.HasValue && scenarioAgent.InstructionVersion != null)
+        {
+            baseInstructions = scenarioAgent.InstructionVersion.Instructions;
+        }
+        else
+        {
+            // Dynamic resolution for Scenario: Find the latest active version for this agent
+            var latestVersion = await context.AgentInstructionVersions
+                .AsNoTracking()
+                .Where(v => v.AgentId == scenarioAgent.AgentId && v.IsActive)
+                .OrderByDescending(v => v.CreatedAt)
+                .Select(v => new { v.Instructions })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            baseInstructions = latestVersion?.Instructions;
+        }
+
+        if (string.IsNullOrEmpty(baseInstructions))
+        {
+            baseInstructions = "You are a helpful assistant.";
+        }
+
         string? scenarioInstructions = scenarioData.ScenarioInstructions;
 
         // Combine instructions

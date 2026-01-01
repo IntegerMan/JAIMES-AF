@@ -168,7 +168,7 @@ public partial class GameDetails : IAsyncDisposable
             if (_game != null)
             {
                 _selectedAgentId = _game.AgentId ?? _defaultAgentId;
-                _selectedVersionId = _game.InstructionVersionId ?? _defaultInstructionVersionId;
+                _selectedVersionId = _game.InstructionVersionId;
                 _defaultAgentName ??= _game.AgentName;
                 _defaultVersionNumber ??= _game.VersionNumber;
 

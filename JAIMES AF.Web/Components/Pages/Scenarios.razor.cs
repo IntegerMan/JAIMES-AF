@@ -63,16 +63,22 @@ public partial class Scenarios
                     var agent = await Http.GetFromJsonAsync<AgentResponse>($"/agents/{scenarioAgent.AgentId}");
                     if (agent != null)
                     {
-                        // Get instruction version details
-                        var version = await Http.GetFromJsonAsync<AgentInstructionVersionResponse>(
-                            $"/agents/{scenarioAgent.AgentId}/instruction-versions/{scenarioAgent.InstructionVersionId}");
+                        string versionNumber = "Latest (Dynamic)";
+
+                        if (scenarioAgent.InstructionVersionId.HasValue)
+                        {
+                            // Get instruction version details
+                            var version = await Http.GetFromJsonAsync<AgentInstructionVersionResponse>(
+                                $"/agents/{scenarioAgent.AgentId}/instruction-versions/{scenarioAgent.InstructionVersionId}");
+                            versionNumber = version?.VersionNumber ?? "v?";
+                        }
 
                         agentInfos.Add(new AgentDisplayInfo
                         {
                             AgentId = scenarioAgent.AgentId,
                             AgentName = agent.Name,
                             VersionId = scenarioAgent.InstructionVersionId,
-                            VersionNumber = version?.VersionNumber ?? "v?"
+                            VersionNumber = versionNumber
                         });
                     }
                 }
@@ -99,7 +105,7 @@ public partial class Scenarios
     {
         public required string AgentId { get; init; }
         public required string AgentName { get; init; }
-        public int VersionId { get; init; }
+        public int? VersionId { get; init; }
         public required string VersionNumber { get; init; }
     }
 }

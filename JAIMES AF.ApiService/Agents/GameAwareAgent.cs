@@ -452,6 +452,12 @@ public class GameAwareAgent(
             }
         }
 
+        if (!resolvedInstructionVersionId.HasValue)
+        {
+            throw new InvalidOperationException(
+                $"Could not resolve an active instruction version for agent '{agentId}'.");
+        }
+
         int instructionVersionId = resolvedInstructionVersionId.Value;
 
         // Determine context agent (Agent ID and Version) for the User Message
@@ -469,12 +475,12 @@ public class GameAwareAgent(
             .ThenByDescending(m => m.Id)
             .Select(m => new { m.AgentId, m.InstructionVersionId })
             .FirstOrDefaultAsync(cancellationToken);
-
         if (lastMessageEntry != null)
         {
             userMessageAgentId = lastMessageEntry.AgentId;
             userMessageInstructionVersionId = lastMessageEntry.InstructionVersionId;
         }
+
         else
         {
             // Fallback to scenario default if no previous message (should be rare due to initial greeting)
@@ -493,6 +499,7 @@ public class GameAwareAgent(
             AgentId = userMessageAgentId,
             InstructionVersionId = userMessageInstructionVersionId
         };
+
         dbContext.Messages.Add(userMessageEntity);
         _logger.LogDebug("Added user message entity for game {GameId}", gameId);
 
@@ -510,6 +517,7 @@ public class GameAwareAgent(
                 ModelId = model?.Id
             })
             .ToList();
+
         dbContext.Messages.AddRange(aiMessageEntities);
         _logger.LogDebug("Added {Count} AI message entity/entities for game {GameId}", aiMessageEntities.Count, gameId);
 
@@ -621,7 +629,9 @@ public class GameAwareAgent(
             .ToListAsync(cancellationToken);
 
         // Link messages sequentially
-        for (int i = 0; i < allMessages.Count; i++)
+        for (int i = 0;
+             i < allMessages.Count;
+             i++)
         {
             Message currentMessage = allMessages[i];
 
@@ -660,8 +670,8 @@ public class GameAwareAgent(
             _logger.LogDebug("Enqueued user message {MessageId} for game {GameId}", userMessageEntity.Id, gameId);
         }
 
-        // Enqueue assistant messages
-        // Note: aiMessageEntities are already filtered to ChatRole.Assistant (tool calls excluded by the Where clause above)
+// Enqueue assistant messages
+// Note: aiMessageEntities are already filtered to ChatRole.Assistant (tool calls excluded by the Where clause above)
         foreach (Message aiMessage in aiMessageEntities)
         {
             ConversationMessageQueuedMessage assistantQueueMessage = new()
@@ -674,11 +684,11 @@ public class GameAwareAgent(
             _logger.LogDebug("Enqueued assistant message {MessageId} for game {GameId}", aiMessage.Id, gameId);
         }
 
-        // Get the last AI message ID for thread association
+// Get the last AI message ID for thread association
         int? lastAiMessageId = aiMessageEntities.LastOrDefault()?.Id;
 
-        // Use memory provider to persist thread state
-        // The memory provider provides a consistent interface for thread persistence
+// Use memory provider to persist thread state
+// The memory provider provides a consistent interface for thread persistence
         string memoryProviderKey = $"MemoryProvider_{gameId}";
         if (context != null && context.Items.TryGetValue(memoryProviderKey, out object? providerObj) &&
             providerObj is GameConversationMemoryProvider memoryProvider)
