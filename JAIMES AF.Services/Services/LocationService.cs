@@ -20,6 +20,7 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
         Location? location = await context.Locations
             .Include(l => l.Events)
             .Include(l => l.NearbyLocationsAsSource)
+            .Include(l => l.NearbyLocationsAsTarget)
             .FirstOrDefaultAsync(l => l.GameId == gameId && l.Name.ToLower() == name.ToLower(), cancellationToken);
 
         return location == null ? null : MapToResponse(location);
@@ -34,6 +35,7 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
         List<Location> locations = await context.Locations
             .Include(l => l.Events)
             .Include(l => l.NearbyLocationsAsSource)
+            .Include(l => l.NearbyLocationsAsTarget)
             .Where(l => l.GameId == gameId)
             .OrderBy(l => l.Name)
             .ToListAsync(cancellationToken);
@@ -54,6 +56,7 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
         Location? location = await context.Locations
             .Include(l => l.Events)
             .Include(l => l.NearbyLocationsAsSource)
+            .Include(l => l.NearbyLocationsAsTarget)
             .FirstOrDefaultAsync(l => l.Id == locationId, cancellationToken);
 
         return location == null ? null : MapToResponse(location);
@@ -90,6 +93,7 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
         Location? location = await context.Locations
             .Include(l => l.Events)
             .Include(l => l.NearbyLocationsAsSource)
+            .Include(l => l.NearbyLocationsAsTarget)
             .FirstOrDefaultAsync(l => l.Id == locationId, cancellationToken);
 
         if (location == null)
@@ -240,8 +244,9 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
         {
             // Update existing relationship (find in either direction)
             NearbyLocation? existing = await context.NearbyLocations
-                .FirstAsync(nl => (nl.SourceLocationId == sourceLocationId && nl.TargetLocationId == targetLocationId) ||
-                                  (nl.SourceLocationId == targetLocationId && nl.TargetLocationId == sourceLocationId),
+                .FirstAsync(nl =>
+                        (nl.SourceLocationId == sourceLocationId && nl.TargetLocationId == targetLocationId) ||
+                        (nl.SourceLocationId == targetLocationId && nl.TargetLocationId == sourceLocationId),
                     cancellationToken);
 
             existing.Distance = distance ?? existing.Distance;
@@ -252,9 +257,9 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
             return new NearbyLocationResponse
             {
                 SourceLocationId = existing.SourceLocationId,
-                SourceLocationName = source.Name,
+                SourceLocationName = existing.SourceLocationId == sourceLocationId ? source.Name : target.Name,
                 TargetLocationId = existing.TargetLocationId,
-                TargetLocationName = target.Name,
+                TargetLocationName = existing.TargetLocationId == targetLocationId ? target.Name : source.Name,
                 Distance = existing.Distance,
                 TravelNotes = existing.TravelNotes,
                 StorytellerNotes = existing.StorytellerNotes

@@ -105,14 +105,16 @@
 						}
 					</MudTd>
 					<MudTd Style="text-align: right;">
-						<MudIconButton Icon="@Icons.Material.Filled.Visibility"
-						               Size="Size.Small"
-						               Href="@($"/admin/locations/{context.Id}")"
-						               Title="View Details"/>
-						<MudIconButton Icon="@Icons.Material.Filled.Edit"
-						               Size="Size.Small"
-						               Href="@($"/admin/locations/{context.Id}/edit")"
-						               Title="Edit Location"/>
+						<MudTooltip Text="View Details">
+							<MudIconButton Icon="@Icons.Material.Filled.Visibility"
+							               Size="Size.Small"
+							               Href="@($"/admin/locations/{context.Id}")"/>
+						</MudTooltip>
+						<MudTooltip Text="Edit Location">
+							<MudIconButton Icon="@Icons.Material.Filled.Edit"
+							               Size="Size.Small"
+							               Href="@($"/admin/locations/{context.Id}/edit")"/>
+						</MudTooltip>
 					</MudTd>
 				</RowTemplate>
 			</MudTable>
