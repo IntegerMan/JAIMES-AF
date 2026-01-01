@@ -105,7 +105,11 @@ public class MessageEvaluationMetricsService(IDbContextFactory<JaimesDbContext> 
             .Include(m => m.Game!)
             .ThenInclude(g => g.Player)
             .Include(m => m.Game!)
+            .Include(m => m.Game!)
             .ThenInclude(g => g.Scenario)
+            .Include(m => m.Game!)
+            .ThenInclude(g => g.Scenario)
+            .Include(m => m.Agent)
             .Include(m => m.InstructionVersion)
             .ToListAsync(cancellationToken);
 
@@ -150,7 +154,11 @@ public class MessageEvaluationMetricsService(IDbContextFactory<JaimesDbContext> 
                     GamePlayerName = msg.Game?.Player?.Name,
                     GameScenarioName = msg.Game?.Scenario?.Name,
                     GameRulesetId = msg.Game?.RulesetId,
+
                     AgentVersion = msg.InstructionVersion?.VersionNumber,
+                    AgentId = msg.AgentId,
+                    AgentName = msg.Agent?.Name,
+                    InstructionVersionId = msg.InstructionVersionId,
                     MessagePreview = msg.Text is string text && text.Length > 50 ? text[..50] + "..." : msg.Text,
                     IsMissing = false
                 });
@@ -193,7 +201,11 @@ public class MessageEvaluationMetricsService(IDbContextFactory<JaimesDbContext> 
                     GamePlayerName = msg.Game?.Player?.Name,
                     GameScenarioName = msg.Game?.Scenario?.Name,
                     GameRulesetId = msg.Game?.RulesetId,
+
                     AgentVersion = msg.InstructionVersion?.VersionNumber,
+                    AgentId = msg.AgentId,
+                    AgentName = msg.Agent?.Name,
+                    InstructionVersionId = msg.InstructionVersionId,
                     MessagePreview = msg.Text is string text && text.Length > 50 ? text[..50] + "..." : msg.Text,
                     IsMissing = true
                 });

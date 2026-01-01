@@ -77,6 +77,22 @@ public class EvaluationMetricListItemDto
     /// </summary>
     public string? GameRulesetId { get; set; }
 
+
+    /// <summary>
+    /// The agent ID.
+    /// </summary>
+    public string? AgentId { get; set; }
+
+    /// <summary>
+    /// The name of the agent.
+    /// </summary>
+    public string? AgentName { get; set; }
+
+    /// <summary>
+    /// The agent instruction version ID.
+    /// </summary>
+    public int? InstructionVersionId { get; set; }
+
     /// <summary>
     /// The agent instruction version number.
     /// </summary>

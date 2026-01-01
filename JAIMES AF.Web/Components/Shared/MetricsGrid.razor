@@ -21,7 +21,7 @@
              RowClassFunc="@GetRowClass"
              @ref="_grid">
     <Columns>
-        <PropertyColumn Property="x => x.GameId" Title="Game" Groupable="true" Grouping="true">
+        <PropertyColumn Property="x => x.GameId" Title="Game" Groupable="true" Grouping="true" Hidden="true">
             <CellTemplate>
                 <MudLink Href="@($"/games/{context.Item.GameId}")">
                     @context.Item.GamePlayerName in @context.Item.GameScenarioName
@@ -35,6 +35,20 @@
                     <MudText Typo="Typo.caption" Class="text-muted">(@context.Grouping.Count() metrics)</MudText>
                 </MudStack>
             </GroupTemplate>
+        </PropertyColumn>
+        <PropertyColumn Property="x => x.AgentName" Title="Agent">
+            <CellTemplate>
+                @if (context.Item.InstructionVersionId.HasValue && !string.IsNullOrEmpty(context.Item.AgentId))
+                {
+                    <MudLink Href="@($"/agents/{context.Item.AgentId}/versions/{context.Item.InstructionVersionId}")">
+                        @context.Item.AgentName v@(context.Item.AgentVersion ?? "?")
+                    </MudLink>
+                }
+                else
+                {
+                    <MudText>@context.Item.AgentName</MudText>
+                }
+            </CellTemplate>
         </PropertyColumn>
         <PropertyColumn Property="x => x.MessageId" Title="Message" Groupable="true" Grouping="true">
             <CellTemplate>
