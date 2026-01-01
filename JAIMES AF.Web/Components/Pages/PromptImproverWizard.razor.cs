@@ -40,6 +40,10 @@ public partial class PromptImproverWizard : IDisposable
     // User feedback
     private string _userFeedback = string.Empty;
 
+    // Editable input prompt
+    private string _editableInputPrompt = string.Empty;
+    private bool _inputPromptExpanded = true;
+
     // Improved prompt
     private string _improvedPrompt = string.Empty;
     private bool _isGeneratingPrompt;
@@ -492,6 +496,12 @@ public partial class PromptImproverWizard : IDisposable
             if (_activeStep > _maxReachedStep)
             {
                 _maxReachedStep = _activeStep;
+            }
+
+            // When advancing to step 2 (Generate), populate the editable input prompt
+            if (_activeStep == 2)
+            {
+                _editableInputPrompt = GetFullPromptPreview();
             }
 
             StateHasChanged();
