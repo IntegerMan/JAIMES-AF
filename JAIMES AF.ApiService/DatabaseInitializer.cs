@@ -251,6 +251,16 @@ public class DatabaseInitializer(ActivitySource activitySource, ILogger<Database
     {
         try
         {
+            // Data cleanup: Remove any ScenarioAgent records with NULL InstructionVersionId
+            // This can happen if data was manually inserted or from an older schema
+            var invalidRecordsCount = await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM \"ScenarioAgents\" WHERE \"InstructionVersionId\" IS NULL");
+
+            if (invalidRecordsCount > 0)
+            {
+                logger?.LogWarning("Removed {Count} ScenarioAgent records with NULL InstructionVersionId", invalidRecordsCount);
+            }
+
             // Define default mappings: ScenarioId -> AgentId
             var scenarioMappings = new Dictionary<string, string>
             {

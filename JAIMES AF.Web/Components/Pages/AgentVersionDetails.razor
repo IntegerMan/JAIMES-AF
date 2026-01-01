@@ -94,7 +94,7 @@
 
             <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
                 <MudText Typo="Typo.h5">Version Analysis</MudText>
-                @if (_activeTabIndex is 1 or 3 or 4)
+                @if (_activeTabIndex is 0 or 1 or 3 or 4)
                 {
                     <MudButton Variant="Variant.Filled"
                                Color="Color.Secondary"
@@ -117,7 +117,7 @@
 
             <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-3" @bind-ActivePanelIndex="_activeTabIndex">
                 <MudTabPanel Text="Messages">
-                    <MattEland.Jaimes.Web.Components.Agents.AgentMessagesList AgentId="@AgentId" VersionId="@VersionId"/>
+                    <MattEland.Jaimes.Web.Components.Agents.AgentMessagesList @ref="_messagesGrid" AgentId="@AgentId" VersionId="@VersionId"/>
                 </MudTabPanel>
                 <MudTabPanel Text="Feedback">
                     <MattEland.Jaimes.Web.Components.Shared.FeedbackGrid @ref="_feedbackGrid" AgentId="@AgentId" InstructionVersionId="@VersionId"/>

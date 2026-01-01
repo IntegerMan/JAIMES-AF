@@ -192,41 +192,6 @@
 
 @inject ISnackbar Snackbar
 
-@if (InstructionVersionId.HasValue && !string.IsNullOrEmpty(AgentId))
-{
-    <MudPaper Class="pa-4 mt-4" Elevation="1">
-        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-            <MudText Typo="Typo.h6">AI Insights</MudText>
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Secondary"
-                       StartIcon="@Icons.Material.Filled.AutoAwesome"
-                       OnClick="GenerateInsightsAsync"
-                       Disabled="_isGeneratingInsights">
-                @if (_isGeneratingInsights)
-                {
-                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
-                    <span class="ms-2">Analyzing...</span>
-                }
-                else
-                {
-                    <span>Generate Insights</span>
-                }
-            </MudButton>
-        </MudStack>
-        
-        @if (!string.IsNullOrEmpty(_insightsResult))
-        {
-            <MudDivider Class="my-3"/>
-            <MudText Typo="Typo.body1" Style="white-space: pre-wrap;">@_insightsResult</MudText>
-            @if (_insightsItemCount > 0)
-            {
-                <MudText Typo="Typo.caption" Class="text-muted mt-2">
-                    Based on @_insightsItemCount metric evaluations
-                </MudText>
-            }
-        }
-    </MudPaper>
-}
 @code {
     private MudDataGrid<EvaluationMetricListItemDto>? _grid;
 
@@ -442,8 +407,6 @@
 
     // Insights generation state
     private bool _isGeneratingInsights;
-    private string? _insightsResult;
-    private int _insightsItemCount;
 
     /// <summary>
     /// Generates AI insights and shows them in a dialog.
@@ -470,9 +433,6 @@
                 var result = await response.Content.ReadFromJsonAsync<GenerateInsightsResponse>();
                 if (result?.Success == true)
                 {
-                    _insightsResult = result.Insights;
-                    _insightsItemCount = result.ItemsAnalyzed;
-                    
                     // Show dialog with markdown content
                     var parameters = new DialogParameters<InsightsDialog>
                     {
