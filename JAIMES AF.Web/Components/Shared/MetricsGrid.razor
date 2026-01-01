@@ -82,7 +82,7 @@
                     <MudSpacer />
                     @if (context.Grouping.Any(x => x.IsMissing))
                     {
-                        var msgId = context.Grouping.Key as int? ?? 0;
+                        var msgId = context.Grouping.Key is int id ? id : 0;
                         if (_reevaluatingMessageIds.Contains(msgId))
                         {
                             <MudButton StartIcon="@Icons.Material.Filled.HourglassEmpty" 

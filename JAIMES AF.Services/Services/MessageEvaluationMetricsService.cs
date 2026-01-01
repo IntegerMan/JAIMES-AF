@@ -97,33 +97,28 @@ public class MessageEvaluationMetricsService(IDbContextFactory<JaimesDbContext> 
         // Order by CreatedAt descending to see recent messages first
         messageQuery = messageQuery.OrderByDescending(m => m.CreatedAt);
 
-        int totalMessagesCount = await messageQuery.CountAsync(cancellationToken);
-
-        var pagedMessages = await messageQuery
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
+        // Fetch ALL matching messages to construct the full list of items
+        var allMessages = await messageQuery
             .Include(m => m.Game!)
             .ThenInclude(g => g.Player)
-            .Include(m => m.Game!)
-            .Include(m => m.Game!)
-            .ThenInclude(g => g.Scenario)
             .Include(m => m.Game!)
             .ThenInclude(g => g.Scenario)
             .Include(m => m.Agent)
             .Include(m => m.InstructionVersion)
+            .OrderByDescending(m => m.CreatedAt)
             .ToListAsync(cancellationToken);
 
         // Fetch metrics for these specific messages
-        var messageIds = pagedMessages.Select(m => m.Id).ToList();
+        var messageIds = allMessages.Select(m => m.Id).ToList();
         var metricsItems = await context.MessageEvaluationMetrics
             .AsNoTracking()
             .Where(m => messageIds.Contains(m.MessageId))
             .Include(m => m.Evaluator)
             .ToListAsync(cancellationToken);
 
-        var dtos = new List<EvaluationMetricListItemDto>();
+        var allDtos = new List<EvaluationMetricListItemDto>();
 
-        foreach (var msg in pagedMessages)
+        foreach (var msg in allMessages)
         {
             var msgMetrics = metricsItems.Where(m => m.MessageId == msg.Id).ToList();
 
@@ -138,7 +133,7 @@ public class MessageEvaluationMetricsService(IDbContextFactory<JaimesDbContext> 
                 if (filters?.EvaluatorId.HasValue == true && m.EvaluatorId != filters.EvaluatorId.Value)
                     continue;
 
-                dtos.Add(new EvaluationMetricListItemDto
+                allDtos.Add(new EvaluationMetricListItemDto
                 {
                     Id = m.Id,
                     MessageId = m.MessageId,
@@ -186,7 +181,7 @@ public class MessageEvaluationMetricsService(IDbContextFactory<JaimesDbContext> 
                     !evaluator.Name.Contains(filters.MetricName, StringComparison.OrdinalIgnoreCase))
                     continue;
 
-                dtos.Add(new EvaluationMetricListItemDto
+                allDtos.Add(new EvaluationMetricListItemDto
                 {
                     Id = 0,
                     MessageId = msg.Id,
@@ -212,14 +207,16 @@ public class MessageEvaluationMetricsService(IDbContextFactory<JaimesDbContext> 
             }
         }
 
-        // Return the count of messages roughly multiplied by evaluator count to approximate the total "rows"
-        // This keeps the pagination UI reasonably meaningful.
-        int totalRows = totalMessagesCount * (registeredEvaluators.Count > 0 ? registeredEvaluators.Count : 1);
+        // Now page the flattened list of DTOs
+        var pagedDtos = allDtos
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
 
         return new EvaluationMetricListResponse
         {
-            Items = dtos,
-            TotalCount = totalRows,
+            Items = pagedDtos,
+            TotalCount = allDtos.Count,
             Page = page,
             PageSize = pageSize
         };
