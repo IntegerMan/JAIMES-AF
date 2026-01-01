@@ -171,6 +171,8 @@ public static class TextGenerationServiceExtensions
             ChatOptions? options = null,
             CancellationToken cancellationToken = default)
         {
+            logger.LogInformation("GetResponseAsync called (Non-streaming) for model {Model}", model);
+
             // Convert ChatMessage collection to Ollama chat format
             List<OllamaChatMessage> ollamaMessages = [];
             foreach (ChatMessage message in messages)
@@ -231,6 +233,8 @@ public static class TextGenerationServiceExtensions
             [System.Runtime.CompilerServices.EnumeratorCancellation]
             CancellationToken cancellationToken = default)
         {
+            logger.LogInformation("Starting streaming response for model {Model}", model);
+
             // Convert ChatMessage collection to Ollama chat format
             List<OllamaChatMessage> ollamaMessages = [];
             foreach (ChatMessage message in messages)
@@ -289,6 +293,8 @@ public static class TextGenerationServiceExtensions
                 string? line = await reader.ReadLineAsync(cancellationToken);
                 if (string.IsNullOrWhiteSpace(line)) continue;
 
+                logger.LogInformation("Ollama SSE Line: {LineLength}", line.Length);
+
                 OllamaChatResponse? chatResponse = null;
                 try
                 {
@@ -318,6 +324,11 @@ public static class TextGenerationServiceExtensions
 
         public object? GetService(Type serviceType, object? serviceKey = null)
         {
+            if (serviceType == typeof(ChatClientMetadata))
+            {
+                return new ChatClientMetadata(nameof(OllamaChatClientWrapper), new Uri(_endpoint), model);
+            }
+
             return null;
         }
 
