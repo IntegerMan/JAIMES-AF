@@ -1,6 +1,7 @@
 using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
+using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceLayer.Mapping;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +10,9 @@ namespace MattEland.Jaimes.ServiceLayer.Services;
 
 public class MessageFeedbackService(IDbContextFactory<JaimesDbContext> contextFactory) : IMessageFeedbackService
 {
-    public async Task<MessageFeedbackDto> SubmitFeedbackAsync(int messageId, bool isPositive, string? comment,
+    public async Task<MessageFeedbackDto> SubmitFeedbackAsync(int messageId,
+        bool isPositive,
+        string? comment,
         CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -65,7 +68,9 @@ public class MessageFeedbackService(IDbContextFactory<JaimesDbContext> contextFa
     }
 
     public async Task<MattEland.Jaimes.ServiceDefinitions.Responses.FeedbackListResponse> GetFeedbackListAsync(int page,
-        int pageSize, string? toolName = null, bool? isPositive = null, CancellationToken cancellationToken = default)
+        int pageSize,
+        AdminFilterParams? filters = null,
+        CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -84,17 +89,46 @@ public class MessageFeedbackService(IDbContextFactory<JaimesDbContext> contextFa
             .ThenInclude(m => m!.InstructionVersion)
             .Include(mf => mf.InstructionVersion);
 
-        // Apply isPositive filter if specified
-        if (isPositive.HasValue)
+        // Apply filters from AdminFilterParams
+        if (filters != null)
         {
-            query = query.Where(mf => mf.IsPositive == isPositive.Value);
-        }
+            // Apply isPositive filter if specified
+            if (filters.IsPositive.HasValue)
+            {
+                query = query.Where(mf => mf.IsPositive == filters.IsPositive.Value);
+            }
 
-        // Apply toolName filter if specified - filter by messages that have a tool call with this name
-        if (!string.IsNullOrEmpty(toolName))
-        {
-            query = query.Where(mf => mf.Message != null &&
-                                      mf.Message.ToolCalls.Any(tc => tc.ToolName.ToLower() == toolName.ToLower()));
+            // Apply toolName filter if specified - filter by messages that have a tool call with this name
+            if (!string.IsNullOrEmpty(filters.ToolName))
+            {
+                query = query.Where(mf => mf.Message != null &&
+                                          mf.Message.ToolCalls.Any(tc =>
+                                              tc.ToolName.ToLower() == filters.ToolName.ToLower()));
+            }
+
+            // Apply AgentId filter if specified
+            if (!string.IsNullOrEmpty(filters.AgentId))
+            {
+                query = query.Where(mf =>
+                    (mf.InstructionVersion != null && mf.InstructionVersion.AgentId == filters.AgentId) ||
+                    (mf.Message != null && mf.Message.InstructionVersion != null &&
+                     mf.Message.InstructionVersion.AgentId == filters.AgentId) ||
+                    (mf.Message != null && mf.Message.AgentId == filters.AgentId));
+            }
+
+            // Apply InstructionVersionId filter if specified
+            if (filters.InstructionVersionId.HasValue)
+            {
+                query = query.Where(mf =>
+                    mf.InstructionVersionId == filters.InstructionVersionId.Value ||
+                    (mf.Message != null && mf.Message.InstructionVersionId == filters.InstructionVersionId.Value));
+            }
+
+            // Apply GameId filter if specified
+            if (filters.GameId.HasValue)
+            {
+                query = query.Where(mf => mf.Message != null && mf.Message.GameId == filters.GameId.Value);
+            }
         }
 
         query = query.OrderByDescending(mf => mf.CreatedAt);

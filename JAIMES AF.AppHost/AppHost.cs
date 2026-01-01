@@ -45,7 +45,7 @@ bool needsOllamaContainer = (isTextGenOllama && string.IsNullOrWhiteSpace(textGe
 IResourceBuilder<PostgresServerResource> postgres = builder.AddPostgres("postgres")
     .WithImage("pgvector/pgvector", "pg17-trixie")
     .WithIconName("DatabaseSwitch")
-    .WithDataVolume("jaimes-pg17-v6", false);
+    .WithDataVolume("jaimes-pg17-v7", false);
 
 IResourceBuilder<PostgresServerResource> pgAdmin = postgres.WithPgAdmin(admin =>
 {
@@ -55,7 +55,7 @@ IResourceBuilder<PostgresServerResource> pgAdmin = postgres.WithPgAdmin(admin =>
     admin.WithUrls(u =>
     {
         u.Urls.Clear();
-        u.Urls.Add(new ResourceUrlAnnotation { Url = "http://localhost:5858", DisplayText = "📋 pgAdmin" });
+        u.Urls.Add(new ResourceUrlAnnotation {Url = "http://localhost:5858", DisplayText = "📋 pgAdmin"});
     });
 });
 
@@ -119,10 +119,10 @@ IResourceBuilder<LavinMQContainerResource> lavinmq = builder.AddLavinMQ("LavinMQ
     .WithUrls(u =>
     {
         u.Urls.Clear();
-        u.Urls.Add(new ResourceUrlAnnotation { Url = "http://localhost:15672", DisplayText = "📋 Management" });
-        u.Urls.Add(new ResourceUrlAnnotation { Url = "http://localhost:15672/queues", DisplayText = "📬 Queues" });
+        u.Urls.Add(new ResourceUrlAnnotation {Url = "http://localhost:15672", DisplayText = "📋 Management"});
+        u.Urls.Add(new ResourceUrlAnnotation {Url = "http://localhost:15672/queues", DisplayText = "📬 Queues"});
         u.Urls.Add(new ResourceUrlAnnotation
-            { Url = "http://localhost:15672/consumers", DisplayText = "👥 Consumers" });
+            {Url = "http://localhost:15672/consumers", DisplayText = "👥 Consumers"});
     });
 
 // Note: MongoDB has been replaced with PostgreSQL + JSONB for document storage

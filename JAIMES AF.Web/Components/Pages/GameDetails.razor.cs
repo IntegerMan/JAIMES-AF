@@ -25,6 +25,12 @@ public partial class GameDetails : IAsyncDisposable
     private Dictionary<int, List<MessageToolCallResponse>> _messageToolCalls = new();
     private Dictionary<int, List<MessageEvaluationMetricResponse>> _messageMetrics = new();
     private Dictionary<int, MessageSentimentInfo> _messageSentiment = new();
+    private Dictionary<int, MessageAgentInfo> _messageAgentInfo = new();
+    private Dictionary<ChatMessage, MessageAgentInfo> _pendingMessageAgentInfo = new();
+    private string? _defaultAgentId;
+    private string? _defaultAgentName;
+    private int? _defaultInstructionVersionId;
+    private string? _defaultVersionNumber;
     private AIAgent? _agent;
 
     private GameStateResponse? _game;
@@ -99,6 +105,35 @@ public partial class GameDetails : IAsyncDisposable
 
             // Batch load all metadata (Feedback, ToolCalls, Metrics, Sentiment)
             await LoadMessagesMetadataAsync(orderedMessages.Select(m => m.Id).ToList());
+
+            // Track agent info per message
+            _messageAgentInfo.Clear();
+            _pendingMessageAgentInfo.Clear();
+            foreach (var message in orderedMessages)
+            {
+                if ((!string.IsNullOrEmpty(message.AgentId) || message.InstructionVersionId.HasValue) &&
+                    message.Participant == ChatParticipant.GameMaster)
+                {
+                    var info = new MessageAgentInfo
+                    {
+                        AgentId = message.AgentId,
+                        AgentName = message.AgentName,
+                        InstructionVersionId = message.InstructionVersionId,
+                        // We don't have version number either.
+                        IsScriptedMessage = message.IsScriptedMessage
+                    };
+                    _messageAgentInfo[message.Id] = info;
+
+                    // Capture default agent info from history (e.g. from the first or any message)
+                    if (_defaultAgentId == null && !string.IsNullOrEmpty(info.AgentId))
+                    {
+                        _defaultAgentId = info.AgentId;
+                        _defaultAgentName = info.AgentName;
+                        _defaultInstructionVersionId = info.InstructionVersionId;
+                        _defaultVersionNumber = info.VersionNumber;
+                    }
+                }
+            }
 
             // Create AG-UI client for this game
             HttpClient aguiHttpClient = HttpClientFactory.CreateClient("AGUI");
@@ -327,6 +362,22 @@ public partial class GameDetails : IAsyncDisposable
                 {
                     AuthorName = message.AuthorName
                 };
+
+                // For Assistant messages, populate pending agent info so the icon/name appears immediately
+                if (normalizedRole == ChatRole.Assistant)
+                {
+                    _pendingMessageAgentInfo[normalizedMessage] = new MessageAgentInfo
+                    {
+                        AgentId = _defaultAgentId, // Use default from history
+                        AgentName = (!string.IsNullOrWhiteSpace(message.AuthorName) &&
+                                     !message.AuthorName.StartsWith("game-", StringComparison.OrdinalIgnoreCase))
+                            ? message.AuthorName
+                            : _defaultAgentName,
+                        InstructionVersionId = _defaultInstructionVersionId,
+                        VersionNumber = _defaultVersionNumber,
+                        IsScriptedMessage = false // Live messages are generally not scripted
+                    };
+                }
 
                 _logger?.LogInformation("Received message '{Text}' from {Role}", message.Text, normalizedRole);
                 _messages.Add(normalizedMessage);
@@ -733,6 +784,13 @@ public partial class GameDetails : IAsyncDisposable
                                         _messages[i].Text.Trim().Equals(normalizedText, StringComparison.Ordinal))
                                     {
                                         _messageIds[i] = notification.MessageId;
+
+                                        // Persist agent info from pending to permanent dictionary now that we have an ID
+                                        if (_pendingMessageAgentInfo.TryGetValue(_messages[i], out var agentInfo))
+                                        {
+                                            _messageAgentInfo[notification.MessageId] = agentInfo;
+                                        }
+
                                         _logger?.LogDebug(
                                             "Assigned Assistant message ID {MessageId} to index {Index} by content matching",
                                             notification.MessageId,
@@ -789,4 +847,16 @@ public class MessageSentimentInfo
     public int Sentiment { get; set; }
     public double? Confidence { get; set; }
     public int? SentimentSource { get; set; }
+}
+
+/// <summary>
+/// Helper class to store agent info for messages.
+/// </summary>
+public class MessageAgentInfo
+{
+    public string? AgentId { get; set; }
+    public string? AgentName { get; set; }
+    public int? InstructionVersionId { get; set; }
+    public string? VersionNumber { get; set; }
+    public bool IsScriptedMessage { get; set; }
 }

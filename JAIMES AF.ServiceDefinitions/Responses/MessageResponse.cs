@@ -9,8 +9,10 @@ public record MessageResponse
     public required string ParticipantName { get; set; }
     public DateTime CreatedAt { get; set; }
     public string? AgentId { get; set; }
+    public string? AgentName { get; set; }
 
     public int? InstructionVersionId { get; set; }
+    public bool IsScriptedMessage { get; set; }
 
     // Sentiment analysis result: -1 (negative), 0 (neutral), 1 (positive), null (not analyzed)
     public int? Sentiment { get; set; }

@@ -31,36 +31,40 @@
                                Size="Size.Small"
                                Variant="Variant.Text"
                                Disabled="@(!ReadOnly && OnMetricsClick.HasDelegate == false)"
-                               OnClick="OnMetricsClicked" />
+                               OnClick="OnMetricsClicked"/>
             </ChildContent>
         </MudTooltip>
     }
-    else if (!ReadOnly)
+    else if (!ReadOnly && !ExemptFromProcessing)
     {
-         <MudTooltip Text="Analysing Metrics..." Placement="Placement.Top">
-             <div class="d-flex align-center justify-center" style="width:32px; height:32px;">
-                 <MudIcon Icon="@Icons.Material.Filled.HourglassBottom" 
-                          Color="Color.Default" 
-                          Size="Size.Small"
-                          Class="spin-icon" />
-             </div>
-         </MudTooltip>
+        <MudTooltip Text="Analysing Metrics..." Placement="Placement.Top">
+            <div class="d-flex align-center justify-center" style="width:32px; height:32px;">
+                <MudIcon Icon="@Icons.Material.Filled.HourglassBottom"
+                         Color="Color.Default"
+                         Size="Size.Small"
+                         Class="spin-icon"/>
+            </div>
+        </MudTooltip>
     }
 
     @if (ToolCallCount > 0)
     {
         <MudTooltip Placement="Placement.Top">
             <TooltipContent>
-                @if (ToolCalls != null && ToolCalls.Count > 0) {
-                     <div class="d-flex flex-column gap-1">
-                        <MudText Typo="Typo.caption"><b>Tool Calls (@ToolCallCount):</b></MudText>
+                @if (ToolCalls != null && ToolCalls.Count > 0)
+                {
+                    <div class="d-flex flex-column gap-1">
+                        <MudText Typo="Typo.caption">
+                            <b>Tool Calls (@ToolCallCount):</b>
+                        </MudText>
                         @foreach (var tool in ToolCalls)
                         {
                             <MudText Typo="Typo.caption">• @tool.ToolName</MudText>
                         }
                     </div>
                 }
-                else {
+                else
+                {
                     <MudText Typo="Typo.caption">@($"{ToolCallCount} tool call(s)")</MudText>
                 }
             </TooltipContent>
@@ -71,7 +75,7 @@
                                Variant="Variant.Text"
                                Class="tool-call-button"
                                Disabled="@(!ReadOnly && OnToolCallsClick.HasDelegate == false)"
-                               OnClick="OnToolCallsClicked" />
+                               OnClick="OnToolCallsClicked"/>
             </ChildContent>
         </MudTooltip>
     }
@@ -84,13 +88,13 @@
                            Size="Size.Small"
                            Variant="Variant.Text"
                            Class="feedback-icon-existing"
-                           OnClick="OnFeedbackIconClicked" 
-                           Disabled="@(!ReadOnly && OnFeedbackClick.HasDelegate == false)" /> 
-                           @* In non-read-only (chat), clicking existing feedback usually does nothing or edits. 
+                           OnClick="OnFeedbackIconClicked"
+                           Disabled="@(!ReadOnly && OnFeedbackClick.HasDelegate == false)"/>
+            @* In non-read-only (chat), clicking existing feedback usually does nothing or edits. 
                               In read-only context, we want it to navigate. *@
         </MudTooltip>
     }
-    else if (ShowFeedbackButtons && !ReadOnly)
+    else if (ShowFeedbackButtons && !ReadOnly && !ExemptFromProcessing)
     {
         <div class="d-flex align-items-center gap-1">
             <MudTooltip Text="Mark as helpful" Placement="Placement.Top">
@@ -102,7 +106,7 @@
                                Disabled="@ReadOnly"
                                @onmouseenter="() => _isHoveringThumbUp = true"
                                @onmouseleave="() => _isHoveringThumbUp = false"
-                               OnClick="@(() => OnFeedbackButtonClicked(true))" />
+                               OnClick="@(() => OnFeedbackButtonClicked(true))"/>
             </MudTooltip>
             <MudTooltip Text="Mark as unhelpful" Placement="Placement.Top">
                 <MudIconButton Icon="@Icons.Material.Filled.ThumbDown"
@@ -113,7 +117,7 @@
                                Disabled="@ReadOnly"
                                @onmouseenter="() => _isHoveringThumbDown = true"
                                @onmouseleave="() => _isHoveringThumbDown = false"
-                               OnClick="@(() => OnFeedbackButtonClicked(false))" />
+                               OnClick="@(() => OnFeedbackButtonClicked(false))"/>
             </MudTooltip>
         </div>
     }
@@ -140,7 +144,7 @@
     /// </summary>
     [Parameter]
     public int ToolCallCount { get; set; }
-    
+
     /// <summary>
     /// The list of tool calls.
     /// </summary>
@@ -159,6 +163,12 @@
     /// </summary>
     [Parameter]
     public bool ShowFeedbackButtons { get; set; }
+
+    /// <summary>
+    /// If true, spinner will not be shown even if metrics are missing.
+    /// </summary>
+    [Parameter]
+    public bool ExemptFromProcessing { get; set; }
 
     /// <summary>
     /// The message ID for event callbacks and navigation.
@@ -192,8 +202,8 @@
         {
             if (ToolCalls != null && ToolCalls.Any())
             {
-                 // Navigate to the first tool call detail
-                 NavigationManager.NavigateTo($"/admin/tool-calls/{ToolCalls.First().Id}");
+                // Navigate to the first tool call detail
+                NavigationManager.NavigateTo($"/admin/tool-calls/{ToolCalls.First().Id}");
             }
             // else: maybe navigate to tool list filtered by message? For now just tool-calls/{Id} is the main request
         }
@@ -210,19 +220,19 @@
             await OnFeedbackClick.InvokeAsync((MessageId.Value, isPositive));
         }
     }
-    
+
     private void OnFeedbackIconClicked()
     {
-         if (ReadOnly && Feedback != null)
-         {
-             NavigationManager.NavigateTo($"/admin/feedback/{Feedback.Id}");
-         }
+        if (ReadOnly && Feedback != null)
+        {
+            NavigationManager.NavigateTo($"/admin/feedback/{Feedback.Id}");
+        }
     }
 
     private async Task OnMetricsClicked()
     {
         if (!MessageId.HasValue) return;
-        
+
         if (ReadOnly)
         {
             NavigationManager.NavigateTo($"/admin/metrics/{MessageId}");
@@ -232,4 +242,5 @@
             await OnMetricsClick.InvokeAsync(MessageId.Value);
         }
     }
+
 }

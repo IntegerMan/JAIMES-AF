@@ -11,7 +11,8 @@ public class AssistantMessageConsumer(
     IMessageEvaluationService evaluationService,
     IInstructionService instructionService) : IMessageConsumer<ConversationMessageQueuedMessage>
 {
-    public async Task HandleAsync(ConversationMessageQueuedMessage message, CancellationToken cancellationToken = default)
+    public async Task HandleAsync(ConversationMessageQueuedMessage message,
+        CancellationToken cancellationToken = default)
     {
         using Activity? activity = activitySource.StartActivity("AssistantMessage.Process");
         activity?.SetTag("messaging.message_type", nameof(ConversationMessageQueuedMessage));
@@ -23,7 +24,7 @@ public class AssistantMessageConsumer(
         {
             // Note: Role-based routing ensures only Assistant messages reach this consumer
             // No need to filter by role here
-            
+
             logger.LogInformation(
                 "Processing assistant message: MessageId={MessageId}, GameId={GameId}",
                 message.MessageId,
@@ -54,10 +55,8 @@ public class AssistantMessageConsumer(
             {
                 activity?.SetTag("message.agent_id", messageEntity.AgentId);
             }
-            if (messageEntity.InstructionVersionId != null)
-            {
-                activity?.SetTag("message.instruction_version_id", messageEntity.InstructionVersionId);
-            }
+
+            activity?.SetTag("message.instruction_version_id", messageEntity.InstructionVersionId);
 
             // Log message details
             string textPreview = messageEntity.Text?.Length > 200
@@ -71,7 +70,7 @@ public class AssistantMessageConsumer(
                 messageEntity.Id,
                 messageEntity.GameId,
                 messageEntity.AgentId ?? "(none)",
-                messageEntity.InstructionVersionId?.ToString() ?? "(none)",
+                messageEntity.InstructionVersionId,
                 messageEntity.Text?.Length ?? 0,
                 messageEntity.CreatedAt,
                 textPreview);
@@ -85,7 +84,8 @@ public class AssistantMessageConsumer(
             {
                 // Load last 5 messages for conversation context (ordered by CreatedAt descending, take 5, reverse)
                 List<Message> conversationContext = await context.Messages
-                    .Where(m => m.GameId == messageEntity.GameId && m.CreatedAt <= messageEntity.CreatedAt && m.Id != messageEntity.Id)
+                    .Where(m => m.GameId == messageEntity.GameId && m.CreatedAt <= messageEntity.CreatedAt &&
+                                m.Id != messageEntity.Id)
                     .OrderByDescending(m => m.CreatedAt)
                     .ThenByDescending(m => m.Id)
                     .Take(5)

@@ -1,0 +1,248 @@
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MudBlazor
+@inject IHttpClientFactory HttpClientFactory
+@inject IDialogService DialogService
+
+<MudDataGrid T="EvaluationMetricListItemDto"
+             ServerData="ServerReload"
+             Filterable="false"
+             Hover="true"
+             Dense="true"
+             Striped="true"
+             Groupable="true"
+             GroupExpanded="true">
+    <Columns>
+        <PropertyColumn Property="x => x.GameId" Title="Game" Groupable="true" Grouping="true">
+            <CellTemplate>
+                <MudLink Href="@($"/games/{context.Item.GameId}")">
+                    @context.Item.GamePlayerName in @context.Item.GameScenarioName
+                </MudLink>
+            </CellTemplate>
+            <GroupTemplate>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudLink Href="@($"/games/{context.Grouping.Key}")">
+                        @context.Grouping.First().GamePlayerName in @context.Grouping.First().GameScenarioName
+                    </MudLink>
+                    <MudText Typo="Typo.caption" Class="text-muted">(@context.Grouping.Count() metrics)</MudText>
+                </MudStack>
+            </GroupTemplate>
+        </PropertyColumn>
+        <PropertyColumn Property="x => x.MessageId" Title="Message" Groupable="true" Grouping="true">
+            <CellTemplate>
+                <MudLink Href="@($"/admin/metrics/{context.Item.MessageId}")">
+                    @context.Item.MessageId
+                </MudLink>
+            </CellTemplate>
+            <GroupTemplate>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudLink Href="@($"/admin/metrics/{context.Grouping.Key}")">
+                        Message @context.Grouping.Key
+                    </MudLink>
+                    <MudText Typo="Typo.caption" Class="text-muted">(@context.Grouping.Count() metrics)</MudText>
+                </MudStack>
+            </GroupTemplate>
+        </PropertyColumn>
+        <PropertyColumn Property="x => x.MetricName" Title="Metric">
+            <CellTemplate>
+                <strong>@context.Item.MetricName</strong>
+            </CellTemplate>
+        </PropertyColumn>
+        <PropertyColumn Property="x => x.Score" Title="Score">
+            <CellTemplate>
+                <MudChip T="string" Color="@GetScoreColor(context.Item.Score)" Size="Size.Small">
+                    @context.Item.Score.ToString("F2")
+                </MudChip>
+            </CellTemplate>
+        </PropertyColumn>
+        <PropertyColumn Property="x => x.Passed" Title="Status">
+            <CellTemplate>
+                @if (context.Item.Passed == true)
+                {
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small">Pass</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Color="Color.Error" Size="Size.Small">Fail</MudChip>
+                }
+            </CellTemplate>
+        </PropertyColumn>
+        <PropertyColumn Property="x => x.Remarks" Title="Remarks">
+            <CellTemplate>
+                @if (!string.IsNullOrEmpty(context.Item.Remarks))
+                {
+                    <MudTooltip Text="@context.Item.Remarks">
+                        <MudText Typo="Typo.body2">@TruncateText(context.Item.Remarks, 50)</MudText>
+                    </MudTooltip>
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption" Class="text-muted">No remarks provided</MudText>
+                }
+            </CellTemplate>
+        </PropertyColumn>
+        <TemplateColumn Title="Actions">
+            <CellTemplate>
+                <MudStack Row="true" Spacing="0">
+                    @if (!string.IsNullOrEmpty(context.Item.Diagnostics))
+                    {
+                        <MudTooltip Text="View Diagnostics">
+                            <MudIconButton Icon="@Icons.Material.Filled.Biotech"
+                                           Color="Color.Primary"
+                                           Size="Size.Small"
+                                           OnClick="@(() => ShowDiagnostics(context.Item))"/>
+                        </MudTooltip>
+                    }
+                    <MudTooltip Text="View Game">
+                        <MudIconButton Icon="@Icons.Material.Filled.VideogameAsset"
+                                       Color="Color.Secondary"
+                                       Size="Size.Small"
+                                       Href="@($"/games/{context.Item.GameId}")"
+                                       Target="_blank"/>
+                    </MudTooltip>
+                </MudStack>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <PagerContent>
+        <MudDataGridPager T="EvaluationMetricListItemDto"/>
+    </PagerContent>
+    <NoRecordsContent>
+        <MudText Typo="Typo.body1" Class="pa-4">
+            No evaluation metrics found.
+        </MudText>
+    </NoRecordsContent>
+</MudDataGrid>
+
+@code {
+
+    /// <summary>
+    /// Optional agent ID to filter results.
+    /// </summary>
+    [Parameter]
+    public string? AgentId { get; set; }
+
+    /// <summary>
+    /// Optional instruction version ID to filter results.
+    /// </summary>
+    [Parameter]
+    public int? InstructionVersionId { get; set; }
+
+    /// <summary>
+    /// Optional game ID to filter results.
+    /// </summary>
+    [Parameter]
+    public Guid? GameId { get; set; }
+
+    /// <summary>
+    /// Optional metric name to filter results.
+    /// </summary>
+    [Parameter]
+    public string? MetricName { get; set; }
+
+    /// <summary>
+    /// Optional filter for pass/fail status.
+    /// </summary>
+    [Parameter]
+    public bool? Passed { get; set; }
+
+    /// <summary>
+    /// Optional minimum score filter.
+    /// </summary>
+    [Parameter]
+    public double? MinScore { get; set; }
+
+    /// <summary>
+    /// Optional maximum score filter.
+    /// </summary>
+    [Parameter]
+    public double? MaxScore { get; set; }
+
+    /// <summary>
+    /// Optional evaluator ID to filter results.
+    /// </summary>
+    [Parameter]
+    public int? EvaluatorId { get; set; }
+
+    private static Color GetScoreColor(double score)
+    {
+        return score switch
+        {
+            >= 0.8 => Color.Success,
+            >= 0.5 => Color.Warning,
+            _ => Color.Error
+        };
+    }
+
+    private static string TruncateText(string text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text)) return "";
+        if (text.Length <= maxLength) return text;
+        return text[..maxLength] + "...";
+    }
+
+    private async Task ShowDiagnostics(EvaluationMetricListItemDto item)
+    {
+        await DialogService.ShowMessageBox(
+            $"Diagnostics: {item.MetricName}",
+            item.Diagnostics ?? "No diagnostics available");
+    }
+
+    private async Task<GridData<EvaluationMetricListItemDto>> ServerReload(GridState<EvaluationMetricListItemDto> state)
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient("Api");
+
+            // MudDataGrid uses 0-based index, API uses 1-based page
+            int page = state.Page + 1;
+            int pageSize = state.PageSize;
+
+            // Build query string with optional filters
+            var queryParams = new List<string>
+            {
+                $"page={page}",
+                $"pageSize={pageSize}"
+            };
+
+            if (!string.IsNullOrEmpty(AgentId))
+                queryParams.Add($"agentId={Uri.EscapeDataString(AgentId)}");
+            if (InstructionVersionId.HasValue)
+                queryParams.Add($"instructionVersionId={InstructionVersionId.Value}");
+            if (GameId.HasValue)
+                queryParams.Add($"gameId={GameId.Value}");
+            if (!string.IsNullOrEmpty(MetricName))
+                queryParams.Add($"metricName={Uri.EscapeDataString(MetricName)}");
+            if (Passed.HasValue)
+                queryParams.Add($"passed={Passed.Value.ToString().ToLower()}");
+            if (MinScore.HasValue)
+                queryParams.Add($"minScore={MinScore.Value}");
+            if (MaxScore.HasValue)
+                queryParams.Add($"maxScore={MaxScore.Value}");
+            if (EvaluatorId.HasValue)
+                queryParams.Add($"evaluatorId={EvaluatorId.Value}");
+
+            string queryString = string.Join("&", queryParams);
+            var response = await client.GetFromJsonAsync<EvaluationMetricListResponse>($"/admin/metrics?{queryString}");
+
+            if (response != null)
+            {
+                return new GridData<EvaluationMetricListItemDto>
+                {
+                    TotalItems = response.TotalCount,
+                    Items = response.Items
+                };
+            }
+        }
+        catch (Exception)
+        {
+            // Handle error (maybe show snackbar)
+        }
+
+        return new GridData<EvaluationMetricListItemDto>
+        {
+            TotalItems = 0,
+            Items = []
+        };
+    }
+
+}

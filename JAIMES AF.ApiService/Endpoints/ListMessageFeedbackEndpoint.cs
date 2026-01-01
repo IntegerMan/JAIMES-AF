@@ -1,3 +1,4 @@
+using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 
@@ -24,11 +25,19 @@ public class ListMessageFeedbackEndpoint : EndpointWithoutRequest<FeedbackListRe
         int pageSize = Query<int>("pageSize", false);
         if (pageSize < 1) pageSize = 20;
 
-        string? toolName = Query<string?>("toolName", false);
-        bool? isPositive = Query<bool?>("isPositive", false);
+        // Build filter params from query string
+        var filters = new AdminFilterParams
+        {
+            ToolName = Query<string?>("toolName", false),
+            IsPositive = Query<bool?>("isPositive", false),
+            AgentId = Query<string?>("agentId", false),
+            InstructionVersionId = Query<int?>("instructionVersionId", false),
+            GameId = Query<Guid?>("gameId", false)
+        };
 
         FeedbackListResponse response =
-            await MessageFeedbackService.GetFeedbackListAsync(page, pageSize, toolName, isPositive, ct);
+            await MessageFeedbackService.GetFeedbackListAsync(page, pageSize, filters, ct);
         await Send.OkAsync(response, ct);
     }
 }
+

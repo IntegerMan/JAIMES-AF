@@ -84,8 +84,9 @@ public class MessageEvaluationMetricsService(IDbContextFactory<JaimesDbContext> 
             if (!string.IsNullOrEmpty(filters.AgentId))
             {
                 query = query.Where(m => m.Message != null &&
-                                         m.Message.InstructionVersion != null &&
-                                         m.Message.InstructionVersion.AgentId == filters.AgentId);
+                                         ((m.Message.InstructionVersion != null &&
+                                           m.Message.InstructionVersion.AgentId == filters.AgentId) ||
+                                          m.Message.AgentId == filters.AgentId));
             }
         }
 
@@ -158,6 +159,7 @@ public class MessageEvaluationMetricsService(IDbContextFactory<JaimesDbContext> 
             EvaluationModelId = m.EvaluationModelId,
             EvaluatorId = m.EvaluatorId,
             EvaluatorName = m.Evaluator?.Name
-        }).ToList();
+        })
+        .ToList();
     }
 }

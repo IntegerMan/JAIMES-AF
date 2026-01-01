@@ -44,7 +44,10 @@ public class ToolUsageService(
         else if (!string.IsNullOrEmpty(agentId))
         {
             toolCallQuery = toolCallQuery.Where(mtc =>
-                mtc.InstructionVersion != null && mtc.InstructionVersion.AgentId == agentId);
+                (mtc.InstructionVersion != null && mtc.InstructionVersion.AgentId == agentId) ||
+                (mtc.Message != null && mtc.Message.InstructionVersion != null &&
+                 mtc.Message.InstructionVersion.AgentId == agentId) ||
+                (mtc.Message != null && mtc.Message.AgentId == agentId));
         }
 
         if (gameId.HasValue)
@@ -93,7 +96,8 @@ public class ToolUsageService(
                         HelpfulCount: helpfulCount,
                         UnhelpfulCount: unhelpfulCount
                     );
-                }, StringComparer.OrdinalIgnoreCase);
+                },
+                StringComparer.OrdinalIgnoreCase);
 
         // Calculate eligible messages count
         // Assistant messages are those where PlayerId is null
@@ -110,7 +114,8 @@ public class ToolUsageService(
         else if (!string.IsNullOrEmpty(agentId))
         {
             eligibleMessagesQuery = eligibleMessagesQuery.Where(m =>
-                m.InstructionVersion != null && m.InstructionVersion.AgentId == agentId);
+                (m.InstructionVersion != null && m.InstructionVersion.AgentId == agentId) ||
+                m.AgentId == agentId);
         }
 
         if (gameId.HasValue)
@@ -136,7 +141,7 @@ public class ToolUsageService(
                     TotalCalls = totalCalls,
                     EligibleMessages = eligibleMessagesCount,
                     UsagePercentage = eligibleMessagesCount > 0 && hasStats
-                        ? Math.Clamp(Math.Round((double)stats.MessageCount / eligibleMessagesCount * 100, 2), 0, 100)
+                        ? Math.Clamp(Math.Round((double) stats.MessageCount / eligibleMessagesCount * 100, 2), 0, 100)
                         : 0,
                     EnabledAgents = enabledAgents,
                     HelpfulCount = helpfulCount,
@@ -159,7 +164,7 @@ public class ToolUsageService(
                     TotalCalls = stats.TotalCalls,
                     EligibleMessages = eligibleMessagesCount,
                     UsagePercentage = eligibleMessagesCount > 0
-                        ? Math.Clamp(Math.Round((double)stats.MessageCount / eligibleMessagesCount * 100, 2), 0, 100)
+                        ? Math.Clamp(Math.Round((double) stats.MessageCount / eligibleMessagesCount * 100, 2), 0, 100)
                         : 0,
                     EnabledAgents = stats.EnabledAgents,
                     HelpfulCount = stats.HelpfulCount,
@@ -219,7 +224,11 @@ public class ToolUsageService(
         }
         else if (!string.IsNullOrEmpty(agentId))
         {
-            query = query.Where(mtc => mtc.InstructionVersion != null && mtc.InstructionVersion.AgentId == agentId);
+            query = query.Where(mtc =>
+                (mtc.InstructionVersion != null && mtc.InstructionVersion.AgentId == agentId) ||
+                (mtc.Message != null && mtc.Message.InstructionVersion != null &&
+                 mtc.Message.InstructionVersion.AgentId == agentId) ||
+                (mtc.Message != null && mtc.Message.AgentId == agentId));
         }
 
         if (gameId.HasValue)
@@ -245,30 +254,31 @@ public class ToolUsageService(
 
         // Map to DTOs
         List<ToolCallDetailDto> items = toolCalls.Select(mtc =>
-        {
-            feedbackByMessageId.TryGetValue(mtc.MessageId, out MessageFeedback? feedback);
-
-            string? gameName = null;
-            if (mtc.Message?.Game != null)
             {
-                gameName =
-                    $"{mtc.Message.Game.Scenario?.Name ?? "Unknown Scenario"} - {mtc.Message.Game.Player?.Name ?? "Unknown Player"}";
-            }
+                feedbackByMessageId.TryGetValue(mtc.MessageId, out MessageFeedback? feedback);
 
-            return new ToolCallDetailDto
-            {
-                Id = mtc.Id,
-                ToolName = mtc.ToolName,
-                CreatedAt = mtc.CreatedAt,
-                MessageId = mtc.MessageId,
-                GameId = mtc.Message?.GameId,
-                GameName = gameName,
-                AgentName = mtc.InstructionVersion?.Agent?.Name,
-                AgentVersion = mtc.InstructionVersion?.VersionNumber,
-                FeedbackIsPositive = feedback?.IsPositive,
-                FeedbackComment = feedback?.Comment
-            };
-        }).ToList();
+                string? gameName = null;
+                if (mtc.Message?.Game != null)
+                {
+                    gameName =
+                        $"{mtc.Message.Game.Scenario?.Name ?? "Unknown Scenario"} - {mtc.Message.Game.Player?.Name ?? "Unknown Player"}";
+                }
+
+                return new ToolCallDetailDto
+                {
+                    Id = mtc.Id,
+                    ToolName = mtc.ToolName,
+                    CreatedAt = mtc.CreatedAt,
+                    MessageId = mtc.MessageId,
+                    GameId = mtc.Message?.GameId,
+                    GameName = gameName,
+                    AgentName = mtc.InstructionVersion?.Agent?.Name,
+                    AgentVersion = mtc.InstructionVersion?.VersionNumber,
+                    FeedbackIsPositive = feedback?.IsPositive,
+                    FeedbackComment = feedback?.Comment
+                };
+            })
+            .ToList();
 
         // Get tool metadata from Tools table
         Tool? tool = await context.Tools

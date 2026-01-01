@@ -3,6 +3,7 @@ using System;
 using MattEland.Jaimes.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -12,9 +13,11 @@ using Pgvector;
 namespace MattEland.Jaimes.Repositories.Migrations
 {
     [DbContext(typeof(JaimesDbContext))]
-    partial class JaimesDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251231202218_AddIsScriptedMessageAndNonNullableAgent")]
+    partial class AddIsScriptedMessageAndNonNullableAgent
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -296,33 +299,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.ToTable("EvaluationScenarioIterations");
                 });
 
-            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Evaluator", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.ToTable("Evaluators");
-                });
-
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Game", b =>
                 {
                     b.Property<Guid>("Id")
@@ -348,7 +324,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("Title")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Id");
@@ -474,9 +449,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.Property<int?>("EvaluationModelId")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("EvaluatorId")
-                        .HasColumnType("integer");
-
                     b.Property<int>("MessageId")
                         .HasColumnType("integer");
 
@@ -496,8 +468,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.HasIndex("EvaluatedAt");
 
                     b.HasIndex("EvaluationModelId");
-
-                    b.HasIndex("EvaluatorId");
 
                     b.HasIndex("MessageId");
 
@@ -598,9 +568,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.Property<string>("OutputJson")
                         .HasColumnType("text");
 
-                    b.Property<int?>("ToolId")
-                        .HasColumnType("integer");
-
                     b.Property<string>("ToolName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -611,8 +578,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.HasIndex("InstructionVersionId");
 
                     b.HasIndex("MessageId");
-
-                    b.HasIndex("ToolId");
 
                     b.ToTable("MessageToolCalls");
                 });
@@ -863,37 +828,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.ToTable("ScenarioAgents");
                 });
 
-            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Tool", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Category")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.ToTable("Tools");
-                });
-
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.AgentInstructionVersion", b =>
                 {
                     b.HasOne("MattEland.Jaimes.Repositories.Entities.Agent", "Agent")
@@ -1072,11 +1006,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
                         .HasForeignKey("EvaluationModelId")
                         .OnDelete(DeleteBehavior.NoAction);
 
-                    b.HasOne("MattEland.Jaimes.Repositories.Entities.Evaluator", "Evaluator")
-                        .WithMany("EvaluationMetrics")
-                        .HasForeignKey("EvaluatorId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("MattEland.Jaimes.Repositories.Entities.Message", "Message")
                         .WithMany()
                         .HasForeignKey("MessageId")
@@ -1084,8 +1013,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
                         .IsRequired();
 
                     b.Navigation("EvaluationModel");
-
-                    b.Navigation("Evaluator");
 
                     b.Navigation("Message");
                 });
@@ -1132,16 +1059,9 @@ namespace MattEland.Jaimes.Repositories.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MattEland.Jaimes.Repositories.Entities.Tool", "Tool")
-                        .WithMany("ToolCalls")
-                        .HasForeignKey("ToolId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("InstructionVersion");
 
                     b.Navigation("Message");
-
-                    b.Navigation("Tool");
                 });
 
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Player", b =>
@@ -1225,11 +1145,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.Navigation("ScenarioIterations");
                 });
 
-            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Evaluator", b =>
-                {
-                    b.Navigation("EvaluationMetrics");
-                });
-
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Game", b =>
                 {
                     b.Navigation("Messages");
@@ -1277,11 +1192,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.Navigation("Games");
 
                     b.Navigation("ScenarioAgents");
-                });
-
-            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Tool", b =>
-                {
-                    b.Navigation("ToolCalls");
                 });
 #pragma warning restore 612, 618
         }

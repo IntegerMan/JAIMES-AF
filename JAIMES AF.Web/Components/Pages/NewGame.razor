@@ -5,9 +5,9 @@
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
 	<MudPaper Class="pa-4">
-    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
-    </MudStack>
+		<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+			<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+		</MudStack>
 		<MudText Typo="Typo.h4" Class="mb-4">Create New Game</MudText>
 
 		@if (_isLoading)
@@ -22,6 +22,12 @@
 		@if (!_isLoading)
 		{
 			<MudForm>
+				<MudTextField @bind-Value="_title"
+				              Label="Game Title (Optional)"
+				              Variant="Variant.Outlined"
+				              Class="mb-4"
+				              Disabled="_isCreating"/>
+
 				<MudSelect T="string"
 				           @bind-Value="_selectedScenarioId"
 				           Label="Scenario"

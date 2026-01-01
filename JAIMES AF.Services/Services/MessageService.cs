@@ -9,7 +9,8 @@ namespace MattEland.Jaimes.ServiceLayer.Services;
 
 public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) : IMessageService
 {
-    public async Task<IEnumerable<MessageContextDto>> GetMessageContextAsync(int messageId, int countBefore,
+    public async Task<IEnumerable<MessageContextDto>> GetMessageContextAsync(int messageId,
+        int countBefore,
         int countAfter,
         CancellationToken cancellationToken = default)
     {
@@ -36,6 +37,7 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
             .Include(m => m.ToolCalls)
             .Include(m => m.MessageSentiment)
             .Include(m => m.InstructionVersion)
+            .Include(m => m.Agent)
             .ToListAsync(cancellationToken);
 
         // Reverse to chronological order (oldest first)
@@ -55,6 +57,7 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
                 .Include(m => m.ToolCalls)
                 .Include(m => m.MessageSentiment)
                 .Include(m => m.InstructionVersion)
+                .Include(m => m.Agent)
                 .ToListAsync(cancellationToken);
 
             allMessages = allMessages.Concat(messagesAfter).ToList();
@@ -77,6 +80,73 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
         foreach (var message in allMessages)
         {
             var dto = message.ToContextDto();
+            dto.InstructionVersionNumber = message.InstructionVersion?.VersionNumber;
+            dto.Metrics = metrics
+                .Where(m => m.MessageId == message.Id)
+                .Select(MessageMapper.ToResponse)
+                .ToList();
+
+            var feedback = feedbacks.FirstOrDefault(f => f.MessageId == message.Id);
+            if (feedback != null)
+            {
+                dto.Feedback = MessageMapper.ToResponse(feedback);
+            }
+
+            dtos.Add(dto);
+        }
+
+        return dtos;
+    }
+
+    public async Task<IEnumerable<MessageContextDto>> GetMessagesByAgentAsync(string agentId,
+        int? versionId,
+        CancellationToken cancellationToken = default)
+    {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        // Filter by AgentId (case-insensitive) AND IsScriptedMessage == false
+        // Note: AgentId is stored as a string in the DB, so we need to ensure format matches
+        string agentIdLower = agentId.ToLower();
+
+        var query = context.Messages
+            .AsNoTracking()
+            .Where(m => m.AgentId.ToLower() == agentIdLower && !m.IsScriptedMessage);
+
+        if (versionId.HasValue)
+        {
+            query = query.Where(m => m.InstructionVersionId == versionId.Value);
+        }
+
+        List<Message> messages = await query
+            .OrderBy(m => m.GameId)
+            .ThenBy(m => m.CreatedAt)
+            .Include(m => m.Player)
+            .Include(m => m.Game) // Include Game for title
+            .Include(m => m.ToolCalls)
+            .Include(m => m.MessageSentiment)
+            .Include(m => m.InstructionVersion)
+            .ToListAsync(cancellationToken);
+
+        // Fetch metrics and feedback
+        var messageIds = messages.Select(m => m.Id).ToList();
+
+        var metrics = await context.MessageEvaluationMetrics
+            .AsNoTracking()
+            .Where(m => messageIds.Contains(m.MessageId))
+            .ToListAsync(cancellationToken);
+
+        var feedbacks = await context.MessageFeedbacks
+            .AsNoTracking()
+            .Where(f => messageIds.Contains(f.MessageId))
+            .ToListAsync(cancellationToken);
+
+        var dtos = new List<MessageContextDto>();
+        foreach (var message in messages)
+        {
+            var dto = message.ToContextDto();
+            dto.GameTitle = message.Game?.Title;
+            dto.InstructionVersionNumber = message.InstructionVersion?.VersionNumber;
+
             dto.Metrics = metrics
                 .Where(m => m.MessageId == message.Id)
                 .Select(MessageMapper.ToResponse)

@@ -7,9 +7,10 @@ public class MessageDto
     public string? PlayerId { get; init; }
     public required string ParticipantName { get; init; }
     public DateTime CreatedAt { get; init; }
-    public string? AgentId { get; init; }
-
-    public int? InstructionVersionId { get; init; }
+    public required string AgentId { get; init; }
+    public string? AgentName { get; init; }
+    public required int InstructionVersionId { get; init; }
+    public bool IsScriptedMessage { get; init; }
 
     // Sentiment analysis result: -1 (negative), 0 (neutral), 1 (positive), null (not analyzed)
     public int? Sentiment { get; init; }

@@ -21,11 +21,13 @@ public static partial class MessageMapper
     [MapProperty(nameof(Message.MessageSentiment),
         nameof(MessageDto.SentimentId),
         Use = nameof(MapSentimentIdFromMessageSentiment))]
+    [MapProperty(nameof(Message.Agent),
+        nameof(MessageDto.AgentName),
+        Use = nameof(MapAgentNameFromAgent))]
     [MapperIgnoreSource(nameof(Message.GameId))]
     [MapperIgnoreSource(nameof(Message.Game))]
     [MapperIgnoreSource(nameof(Message.ChatHistoryId))]
     [MapperIgnoreSource(nameof(Message.ChatHistory))]
-    [MapperIgnoreSource(nameof(Message.Agent))]
     [MapperIgnoreSource(nameof(Message.MessageEmbedding))]
     [MapperIgnoreSource(nameof(Message.PreviousMessageId))]
     [MapperIgnoreSource(nameof(Message.PreviousMessage))]
@@ -60,7 +62,7 @@ public static partial class MessageMapper
 
     private static int? MapSentimentSourceFromMessageSentiment(MessageSentiment? messageSentiment)
     {
-        return messageSentiment != null ? (int)messageSentiment.SentimentSource : null;
+        return messageSentiment != null ? (int) messageSentiment.SentimentSource : null;
     }
 
     private static int? MapSentimentIdFromMessageSentiment(MessageSentiment? messageSentiment)
@@ -68,25 +70,40 @@ public static partial class MessageMapper
         return messageSentiment?.Id;
     }
 
+    private static string? MapAgentNameFromAgent(Agent? agent)
+    {
+        return agent?.Name;
+    }
+
+    [MapProperty(nameof(Message.Agent),
+        nameof(MessageDto.AgentName),
+        Use = nameof(MapAgentNameFromAgent))]
     [MapProperty(nameof(Message.ToolCalls), nameof(MessageContextDto.ToolCalls))]
-    [MapProperty(nameof(Message.MessageSentiment), nameof(MessageContextDto.SentimentSource),
+    [MapProperty(nameof(Message.MessageSentiment),
+        nameof(MessageContextDto.SentimentSource),
         Use = nameof(MapSentimentSourceFromMessageSentiment))]
-    [MapProperty(nameof(Message.MessageSentiment), nameof(MessageContextDto.SentimentId),
+    [MapProperty(nameof(Message.MessageSentiment),
+        nameof(MessageContextDto.SentimentId),
         Use = nameof(MapSentimentIdFromMessageSentiment))]
-    [MapProperty(nameof(Message.InstructionVersion), nameof(MessageDto.ModelName),
+    [MapProperty(nameof(Message.InstructionVersion),
+        nameof(MessageDto.ModelName),
         Use = nameof(MapModelNameFromInstructionVersion))]
-    [MapProperty(nameof(Message.InstructionVersion), nameof(MessageDto.ModelProvider),
+    [MapProperty(nameof(Message.InstructionVersion),
+        nameof(MessageDto.ModelProvider),
         Use = nameof(MapModelProviderFromInstructionVersion))]
-    [MapProperty(nameof(Message.InstructionVersion), nameof(MessageDto.ModelEndpoint),
+    [MapProperty(nameof(Message.InstructionVersion),
+        nameof(MessageDto.ModelEndpoint),
         Use = nameof(MapModelEndpointFromInstructionVersion))]
-    [MapProperty(nameof(Message.Player), nameof(MessageDto.ParticipantName),
+    [MapProperty(nameof(Message.Player),
+        nameof(MessageDto.ParticipantName),
         Use = nameof(MapParticipantNameFromPlayer))]
+    [MapperIgnoreTarget(nameof(MessageContextDto.GameTitle))]
+    [MapperIgnoreTarget(nameof(MessageContextDto.InstructionVersionNumber))]
     [MapperIgnoreTarget(nameof(MessageContextDto.Metrics))]
     [MapperIgnoreTarget(nameof(MessageContextDto.Feedback))]
     [MapperIgnoreSource(nameof(Message.Game))]
     [MapperIgnoreSource(nameof(Message.ChatHistoryId))]
     [MapperIgnoreSource(nameof(Message.ChatHistory))]
-    [MapperIgnoreSource(nameof(Message.Agent))]
     [MapperIgnoreSource(nameof(Message.MessageEmbedding))]
     [MapperIgnoreSource(nameof(Message.PreviousMessageId))]
     [MapperIgnoreSource(nameof(Message.PreviousMessage))]

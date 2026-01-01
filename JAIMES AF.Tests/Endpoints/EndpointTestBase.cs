@@ -5,8 +5,10 @@ public abstract class EndpointTestBase : IAsyncLifetime
     protected WebApplicationFactory<ApiServiceProgram> Factory = null!;
     protected HttpClient Client = null!;
     private Mock<IMessagePublisher>? _mockMessagePublisher;
-    protected Mock<IMessagePublisher> MockMessagePublisher => _mockMessagePublisher 
-        ?? throw new InvalidOperationException("MockMessagePublisher not initialized. Ensure InitializeAsync has completed.");
+
+    protected Mock<IMessagePublisher> MockMessagePublisher => _mockMessagePublisher
+                                                              ?? throw new InvalidOperationException(
+                                                                  "MockMessagePublisher not initialized. Ensure InitializeAsync has completed.");
 
     public virtual async ValueTask InitializeAsync()
     {
@@ -167,7 +169,9 @@ public abstract class EndpointTestBase : IAsyncLifetime
         Client = Factory.CreateClient();
 
         // Store reference to mock for test verification
-        _mockMessagePublisher = capturedMock ?? throw new InvalidOperationException("Mock IMessagePublisher was not created during factory setup");
+        _mockMessagePublisher = capturedMock ??
+                                throw new InvalidOperationException(
+                                    "Mock IMessagePublisher was not created during factory setup");
 
         // Seed test data after initialization
         using (IServiceScope scope = Factory.Services.CreateScope())
@@ -181,13 +185,40 @@ public abstract class EndpointTestBase : IAsyncLifetime
     protected virtual async Task SeedTestDataAsync(JaimesDbContext context, CancellationToken cancellationToken)
     {
         // Add default test data
-        context.Rulesets.Add(new Ruleset { Id = "test-ruleset", Name = "Test Ruleset" });
-        context.Players.Add(new Player { Id = "test-player", RulesetId = "test-ruleset", Name = "Unspecified" });
+        context.Rulesets.Add(new Ruleset {Id = "test-ruleset", Name = "Test Ruleset"});
+        context.Players.Add(new Player {Id = "test-player", RulesetId = "test-ruleset", Name = "Unspecified"});
         context.Scenarios.Add(new Scenario
         {
             Id = "test-scenario",
             RulesetId = "test-ruleset",
             Name = "Unspecified"
+        });
+        context.Agents.Add(new Agent
+        {
+            Id = "test-agent",
+            Name = "Test Agent",
+            Role = "Game Master"
+        });
+        context.Models.Add(new Model
+        {
+            Id = 1,
+            Name = "Test Model",
+            Provider = "Test",
+            Endpoint = "http://test"
+        });
+        context.AgentInstructionVersions.Add(new AgentInstructionVersion
+        {
+            Id = 1,
+            AgentId = "test-agent",
+            VersionNumber = "1.0",
+            Instructions = "Test instructions",
+            ModelId = 1
+        });
+        context.ScenarioAgents.Add(new ScenarioAgent
+        {
+            ScenarioId = "test-scenario",
+            AgentId = "test-agent",
+            InstructionVersionId = 1
         });
         await context.SaveChangesAsync(cancellationToken);
     }

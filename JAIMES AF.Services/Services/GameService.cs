@@ -11,6 +11,7 @@ public class GameService(
 {
     public async Task<GameDto> CreateGameAsync(string scenarioId,
         string playerId,
+        string? title,
         CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -30,6 +31,18 @@ public class GameService(
                 $"Player '{playerId}' uses ruleset '{player.RulesetId}' but scenario '{scenarioId}' uses ruleset '{scenario.RulesetId}'. They must use the same ruleset.",
                 nameof(scenarioId));
 
+        // Validate that the scenario has an associated agent BEFORE creating the game
+        // This prevents orphaned game records if the scenario is misconfigured
+        ScenarioAgent? scenarioAgent = await context.ScenarioAgents
+            .AsNoTracking()
+            .FirstOrDefaultAsync(sa => sa.ScenarioId == scenarioId, cancellationToken);
+
+        if (scenarioAgent == null)
+        {
+            throw new InvalidOperationException(
+                $"Scenario '{scenarioId}' does not have an associated agent. Cannot create game.");
+        }
+
         // Use the ruleset from the player (which we've validated matches the scenario)
         string rulesetId = player.RulesetId;
 
@@ -39,6 +52,7 @@ public class GameService(
             RulesetId = rulesetId,
             ScenarioId = scenarioId,
             PlayerId = playerId,
+            Title = title ?? "Untitled Game",
             CreatedAt = DateTime.UtcNow
         };
 
@@ -59,7 +73,10 @@ public class GameService(
             GameId = game.Id,
             Text = greetingText,
             PlayerId = null, // System message, not from player
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            IsScriptedMessage = true,
+            AgentId = scenarioAgent.AgentId,
+            InstructionVersionId = scenarioAgent.InstructionVersionId
         };
 
         context.Messages.Add(message);
@@ -81,6 +98,11 @@ public class GameService(
             .AsNoTracking()
             .Include(g => g.Messages)
             .ThenInclude(m => m.MessageSentiment)
+            .Include(g => g.Messages)
+            .ThenInclude(m => m.Agent)
+            .Include(g => g.Messages)
+            .ThenInclude(m => m.InstructionVersion)
+            .ThenInclude(iv => iv!.Model)
             .Include(g => g.Scenario)
             .Include(g => g.Player)
             .Include(g => g.Ruleset)
@@ -97,6 +119,8 @@ public class GameService(
             .AsNoTracking()
             .Include(g => g.Messages)
             .ThenInclude(message => message.MessageSentiment)
+            .Include(g => g.Messages)
+            .ThenInclude(message => message.Agent)
             .Include(g => g.Messages)
             .ThenInclude(message => message.Player)
             .Include(g => g.Messages)
@@ -157,7 +181,7 @@ public class GameService(
 
         if (game == null) return null;
 
-        game.Title = title;
+        game.Title = title ?? "Untitled Game";
         await context.SaveChangesAsync(cancellationToken);
 
         // Calculate lastPlayedAt for the DTO

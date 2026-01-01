@@ -1,4 +1,3 @@
-using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceLayer.Services;
 
 namespace MattEland.Jaimes.Tests.Services;
@@ -21,14 +20,41 @@ public class GameServiceTests : IAsyncLifetime
         await _context.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
 
         // Add test data for validation
-        _context.Rulesets.Add(new Ruleset { Id = "test-ruleset", Name = "Test Ruleset" });
-        _context.Players.Add(new Player { Id = "test-player", RulesetId = "test-ruleset", Name = "Unspecified" });
+        _context.Rulesets.Add(new Ruleset {Id = "test-ruleset", Name = "Test Ruleset"});
+        _context.Players.Add(new Player {Id = "test-player", RulesetId = "test-ruleset", Name = "Unspecified"});
         _context.Scenarios.Add(new Scenario
         {
             Id = "test-scenario",
             RulesetId = "test-ruleset",
             Name = "Unspecified",
             InitialGreeting = null
+        });
+        _context.Agents.Add(new Agent
+        {
+            Id = "test-agent",
+            Name = "Test Agent",
+            Role = "Game Master"
+        });
+        _context.AgentInstructionVersions.Add(new AgentInstructionVersion
+        {
+            Id = 1,
+            AgentId = "test-agent",
+            VersionNumber = "1.0",
+            Instructions = "Test instructions",
+            ModelId = 1
+        });
+        _context.Models.Add(new Model
+        {
+            Id = 1,
+            Name = "Test Model",
+            Provider = "Test",
+            Endpoint = "http://test"
+        });
+        _context.ScenarioAgents.Add(new ScenarioAgent
+        {
+            ScenarioId = "test-scenario",
+            AgentId = "test-agent",
+            InstructionVersionId = 1
         });
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -56,7 +82,7 @@ public class GameServiceTests : IAsyncLifetime
 
         // Act
         GameDto gameDto =
-            await _gameService.CreateGameAsync(scenarioId, playerId, TestContext.Current.CancellationToken);
+            await _gameService.CreateGameAsync(scenarioId, playerId, null, TestContext.Current.CancellationToken);
 
         // Assert
         gameDto.GameId.ShouldNotBe(Guid.Empty);
@@ -103,6 +129,7 @@ public class GameServiceTests : IAsyncLifetime
         Game game = new()
         {
             Id = Guid.NewGuid(),
+            Title = "Test Game",
             RulesetId = "test-ruleset",
             ScenarioId = "test-scenario",
             PlayerId = "test-player",
@@ -114,7 +141,9 @@ public class GameServiceTests : IAsyncLifetime
         {
             GameId = game.Id,
             Text = "Test message",
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            AgentId = "test-agent",
+            InstructionVersionId = 1
         };
         _context.Messages.Add(message);
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -141,6 +170,7 @@ public class GameServiceTests : IAsyncLifetime
         Game game = new()
         {
             Id = Guid.NewGuid(),
+            Title = "Test Game",
             RulesetId = "test-ruleset",
             ScenarioId = "test-scenario",
             PlayerId = "test-player",
@@ -152,19 +182,25 @@ public class GameServiceTests : IAsyncLifetime
         {
             GameId = game.Id,
             Text = "First message",
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            AgentId = "test-agent",
+            InstructionVersionId = 1
         };
         Message message2 = new()
         {
             GameId = game.Id,
             Text = "Second message",
-            CreatedAt = DateTime.UtcNow.AddSeconds(1)
+            CreatedAt = DateTime.UtcNow.AddSeconds(1),
+            AgentId = "test-agent",
+            InstructionVersionId = 1
         };
         Message message3 = new()
         {
             GameId = game.Id,
             Text = "Third message",
-            CreatedAt = DateTime.UtcNow.AddSeconds(2)
+            CreatedAt = DateTime.UtcNow.AddSeconds(2),
+            AgentId = "test-agent",
+            InstructionVersionId = 1
         };
         _context.Messages.AddRange(message1, message2, message3);
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -175,7 +211,7 @@ public class GameServiceTests : IAsyncLifetime
 
         // Assert
         result.ShouldNotBeNull();
-        result!.Messages.ShouldNotBeNull();
+        result.Messages.ShouldNotBeNull();
         result.Messages.Length.ShouldBe(3);
         result.Messages[0].Text.ShouldBe("First message");
         result.Messages[0].Id.ShouldBeGreaterThan(0);
@@ -192,6 +228,7 @@ public class GameServiceTests : IAsyncLifetime
         Game game = new()
         {
             Id = Guid.NewGuid(),
+            Title = "Test Game",
             RulesetId = "test-ruleset",
             ScenarioId = "test-scenario",
             PlayerId = "test-player",
@@ -204,19 +241,25 @@ public class GameServiceTests : IAsyncLifetime
         {
             GameId = game.Id,
             Text = "First message",
-            CreatedAt = sameTime
+            CreatedAt = sameTime,
+            AgentId = "test-agent",
+            InstructionVersionId = 1
         };
         Message message2 = new()
         {
             GameId = game.Id,
             Text = "Second message",
-            CreatedAt = sameTime
+            CreatedAt = sameTime,
+            AgentId = "test-agent",
+            InstructionVersionId = 1
         };
         Message message3 = new()
         {
             GameId = game.Id,
             Text = "Third message",
-            CreatedAt = sameTime
+            CreatedAt = sameTime,
+            AgentId = "test-agent",
+            InstructionVersionId = 1
         };
         _context.Messages.AddRange(message1, message2, message3);
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -227,7 +270,7 @@ public class GameServiceTests : IAsyncLifetime
 
         // Assert - Messages should be ordered by Id, not CreatedAt
         result.ShouldNotBeNull();
-        result!.Messages.ShouldNotBeNull();
+        result.Messages.ShouldNotBeNull();
         result.Messages.Length.ShouldBe(3);
         result.Messages[0].Id.ShouldBeLessThan(result.Messages[1].Id);
         result.Messages[1].Id.ShouldBeLessThan(result.Messages[2].Id);
@@ -245,7 +288,7 @@ public class GameServiceTests : IAsyncLifetime
 
         // Act & Assert
         ArgumentException exception = await Should.ThrowAsync<ArgumentException>(async () =>
-            await _gameService.CreateGameAsync(scenarioId, playerId, TestContext.Current.CancellationToken)
+            await _gameService.CreateGameAsync(scenarioId, playerId, null, TestContext.Current.CancellationToken)
         );
         exception.Message.ShouldContain("Player 'nonexistent-player' does not exist");
     }
@@ -259,7 +302,7 @@ public class GameServiceTests : IAsyncLifetime
 
         // Act & Assert
         ArgumentException exception = await Should.ThrowAsync<ArgumentException>(async () =>
-            await _gameService.CreateGameAsync(scenarioId, playerId, TestContext.Current.CancellationToken)
+            await _gameService.CreateGameAsync(scenarioId, playerId, null, TestContext.Current.CancellationToken)
         );
         exception.Message.ShouldContain("Scenario 'nonexistent-scenario' does not exist");
     }
@@ -268,9 +311,9 @@ public class GameServiceTests : IAsyncLifetime
     public async Task CreateGameAsync_ThrowsException_WhenPlayerAndScenarioRulesetMismatch()
     {
         // Arrange
-        _context.Rulesets.Add(new Ruleset { Id = "different-ruleset", Name = "Different Ruleset" });
+        _context.Rulesets.Add(new Ruleset {Id = "different-ruleset", Name = "Different Ruleset"});
         _context.Players.Add(new Player
-        { Id = "player-different-ruleset", RulesetId = "different-ruleset", Name = "Unspecified" });
+            {Id = "player-different-ruleset", RulesetId = "different-ruleset", Name = "Unspecified"});
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         string scenarioId = "test-scenario";
@@ -278,7 +321,7 @@ public class GameServiceTests : IAsyncLifetime
 
         // Act & Assert
         ArgumentException exception = await Should.ThrowAsync<ArgumentException>(async () =>
-            await _gameService.CreateGameAsync(scenarioId, playerId, TestContext.Current.CancellationToken)
+            await _gameService.CreateGameAsync(scenarioId, playerId, null, TestContext.Current.CancellationToken)
         );
         exception.Message.ShouldContain("uses ruleset 'different-ruleset'");
         exception.Message.ShouldContain("uses ruleset 'test-ruleset'");
@@ -288,7 +331,8 @@ public class GameServiceTests : IAsyncLifetime
     public async Task CreateGameAsync_UsesInitialGreeting_WhenSet()
     {
         // Arrange
-        string customGreeting = "We're about to get started on a solo adventure, but before we do, tell me a bit about your character and the style of adventure you'd like to have";
+        string customGreeting =
+            "We're about to get started on a solo adventure, but before we do, tell me a bit about your character and the style of adventure you'd like to have";
         _context.Scenarios.Add(new Scenario
         {
             Id = "scenario-with-greeting",
@@ -296,15 +340,53 @@ public class GameServiceTests : IAsyncLifetime
             Name = "Test Scenario",
             InitialGreeting = customGreeting
         });
+        _context.ScenarioAgents.Add(new ScenarioAgent
+        {
+            ScenarioId = "scenario-with-greeting",
+            AgentId = "test-agent",
+            InstructionVersionId = 1
+        });
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act
-        GameDto gameDto = await _gameService.CreateGameAsync("scenario-with-greeting", "test-player", TestContext.Current.CancellationToken);
+        GameDto gameDto = await _gameService.CreateGameAsync("scenario-with-greeting",
+            "test-player",
+            null,
+            TestContext.Current.CancellationToken);
 
         // Assert
         gameDto.Messages.ShouldHaveSingleItem();
         gameDto.Messages[0].Text.ShouldBe(customGreeting);
         gameDto.Messages[0].ParticipantName.ShouldBe("Game Master");
+    }
+
+    [Fact]
+    public async Task CreateGameAsync_ThrowsException_WhenScenarioHasNoAgent_WithoutCreatingGame()
+    {
+        // Arrange - Create a scenario WITHOUT a ScenarioAgent
+        _context.Scenarios.Add(new Scenario
+        {
+            Id = "scenario-without-agent",
+            RulesetId = "test-ruleset",
+            Name = "Misconfigured Scenario"
+        });
+        await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // Get initial game count
+        int initialGameCount = await _context.Games.CountAsync(TestContext.Current.CancellationToken);
+
+        // Act & Assert
+        InvalidOperationException exception = await Should.ThrowAsync<InvalidOperationException>(async () =>
+            await _gameService.CreateGameAsync("scenario-without-agent",
+                "test-player",
+                null,
+                TestContext.Current.CancellationToken)
+        );
+        exception.Message.ShouldContain("does not have an associated agent");
+
+        // Verify no game was created (no orphaned record)
+        int finalGameCount = await _context.Games.CountAsync(TestContext.Current.CancellationToken);
+        finalGameCount.ShouldBe(initialGameCount, "Game count should not increase when ScenarioAgent validation fails");
     }
 
 

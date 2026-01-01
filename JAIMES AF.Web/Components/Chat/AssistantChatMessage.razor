@@ -7,71 +7,84 @@
 {
     <MudChat ChatPosition="ChatBubblePosition.Start"
              Variant="Variant.Filled"
-             Color="@(Highlighted ? Color.Info : Color)">
+             Color="@(Highlighted ? Color.Primary : Color)">
         @if (IsFirstParagraph)
         {
             <MudChatHeader Name="Game Master"/>
         }
         <MudChatBubble>
-            @((MarkupString)ChatHelpers.RenderMarkdown(Text))
+            @((MarkupString) ChatHelpers.RenderMarkdown(Text))
         </MudChatBubble>
         @if (IsLastParagraph)
         {
             <MudChatFooter Class="feedback-footer">
-                <MessageIndicators
-                    Feedback="@Feedback"
-                    Metrics="@Metrics"
-                    ToolCallCount="@(ToolCalls?.Count ?? 0)"
-                    ToolCalls="@ToolCalls"
-                    ReadOnly="@ReadOnly"
-                    ShowFeedbackButtons="true"
-                    MessageId="@MessageId"
-                    OnToolCallsClick="OnToolCallsClick"
-                    OnFeedbackClick="OnFeedbackClick"
-                    OnMetricsClick="OnMetricsClick" />
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    @if (!string.IsNullOrEmpty(AgentId) && !IsScriptedMessage)
+                    {
+                        <MudTooltip Text="@($"{AgentName} v{VersionNumber}")">
+                            <MudIconButton Icon="@Icons.Material.Filled.SmartToy"
+                                           Size="Size.Small"
+                                           Color="@(IsVersionSwitch ? Color.Primary : Color.Default)"
+                                           Href="@($"/agents/{AgentId}/versions/{InstructionVersionId}")"/>
+                        </MudTooltip>
+                    }
+                    @if (IsScriptedMessage)
+                    {
+                        <MudTooltip Text="This is a scripted message">
+                            <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" Color="Color.Default"/>
+                        </MudTooltip>
+                    }
+                    <MessageIndicators
+                        Feedback="@Feedback"
+                        Metrics="@Metrics"
+                        ToolCallCount="@(ToolCalls?.Count ?? 0)"
+                        ToolCalls="@ToolCalls"
+                        ReadOnly="@ReadOnly"
+                        ShowFeedbackButtons="true"
+                        MessageId="@MessageId"
+                        OnToolCallsClick="OnToolCallsClick"
+                        OnFeedbackClick="OnFeedbackClick"
+                        OnMetricsClick="OnMetricsClick"
+                        ExemptFromProcessing="@ExemptFromProcessing"/>
+                </MudStack>
             </MudChatFooter>
         }
     </MudChat>
 }
 
 @code {
-    [Parameter]
-    public required string Text { get; set; }
+    [Parameter] public required string Text { get; set; }
 
-    [Parameter]
-    public Color Color { get; set; } = Color.Default;
+    [Parameter] public Color Color { get; set; } = Color.Default;
 
-    [Parameter]
-    public bool Highlighted { get; set; }
-    
-    [Parameter]
-    public int? MessageId { get; set; }
+    [Parameter] public bool Highlighted { get; set; }
 
-    [Parameter]
-    public bool IsFirstParagraph { get; set; }
+    [Parameter] public int? MessageId { get; set; }
 
-    [Parameter]
-    public bool IsLastParagraph { get; set; }
-    
-    [Parameter]
-    public bool ReadOnly { get; set; }
+    [Parameter] public bool IsFirstParagraph { get; set; }
 
-    [Parameter]
-    public List<MessageToolCallResponse>? ToolCalls { get; set; }
+    [Parameter] public bool IsLastParagraph { get; set; }
 
-    [Parameter]
-    public List<MessageEvaluationMetricResponse>? Metrics { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
 
-    [Parameter]
-    public MessageFeedbackResponse? Feedback { get; set; }
+    [Parameter] public List<MessageToolCallResponse>? ToolCalls { get; set; }
 
-    [Parameter]
-    public EventCallback<int> OnToolCallsClick { get; set; }
+    [Parameter] public List<MessageEvaluationMetricResponse>? Metrics { get; set; }
 
-    [Parameter]
-    public EventCallback<(int MessageId, bool IsPositive)> OnFeedbackClick { get; set; }
+    [Parameter] public MessageFeedbackResponse? Feedback { get; set; }
 
-    [Parameter]
-    public EventCallback<int> OnMetricsClick { get; set; }
+    [Parameter] public EventCallback<int> OnToolCallsClick { get; set; }
+
+    [Parameter] public EventCallback<(int MessageId, bool IsPositive)> OnFeedbackClick { get; set; }
+
+    [Parameter] public EventCallback<int> OnMetricsClick { get; set; }
+
+    [Parameter] public string? AgentId { get; set; }
+    [Parameter] public string? AgentName { get; set; }
+    [Parameter] public int? InstructionVersionId { get; set; }
+    [Parameter] public string? VersionNumber { get; set; }
+    [Parameter] public bool IsVersionSwitch { get; set; }
+    [Parameter] public bool ExemptFromProcessing { get; set; }
+    [Parameter] public bool IsScriptedMessage { get; set; }
 }
 

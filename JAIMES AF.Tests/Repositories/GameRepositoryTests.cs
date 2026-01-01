@@ -9,6 +9,7 @@ public class GameRepositoryTests : RepositoryTestBase
         Game game = new()
         {
             Id = Guid.NewGuid(),
+            Title = "Test Game",
             RulesetId = "test-ruleset",
             ScenarioId = "test-scenario",
             PlayerId = "test-player",
@@ -36,6 +37,7 @@ public class GameRepositoryTests : RepositoryTestBase
         Game game = new()
         {
             Id = Guid.NewGuid(),
+            Title = "Test Game",
             RulesetId = "test-ruleset",
             ScenarioId = "test-scenario",
             PlayerId = "test-player",
@@ -47,7 +49,9 @@ public class GameRepositoryTests : RepositoryTestBase
         {
             GameId = game.Id,
             Text = "Test message",
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            AgentId = "test-agent",
+            InstructionVersionId = 1
         };
         Context.Messages.Add(message);
         await Context.SaveChangesAsync(TestContext.Current.CancellationToken);
