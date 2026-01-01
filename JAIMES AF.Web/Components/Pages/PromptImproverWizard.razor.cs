@@ -110,6 +110,18 @@ public partial class PromptImproverWizard
 
             _currentPrompt = version.Instructions;
             _effectiveVersionId = version.Id;
+
+            // Auto-start insights generation
+            _ = Task.Run(async () =>
+            {
+                await InvokeAsync(async () =>
+                {
+                    var feedbackTask = GenerateFeedbackInsightsAsync();
+                    var metricsTask = GenerateMetricsInsightsAsync();
+                    var sentimentTask = GenerateSentimentInsightsAsync();
+                    await Task.WhenAll(feedbackTask, metricsTask, sentimentTask);
+                });
+            });
         }
         catch (Exception ex)
         {
@@ -328,5 +340,45 @@ public partial class PromptImproverWizard
             _activeStep--;
             StateHasChanged();
         }
+    }
+
+    private string GetFullPromptPreview()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("## Current Prompt to Improve");
+        sb.AppendLine(_currentPrompt);
+        sb.AppendLine();
+
+        if (!string.IsNullOrWhiteSpace(_userFeedback))
+        {
+            sb.AppendLine("## User's Specific Requests");
+            sb.AppendLine(_userFeedback);
+            sb.AppendLine();
+        }
+
+        if (!string.IsNullOrWhiteSpace(_feedbackInsights))
+        {
+            sb.AppendLine("## Insights from User Feedback");
+            sb.AppendLine(_feedbackInsights);
+            sb.AppendLine();
+        }
+
+        if (!string.IsNullOrWhiteSpace(_metricsInsights))
+        {
+            sb.AppendLine("## Insights from Evaluation Metrics");
+            sb.AppendLine(_metricsInsights);
+            sb.AppendLine();
+        }
+
+        if (!string.IsNullOrWhiteSpace(_sentimentInsights))
+        {
+            sb.AppendLine("## Insights from Sentiment Analysis");
+            sb.AppendLine(_sentimentInsights);
+            sb.AppendLine();
+        }
+
+        sb.AppendLine("Generate an improved version of the prompt that addresses the insights above.");
+
+        return sb.ToString();
     }
 }
