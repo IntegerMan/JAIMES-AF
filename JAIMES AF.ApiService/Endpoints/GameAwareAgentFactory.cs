@@ -51,11 +51,6 @@ public class GameAwareAgentFactory
         string? systemPrompt = await instructionService.GetInstructionsForGameAsync(gameId, cancellationToken);
         if (string.IsNullOrWhiteSpace(systemPrompt))
         {
-            systemPrompt = "You are a helpful game master assistant.";
-        }
-
-        if (string.IsNullOrWhiteSpace(systemPrompt))
-        {
             _logger.LogWarning("Game {GameId} has no instructions configured, using default", gameId);
             systemPrompt = "You are a helpful game master assistant.";
         }
