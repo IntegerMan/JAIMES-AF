@@ -152,6 +152,11 @@ public class GameService(
             .ThenInclude(message => message.InstructionVersion)
             .ThenInclude(iv => iv!.Model)
             .Include(g => g.Scenario)
+            .ThenInclude(s => s!.ScenarioAgents)
+            .ThenInclude(sa => sa!.Agent)
+            .Include(g => g.Scenario)
+            .ThenInclude(s => s!.ScenarioAgents)
+            .ThenInclude(sa => sa!.InstructionVersion)
             .Include(g => g.Player)
             .Include(g => g.Agent)
             .Include(g => g.InstructionVersion)
@@ -211,7 +216,14 @@ public class GameService(
 
         Game? game = await context.Games
             .Include(g => g.Scenario)
+            .ThenInclude(s => s!.ScenarioAgents)
+            .ThenInclude(sa => sa!.Agent)
+            .Include(g => g.Scenario)
+            .ThenInclude(s => s!.ScenarioAgents)
+            .ThenInclude(sa => sa!.InstructionVersion)
             .Include(g => g.Player)
+            .Include(g => g.Agent)
+            .Include(g => g.InstructionVersion)
             .Include(g => g.Ruleset)
             .FirstOrDefaultAsync(g => g.Id == gameId, cancellationToken);
 
@@ -266,12 +278,28 @@ public class GameService(
 
         await context.SaveChangesAsync(cancellationToken);
 
+        // Reload the game with updated navigation properties for mapping
+        Game gameWithNav = await context.Games
+            .AsNoTracking()
+            .Include(g => g.Scenario)
+            .ThenInclude(s => s!.ScenarioAgents)
+            .ThenInclude(sa => sa!.Agent)
+            .Include(g => g.Scenario)
+            .ThenInclude(s => s!.ScenarioAgents)
+            .ThenInclude(sa => sa!.InstructionVersion)
+            .Include(g => g.Player)
+            .Include(g => g.Agent)
+            .Include(g => g.InstructionVersion)
+            .Include(g => g.Ruleset)
+            .FirstAsync(g => g.Id == gameId, cancellationToken);
+
         // Calculate lastPlayedAt for the DTO
         DateTime? lastPlayedAt = await context.Messages
+            .AsNoTracking()
             .Where(m => m.GameId == gameId)
             .MaxAsync(m => (DateTime?)m.CreatedAt, cancellationToken);
 
-        return game.ToDto(lastPlayedAt);
+        return gameWithNav.ToDto(lastPlayedAt);
     }
 
     public async Task DeleteGameAsync(Guid gameId, CancellationToken cancellationToken = default)
