@@ -57,6 +57,26 @@ public class PromptImproverServiceTests
     }
 
     [Fact]
+    public void BuildMetricsInsightsPrompt_WithLowScores_IncludesRemarks()
+    {
+        // Arrange
+        var metrics = new List<MessageEvaluationMetric>
+        {
+            new() { MetricName = "Clarity", Score = 1.0, Remarks = "Very confusing response" },
+            new() { MetricName = "Clarity", Score = 5.0, Remarks = "Perfect" }
+        };
+        const string currentPrompt = "You are a helpful AI assistant.";
+
+        // Act
+        string result = PromptImproverService.BuildMetricsInsightsPrompt(metrics, currentPrompt);
+
+        // Assert
+        Assert.Contains("Notable Low-Score Remarks", result, StringComparison.Ordinal);
+        Assert.Contains("Clarity (1.0): Very confusing response", result, StringComparison.Ordinal);
+        Assert.DoesNotContain("Perfect", result, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void BuildSentimentInsightsPrompt_WithSentimentPairs_ReturnsValidPrompt()
     {
         // Arrange
@@ -91,6 +111,29 @@ public class PromptImproverServiceTests
         Assert.Contains("Assistant Messages with User Sentiment", result, StringComparison.Ordinal);
         Assert.Contains("Positive", result, StringComparison.Ordinal);
         Assert.Contains("Negative", result, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BuildSentimentInsightsPrompt_WithNeutralSentiment_ReturnsValidPrompt()
+    {
+        // Arrange
+        var sentiments = new List<MessageSentiment>
+        {
+            new()
+            {
+                Sentiment = 0,
+                Confidence = 0.50,
+                Message = new Message { Text = "Neutral response.", AgentId = "test-agent", InstructionVersionId = 1 }
+            }
+        };
+        const string currentPrompt = "You are a helpful AI assistant.";
+
+        // Act
+        string result = PromptImproverService.BuildSentimentInsightsPrompt(sentiments, currentPrompt);
+
+        // Assert
+        Assert.Contains("Neutral", result, StringComparison.Ordinal);
+        Assert.Contains("Neutral response.", result, StringComparison.Ordinal);
     }
 
     [Fact]
