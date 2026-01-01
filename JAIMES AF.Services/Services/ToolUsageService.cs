@@ -29,6 +29,16 @@ public class ToolUsageService(
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
+        // Get all agent names - all agents have access to all registered tools
+        List<string> allAgentNames = await context.AgentInstructionVersions
+            .AsNoTracking()
+            .Include(aiv => aiv.Agent)
+            .Where(aiv => aiv.Agent != null)
+            .Select(aiv => aiv.Agent!.Name)
+            .Distinct()
+            .OrderBy(name => name)
+            .ToListAsync(cancellationToken);
+
         // Build the base query for tool calls with optional filters
         IQueryable<MessageToolCall> toolCallQuery = context.MessageToolCalls
             .AsNoTracking()
@@ -87,11 +97,12 @@ public class ToolUsageService(
                     return (
                         TotalCalls: grp.Count(),
                         MessageCount: messageIds.Count,
+                        // Show unique agent names (not versions) who have used this tool
                         EnabledAgents: grp
                             .Where(mtc => mtc.InstructionVersion?.Agent != null)
-                            .Select(mtc =>
-                                $"{mtc.InstructionVersion!.Agent!.Name} v{mtc.InstructionVersion.VersionNumber}")
+                            .Select(mtc => mtc.InstructionVersion!.Agent!.Name)
                             .Distinct()
+                            .OrderBy(name => name)
                             .ToList(),
                         HelpfulCount: helpfulCount,
                         UnhelpfulCount: unhelpfulCount
@@ -126,12 +137,12 @@ public class ToolUsageService(
         int eligibleMessagesCount = await eligibleMessagesQuery.CountAsync(cancellationToken);
 
         // Create a list of all tools, including those without calls
+        // All registered tools are available to all agents via ChatService
         List<ToolUsageItemDto> allToolItems = registeredTools
             .Select(tool =>
             {
                 bool hasStats = toolCallStats.TryGetValue(tool.Name, out var stats);
                 int totalCalls = hasStats ? stats.TotalCalls : 0;
-                List<string> enabledAgents = hasStats ? stats.EnabledAgents : [];
                 int helpfulCount = hasStats ? stats.HelpfulCount : 0;
                 int unhelpfulCount = hasStats ? stats.UnhelpfulCount : 0;
 
@@ -141,9 +152,10 @@ public class ToolUsageService(
                     TotalCalls = totalCalls,
                     EligibleMessages = eligibleMessagesCount,
                     UsagePercentage = eligibleMessagesCount > 0 && hasStats
-                        ? Math.Clamp(Math.Round((double) stats.MessageCount / eligibleMessagesCount * 100, 2), 0, 100)
+                        ? Math.Clamp(Math.Round((double)stats.MessageCount / eligibleMessagesCount * 100, 2), 0, 100)
                         : 0,
-                    EnabledAgents = enabledAgents,
+                    // All agents have access to all registered tools
+                    EnabledAgents = allAgentNames,
                     HelpfulCount = helpfulCount,
                     UnhelpfulCount = unhelpfulCount
                 };
@@ -164,7 +176,7 @@ public class ToolUsageService(
                     TotalCalls = stats.TotalCalls,
                     EligibleMessages = eligibleMessagesCount,
                     UsagePercentage = eligibleMessagesCount > 0
-                        ? Math.Clamp(Math.Round((double) stats.MessageCount / eligibleMessagesCount * 100, 2), 0, 100)
+                        ? Math.Clamp(Math.Round((double)stats.MessageCount / eligibleMessagesCount * 100, 2), 0, 100)
                         : 0,
                     EnabledAgents = stats.EnabledAgents,
                     HelpfulCount = stats.HelpfulCount,
