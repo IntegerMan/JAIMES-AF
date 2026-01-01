@@ -405,7 +405,8 @@ public partial class PromptImproverWizard : IDisposable
                 FeedbackInsights = _feedbackInsights,
                 MetricsInsights = _metricsInsights,
                 SentimentInsights = _sentimentInsights,
-                MessageInsights = _messageInsights
+                MessageInsights = _messageInsights,
+                ManualInstructions = string.IsNullOrWhiteSpace(_editableInputPrompt) ? null : _editableInputPrompt
             };
 
             var response = await Http.PostAsJsonAsync(

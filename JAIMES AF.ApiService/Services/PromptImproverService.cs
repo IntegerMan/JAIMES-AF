@@ -318,12 +318,23 @@ public class PromptImproverService(
             // If only one batch, return its insights directly
             if (batchInsights.Length == 1)
             {
+                string insights = batchInsights[0].Trim();
+                if (string.IsNullOrWhiteSpace(insights))
+                {
+                    return new GenerateInsightsResponse
+                    {
+                        Success = false,
+                        InsightType = "messages",
+                        Error = "The AI returned an empty response for message insights. Please try again."
+                    };
+                }
+
                 return new GenerateInsightsResponse
                 {
                     Success = true,
                     InsightType = "messages",
                     ItemsAnalyzed = messages.Count,
-                    Insights = batchInsights[0].Trim()
+                    Insights = insights
                 };
             }
 
@@ -584,6 +595,12 @@ public class PromptImproverService(
     /// </summary>
     public static string BuildImprovedPromptInput(GenerateImprovedPromptRequest request)
     {
+        // If the user provided manual instructions (e.g. they edited the combined prompt), use that directly
+        if (!string.IsNullOrWhiteSpace(request.ManualInstructions))
+        {
+            return request.ManualInstructions;
+        }
+
         StringBuilder sb = new();
         sb.AppendLine("## Current Prompt to Improve");
         sb.AppendLine(request.CurrentPrompt);

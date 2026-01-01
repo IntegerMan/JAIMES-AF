@@ -184,4 +184,24 @@ public class PromptImproverServiceTests
         Assert.DoesNotContain("Insights from Evaluation Metrics", result, StringComparison.Ordinal);
         Assert.DoesNotContain("Insights from Sentiment Analysis", result, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void BuildImprovedPromptInput_WithManualInstructions_UsesManualInstructions()
+    {
+        // Arrange
+        var request = new GenerateImprovedPromptRequest
+        {
+            CurrentPrompt = "You are a helpful AI assistant.",
+            ManualInstructions = "Use pirate speech for everything.",
+            UserFeedback = "Make responses shorter"
+        };
+
+        // Act
+        string result = PromptImproverService.BuildImprovedPromptInput(request);
+
+        // Assert
+        Assert.Equal(request.ManualInstructions, result);
+        Assert.DoesNotContain(request.CurrentPrompt, result, StringComparison.Ordinal);
+        Assert.DoesNotContain("User's Specific Requests", result, StringComparison.Ordinal);
+    }
 }

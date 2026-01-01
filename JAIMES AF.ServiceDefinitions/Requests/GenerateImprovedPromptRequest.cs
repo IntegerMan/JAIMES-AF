@@ -34,4 +34,10 @@ public class GenerateImprovedPromptRequest
     /// AI-generated insights from conversation message analysis.
     /// </summary>
     public string? MessageInsights { get; set; }
+
+    /// <summary>
+    /// Optional manually-edited combined instructions for prompt generation.
+    /// If provided, this will be used instead of building the request from individual insight fields.
+    /// </summary>
+    public string? ManualInstructions { get; set; }
 }
