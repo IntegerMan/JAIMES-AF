@@ -445,13 +445,15 @@
     private string? _insightsResult;
     private int _insightsItemCount;
 
-    private async Task GenerateInsightsAsync()
+    /// <summary>
+    /// Generates AI insights and shows them in a dialog.
+    /// </summary>
+    public async Task GenerateInsightsAsync()
     {
         if (!InstructionVersionId.HasValue || string.IsNullOrEmpty(AgentId))
             return;
 
         _isGeneratingInsights = true;
-        _insightsResult = null;
         StateHasChanged();
 
         try
@@ -470,6 +472,15 @@
                 {
                     _insightsResult = result.Insights;
                     _insightsItemCount = result.ItemsAnalyzed;
+                    
+                    // Show dialog with markdown content
+                    var parameters = new DialogParameters<InsightsDialog>
+                    {
+                        { x => x.Title, "Metrics Insights" },
+                        { x => x.Content, result.Insights ?? "No insights available." },
+                        { x => x.ItemCount, result.ItemsAnalyzed }
+                    };
+                    await DialogService.ShowAsync<InsightsDialog>("AI Insights", parameters);
                 }
                 else
                 {
@@ -492,4 +503,8 @@
         }
     }
 
+    /// <summary>
+    /// Returns true if insights generation is in progress.
+    /// </summary>
+    public bool IsGeneratingInsights => _isGeneratingInsights;
 }

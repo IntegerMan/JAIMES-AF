@@ -125,42 +125,6 @@
     </NoRecordsContent>
 </MudDataGrid>
 
-@if (InstructionVersionId.HasValue && !string.IsNullOrEmpty(AgentId))
-{
-    <MudPaper Class="pa-4 mt-4" Elevation="1">
-        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-            <MudText Typo="Typo.h6">AI Insights</MudText>
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Secondary"
-                       StartIcon="@Icons.Material.Filled.AutoAwesome"
-                       OnClick="GenerateInsightsAsync"
-                       Disabled="_isGeneratingInsights">
-                @if (_isGeneratingInsights)
-                {
-                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
-                    <span class="ms-2">Analyzing...</span>
-                }
-                else
-                {
-                    <span>Generate Insights</span>
-                }
-            </MudButton>
-        </MudStack>
-        
-        @if (!string.IsNullOrEmpty(_insightsResult))
-        {
-            <MudDivider Class="my-3"/>
-            <MudText Typo="Typo.body1" Style="white-space: pre-wrap;">@_insightsResult</MudText>
-            @if (_insightsItemCount > 0)
-            {
-                <MudText Typo="Typo.caption" Class="text-muted mt-2">
-                    Based on @_insightsItemCount feedback items
-                </MudText>
-            }
-        }
-    </MudPaper>
-}
-
 @code {
     /// <summary>
     /// Optional agent ID to filter results.
@@ -261,13 +225,15 @@
     private string? _insightsResult;
     private int _insightsItemCount;
 
-    private async Task GenerateInsightsAsync()
+    /// <summary>
+    /// Generates AI insights and shows them in a dialog.
+    /// </summary>
+    public async Task GenerateInsightsAsync()
     {
         if (!InstructionVersionId.HasValue || string.IsNullOrEmpty(AgentId))
             return;
 
         _isGeneratingInsights = true;
-        _insightsResult = null;
         StateHasChanged();
 
         try
@@ -286,6 +252,15 @@
                 {
                     _insightsResult = result.Insights;
                     _insightsItemCount = result.ItemsAnalyzed;
+                    
+                    // Show dialog with markdown content
+                    var parameters = new DialogParameters<InsightsDialog>
+                    {
+                        { x => x.Title, "Feedback Insights" },
+                        { x => x.Content, result.Insights ?? "No insights available." },
+                        { x => x.ItemCount, result.ItemsAnalyzed }
+                    };
+                    await DialogService.ShowAsync<InsightsDialog>("AI Insights", parameters);
                 }
                 else
                 {
@@ -307,4 +282,9 @@
             StateHasChanged();
         }
     }
+
+    /// <summary>
+    /// Returns true if insights generation is in progress.
+    /// </summary>
+    public bool IsGeneratingInsights => _isGeneratingInsights;
 }
