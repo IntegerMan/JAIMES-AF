@@ -274,17 +274,16 @@
             new BreadcrumbItem($"Message {MessageId}", href: null, disabled: true)
         };
 
-        // Initialize SignalR using the API service URL, not the local web URL
-        string baseApiUrl = Configuration["ApiService:BaseAddress"] ?? "http://apiservice/";
-        if (!baseApiUrl.EndsWith("/")) baseApiUrl += "/";
-        var hubUrl = new Uri(new Uri(baseApiUrl), "hubs/messages");
+        // Build hub connection using the API service URL
+        HttpClient apiClient = HttpClientFactory.CreateClient("Api");
+        string hubUrl = new Uri(apiClient.BaseAddress!, "/hubs/messages").ToString();
 
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(hubUrl)
             .WithAutomaticReconnect()
             .Build();
 
-        _hubConnection.On<MessageUpdateNotification>("ReceiveMessageUpdate", async (notification) =>
+        _hubConnection.On<MessageUpdateNotification>("MessageUpdated", async (notification) =>
         {
             if (notification.MessageId == MessageId && notification.UpdateType == MessageUpdateType.MetricsEvaluated)
             {
@@ -300,11 +299,11 @@
         try
         {
             await _hubConnection.StartAsync();
+            await _hubConnection.InvokeAsync("JoinAdmin");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Failed to connect to SignalR hub: {ex.Message}");
-            // Continue without real-time updates
         }
     }
 

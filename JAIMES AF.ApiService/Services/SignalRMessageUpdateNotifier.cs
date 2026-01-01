@@ -74,5 +74,6 @@ public class SignalRMessageUpdateNotifier(
             notification.GameId);
 
         await hubContext.Clients.Group(groupName).MessageUpdated(notification);
+        await hubContext.Clients.Group("admin").MessageUpdated(notification);
     }
 }
