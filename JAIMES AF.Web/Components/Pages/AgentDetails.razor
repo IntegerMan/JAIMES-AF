@@ -28,12 +28,20 @@
         {
             <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
                 <MudText Typo="Typo.h4">@_agent.Name</MudText>
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.Edit"
-                           Href="@($"/agents/{AgentId}/edit")">
-                    Edit Agent
-                </MudButton>
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Edit"
+                               Href="@($"/agents/{AgentId}/edit")">
+                        Edit Agent
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Secondary"
+                               StartIcon="@Icons.Material.Filled.AutoAwesome"
+                               Href="@($"/agents/{AgentId}/improve")">
+                        Improve Prompt
+                    </MudButton>
+                </MudStack>
             </MudStack>
 
             <MudText Typo="Typo.body1" Class="mb-4">

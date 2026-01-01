@@ -75,12 +75,18 @@
                 <MudText Style="white-space: pre-wrap; font-family: monospace;">@_version.Instructions</MudText>
             </MudPaper>
 
-            <MudStack Row="true" Class="mt-4">
+            <MudStack Row="true" Class="mt-4" Spacing="2">
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Primary"
                            StartIcon="@Icons.Material.Filled.Edit"
                            Href="@($"/agents/{AgentId}/edit?baseVersionId={VersionId}")">
                     Create New Version
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Filled.AutoAwesome"
+                           Href="@($"/agents/{AgentId}/versions/{VersionId}/improve")">
+                    Improve Prompt
                 </MudButton>
             </MudStack>
 
