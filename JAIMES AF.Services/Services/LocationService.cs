@@ -234,21 +234,15 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
             return null;
         }
 
-        // Check if relationship already exists (in either direction)
-        bool exists = await context.NearbyLocations
-            .AnyAsync(nl => (nl.SourceLocationId == sourceLocationId && nl.TargetLocationId == targetLocationId) ||
-                            (nl.SourceLocationId == targetLocationId && nl.TargetLocationId == sourceLocationId),
+        // Check if relationship already exists (in either direction) and update if it does
+        NearbyLocation? existing = await context.NearbyLocations
+            .FirstOrDefaultAsync(nl =>
+                    (nl.SourceLocationId == sourceLocationId && nl.TargetLocationId == targetLocationId) ||
+                    (nl.SourceLocationId == targetLocationId && nl.TargetLocationId == sourceLocationId),
                 cancellationToken);
 
-        if (exists)
+        if (existing != null)
         {
-            // Update existing relationship (find in either direction)
-            NearbyLocation? existing = await context.NearbyLocations
-                .FirstAsync(nl =>
-                        (nl.SourceLocationId == sourceLocationId && nl.TargetLocationId == targetLocationId) ||
-                        (nl.SourceLocationId == targetLocationId && nl.TargetLocationId == sourceLocationId),
-                    cancellationToken);
-
             existing.Distance = distance ?? existing.Distance;
             existing.TravelNotes = travelNotes ?? existing.TravelNotes;
             existing.StorytellerNotes = storytellerNotes ?? existing.StorytellerNotes;

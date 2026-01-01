@@ -29,15 +29,6 @@ public class ToolUsageService(
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        // Get all agent names - all agents have access to all registered tools
-        List<string> allAgentNames = await context.AgentInstructionVersions
-            .AsNoTracking()
-            .Include(aiv => aiv.Agent)
-            .Where(aiv => aiv.Agent != null)
-            .Select(aiv => aiv.Agent!.Name)
-            .Distinct()
-            .OrderBy(name => name)
-            .ToListAsync(cancellationToken);
 
         // Build the base query for tool calls with optional filters
         IQueryable<MessageToolCall> toolCallQuery = context.MessageToolCalls
@@ -154,8 +145,8 @@ public class ToolUsageService(
                     UsagePercentage = eligibleMessagesCount > 0 && hasStats
                         ? Math.Clamp(Math.Round((double)stats.MessageCount / eligibleMessagesCount * 100, 2), 0, 100)
                         : 0,
-                    // All agents have access to all registered tools
-                    EnabledAgents = allAgentNames,
+                    // Use the list of agents that actually used this tool
+                    EnabledAgents = hasStats ? stats.EnabledAgents : [],
                     HelpfulCount = helpfulCount,
                     UnhelpfulCount = unhelpfulCount
                 };
