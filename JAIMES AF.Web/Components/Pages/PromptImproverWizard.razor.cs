@@ -6,13 +6,14 @@ using MudBlazor;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 
-public partial class PromptImproverWizard
+public partial class PromptImproverWizard : IDisposable
 {
     [Parameter] public string AgentId { get; set; } = string.Empty;
     [Parameter] public int? VersionId { get; set; }
 
     [Inject] public IJSRuntime JS { get; set; } = null!;
 
+    private CancellationTokenSource? _cts;
     private bool _isLoading = true;
     private string? _errorMessage;
     private List<BreadcrumbItem> _breadcrumbs = new();
@@ -116,17 +117,35 @@ public partial class PromptImproverWizard
             _currentPrompt = version.Instructions;
             _effectiveVersionId = version.Id;
 
-            // Auto-start insights generation
+            // Invalidate previous in-flight requests
+            _cts?.Cancel();
+            _cts?.Dispose();
+            _cts = new CancellationTokenSource();
+            var token = _cts.Token;
+
+            // Auto-start insights generation with fire-and-forget pattern
             _ = Task.Run(async () =>
             {
-                await InvokeAsync(async () =>
+                try
                 {
-                    var feedbackTask = GenerateFeedbackInsightsAsync();
-                    var metricsTask = GenerateMetricsInsightsAsync();
-                    var sentimentTask = GenerateSentimentInsightsAsync();
-                    await Task.WhenAll(feedbackTask, metricsTask, sentimentTask);
-                });
-            });
+                    await InvokeAsync(async () =>
+                    {
+                        var feedbackTask = GenerateFeedbackInsightsAsync(token);
+                        var metricsTask = GenerateMetricsInsightsAsync(token);
+                        var sentimentTask = GenerateSentimentInsightsAsync(token);
+                        await Task.WhenAll(feedbackTask, metricsTask, sentimentTask);
+                    });
+                }
+                catch (ObjectDisposedException)
+                {
+                    /* Component was likely disposed */
+                }
+                catch (Exception ex)
+                {
+                    LoggerFactory.CreateLogger("PromptImproverWizard")
+                        .LogError(ex, "Error in background insight generation");
+                }
+            }, token);
         }
         catch (Exception ex)
         {
@@ -158,7 +177,7 @@ public partial class PromptImproverWizard
         _isGeneratingPrompt = false;
     }
 
-    private async Task GenerateFeedbackInsightsAsync()
+    private async Task GenerateFeedbackInsightsAsync(CancellationToken cancellationToken = default)
     {
         _isGeneratingFeedback = true;
         StateHasChanged();
@@ -168,11 +187,13 @@ public partial class PromptImproverWizard
             var request = new GenerateInsightsRequest { InsightType = "feedback" };
             var response = await Http.PostAsJsonAsync(
                 $"/agents/{AgentId}/instruction-versions/{_effectiveVersionId}/generate-insights",
-                request);
+                request, cancellationToken);
 
             if (response.IsSuccessStatusCode)
             {
-                var result = await response.Content.ReadFromJsonAsync<GenerateInsightsResponse>();
+                var result = await response.Content.ReadFromJsonAsync<GenerateInsightsResponse>(cancellationToken);
+                if (cancellationToken.IsCancellationRequested) return;
+
                 if (result?.Success == true)
                 {
                     _feedbackInsights = result.Insights;
@@ -184,21 +205,30 @@ public partial class PromptImproverWizard
             }
             else
             {
+                if (cancellationToken.IsCancellationRequested) return;
                 Snackbar.Add("Failed to generate feedback insights", Severity.Error);
             }
         }
+        catch (OperationCanceledException)
+        {
+            /* Normal behavior on navigation */
+        }
         catch (Exception ex)
         {
+            if (cancellationToken.IsCancellationRequested) return;
             Snackbar.Add($"Error: {ex.Message}", Severity.Error);
         }
         finally
         {
-            _isGeneratingFeedback = false;
-            StateHasChanged();
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                _isGeneratingFeedback = false;
+                StateHasChanged();
+            }
         }
     }
 
-    private async Task GenerateMetricsInsightsAsync()
+    private async Task GenerateMetricsInsightsAsync(CancellationToken cancellationToken = default)
     {
         _isGeneratingMetrics = true;
         StateHasChanged();
@@ -208,11 +238,13 @@ public partial class PromptImproverWizard
             var request = new GenerateInsightsRequest { InsightType = "metrics" };
             var response = await Http.PostAsJsonAsync(
                 $"/agents/{AgentId}/instruction-versions/{_effectiveVersionId}/generate-insights",
-                request);
+                request, cancellationToken);
 
             if (response.IsSuccessStatusCode)
             {
-                var result = await response.Content.ReadFromJsonAsync<GenerateInsightsResponse>();
+                var result = await response.Content.ReadFromJsonAsync<GenerateInsightsResponse>(cancellationToken);
+                if (cancellationToken.IsCancellationRequested) return;
+
                 if (result?.Success == true)
                 {
                     _metricsInsights = result.Insights;
@@ -224,21 +256,30 @@ public partial class PromptImproverWizard
             }
             else
             {
+                if (cancellationToken.IsCancellationRequested) return;
                 Snackbar.Add("Failed to generate metrics insights", Severity.Error);
             }
         }
+        catch (OperationCanceledException)
+        {
+            /* Normal behavior on navigation */
+        }
         catch (Exception ex)
         {
+            if (cancellationToken.IsCancellationRequested) return;
             Snackbar.Add($"Error: {ex.Message}", Severity.Error);
         }
         finally
         {
-            _isGeneratingMetrics = false;
-            StateHasChanged();
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                _isGeneratingMetrics = false;
+                StateHasChanged();
+            }
         }
     }
 
-    private async Task GenerateSentimentInsightsAsync()
+    private async Task GenerateSentimentInsightsAsync(CancellationToken cancellationToken = default)
     {
         _isGeneratingSentiment = true;
         StateHasChanged();
@@ -248,11 +289,13 @@ public partial class PromptImproverWizard
             var request = new GenerateInsightsRequest { InsightType = "sentiment" };
             var response = await Http.PostAsJsonAsync(
                 $"/agents/{AgentId}/instruction-versions/{_effectiveVersionId}/generate-insights",
-                request);
+                request, cancellationToken);
 
             if (response.IsSuccessStatusCode)
             {
-                var result = await response.Content.ReadFromJsonAsync<GenerateInsightsResponse>();
+                var result = await response.Content.ReadFromJsonAsync<GenerateInsightsResponse>(cancellationToken);
+                if (cancellationToken.IsCancellationRequested) return;
+
                 if (result?.Success == true)
                 {
                     _sentimentInsights = result.Insights;
@@ -264,17 +307,26 @@ public partial class PromptImproverWizard
             }
             else
             {
+                if (cancellationToken.IsCancellationRequested) return;
                 Snackbar.Add("Failed to generate sentiment insights", Severity.Error);
             }
         }
+        catch (OperationCanceledException)
+        {
+            /* Normal behavior on navigation */
+        }
         catch (Exception ex)
         {
+            if (cancellationToken.IsCancellationRequested) return;
             Snackbar.Add($"Error: {ex.Message}", Severity.Error);
         }
         finally
         {
-            _isGeneratingSentiment = false;
-            StateHasChanged();
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                _isGeneratingSentiment = false;
+                StateHasChanged();
+            }
         }
     }
 
@@ -454,5 +506,11 @@ public partial class PromptImproverWizard
     {
         var opacity = stepIndex < _maxReachedStep ? "1" : "0.3";
         return $"width: 60px; opacity: {opacity};";
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
     }
 }

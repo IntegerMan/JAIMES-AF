@@ -85,12 +85,23 @@ public class PromptImproverService(
                 userMessage,
                 cancellationToken);
 
+            string trimmedInsights = insights.Trim();
+            if (string.IsNullOrWhiteSpace(trimmedInsights))
+            {
+                return new GenerateInsightsResponse
+                {
+                    Success = false,
+                    InsightType = "feedback",
+                    Error = "The AI returned an empty response for feedback insights. Please try again."
+                };
+            }
+
             return new GenerateInsightsResponse
             {
                 Success = true,
                 InsightType = "feedback",
                 ItemsAnalyzed = feedbackItems.Count,
-                Insights = insights
+                Insights = trimmedInsights
             };
         }
         catch (Exception ex)
@@ -149,12 +160,23 @@ public class PromptImproverService(
                 userMessage,
                 cancellationToken);
 
+            string trimmedInsights = insights.Trim();
+            if (string.IsNullOrWhiteSpace(trimmedInsights))
+            {
+                return new GenerateInsightsResponse
+                {
+                    Success = false,
+                    InsightType = "metrics",
+                    Error = "The AI returned an empty response for metrics insights. Please try again."
+                };
+            }
+
             return new GenerateInsightsResponse
             {
                 Success = true,
                 InsightType = "metrics",
                 ItemsAnalyzed = metrics.Count,
-                Insights = insights
+                Insights = trimmedInsights
             };
         }
         catch (Exception ex)
@@ -214,12 +236,23 @@ public class PromptImproverService(
                 userMessage,
                 cancellationToken);
 
+            string trimmedInsights = insights.Trim();
+            if (string.IsNullOrWhiteSpace(trimmedInsights))
+            {
+                return new GenerateInsightsResponse
+                {
+                    Success = false,
+                    InsightType = "sentiment",
+                    Error = "The AI returned an empty response for sentiment insights. Please try again."
+                };
+            }
+
             return new GenerateInsightsResponse
             {
                 Success = true,
                 InsightType = "sentiment",
                 ItemsAnalyzed = sentiments.Count,
-                Insights = insights
+                Insights = trimmedInsights
             };
         }
         catch (Exception ex)

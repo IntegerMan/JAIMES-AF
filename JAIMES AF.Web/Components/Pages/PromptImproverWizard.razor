@@ -88,7 +88,7 @@
                                 {
                                     <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
                                 }
-                                else if (_feedbackInsights != null)
+                                else if (!string.IsNullOrEmpty(_feedbackInsights))
                                 {
                                     <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small"/>
                                 }
@@ -115,7 +115,7 @@
                                 {
                                     <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
                                 }
-                                else if (_metricsInsights != null)
+                                else if (!string.IsNullOrEmpty(_metricsInsights))
                                 {
                                     <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small"/>
                                 }
@@ -142,7 +142,7 @@
                                 {
                                     <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
                                 }
-                                else if (_sentimentInsights != null)
+                                else if (!string.IsNullOrEmpty(_sentimentInsights))
                                 {
                                     <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small"/>
                                 }
