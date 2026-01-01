@@ -345,62 +345,77 @@ public partial class GameDetails : IAsyncDisposable
 
             await foreach (var update in _agent.RunStreamingAsync(messagesToSend, thread: null))
             {
-                // We only care about Assistant messages for the UI
-                if (update.Role != ChatRole.Assistant) continue;
-
-                // Skip updates with empty text unless it's a tool call (which we're not handling explicitly here yet)
-                if (string.IsNullOrEmpty(update.Text)) continue;
-
                 string tempId = update.MessageId ?? "default";
+                bool isExisting = messageIdToIndex.TryGetValue(tempId, out int msgIndex);
 
-                // If we haven't seen this message ID yet, create a new bubble
-                if (!messageIdToIndex.TryGetValue(tempId, out int msgIndex))
+                // If it's a new message, we need to validate the role
+                // We accept Assistant or Tool (to show thinking process)
+                // If existing, we just accept the update
+                if (!isExisting)
+                {
+                    if (update.Role != ChatRole.Assistant && update.Role != ChatRole.Tool)
+                    {
+                        // Check if we assume it's assistant if it has text?
+                        if (string.IsNullOrEmpty(update.Text)) continue;
+                        // If it has text but weird role, let's show it? 
+                        // For now, strict on Role unless it's Tool
+                    }
+                }
+
+                // Skip updates with empty text for NEW messages
+                // For existing messages, empty text might technically clear it? Unlikely.
+                if (!isExisting && string.IsNullOrEmpty(update.Text)) continue;
+
+                if (!isExisting)
                 {
                     // Normalize role and default author name logic
                     string? authorName = update.AuthorName;
 
-                    var newMessage = new ChatMessage(ChatRole.Assistant, update.Text)
+                    // If it's a Tool, maybe prepend "Tool: " or similar?
+                    string text = update.Text;
+                    if (update.Role == ChatRole.Tool)
+                    {
+                        // Verify this. Usually Tool role means tool output. 
+                        // We might want to visually distinguish it.
+                        // For now, let's just make it italic or prefix it.
+                        // But ChatMessage doesn't support rich text easily here without HTML.
+                        // Let's just show it.
+                    }
+
+                    var newMessage = new ChatMessage(update.Role ?? ChatRole.Assistant, text)
                     {
                         AuthorName = authorName
                     };
 
-                // Create a new message with normalized role to ensure consistency
-                ChatMessage normalizedMessage = new(normalizedRole, message.Text)
-                {
-                    AuthorName = message.AuthorName
-                };
-
-                // For Assistant messages, populate pending agent info so the icon/name appears immediately
-                if (normalizedRole == ChatRole.Assistant)
-                {
-                    string? agentName = (!string.IsNullOrWhiteSpace(message.AuthorName) &&
-                                         !message.AuthorName.StartsWith("game-", StringComparison.OrdinalIgnoreCase))
-                        ? message.AuthorName
-                        : (_availableAgents.FirstOrDefault(a => a.Id == _selectedAgentId)?.Name ?? _defaultAgentName);
-
-                    string? versionNumber = _selectedVersionId.HasValue
-                        ? _availableVersions.FirstOrDefault(v => v.Id == _selectedVersionId)?.VersionNumber
-                        : _availableVersions.FirstOrDefault(v => v.IsActive)
-                            ?.VersionNumber; // If dynamic, show active version
-
-                    versionNumber ??= _defaultVersionNumber;
-
-                    _pendingMessageAgentInfo[normalizedMessage] = new MessageAgentInfo
+                    // Populate pending agent info only for Assistant
+                    if (update.Role == ChatRole.Assistant)
                     {
-                        AgentId = _selectedAgentId ?? _defaultAgentId,
-                        AgentName = agentName,
-                        InstructionVersionId = _selectedVersionId ?? _defaultInstructionVersionId,
-                        VersionNumber = versionNumber,
-                        IsScriptedMessage = false // Live messages are generally not scripted
-                    };
+                            AgentId = _selectedAgentId ?? _defaultAgentId,
+                            AgentName = agentName,
+                            InstructionVersionId = _selectedVersionId ?? _defaultInstructionVersionId,
+                            VersionNumber = versionNumber,
+                            IsScriptedMessage = false // Live messages are generally not scripted
+                        _pendingMessageAgentInfo[newMessage] = new MessageAgentInfo
+                        {
+                            AgentId = _defaultAgentId,
+                            AgentName = (!string.IsNullOrWhiteSpace(authorName) &&
+                                         !authorName.StartsWith("game-", StringComparison.OrdinalIgnoreCase))
+                                ? authorName
+                                : _defaultAgentName,
+                            InstructionVersionId = _defaultInstructionVersionId,
+                            VersionNumber = _defaultVersionNumber,
+                            IsScriptedMessage = false
+                        };
+                    }
+
+                    _logger?.LogInformation("Started receiving message '{Text}...' from {Role}",
+                        updatedTextPreview(text),
+                        update.Role);
 
                     _messages.Add(newMessage);
                     _messageIds.Add(null); // No DB ID yet
                     msgIndex = _messages.Count - 1;
                     messageIdToIndex[tempId] = msgIndex;
-
-                    _logger?.LogInformation("Started receiving message '{Text}...' from Assistant",
-                        updatedTextPreview(update.Text));
                 }
                 else
                 {
@@ -408,7 +423,7 @@ public partial class GameDetails : IAsyncDisposable
                     // The update.Text is cumulative
                     // ChatMessage.Text is read-only, so we must replace the message object
                     var oldMsg = _messages[msgIndex];
-                    var updatedMsg = new ChatMessage(ChatRole.Assistant, update.Text)
+                    var updatedMsg = new ChatMessage(oldMsg.Role, update.Text)
                     {
                         AuthorName = !string.IsNullOrEmpty(update.AuthorName) ? update.AuthorName : oldMsg.AuthorName
                     };
