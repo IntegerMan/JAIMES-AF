@@ -111,7 +111,7 @@ public partial class GameDetails : IAsyncDisposable
                     new ChatMessage(m.Participant == ChatParticipant.Player ? ChatRole.User : ChatRole.Assistant,
                         m.Text))
                 .ToList();
-            _messageIds = orderedMessages.Select(m => (int?)m.Id).ToList();
+            _messageIds = orderedMessages.Select(m => (int?) m.Id).ToList();
 
             // Batch load all metadata (Feedback, ToolCalls, Metrics, Sentiment)
             await LoadMessagesMetadataAsync(orderedMessages.Select(m => m.Id).ToList());
@@ -198,7 +198,7 @@ public partial class GameDetails : IAsyncDisposable
         try
         {
             HttpClient httpClient = HttpClientFactory.CreateClient("Api");
-            var request = new UpdateGameRequest { Title = _editableTitle };
+            var request = new UpdateGameRequest {Title = _editableTitle};
             var response = await httpClient.PutAsJsonAsync($"/games/{GameId}", request);
 
             if (response.IsSuccessStatusCode)
@@ -207,7 +207,7 @@ public partial class GameDetails : IAsyncDisposable
                 if (updatedGame != null)
                 {
                     // Update local game state with new title
-                    _game = _game with { Title = updatedGame.Title };
+                    _game = _game with {Title = updatedGame.Title};
                     UpdateBreadcrumbs(_game.Title ?? $"{_game.PlayerName} in {_game.ScenarioName}");
                 }
             }
@@ -332,68 +332,37 @@ public partial class GameDetails : IAsyncDisposable
             // Add the player's message
             messagesToSend.Add(new ChatMessage(ChatRole.User, messageText));
 
+            // Track response messages by their temporary ID (from the streaming update)
+            // This allows us to update the correct message bubble as tokens arrive
+            Dictionary<string, int> messageIdToIndex = new();
+
             // AGUI manages threads automatically via ConversationId
             // Don't pass a thread - AGUI will create/manage it via ConversationId to avoid MessageStore conflicts
             // AGUI manages conversation history, so we only need to send the NEW message(s), not all messages
-            // Sending all messages causes exponential growth because the server thread already contains history
             _logger?.LogDebug(
                 "Sending {Count} message(s) to AGUI (AGUI manages conversation history via ConversationId)",
                 messagesToSend.Count);
-            AgentRunResponse resp = await _agent.RunAsync(messagesToSend, thread: null);
 
-            // Only add valid messages with proper roles to the collection
-            foreach (var message in resp.Messages ?? [])
+            await foreach (var update in _agent.RunStreamingAsync(messagesToSend, thread: null))
             {
-                // Skip null messages
-                if (message == null)
-                {
-                    _logger?.LogWarning("Skipping null message in response");
-                    continue;
-                }
+                // We only care about Assistant messages for the UI
+                if (update.Role != ChatRole.Assistant) continue;
 
-                // Skip messages with empty text
-                if (string.IsNullOrWhiteSpace(message.Text))
-                {
-                    _logger?.LogDebug("Skipping message with empty text, Role: {Role}", message.Role);
-                    continue;
-                }
+                // Skip updates with empty text unless it's a tool call (which we're not handling explicitly here yet)
+                if (string.IsNullOrEmpty(update.Text)) continue;
 
-                // Normalize and validate the role
-                // AGUI may return roles as strings or with different casing
-                // Handle potential issues with Role enum
-                ChatRole messageRole = message.Role;
-                string roleString = messageRole.ToString()?.Trim() ?? string.Empty;
+                string tempId = update.MessageId ?? "default";
 
-                // Handle case-insensitive role matching and empty/invalid roles
-                ChatRole normalizedRole;
-                if (string.IsNullOrEmpty(roleString) ||
-                    (!roleString.Equals("User", StringComparison.OrdinalIgnoreCase) &&
-                     !roleString.Equals("Assistant", StringComparison.OrdinalIgnoreCase)))
+                // If we haven't seen this message ID yet, create a new bubble
+                if (!messageIdToIndex.TryGetValue(tempId, out int msgIndex))
                 {
-                    // Try to infer role from AuthorName or default to Assistant for non-User messages
-                    if (!string.IsNullOrWhiteSpace(message.AuthorName))
+                    // Normalize role and default author name logic
+                    string? authorName = update.AuthorName;
+
+                    var newMessage = new ChatMessage(ChatRole.Assistant, update.Text)
                     {
-                        _logger?.LogDebug(
-                            "Message has invalid role '{Role}' but AuthorName '{AuthorName}', inferring Assistant role",
-                            roleString,
-                            message.AuthorName);
-                        normalizedRole = ChatRole.Assistant;
-                    }
-                    else
-                    {
-                        _logger?.LogWarning("Skipping message with invalid role: '{Role}', Text: '{Text}'",
-                            roleString,
-                            message.Text);
-                        continue;
-                    }
-                }
-                else
-                {
-                    // Normalize the role to proper enum value
-                    normalizedRole = roleString.Equals("User", StringComparison.OrdinalIgnoreCase)
-                        ? ChatRole.User
-                        : ChatRole.Assistant;
-                }
+                        AuthorName = authorName
+                    };
 
                 // Create a new message with normalized role to ensure consistency
                 ChatMessage normalizedMessage = new(normalizedRole, message.Text)
@@ -424,13 +393,45 @@ public partial class GameDetails : IAsyncDisposable
                         VersionNumber = versionNumber,
                         IsScriptedMessage = false // Live messages are generally not scripted
                     };
+
+                    _messages.Add(newMessage);
+                    _messageIds.Add(null); // No DB ID yet
+                    msgIndex = _messages.Count - 1;
+                    messageIdToIndex[tempId] = msgIndex;
+
+                    _logger?.LogInformation("Started receiving message '{Text}...' from Assistant",
+                        updatedTextPreview(update.Text));
+                }
+                else
+                {
+                    // Update existing message text
+                    // The update.Text is cumulative
+                    // ChatMessage.Text is read-only, so we must replace the message object
+                    var oldMsg = _messages[msgIndex];
+                    var updatedMsg = new ChatMessage(ChatRole.Assistant, update.Text)
+                    {
+                        AuthorName = !string.IsNullOrEmpty(update.AuthorName) ? update.AuthorName : oldMsg.AuthorName
+                    };
+
+                    if (_pendingMessageAgentInfo.TryGetValue(oldMsg, out var pendingInfo))
+                    {
+                        // key by value/reference issue - pendingInfo key is the old message
+                        _pendingMessageAgentInfo.Remove(oldMsg);
+                        _pendingMessageAgentInfo[updatedMsg] = pendingInfo;
+
+                        // Update pending info name too if it changed/arrived late
+                        if (!string.IsNullOrEmpty(update.AuthorName))
+                        {
+                            pendingInfo.AgentName = update.AuthorName;
+                        }
+                    }
+
+                    _messages[msgIndex] = updatedMsg;
                 }
 
-                _logger?.LogInformation("Received message '{Text}' from {Role}", message.Text, normalizedRole);
-                _messages.Add(normalizedMessage);
-                // Note: New messages from AGUI don't have database IDs yet, so we track as null
-                // They will get IDs when saved to the database, but we can't provide feedback until they're saved
-                _messageIds.Add(null);
+                // Force UI update to show the streaming text
+                StateHasChanged();
+                _shouldScrollToBottom = true;
             }
         }
         catch (Exception ex)
@@ -450,6 +451,12 @@ public partial class GameDetails : IAsyncDisposable
             _shouldScrollToBottom = true;
             await InvokeAsync(StateHasChanged);
         }
+    }
+
+    private string updatedTextPreview(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return string.Empty;
+        return text.Length > 20 ? text.Substring(0, 20) : text;
     }
 
     private async Task RetryMessageAsync(int messageIndex)
@@ -600,8 +607,8 @@ public partial class GameDetails : IAsyncDisposable
         IDialogReference? dialogRef = null;
         var parameters = new DialogParameters<FeedbackDialog>
         {
-            { nameof(FeedbackDialog.MessageId), messageId },
-            { nameof(FeedbackDialog.PreSelectedFeedback), isPositive },
+            {nameof(FeedbackDialog.MessageId), messageId},
+            {nameof(FeedbackDialog.PreSelectedFeedback), isPositive},
             {
                 nameof(FeedbackDialog.OnFeedbackSubmitted), EventCallback.Factory.Create<FeedbackSubmission?>(this,
                     async (FeedbackSubmission? feedback) =>
@@ -693,7 +700,7 @@ public partial class GameDetails : IAsyncDisposable
         {
             HttpClient httpClient = HttpClientFactory.CreateClient("Api");
 
-            var request = new MessagesMetadataRequest { MessageIds = messageIds };
+            var request = new MessagesMetadataRequest {MessageIds = messageIds};
             var response = await httpClient.PostAsJsonAsync("/messages/metadata", request);
 
             if (response.IsSuccessStatusCode)
@@ -864,7 +871,7 @@ public partial class GameDetails : IAsyncDisposable
                             // Fetch metadata for this message immediately to get the tool calls
                             // Since the notification payload doesn't contain the full tool call data,
                             // we need to reload metadata for this specific message
-                            await LoadMessagesMetadataAsync(new List<int> { notification.MessageId });
+                            await LoadMessagesMetadataAsync(new List<int> {notification.MessageId});
 
                             // Match by content if ID is not yet known locally (rare for tool calls but possible)
                             if (!_messageIds.Contains(notification.MessageId) &&
