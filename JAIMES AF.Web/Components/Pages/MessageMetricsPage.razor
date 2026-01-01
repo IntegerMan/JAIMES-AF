@@ -31,7 +31,28 @@
     {
         <MudText Typo="Typo.body1">No evaluation metrics found for this message.</MudText>
     }
-    else
+
+    @if (_missingEvaluatorsResponse != null && _missingEvaluatorsResponse.MissingEvaluators.Any())
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mb-4">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                <MudText>
+                    This message is missing evaluation from <strong>@_missingEvaluatorsResponse.MissingEvaluators.Count</strong> 
+                    of @_missingEvaluatorsResponse.TotalRegisteredEvaluators registered evaluators: 
+                    @string.Join(", ", _missingEvaluatorsResponse.MissingEvaluators)
+                </MudText>
+                <MudButton StartIcon="@Icons.Material.Filled.Refresh" 
+                           Color="Color.Inherit" 
+                           Variant="Variant.Outlined"
+                           Disabled="@_isReevaluating"
+                           OnClick="TriggerReEvaluation">
+                    @(_isReevaluating ? "Enqueuing..." : "Re-evaluate Missing")
+                </MudButton>
+            </MudStack>
+        </MudAlert>
+    }
+    
+    @if (!_isLoading && _metrics != null && _metrics.Any())
     {
 
         
@@ -130,18 +151,63 @@
     }
 </MudContainer>
 
+@inject ISnackbar Snackbar
+
 @code {
     [Parameter] public int MessageId { get; set; }
     
     private IEnumerable<MessageEvaluationMetricResponse> _metrics = new List<MessageEvaluationMetricResponse>();
     private bool _isLoading = true;
+    private bool _isReevaluating = false;
     private string? _errorMessage;
     private Guid? _gameId;
+    private MissingEvaluatorsResponse? _missingEvaluatorsResponse;
 
     protected override async Task OnParametersSetAsync()
     {
         await LoadMetricsAsync();
+        await LoadMissingEvaluatorsAsync();
         await LoadMessageMetadataAsync();
+    }
+
+    private async Task LoadMissingEvaluatorsAsync()
+    {
+        try
+        {
+            _missingEvaluatorsResponse = await Http.GetFromJsonAsync<MissingEvaluatorsResponse>($"/messages/{MessageId}/missing-evaluators");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error checking for missing evaluators: {ex}");
+        }
+    }
+
+    private async Task TriggerReEvaluation()
+    {
+        _isReevaluating = true;
+        try
+        {
+            var response = await Http.PostAsync($"/messages/{MessageId}/reevaluate", null);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Re-evaluation enqueued. Metrics will update automatically.", Severity.Success);
+                // We'll trust SignalR to update the metrics, but we can clear the banner
+                _missingEvaluatorsResponse = null;
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to trigger re-evaluation: {error}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+             Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isReevaluating = false;
+        }
     }
 
     private async Task LoadMetricsAsync()
@@ -166,14 +232,13 @@
     }
 
 
-
     private async Task LoadMessageMetadataAsync()
     {
         try
         {
             // We need to fetch the message to get the GameId for the "View Game" button
             // We use count=1 to just get the message itself
-            var messages = await Http.GetFromJsonAsync<IEnumerable<MessageContextDto>>($"/messages/{MessageId}/context?count=1");
+            var messages = await Http.GetFromJsonAsync<IEnumerable<MessageContextDto>>($"/messages/{MessageId}/context?countBefore=0&countAfter=0");
             var message = messages?.FirstOrDefault();
             
             if (message != null && message.GameId != Guid.Empty)

@@ -29,4 +29,9 @@ public record MessageResponse
     public string? ModelName { get; set; }
     public string? ModelProvider { get; set; }
     public string? ModelEndpoint { get; set; }
+
+    /// <summary>
+    /// True if this message is missing any registered evaluators.
+    /// </summary>
+    public bool HasMissingEvaluators { get; set; }
 }

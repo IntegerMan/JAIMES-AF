@@ -71,7 +71,8 @@ public class GetMessagesMetadataEndpoint : Endpoint<MessagesMetadataRequest, Mes
                 Score = m.Score,
                 Remarks = m.Remarks,
                 EvaluatedAt = m.EvaluatedAt,
-                EvaluationModelId = m.EvaluationModelId
+                EvaluationModelId = m.EvaluationModelId,
+                EvaluatorId = m.EvaluatorId
             })
             .ToListAsync(ct);
 
@@ -102,13 +103,42 @@ public class GetMessagesMetadataEndpoint : Endpoint<MessagesMetadataRequest, Mes
                 SentimentSource = m.SentimentSource
             }, ct);
 
+        // 5. Calculate Missing Evaluators Flag
+        var totalIdentifiedEvaluators = await DbContext.Evaluators.CountAsync(ct);
+        var hasMissingEvaluatorsDict = new Dictionary<int, bool>();
+
+        // We only care about assistant messages that are not scripted
+        var assistantMessageIds = await DbContext.Messages
+            .Where(m => req.MessageIds.Contains(m.Id) && m.PlayerId == null && !m.IsScriptedMessage)
+            .Select(m => m.Id)
+            .ToListAsync(ct);
+
+        foreach (var msgId in assistantMessageIds)
+        {
+            if (metricsDict.TryGetValue(msgId, out var msgMetrics))
+            {
+                int msgEvaluatorCount = msgMetrics
+                    .Where(m => m.EvaluatorId.HasValue)
+                    .Select(m => m.EvaluatorId!.Value)
+                    .Distinct()
+                    .Count();
+
+                hasMissingEvaluatorsDict[msgId] = msgEvaluatorCount < totalIdentifiedEvaluators;
+            }
+            else
+            {
+                hasMissingEvaluatorsDict[msgId] = true;
+            }
+        }
+
         // Build Response
         await Send.OkAsync(new MessagesMetadataResponse
         {
             Feedback = feedbackDict,
             ToolCalls = toolCallsDict,
             Metrics = metricsDict,
-            Sentiment = sentimentDict
+            Sentiment = sentimentDict,
+            HasMissingEvaluators = hasMissingEvaluatorsDict
         }, ct);
     }
 }

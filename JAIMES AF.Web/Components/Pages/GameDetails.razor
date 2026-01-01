@@ -178,7 +178,8 @@
 									VersionNumber="@versionNumber"
 									IsVersionSwitch="@isVersionSwitch"
 									ExemptFromProcessing="@isExempt"
-									IsScriptedMessage="@isExempt"/>
+									IsScriptedMessage="@isExempt"
+									HasMissingEvaluators="@(messageId.HasValue && _messageHasMissingEvaluators.TryGetValue(messageId.Value, out var hasM) && hasM)"/>
 							}
 						}
 					}

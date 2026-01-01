@@ -169,6 +169,10 @@ public class Program
         // Map manual sentiment update endpoint
         app.MapUpdateMessageSentiment();
 
+        // Map evaluation maintenance endpoints
+        app.MapGetMissingEvaluatorsEndpoint();
+        app.MapTriggerReEvaluationEndpoint();
+
         // Map SignalR hub for real-time message updates
         app.MapHub<MessageHub>("/hubs/messages");
 

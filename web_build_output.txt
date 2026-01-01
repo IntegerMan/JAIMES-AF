@@ -1,0 +1,15 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  JAIMES AF.Domain -> C:\Dev\JAIMES AF\JAIMES AF.Domain\bin\Debug\net10.0\JAIMES AF.Domain.dll
+  JAIMES AF.Repositories -> C:\Dev\JAIMES AF\JAIMES AF.Repositories\bin\Debug\net10.0\JAIMES AF.Repositories.dll
+  JAIMES AF.ServiceDefinitions -> C:\Dev\JAIMES AF\JAIMES AF.ServiceDefinitions\bin\Debug\net10.0\JAIMES AF.ServiceDefinitions.dll
+  JAIMES AF.ServiceDefaults -> C:\Dev\JAIMES AF\JAIMES AF.ServiceDefaults\bin\Debug\net10.0\JAIMES AF.ServiceDefaults.dll
+C:\Dev\JAIMES AF\JAIMES AF.Web\Components\Shared\MetricsGrid.razor(49,90): error CS4014: Because this call is not awaited, execution of the current method continues before the call is completed. Consider applying the 'await' operator to the result of the call. [C:\Dev\JAIMES AF\JAIMES AF.Web\JAIMES AF.Web.csproj]
+
+Build FAILED.
+
+C:\Dev\JAIMES AF\JAIMES AF.Web\Components\Shared\MetricsGrid.razor(49,90): error CS4014: Because this call is not awaited, execution of the current method continues before the call is completed. Consider applying the 'await' operator to the result of the call. [C:\Dev\JAIMES AF\JAIMES AF.Web\JAIMES AF.Web.csproj]
+    0 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:04.59

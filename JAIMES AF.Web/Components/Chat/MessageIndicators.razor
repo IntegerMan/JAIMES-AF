@@ -12,6 +12,13 @@
         <MudTooltip Placement="Placement.Top">
             <TooltipContent>
                 <div class="d-flex flex-column gap-1">
+                    @if (HasMissingEvaluators)
+                    {
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Size="Size.Small"/>
+                            <MudText Typo="Typo.caption" Color="Color.Warning">Missing some evaluators</MudText>
+                        </div>
+                    }
                     @foreach (var metric in Metrics)
                     {
                         <div class="d-flex justify-space-between gap-4">
@@ -27,7 +34,7 @@
             </TooltipContent>
             <ChildContent>
                 <MudIconButton Icon="@Icons.Material.Filled.PieChart"
-                               Color="Color.Default"
+                               Color="@(HasMissingEvaluators ? Color.Warning : Color.Default)"
                                Size="Size.Small"
                                Variant="Variant.Text"
                                Disabled="@(!ReadOnly && OnMetricsClick.HasDelegate == false)"
@@ -175,6 +182,12 @@
     /// </summary>
     [Parameter]
     public int? MessageId { get; set; }
+
+    /// <summary>
+    /// True if the message is missing some evaluators.
+    /// </summary>
+    [Parameter]
+    public bool HasMissingEvaluators { get; set; }
 
     /// <summary>
     /// Event callback when tool calls icon is clicked.

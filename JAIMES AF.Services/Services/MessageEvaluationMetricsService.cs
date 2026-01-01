@@ -23,112 +23,191 @@ public class MessageEvaluationMetricsService(IDbContextFactory<JaimesDbContext> 
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
-        IQueryable<MessageEvaluationMetric> query = context.MessageEvaluationMetrics
+        // Fetch all registered evaluators to know what *should* be there
+        var registeredEvaluators = await context.Evaluators
             .AsNoTracking()
-            .Include(m => m.Message)
-            .ThenInclude(msg => msg!.Game)
-            .ThenInclude(g => g!.Player)
-            .Include(m => m.Message)
-            .ThenInclude(msg => msg!.Game)
-            .ThenInclude(g => g!.Scenario)
-            .Include(m => m.Message)
-            .ThenInclude(msg => msg!.InstructionVersion)
-            .Include(m => m.Evaluator);
+            .ToListAsync(cancellationToken);
 
-        // Apply filters
+        // Base query for messages that SHOULD have evaluations
+        // Assistant messages that are not scripted
+        IQueryable<Message> messageQuery = context.Messages
+            .AsNoTracking()
+            .Where(m => m.PlayerId == null && !m.IsScriptedMessage);
+
+        // Apply filters to messageQuery
         if (filters != null)
         {
             if (filters.GameId.HasValue)
             {
-                query = query.Where(m => m.Message != null && m.Message.GameId == filters.GameId.Value);
-            }
-
-            if (!string.IsNullOrEmpty(filters.MetricName))
-            {
-                query = query.Where(m => m.MetricName.ToLower() == filters.MetricName.ToLower());
-            }
-
-            if (filters.MinScore.HasValue)
-            {
-                query = query.Where(m => m.Score >= filters.MinScore.Value);
-            }
-
-            if (filters.MaxScore.HasValue)
-            {
-                query = query.Where(m => m.Score <= filters.MaxScore.Value);
-            }
-
-            if (filters.Passed.HasValue)
-            {
-                if (filters.Passed.Value)
-                {
-                    query = query.Where(m => m.Score >= PassThreshold);
-                }
-                else
-                {
-                    query = query.Where(m => m.Score < PassThreshold);
-                }
+                messageQuery = messageQuery.Where(m => m.GameId == filters.GameId.Value);
             }
 
             if (filters.InstructionVersionId.HasValue)
             {
-                query = query.Where(m => m.Message != null &&
-                                         m.Message.InstructionVersionId == filters.InstructionVersionId.Value);
-            }
-
-            if (filters.EvaluatorId.HasValue)
-            {
-                query = query.Where(m => m.EvaluatorId == filters.EvaluatorId.Value);
+                messageQuery = messageQuery.Where(m => m.InstructionVersionId == filters.InstructionVersionId.Value);
             }
 
             if (!string.IsNullOrEmpty(filters.AgentId))
             {
-                query = query.Where(m => m.Message != null &&
-                                         ((m.Message.InstructionVersion != null &&
-                                           m.Message.InstructionVersion.AgentId == filters.AgentId) ||
-                                          m.Message.AgentId == filters.AgentId));
+                messageQuery = messageQuery.Where(m => m.AgentId == filters.AgentId);
+            }
+
+            // Note: Filters on MetricName, Score, and Passed are harder when starting from Messages.
+            // For now, if these filters are active, we'll filter messages to only those that have matching metrics.
+            if (!string.IsNullOrEmpty(filters.MetricName) || filters.MinScore.HasValue || filters.MaxScore.HasValue ||
+                filters.Passed.HasValue || filters.EvaluatorId.HasValue)
+            {
+                IQueryable<MessageEvaluationMetric> filteredMetricQuery =
+                    context.MessageEvaluationMetrics.AsNoTracking();
+
+                if (!string.IsNullOrEmpty(filters.MetricName))
+                {
+                    filteredMetricQuery =
+                        filteredMetricQuery.Where(m => m.MetricName.ToLower() == filters.MetricName.ToLower());
+                }
+
+                if (filters.MinScore.HasValue)
+                {
+                    filteredMetricQuery = filteredMetricQuery.Where(m => m.Score >= filters.MinScore.Value);
+                }
+
+                if (filters.MaxScore.HasValue)
+                {
+                    filteredMetricQuery = filteredMetricQuery.Where(m => m.Score <= filters.MaxScore.Value);
+                }
+
+                if (filters.Passed.HasValue)
+                {
+                    if (filters.Passed.Value)
+                        filteredMetricQuery = filteredMetricQuery.Where(m => m.Score >= PassThreshold);
+                    else
+                        filteredMetricQuery = filteredMetricQuery.Where(m => m.Score < PassThreshold);
+                }
+
+                if (filters.EvaluatorId.HasValue)
+                {
+                    filteredMetricQuery = filteredMetricQuery.Where(m => m.EvaluatorId == filters.EvaluatorId.Value);
+                }
+
+                var filteredMessageIds = filteredMetricQuery.Select(m => m.MessageId).Distinct();
+                messageQuery = messageQuery.Where(m => filteredMessageIds.Contains(m.Id));
             }
         }
 
-        // Order by game (player name), then message ID for sequential grouping
-        query = query.OrderBy(m => m.Message!.Game!.Player!.Name)
-            .ThenBy(m => m.MessageId)
-            .ThenBy(m => m.MetricName);
+        // Order by CreatedAt descending to see recent messages first
+        messageQuery = messageQuery.OrderByDescending(m => m.CreatedAt);
 
-        int totalCount = await query.CountAsync(cancellationToken);
+        int totalMessagesCount = await messageQuery.CountAsync(cancellationToken);
 
-        List<MessageEvaluationMetric> items = await query
+        var pagedMessages = await messageQuery
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
+            .Include(m => m.Game!)
+            .ThenInclude(g => g.Player)
+            .Include(m => m.Game!)
+            .ThenInclude(g => g.Scenario)
+            .Include(m => m.InstructionVersion)
             .ToListAsync(cancellationToken);
 
-        IEnumerable<EvaluationMetricListItemDto> dtos = items.Select(m =>
-            new EvaluationMetricListItemDto
+        // Fetch metrics for these specific messages
+        var messageIds = pagedMessages.Select(m => m.Id).ToList();
+        var metricsItems = await context.MessageEvaluationMetrics
+            .AsNoTracking()
+            .Where(m => messageIds.Contains(m.MessageId))
+            .Include(m => m.Evaluator)
+            .ToListAsync(cancellationToken);
+
+        var dtos = new List<EvaluationMetricListItemDto>();
+
+        foreach (var msg in pagedMessages)
+        {
+            var msgMetrics = metricsItems.Where(m => m.MessageId == msg.Id).ToList();
+
+            // Create DTOs for existing metrics
+            foreach (var m in msgMetrics)
             {
-                Id = m.Id,
-                MessageId = m.MessageId,
-                MetricName = m.MetricName,
-                Score = m.Score,
-                Passed = m.Score >= PassThreshold,
-                Remarks = m.Remarks,
-                Diagnostics = m.Diagnostics,
-                EvaluatedAt = m.EvaluatedAt,
-                EvaluatorId = m.EvaluatorId,
-                EvaluatorName = m.Evaluator?.Name,
-                GameId = m.Message?.GameId ?? Guid.Empty,
-                GamePlayerName = m.Message?.Game?.Player?.Name,
-                GameScenarioName = m.Message?.Game?.Scenario?.Name,
-                GameRulesetId = m.Message?.Game?.RulesetId,
-                AgentVersion = m.Message?.InstructionVersion?.VersionNumber,
-                MessagePreview = m.Message?.Text is string text && text.Length > 50
-                    ? text[..50] + "..."
-                    : m.Message?.Text
-            });
+                // If a metric-specific filter is active, skip metrics that don't match
+                if (!string.IsNullOrEmpty(filters?.MetricName) &&
+                    !m.MetricName.Equals(filters.MetricName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (filters?.EvaluatorId.HasValue == true && m.EvaluatorId != filters.EvaluatorId.Value)
+                    continue;
+
+                dtos.Add(new EvaluationMetricListItemDto
+                {
+                    Id = m.Id,
+                    MessageId = m.MessageId,
+                    MetricName = m.MetricName,
+                    Score = m.Score,
+                    Passed = m.Score >= PassThreshold,
+                    Remarks = m.Remarks,
+                    Diagnostics = m.Diagnostics,
+                    EvaluatedAt = m.EvaluatedAt,
+                    EvaluatorId = m.EvaluatorId,
+                    EvaluatorName = m.Evaluator?.Name,
+                    GameId = msg.GameId,
+                    GamePlayerName = msg.Game?.Player?.Name,
+                    GameScenarioName = msg.Game?.Scenario?.Name,
+                    GameRulesetId = msg.Game?.RulesetId,
+                    AgentVersion = msg.InstructionVersion?.VersionNumber,
+                    MessagePreview = msg.Text is string text && text.Length > 50 ? text[..50] + "..." : msg.Text,
+                    IsMissing = false
+                });
+            }
+
+            // Identify missing evaluators for this specific message
+            var existingEvaluatorNames = msgMetrics
+                .Where(m => m.Evaluator != null)
+                .Select(m => m.Evaluator!.Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var missingEvaluators = registeredEvaluators
+                .Where(e => !existingEvaluatorNames.Contains(e.Name))
+                .ToList();
+
+            foreach (var evaluator in missingEvaluators)
+            {
+                // If an evaluator filter is active, skip if it doesn't match
+                if (filters?.EvaluatorId.HasValue == true && evaluator.Id != filters.EvaluatorId.Value)
+                    continue;
+
+                // If a metric filter is active, and it's NOT just the evaluator's name, skip 
+                // (Since we don't know the metric name for a missing evaluator easily without more metadata)
+                if (!string.IsNullOrEmpty(filters?.MetricName) &&
+                    !evaluator.Name.Contains(filters.MetricName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                dtos.Add(new EvaluationMetricListItemDto
+                {
+                    Id = 0,
+                    MessageId = msg.Id,
+                    MetricName = evaluator.Name,
+                    Score = 0,
+                    Passed = false,
+                    Remarks = "Evaluator has not been run for this message.",
+                    EvaluatedAt = DateTime.MinValue,
+                    EvaluatorId = evaluator.Id,
+                    EvaluatorName = evaluator.Name,
+                    GameId = msg.GameId,
+                    GamePlayerName = msg.Game?.Player?.Name,
+                    GameScenarioName = msg.Game?.Scenario?.Name,
+                    GameRulesetId = msg.Game?.RulesetId,
+                    AgentVersion = msg.InstructionVersion?.VersionNumber,
+                    MessagePreview = msg.Text is string text && text.Length > 50 ? text[..50] + "..." : msg.Text,
+                    IsMissing = true
+                });
+            }
+        }
+
+        // Return the count of messages roughly multiplied by evaluator count to approximate the total "rows"
+        // This keeps the pagination UI reasonably meaningful.
+        int totalRows = totalMessagesCount * (registeredEvaluators.Count > 0 ? registeredEvaluators.Count : 1);
 
         return new EvaluationMetricListResponse
         {
             Items = dtos,
-            TotalCount = totalCount,
+            TotalCount = totalRows,
             Page = page,
             PageSize = pageSize
         };
@@ -148,18 +227,18 @@ public class MessageEvaluationMetricsService(IDbContextFactory<JaimesDbContext> 
             .ToListAsync(cancellationToken);
 
         return metrics.Select(m => new MessageEvaluationMetricResponse
-        {
-            Id = m.Id,
-            MessageId = m.MessageId,
-            MetricName = m.MetricName,
-            Score = m.Score,
-            Remarks = m.Remarks,
-            Diagnostics = m.Diagnostics,
-            EvaluatedAt = m.EvaluatedAt,
-            EvaluationModelId = m.EvaluationModelId,
-            EvaluatorId = m.EvaluatorId,
-            EvaluatorName = m.Evaluator?.Name
-        })
-        .ToList();
+            {
+                Id = m.Id,
+                MessageId = m.MessageId,
+                MetricName = m.MetricName,
+                Score = m.Score,
+                Remarks = m.Remarks,
+                Diagnostics = m.Diagnostics,
+                EvaluatedAt = m.EvaluatedAt,
+                EvaluationModelId = m.EvaluationModelId,
+                EvaluatorId = m.EvaluatorId,
+                EvaluatorName = m.Evaluator?.Name
+            })
+            .ToList();
     }
 }

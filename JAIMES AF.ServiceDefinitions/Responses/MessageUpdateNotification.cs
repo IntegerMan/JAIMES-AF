@@ -46,6 +46,11 @@ public record MessageUpdateNotification
     /// Included to enable correct ID assignment when notifications arrive out-of-order.
     /// </summary>
     public string? MessageText { get; init; }
+
+    /// <summary>
+    /// Optional flag indicating if the message is missing evaluators.
+    /// </summary>
+    public bool? HasMissingEvaluators { get; init; }
 }
 
 /// <summary>

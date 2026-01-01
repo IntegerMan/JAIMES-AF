@@ -32,7 +32,7 @@ public class SignalRMessageUpdateNotifier(
 
     public async Task NotifyMetricsEvaluatedAsync(int messageId, Guid gameId,
         List<MessageEvaluationMetricResponse> metrics, string messageText,
-        CancellationToken cancellationToken = default)
+        bool hasMissingEvaluators, CancellationToken cancellationToken = default)
     {
         MessageUpdateNotification notification = new()
         {
@@ -40,7 +40,8 @@ public class SignalRMessageUpdateNotifier(
             GameId = gameId,
             UpdateType = MessageUpdateType.MetricsEvaluated,
             Metrics = metrics,
-            MessageText = messageText
+            MessageText = messageText,
+            HasMissingEvaluators = hasMissingEvaluators
         };
 
         await BroadcastUpdateAsync(notification);

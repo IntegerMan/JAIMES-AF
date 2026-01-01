@@ -10,7 +10,9 @@
              Dense="true"
              Striped="true"
              Groupable="true"
-             GroupExpanded="true">
+             GroupExpanded="true"
+             RowClassFunc="@GetRowClass"
+             @ref="_grid">
     <Columns>
         <PropertyColumn Property="x => x.GameId" Title="Game" Groupable="true" Grouping="true">
             <CellTemplate>
@@ -38,7 +40,15 @@
                     <MudLink Href="@($"/admin/metrics/{context.Grouping.Key}")">
                         Message @context.Grouping.Key
                     </MudLink>
-                    <MudText Typo="Typo.caption" Class="text-muted">(@context.Grouping.Count() metrics)</MudText>
+                    <MudText Typo="Typo.caption" Class="text-muted">(@context.Grouping.Count() items)</MudText>
+                    <MudSpacer />
+                    <MudButton StartIcon="@Icons.Material.Filled.Refresh" 
+                               Variant="Variant.Filled" 
+                               Color="Color.Primary" 
+                               Size="Size.Small"
+                               OnClick="@(async () => { if (context.Grouping.Key is int msgId) await TriggerReEvaluation(msgId); })">
+                        Re-evaluate Missing
+                    </MudButton>
                 </MudStack>
             </GroupTemplate>
         </PropertyColumn>
@@ -49,14 +59,25 @@
         </PropertyColumn>
         <PropertyColumn Property="x => x.Score" Title="Score">
             <CellTemplate>
-                <MudChip T="string" Color="@GetScoreColor(context.Item.Score)" Size="Size.Small">
-                    @context.Item.Score.ToString("F2")
-                </MudChip>
+                @if (context.Item.IsMissing)
+                {
+                    <MudText Typo="Typo.caption" Class="text-muted">N/A</MudText>
+                }
+                else
+                {
+                    <MudChip T="string" Color="@GetScoreColor(context.Item.Score)" Size="Size.Small">
+                        @context.Item.Score.ToString("F2")
+                    </MudChip>
+                }
             </CellTemplate>
         </PropertyColumn>
         <PropertyColumn Property="x => x.Passed" Title="Status">
             <CellTemplate>
-                @if (context.Item.Passed == true)
+                @if (context.Item.IsMissing)
+                {
+                    <MudChip T="string" Color="Color.Default" Size="Size.Small" Variant="Variant.Outlined">Missing</MudChip>
+                }
+                else if (context.Item.Passed == true)
                 {
                     <MudChip T="string" Color="Color.Success" Size="Size.Small">Pass</MudChip>
                 }
@@ -113,7 +134,10 @@
     </NoRecordsContent>
 </MudDataGrid>
 
+@inject ISnackbar Snackbar
+
 @code {
+    private MudDataGrid<EvaluationMetricListItemDto>? _grid;
 
     /// <summary>
     /// Optional agent ID to filter results.
@@ -171,6 +195,34 @@
             >= 0.5 => Color.Warning,
             _ => Color.Error
         };
+    }
+
+    private string GetRowClass(EvaluationMetricListItemDto item, int rowNumber)
+    {
+        return item.IsMissing ? "missing-evaluator-row" : "";
+    }
+
+    private async Task TriggerReEvaluation(int messageId)
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient("Api");
+            var response = await client.PostAsync($"/messages/{messageId}/reevaluate", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Re-evaluation enqueued. Metrics will update automatically.", Severity.Success);
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to trigger re-evaluation: {error}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
     }
 
     private static string TruncateText(string text, int maxLength)

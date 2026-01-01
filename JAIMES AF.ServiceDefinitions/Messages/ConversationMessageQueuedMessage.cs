@@ -22,5 +22,15 @@ public class ConversationMessageQueuedMessage
     /// The role of the message (User or Assistant)
     /// </summary>
     public ChatRole Role { get; set; }
+
+    /// <summary>
+    /// When true, only runs evaluators that are missing for this message (no re-indexing).
+    /// </summary>
+    public bool EvaluateMissingOnly { get; set; }
+
+    /// <summary>
+    /// Optional list of specific evaluator class names to run. If null, all applicable evaluators are run.
+    /// </summary>
+    public List<string>? EvaluatorsToRun { get; set; }
 }
 

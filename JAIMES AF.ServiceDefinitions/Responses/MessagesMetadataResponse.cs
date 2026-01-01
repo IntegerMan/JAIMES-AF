@@ -24,6 +24,11 @@ public record MessagesMetadataResponse
     /// Sentiment information for the requested messages, keyed by Message ID.
     /// </summary>
     public Dictionary<int, MessageSentimentResponse> Sentiment { get; init; } = [];
+
+    /// <summary>
+    /// Missing evaluators flag for the requested messages, keyed by Message ID.
+    /// </summary>
+    public Dictionary<int, bool> HasMissingEvaluators { get; init; } = [];
 }
 
 /// <summary>

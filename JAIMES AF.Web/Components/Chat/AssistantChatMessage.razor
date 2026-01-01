@@ -45,6 +45,7 @@
                         OnToolCallsClick="OnToolCallsClick"
                         OnFeedbackClick="OnFeedbackClick"
                         OnMetricsClick="OnMetricsClick"
+                        HasMissingEvaluators="@HasMissingEvaluators"
                         ExemptFromProcessing="@ExemptFromProcessing"/>
                 </MudStack>
             </MudChatFooter>
@@ -86,5 +87,6 @@
     [Parameter] public bool IsVersionSwitch { get; set; }
     [Parameter] public bool ExemptFromProcessing { get; set; }
     [Parameter] public bool IsScriptedMessage { get; set; }
+    [Parameter] public bool HasMissingEvaluators { get; set; }
 }
 

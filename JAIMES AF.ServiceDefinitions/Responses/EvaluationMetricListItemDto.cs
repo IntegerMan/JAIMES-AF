@@ -86,4 +86,9 @@ public class EvaluationMetricListItemDto
     /// A short preview of the message content.
     /// </summary>
     public string? MessagePreview { get; set; }
+
+    /// <summary>
+    /// True if this is a placeholder for a missing evaluator.
+    /// </summary>
+    public bool IsMissing { get; set; }
 }

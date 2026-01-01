@@ -36,6 +36,7 @@ public static partial class MessageMapper
     [MapperIgnoreSource(nameof(Message.Model))]
     [MapperIgnoreSource(nameof(Message.ModelId))]
     [MapperIgnoreSource(nameof(Message.ToolCalls))]
+    [MapperIgnoreTarget(nameof(MessageDto.HasMissingEvaluators))]
     public static partial MessageDto ToDto(this Message message);
 
     public static partial MessageDto[] ToDto(this IEnumerable<Message> messages);
@@ -62,7 +63,7 @@ public static partial class MessageMapper
 
     private static int? MapSentimentSourceFromMessageSentiment(MessageSentiment? messageSentiment)
     {
-        return messageSentiment != null ? (int) messageSentiment.SentimentSource : null;
+        return messageSentiment != null ? (int)messageSentiment.SentimentSource : null;
     }
 
     private static int? MapSentimentIdFromMessageSentiment(MessageSentiment? messageSentiment)
@@ -111,6 +112,7 @@ public static partial class MessageMapper
     [MapperIgnoreSource(nameof(Message.NextMessage))]
     [MapperIgnoreSource(nameof(Message.Model))]
     [MapperIgnoreSource(nameof(Message.ModelId))]
+    [MapperIgnoreTarget(nameof(MessageContextDto.HasMissingEvaluators))]
     public static partial MessageContextDto ToContextDto(this Message message);
 
     private static MessageFeedbackResponse? MapFeedbackFromCollection(ICollection<MessageFeedback> feedbacks)
