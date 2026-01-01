@@ -118,9 +118,21 @@ public class InstructionService(IDbContextFactory<JaimesDbContext> contextFactor
 
                 if (string.IsNullOrEmpty(systemPrompt))
                 {
-                    // Fallback if no active version found (shouldn't happen in valid state)
-                    // Try to generate a default or warn
-                    systemPrompt = "You are a helpful assistant.";
+                    // If no active version, try finding any version for this agent
+                    var anyVersion = await context.AgentInstructionVersions
+                        .AsNoTracking()
+                        .Where(v => v.AgentId == gameData.AgentId)
+                        .OrderByDescending(v => v.CreatedAt)
+                        .Select(v => new { v.Instructions })
+                        .FirstOrDefaultAsync(cancellationToken);
+
+                    systemPrompt = anyVersion?.Instructions;
+                }
+
+                if (string.IsNullOrEmpty(systemPrompt))
+                {
+                    // Final fallback: use the scenario's default instructions
+                    return await GetInstructionsAsync(gameData.ScenarioId, cancellationToken);
                 }
             }
 

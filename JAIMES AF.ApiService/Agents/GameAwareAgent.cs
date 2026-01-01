@@ -447,8 +447,29 @@ public class GameAwareAgent(
             }
             else
             {
-                // Fallback to scenario default if resolution fails (safety net)
-                resolvedInstructionVersionId = scenarioAgent.InstructionVersionId;
+                // Try finding any version for the current agent before falling back to the scenario default
+                var anyVersion = await dbContext.AgentInstructionVersions
+                    .AsNoTracking()
+                    .Where(v => v.AgentId == agentId)
+                    .OrderByDescending(v => v.CreatedAt)
+                    .Select(v => new { v.Id })
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (anyVersion != null)
+                {
+                    resolvedInstructionVersionId = anyVersion.Id;
+                }
+                else
+                {
+                    // Fallback to scenario default if resolution fails (safety net). 
+                    // If we fall back to the scenario's version, we MUST also use the scenario's agent ID
+                    // so that the AgentId and InstructionVersionId remain consistent.
+                    _logger.LogWarning(
+                        "Agent {AgentId} has no instruction versions. Falling back to scenario agent {ScenarioAgentId} and version {VersionId}",
+                        agentId, scenarioAgent.AgentId, scenarioAgent.InstructionVersionId);
+                    resolvedInstructionVersionId = scenarioAgent.InstructionVersionId;
+                    agentId = scenarioAgent.AgentId;
+                }
             }
         }
 
