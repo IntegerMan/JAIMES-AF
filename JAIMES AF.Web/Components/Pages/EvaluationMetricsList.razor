@@ -32,16 +32,6 @@
         </MudPaper>
     }
 
-    @if (!string.IsNullOrEmpty(GroupingInfo))
-    {
-        <MudAlert Severity="Severity.Info" Class="mb-3" Dense="true">
-            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                <MudIcon Icon="@Icons.Material.Filled.Info"/>
-                <MudText>@GroupingInfo</MudText>
-            </MudStack>
-        </MudAlert>
-    }
-
     <AdminFilters
         MetricName="@MetricName"
         Passed="@Passed"
@@ -79,8 +69,7 @@
     [Parameter] [SupplyParameterFromQuery] public int? InstructionVersionId { get; set; }
     private List<BreadcrumbItem> _breadcrumbs = new();
     private EvaluatorItemDto? _evaluator;
-    private string? GroupingInfo = "Results are grouped by Game and Message. Click row headers to expand/collapse groups.";
-
+  
     protected override async Task OnParametersSetAsync()
     {
         await LoadEvaluatorAsync();
