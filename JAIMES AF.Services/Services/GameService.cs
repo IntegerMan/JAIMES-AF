@@ -53,7 +53,9 @@ public class GameService(
             ScenarioId = scenarioId,
             PlayerId = playerId,
             Title = title ?? "Untitled Game",
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            AgentId = scenarioAgent.AgentId,
+            InstructionVersionId = scenarioAgent.InstructionVersionId
         };
 
         // Save the game first

@@ -87,13 +87,11 @@
 								@foreach (var version in _availableVersions)
 								{
 									<MudSelectItem T="int?" Value="@version.Id">
-										<div class="d-flex align-center">
-											@version.VersionNumber
-											@if (version.IsActive)
-											{
-												<MudChip T="string" Color="Color.Info" Size="Size.Small" Variant="Variant.Text" Class="ml-2">Latest</MudChip>
-											}
-										</div>
+										@version.VersionNumber
+										@if (version.IsActive)
+										{
+											<MudChip T="string" Color="Color.Info" Size="Size.Small" Variant="Variant.Text" Class="ml-2">Latest</MudChip>
+										}
 									</MudSelectItem>
 								}
 							</MudSelect>
