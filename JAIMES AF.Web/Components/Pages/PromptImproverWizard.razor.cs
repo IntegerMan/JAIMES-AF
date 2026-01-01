@@ -70,6 +70,7 @@ public partial class PromptImproverWizard
 
         _isLoading = true;
         _errorMessage = null;
+        ResetState();
 
         try
         {
@@ -138,6 +139,23 @@ public partial class PromptImproverWizard
             _isLoading = false;
             StateHasChanged();
         }
+    }
+
+    private void ResetState()
+    {
+        _activeStep = 0;
+        _maxReachedStep = 0;
+        _feedbackInsights = null;
+        _metricsInsights = null;
+        _sentimentInsights = null;
+        _userFeedback = string.Empty;
+        _improvedPrompt = string.Empty;
+        _currentPrompt = string.Empty;
+        _effectiveVersionId = 0;
+        _isGeneratingFeedback = false;
+        _isGeneratingMetrics = false;
+        _isGeneratingSentiment = false;
+        _isGeneratingPrompt = false;
     }
 
     private async Task GenerateFeedbackInsightsAsync()
@@ -320,7 +338,8 @@ public partial class PromptImproverWizard
         {
             LoggerFactory.CreateLogger("PromptImproverWizard")
                 .LogError(ex, "Failed to copy to clipboard");
-            Snackbar.Add("Failed to copy to clipboard. Ensure you are using HTTPS and have granted permission.", Severity.Error);
+            Snackbar.Add("Failed to copy to clipboard. Ensure you are using HTTPS and have granted permission.",
+                Severity.Error);
         }
     }
 
@@ -336,7 +355,8 @@ public partial class PromptImproverWizard
         {
             LoggerFactory.CreateLogger("PromptImproverWizard")
                 .LogError(ex, "Failed to store improved prompt in session storage");
-            Snackbar.Add("Failed to apply improved prompt. Your browser storage may be full or disabled.", Severity.Error);
+            Snackbar.Add("Failed to apply improved prompt. Your browser storage may be full or disabled.",
+                Severity.Error);
         }
     }
 
@@ -363,6 +383,7 @@ public partial class PromptImproverWizard
             {
                 _maxReachedStep = _activeStep;
             }
+
             StateHasChanged();
         }
     }
@@ -379,7 +400,7 @@ public partial class PromptImproverWizard
     private async Task GenerateAndAdvanceAsync()
     {
         await GenerateImprovedPromptAsync();
-        
+
         // If generation was successful, advance to step 4
         if (!string.IsNullOrEmpty(_improvedPrompt))
         {
