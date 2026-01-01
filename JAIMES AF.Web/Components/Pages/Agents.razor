@@ -59,9 +59,15 @@
 							               Size="Size.Small"
 							               Href="@($"/agents/{context.Id}")"/>
 						</MudTooltip>
+						<MudTooltip Text="Improve Prompt">
+							<MudIconButton Icon="@Icons.Material.Filled.AutoAwesome"
+							               Color="Color.Secondary"
+							               Size="Size.Small"
+							               Href="@($"/agents/{context.Id}/improve")"/>
+						</MudTooltip>
 						<MudTooltip Text="Edit Agent">
 							<MudIconButton Icon="@Icons.Material.Filled.Edit"
-							               Color="Color.Secondary"
+							               Color="Color.Default"
 							               Size="Size.Small"
 							               Href="@($"/agents/{context.Id}/edit")"/>
 						</MudTooltip>

@@ -38,181 +38,224 @@
         }
         else
         {
-            <MudTabs @bind-ActivePanelIndex="_activeStep" Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-3" Class="mb-4">
-                <MudTabPanel Text="1. Gather Insights" Icon="@Icons.Material.Filled.Insights">
-                    <MudText Typo="Typo.body1" Class="mb-4">
-                        Generating AI insights from your agent's performance data to identify areas for improvement.
-                    </MudText>
-
-                    <MudGrid Spacing="3" Style="height: calc(100vh - 380px); min-height: 400px;">
-                        <MudItem xs="12" md="4">
-                            <MudPaper Class="pa-4" Elevation="2" Style="height: 100%; display: flex; flex-direction: column;">
-                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
-                                    <MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Primary" Size="Size.Medium"/>
-                                    <MudText Typo="Typo.h6">Feedback</MudText>
-                                    @if (_isGeneratingFeedback)
-                                    {
-                                        <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
-                                    }
-                                    else if (_feedbackInsights != null)
-                                    {
-                                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small"/>
-                                    }
-                                </MudStack>
-                                <div style="flex: 1; overflow-y: auto;">
-                                    @if (!string.IsNullOrEmpty(_feedbackInsights))
-                                    {
-                                        <MudText Typo="Typo.caption" Style="white-space: pre-wrap;">@_feedbackInsights</MudText>
-                                    }
-                                    else if (!_isGeneratingFeedback)
-                                    {
-                                        <MudText Typo="Typo.caption" Class="text-muted">No feedback data available.</MudText>
-                                    }
-                                </div>
-                            </MudPaper>
-                        </MudItem>
-
-                        <MudItem xs="12" md="4">
-                            <MudPaper Class="pa-4" Elevation="2" Style="height: 100%; display: flex; flex-direction: column;">
-                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
-                                    <MudIcon Icon="@Icons.Material.Filled.PieChart" Color="Color.Primary" Size="Size.Medium"/>
-                                    <MudText Typo="Typo.h6">Metrics</MudText>
-                                    @if (_isGeneratingMetrics)
-                                    {
-                                        <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
-                                    }
-                                    else if (_metricsInsights != null)
-                                    {
-                                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small"/>
-                                    }
-                                </MudStack>
-                                <div style="flex: 1; overflow-y: auto;">
-                                    @if (!string.IsNullOrEmpty(_metricsInsights))
-                                    {
-                                        <MudText Typo="Typo.caption" Style="white-space: pre-wrap;">@_metricsInsights</MudText>
-                                    }
-                                    else if (!_isGeneratingMetrics)
-                                    {
-                                        <MudText Typo="Typo.caption" Class="text-muted">No metrics data available.</MudText>
-                                    }
-                                </div>
-                            </MudPaper>
-                        </MudItem>
-
-                        <MudItem xs="12" md="4">
-                            <MudPaper Class="pa-4" Elevation="2" Style="height: 100%; display: flex; flex-direction: column;">
-                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
-                                    <MudIcon Icon="@Icons.Material.Filled.Balance" Color="Color.Primary" Size="Size.Medium"/>
-                                    <MudText Typo="Typo.h6">Sentiment</MudText>
-                                    @if (_isGeneratingSentiment)
-                                    {
-                                        <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
-                                    }
-                                    else if (_sentimentInsights != null)
-                                    {
-                                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small"/>
-                                    }
-                                </MudStack>
-                                <div style="flex: 1; overflow-y: auto;">
-                                    @if (!string.IsNullOrEmpty(_sentimentInsights))
-                                    {
-                                        <MudText Typo="Typo.caption" Style="white-space: pre-wrap;">@_sentimentInsights</MudText>
-                                    }
-                                    else if (!_isGeneratingSentiment)
-                                    {
-                                        <MudText Typo="Typo.caption" Class="text-muted">No sentiment data available.</MudText>
-                                    }
-                                </div>
-                            </MudPaper>
-                        </MudItem>
-                    </MudGrid>
-                </MudTabPanel>
-
-                <MudTabPanel Text="2. Your Feedback" Icon="@Icons.Material.Filled.Edit">
-                    <MudText Typo="Typo.body1" Class="mb-4">
-                        Optionally provide your own specific requests or observations to guide the prompt improvement.
-                    </MudText>
-
-                    <MudTextField @bind-Value="_userFeedback"
-                                  Label="Your Specific Requests (optional)"
-                                  Variant="Variant.Outlined"
-                                  Lines="5"
-                                  Placeholder="E.g., 'Make responses shorter', 'Be more formal', 'Add more humor'"
-                                  HelperText="Describe specific changes or improvements you'd like to see in the agent's behavior."/>
-                </MudTabPanel>
-
-                <MudTabPanel Text="3. Generate Prompt" Icon="@Icons.Material.Filled.AutoAwesome">
-                    <MudText Typo="Typo.body1" Class="mb-3">
-                        Review the full prompt that will be sent to the AI, then generate an improved version.
-                    </MudText>
-
-                    <MudExpansionPanels Class="mb-4">
-                        <MudExpansionPanel Text="View Full AI Input Prompt" MaxHeight="400">
-                            <MudPaper Class="pa-3" Elevation="0" Style="background-color: var(--mud-palette-background-grey); max-height: 350px; overflow-y: auto;">
-                                <MudText Style="white-space: pre-wrap; font-family: monospace; font-size: 0.85em;">@GetFullPromptPreview()</MudText>
-                            </MudPaper>
-                        </MudExpansionPanel>
-                    </MudExpansionPanels>
-
-                    @if (string.IsNullOrEmpty(_improvedPrompt))
-                    {
-                        <MudButton Variant="Variant.Filled"
-                                   Color="Color.Secondary"
-                                   Size="Size.Large"
-                                   StartIcon="@Icons.Material.Filled.AutoAwesome"
-                                   OnClick="GenerateImprovedPromptAsync"
-                                   Disabled="_isGeneratingPrompt || (!HasAnyInsights && string.IsNullOrWhiteSpace(_userFeedback))"
-                                   FullWidth="true">
-                            @if (_isGeneratingPrompt)
+            @* Custom Step Indicator Header *@
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.Center" Class="mb-4">
+                @for (int i = 0; i < _stepTitles.Length; i++)
+                {
+                    var stepIndex = i;
+                    <MudStack AlignItems="AlignItems.Center" Spacing="1">
+                        <MudAvatar Size="Size.Small" 
+                                   Color="@(stepIndex <= _maxReachedStep ? (stepIndex == _activeStep ? Color.Primary : Color.Success) : Color.Default)"
+                                   Style="@(stepIndex <= _maxReachedStep ? "" : "opacity: 0.5;")">
+                            @if (stepIndex < _activeStep)
                             {
-                                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
-                                <span class="ms-2">Generating Improved Prompt...</span>
+                                <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small"/>
                             }
                             else
                             {
-                                <span>Generate Improved Prompt</span>
+                                @(stepIndex + 1)
                             }
-                        </MudButton>
-                        
-                        @if (!HasAnyInsights && string.IsNullOrWhiteSpace(_userFeedback))
-                        {
-                            <MudText Typo="Typo.caption" Class="text-muted mt-2">
-                                Generate at least one insight or provide your feedback to enable prompt generation.
-                            </MudText>
-                        }
+                        </MudAvatar>
+                        <MudText Typo="Typo.caption" 
+                                 Color="@(stepIndex == _activeStep ? Color.Primary : Color.Default)"
+                                 Style="@(stepIndex <= _maxReachedStep ? "" : "opacity: 0.5;")">
+                            @_stepTitles[stepIndex]
+                        </MudText>
+                    </MudStack>
+                    @if (i < _stepTitles.Length - 1)
+                    {
+                        <MudDivider Class="mx-4" Style="@GetDividerStyle(stepIndex)"/>
+                    }
+                }
+            </MudStack>
+
+            <MudDivider Class="mb-4"/>
+
+            @* Step 1: Gather Insights *@
+            @if (_activeStep == 0)
+            {
+                <MudText Typo="Typo.body1" Class="mb-4">
+                    Generating AI insights from your agent's performance data to identify areas for improvement.
+                </MudText>
+
+                <MudGrid Spacing="3" Style="height: calc(100vh - 450px); min-height: 350px;">
+                    <MudItem xs="12" md="4">
+                        <MudPaper Class="pa-4" Elevation="2" Style="height: 100%; display: flex; flex-direction: column;">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+                                <MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Primary" Size="Size.Medium"/>
+                                <MudText Typo="Typo.h6">Feedback</MudText>
+                                @if (_isGeneratingFeedback)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
+                                }
+                                else if (_feedbackInsights != null)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small"/>
+                                }
+                            </MudStack>
+                            <div style="flex: 1; overflow-y: auto;">
+                                @if (!string.IsNullOrEmpty(_feedbackInsights))
+                                {
+                                    <MudText Typo="Typo.caption" Style="white-space: pre-wrap;">@_feedbackInsights</MudText>
+                                }
+                                else if (!_isGeneratingFeedback)
+                                {
+                                    <MudText Typo="Typo.caption" Class="text-muted">No feedback data available.</MudText>
+                                }
+                            </div>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" md="4">
+                        <MudPaper Class="pa-4" Elevation="2" Style="height: 100%; display: flex; flex-direction: column;">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+                                <MudIcon Icon="@Icons.Material.Filled.PieChart" Color="Color.Primary" Size="Size.Medium"/>
+                                <MudText Typo="Typo.h6">Metrics</MudText>
+                                @if (_isGeneratingMetrics)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
+                                }
+                                else if (_metricsInsights != null)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small"/>
+                                }
+                            </MudStack>
+                            <div style="flex: 1; overflow-y: auto;">
+                                @if (!string.IsNullOrEmpty(_metricsInsights))
+                                {
+                                    <MudText Typo="Typo.caption" Style="white-space: pre-wrap;">@_metricsInsights</MudText>
+                                }
+                                else if (!_isGeneratingMetrics)
+                                {
+                                    <MudText Typo="Typo.caption" Class="text-muted">No metrics data available.</MudText>
+                                }
+                            </div>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" md="4">
+                        <MudPaper Class="pa-4" Elevation="2" Style="height: 100%; display: flex; flex-direction: column;">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Balance" Color="Color.Primary" Size="Size.Medium"/>
+                                <MudText Typo="Typo.h6">Sentiment</MudText>
+                                @if (_isGeneratingSentiment)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
+                                }
+                                else if (_sentimentInsights != null)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small"/>
+                                }
+                            </MudStack>
+                            <div style="flex: 1; overflow-y: auto;">
+                                @if (!string.IsNullOrEmpty(_sentimentInsights))
+                                {
+                                    <MudText Typo="Typo.caption" Style="white-space: pre-wrap;">@_sentimentInsights</MudText>
+                                }
+                                else if (!_isGeneratingSentiment)
+                                {
+                                    <MudText Typo="Typo.caption" Class="text-muted">No sentiment data available.</MudText>
+                                }
+                            </div>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            }
+
+            @* Step 2: Your Feedback *@
+            @if (_activeStep == 1)
+            {
+                <MudText Typo="Typo.body1" Class="mb-4">
+                    Optionally provide your own specific requests or observations to guide the prompt improvement.
+                </MudText>
+
+                <MudTextField @bind-Value="_userFeedback"
+                              Label="Your Specific Requests (optional)"
+                              Variant="Variant.Outlined"
+                              Lines="8"
+                              Placeholder="E.g., 'Make responses shorter', 'Be more formal', 'Add more humor'"
+                              HelperText="Describe specific changes or improvements you'd like to see in the agent's behavior."/>
+            }
+
+            @* Step 3: Generate Prompt *@
+            @if (_activeStep == 2)
+            {
+                <MudText Typo="Typo.body1" Class="mb-3">
+                    Review the full prompt that will be sent to the AI, then generate an improved version.
+                </MudText>
+
+                <MudExpansionPanels Class="mb-4">
+                    <MudExpansionPanel Text="View Full AI Input Prompt" MaxHeight="400">
+                        <MudPaper Class="pa-3" Elevation="0" Style="background-color: var(--mud-palette-background-grey); max-height: 350px; overflow-y: auto;">
+                            <MudText Style="white-space: pre-wrap; font-family: monospace; font-size: 0.85em;">@GetFullPromptPreview()</MudText>
+                        </MudPaper>
+                    </MudExpansionPanel>
+                </MudExpansionPanels>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Secondary"
+                           Size="Size.Large"
+                           StartIcon="@Icons.Material.Filled.AutoAwesome"
+                           OnClick="GenerateAndAdvanceAsync"
+                           Disabled="_isGeneratingPrompt || (!HasAnyInsights && string.IsNullOrWhiteSpace(_userFeedback))"
+                           FullWidth="true">
+                    @if (_isGeneratingPrompt)
+                    {
+                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                        <span class="ms-2">Generating Improved Prompt...</span>
                     }
                     else
                     {
-                        <MudPaper Class="pa-4 mb-4" Elevation="2" Style="border: 2px solid var(--mud-palette-secondary);">
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-2">
-                                <MudText Typo="Typo.subtitle2">Improved Prompt</MudText>
-                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" 
-                                               Size="Size.Small" 
-                                               OnClick="CopyToClipboard"/>
-                            </MudStack>
-                            <MudTextField @bind-Value="_improvedPrompt"
-                                          Variant="Variant.Outlined"
-                                          Lines="10"
-                                          FullWidth="true"/>
-                        </MudPaper>
-
-                        <MudStack Row="true" Spacing="2">
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Primary"
-                                       StartIcon="@Icons.Material.Filled.Save"
-                                       OnClick="ApplyImprovedPrompt">
-                                Apply & Edit
-                            </MudButton>
-                            <MudButton Variant="Variant.Outlined"
-                                       Color="Color.Secondary"
-                                       StartIcon="@Icons.Material.Filled.Refresh"
-                                       OnClick="RegeneratePrompt">
-                                Regenerate
-                            </MudButton>
-                        </MudStack>
+                        <span>Generate</span>
                     }
-                </MudTabPanel>
-            </MudTabs>
+                </MudButton>
+                
+                @if (!HasAnyInsights && string.IsNullOrWhiteSpace(_userFeedback))
+                {
+                    <MudText Typo="Typo.caption" Class="text-muted mt-2">
+                        Generate at least one insight or provide your feedback to enable prompt generation.
+                    </MudText>
+                }
+            }
+
+            @* Step 4: Review & Apply *@
+            @if (_activeStep == 3)
+            {
+                <MudText Typo="Typo.body1" Class="mb-3">
+                    Review and edit the improved prompt below, then apply it to open the edit page.
+                </MudText>
+
+                <MudPaper Class="pa-4 mb-4" Elevation="2" Style="border: 2px solid var(--mud-palette-secondary);">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-2">
+                        <MudText Typo="Typo.subtitle2">Improved Prompt</MudText>
+                        <MudTooltip Text="Copy to clipboard">
+                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" 
+                                           Size="Size.Small" 
+                                           OnClick="CopyToClipboard"/>
+                        </MudTooltip>
+                    </MudStack>
+                    <MudTextField @bind-Value="_improvedPrompt"
+                                  Variant="Variant.Outlined"
+                                  Lines="12"
+                                  FullWidth="true"/>
+                </MudPaper>
+
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Size="Size.Large"
+                               StartIcon="@Icons.Material.Filled.Check"
+                               OnClick="ApplyImprovedPrompt">
+                        Apply
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Secondary"
+                               StartIcon="@Icons.Material.Filled.Refresh"
+                               OnClick="RegeneratePrompt">
+                        Regenerate
+                    </MudButton>
+                </MudStack>
+            }
 
             <MudDivider Class="my-4"/>
 
@@ -224,7 +267,7 @@
                 </MudButton>
 
                 <MudStack Row="true" Spacing="2">
-                    @if (_activeStep > 0)
+                    @if (_activeStep > 0 && _activeStep < 3)
                     {
                         <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="PreviousStep">
                             Previous

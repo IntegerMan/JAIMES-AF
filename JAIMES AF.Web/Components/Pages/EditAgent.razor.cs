@@ -7,11 +7,15 @@ public partial class EditAgent
 
     [Parameter] [SupplyParameterFromQuery] public int? BaseVersionId { get; set; }
 
+    [Parameter] [SupplyParameterFromQuery] public bool ImprovedPrompt { get; set; }
+
     [Inject] public HttpClient Http { get; set; } = null!;
 
     [Inject] public ILoggerFactory LoggerFactory { get; set; } = null!;
 
     [Inject] public NavigationManager Navigation { get; set; } = null!;
+
+    [Inject] public Microsoft.JSInterop.IJSRuntime JS { get; set; } = null!;
 
     private string _name = string.Empty;
     private string _role = string.Empty;
@@ -81,6 +85,26 @@ public partial class EditAgent
                 {
                     _instructions = versionToLoad.Instructions;
 
+                    // Check if we're loading an improved prompt from the wizard
+                    if (ImprovedPrompt)
+                    {
+                        try
+                        {
+                            var improvedPromptFromStorage =
+                                await JS.InvokeAsync<string?>("sessionStorage.getItem", "improvedPrompt");
+                            if (!string.IsNullOrEmpty(improvedPromptFromStorage))
+                            {
+                                _instructions = improvedPromptFromStorage;
+                                // Clear the session storage
+                                await JS.InvokeVoidAsync("sessionStorage.removeItem", "improvedPrompt");
+                            }
+                        }
+                        catch
+                        {
+                            // Ignore errors reading from session storage
+                        }
+                    }
+
                     if (BaseVersionId.HasValue)
                     {
                         // Let's grab active version too to check against.
@@ -100,8 +124,6 @@ public partial class EditAgent
                         // Standard edit flow
                         _originalInstructions = versionToLoad.Instructions;
                     }
-
-                    _instructions = versionToLoad.Instructions;
                 }
             }
             catch (HttpRequestException ex) when (ex.Message.Contains("404"))

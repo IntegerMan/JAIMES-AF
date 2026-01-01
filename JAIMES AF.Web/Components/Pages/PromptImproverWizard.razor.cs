@@ -17,6 +17,10 @@ public partial class PromptImproverWizard
     private string? _errorMessage;
     private List<BreadcrumbItem> _breadcrumbs = new();
     private int _activeStep;
+    private int _maxReachedStep;
+
+    // Step titles for the header
+    private readonly string[] _stepTitles = ["Insights", "Feedback", "Generate", "Apply"];
 
     // Current prompt
     private string _currentPrompt = string.Empty;
@@ -313,22 +317,34 @@ public partial class PromptImproverWizard
 
     private void ApplyImprovedPrompt()
     {
-        // Navigate to edit page with the improved prompt
-        // We'll use sessionStorage to pass the improved prompt
+        // Navigate to edit page with the improved prompt stored in session
+        // We need to store the prompt in session storage first
+        _ = StoreAndNavigateAsync();
+    }
+
+    private async Task StoreAndNavigateAsync()
+    {
+        // Store the improved prompt in session storage so the edit page can pick it up
+        await JS.InvokeVoidAsync("sessionStorage.setItem", "improvedPrompt", _improvedPrompt);
         Navigation.NavigateTo($"/agents/{AgentId}/edit?baseVersionId={_effectiveVersionId}&improvedPrompt=true");
     }
 
     private void RegeneratePrompt()
     {
         _improvedPrompt = string.Empty;
+        _activeStep = 2; // Go back to step 3 (Generate)
         StateHasChanged();
     }
 
     private void NextStep()
     {
-        if (_activeStep < 2)
+        if (_activeStep < 3)
         {
             _activeStep++;
+            if (_activeStep > _maxReachedStep)
+            {
+                _maxReachedStep = _activeStep;
+            }
             StateHasChanged();
         }
     }
@@ -338,6 +354,19 @@ public partial class PromptImproverWizard
         if (_activeStep > 0)
         {
             _activeStep--;
+            StateHasChanged();
+        }
+    }
+
+    private async Task GenerateAndAdvanceAsync()
+    {
+        await GenerateImprovedPromptAsync();
+        
+        // If generation was successful, advance to step 4
+        if (!string.IsNullOrEmpty(_improvedPrompt))
+        {
+            _activeStep = 3;
+            _maxReachedStep = 3;
             StateHasChanged();
         }
     }
@@ -380,5 +409,11 @@ public partial class PromptImproverWizard
         sb.AppendLine("Generate an improved version of the prompt that addresses the insights above.");
 
         return sb.ToString();
+    }
+
+    private string GetDividerStyle(int stepIndex)
+    {
+        var opacity = stepIndex < _maxReachedStep ? "1" : "0.3";
+        return $"width: 60px; opacity: {opacity};";
     }
 }
