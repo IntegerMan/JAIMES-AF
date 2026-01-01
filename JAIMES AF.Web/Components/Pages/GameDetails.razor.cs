@@ -165,16 +165,18 @@ public partial class GameDetails : IAsyncDisposable
         }
         finally
         {
-            await LoadAvailableAgentsAsync();
             if (_game != null)
             {
                 _selectedAgentId = _game.AgentId ?? _defaultAgentId;
                 _selectedVersionId = _game.InstructionVersionId ?? _defaultInstructionVersionId;
+
                 if (!string.IsNullOrEmpty(_selectedAgentId))
                 {
                     await LoadAvailableVersionsAsync(_selectedAgentId);
                 }
             }
+
+            await LoadAvailableAgentsAsync();
 
             _isLoading = false;
             // Scroll to bottom after initial load
@@ -895,12 +897,25 @@ public partial class GameDetails : IAsyncDisposable
         try
         {
             HttpClient httpClient = HttpClientFactory.CreateClient("Api");
-            var agents = await httpClient.GetFromJsonAsync<AgentResponse[]>("/agents");
-            if (agents != null)
+            var response = await httpClient.GetFromJsonAsync<AgentListResponse>("/agents");
+            if (response?.Agents != null)
             {
                 // Filter to just game master role agents as requested
-                _availableAgents = agents.Where(a => a.Role.Equals("Game Master", StringComparison.OrdinalIgnoreCase))
+                var agents = response.Agents
+                    .Where(a => a.Role.Equals("Game Master", StringComparison.OrdinalIgnoreCase))
                     .ToList();
+
+                // Ensure the currently selected agent is in the list, even if it's not a "Game Master"
+                if (!string.IsNullOrEmpty(_selectedAgentId) && !agents.Any(a => a.Id == _selectedAgentId))
+                {
+                    var selectedAgent = response.Agents.FirstOrDefault(a => a.Id == _selectedAgentId);
+                    if (selectedAgent != null)
+                    {
+                        agents.Add(selectedAgent);
+                    }
+                }
+
+                _availableAgents = agents.OrderBy(a => a.Name).ToList();
             }
         }
         catch (Exception ex)
@@ -914,11 +929,12 @@ public partial class GameDetails : IAsyncDisposable
         try
         {
             HttpClient httpClient = HttpClientFactory.CreateClient("Api");
-            var versions =
-                await httpClient.GetFromJsonAsync<AgentInstructionVersionResponse[]>($"/agents/{agentId}/versions");
-            if (versions != null)
+            var response =
+                await httpClient.GetFromJsonAsync<AgentInstructionVersionListResponse>(
+                    $"/agents/{agentId}/instruction-versions");
+            if (response?.InstructionVersions != null)
             {
-                _availableVersions = versions.OrderByDescending(v => v.VersionNumber).ToList();
+                _availableVersions = response.InstructionVersions.OrderByDescending(v => v.VersionNumber).ToList();
             }
         }
         catch (Exception ex)
