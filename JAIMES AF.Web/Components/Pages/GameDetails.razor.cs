@@ -237,6 +237,7 @@ public partial class GameDetails : IAsyncDisposable
     {
         string message = _userMessage.Text;
         _userMessage.Text = string.Empty;
+        StateHasChanged(); // Ensure the UI reflects the empty textbox immediately
         await SendMessagePrivateAsync(message);
     }
 
