@@ -41,7 +41,7 @@
                 @if (context.Item.InstructionVersionId.HasValue && !string.IsNullOrEmpty(context.Item.AgentId))
                 {
                     <MudLink Href="@($"/agents/{context.Item.AgentId}/versions/{context.Item.InstructionVersionId}")">
-                        @context.Item.AgentName v@(context.Item.AgentVersion ?? "?")
+                        @context.Item.AgentName @(context.Item.AgentVersion ?? "?")
                     </MudLink>
                 }
                 else
@@ -159,6 +159,13 @@
         <TemplateColumn Title="Actions">
             <CellTemplate>
                 <MudStack Row="true" Spacing="0">
+                    <MudTooltip Text="View Game">
+                        <MudIconButton Icon="@Icons.Material.Filled.Gamepad"
+                                       Color="Color.Secondary"
+                                       Size="Size.Small"
+                                       Href="@($"/games/{context.Item.GameId}")"
+                                       Target="_blank"/>
+                    </MudTooltip>
                     @if (!string.IsNullOrEmpty(context.Item.Diagnostics))
                     {
                         <MudTooltip Text="View Diagnostics">
@@ -168,13 +175,6 @@
                                            OnClick="@(() => ShowDiagnostics(context.Item))"/>
                         </MudTooltip>
                     }
-                    <MudTooltip Text="View Game">
-                        <MudIconButton Icon="@Icons.Material.Filled.VideogameAsset"
-                                       Color="Color.Secondary"
-                                       Size="Size.Small"
-                                       Href="@($"/games/{context.Item.GameId}")"
-                                       Target="_blank"/>
-                    </MudTooltip>
                 </MudStack>
             </CellTemplate>
         </TemplateColumn>
