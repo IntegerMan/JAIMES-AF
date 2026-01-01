@@ -1,0 +1,122 @@
+@using System.Net.Http.Json
+@inject IHttpClientFactory HttpClientFactory
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Add" Class="me-2"/> New Location
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudTextField T="string" @bind-Value="_name"
+                          Label="Name"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="Name is required"
+                          MaxLength="200"
+                          Counter="200"
+                          Class="mb-4"/>
+
+            <MudTextField T="string" @bind-Value="_description"
+                          Label="Description"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="Description is required"
+                          Lines="3"
+                          Class="mb-4"/>
+
+            <MudTextField T="string" @bind-Value="_appearance"
+                          Label="Appearance (optional)"
+                          Variant="Variant.Outlined"
+                          Lines="2"
+                          Class="mb-4"/>
+
+            <MudTextField T="string" @bind-Value="_storytellerNotes"
+                          Label="Storyteller Notes (optional)"
+                          Variant="Variant.Outlined"
+                          Lines="2"
+                          HelperText="Private notes visible only to the AI"/>
+        </MudForm>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-4">@_errorMessage</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="CreateAsync"
+                   Disabled="@(!_isValid || _isCreating)">
+            @if (_isCreating)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2"/>
+            }
+            Create
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public Guid GameId { get; set; }
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private MudForm? _form;
+    private bool _isValid;
+    private bool _isCreating;
+    private string? _errorMessage;
+
+    private string _name = string.Empty;
+    private string _description = string.Empty;
+    private string? _appearance;
+    private string? _storytellerNotes;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task CreateAsync()
+    {
+        if (_form == null) return;
+
+        await _form.Validate();
+        if (!_isValid) return;
+
+        _isCreating = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient("Api");
+            var request = new
+            {
+                Name = _name,
+                Description = _description,
+                Appearance = _appearance,
+                StorytellerNotes = _storytellerNotes
+            };
+
+            var response = await client.PostAsJsonAsync($"/games/{GameId}/locations", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                _errorMessage = $"Failed to create location: {error}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _isCreating = false;
+            StateHasChanged();
+        }
+    }
+}

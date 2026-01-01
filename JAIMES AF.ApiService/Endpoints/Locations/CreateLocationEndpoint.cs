@@ -1,0 +1,67 @@
+using FastEndpoints;
+using MattEland.Jaimes.ServiceDefinitions.Responses;
+using MattEland.Jaimes.ServiceDefinitions.Services;
+
+namespace MattEland.Jaimes.ApiService.Endpoints.Locations;
+
+public class CreateLocationRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string? StorytellerNotes { get; set; }
+    public string? Appearance { get; set; }
+}
+
+public class CreateLocationEndpoint : Endpoint<CreateLocationRequest, LocationResponse>
+{
+    public required ILocationService LocationService { get; set; }
+
+    public override void Configure()
+    {
+        Post("/games/{gameId:guid}/locations");
+        AllowAnonymous();
+        Description(b => b
+            .Produces<LocationResponse>(StatusCodes.Status201Created)
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status409Conflict)
+            .WithTags("Locations"));
+    }
+
+    public override async Task HandleAsync(CreateLocationRequest req, CancellationToken ct)
+    {
+        Guid gameId = Route<Guid>("gameId");
+
+        if (string.IsNullOrWhiteSpace(req.Name))
+        {
+            ThrowError("Name is required");
+            return;
+        }
+
+        if (req.Name.Length > 200)
+        {
+            ThrowError("Name must be 200 characters or less");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(req.Description))
+        {
+            ThrowError("Description is required");
+            return;
+        }
+
+        // Check if location already exists
+        if (await LocationService.LocationExistsAsync(gameId, req.Name, ct))
+        {
+            ThrowError($"A location named '{req.Name}' already exists in this game");
+            return;
+        }
+
+        LocationResponse result = await LocationService.CreateLocationAsync(
+            gameId, req.Name, req.Description, req.StorytellerNotes, req.Appearance, ct);
+
+        await Send.CreatedAtAsync<GetLocationEndpoint>(
+            new { locationId = result.Id },
+            result,
+            cancellation: ct);
+    }
+}

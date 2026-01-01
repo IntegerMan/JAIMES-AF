@@ -58,14 +58,53 @@
 				}
 
 				<MudPaper Class="pa-4 mb-4" Elevation="1">
-					<MudText Typo="Typo.h6" Class="mb-3">
-						Events (@_events.Length)
-					</MudText>
-					@if (_events.Length == 0)
+					<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+						<MudText Typo="Typo.h6">Events (@_events.Length)</MudText>
+						<MudButton Variant="Variant.Outlined" Color="Color.Primary"
+						           Size="Size.Small"
+						           StartIcon="@Icons.Material.Filled.Add"
+						           OnClick="ToggleAddEventForm">
+							Add Event
+						</MudButton>
+					</MudStack>
+
+					@if (_showAddEventForm)
+					{
+						<MudPaper Class="pa-3 mb-3" Elevation="0" Style="background-color: var(--mud-palette-background-gray);">
+							<MudTextField T="string" @bind-Value="_newEventName"
+							              Label="Event Name"
+							              Variant="Variant.Outlined"
+							              Margin="Margin.Dense"
+							              Class="mb-2"/>
+							<MudTextField T="string" @bind-Value="_newEventDescription"
+							              Label="Event Description"
+							              Variant="Variant.Outlined"
+							              Margin="Margin.Dense"
+							              Lines="2"
+							              Class="mb-2"/>
+							<MudStack Row="true" Spacing="2">
+								<MudButton Variant="Variant.Filled" Color="Color.Primary"
+								           Size="Size.Small"
+								           OnClick="AddEventAsync"
+								           Disabled="@(string.IsNullOrWhiteSpace(_newEventName) || string.IsNullOrWhiteSpace(_newEventDescription) || _isAddingEvent)">
+									@if (_isAddingEvent)
+									{
+										<MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-1"/>
+									}
+									Add
+								</MudButton>
+								<MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="CancelAddEvent">
+									Cancel
+								</MudButton>
+							</MudStack>
+						</MudPaper>
+					}
+
+					@if (_events.Length == 0 && !_showAddEventForm)
 					{
 						<MudText Class="text-muted">No events recorded at this location.</MudText>
 					}
-					else
+					else if (_events.Length > 0)
 					{
 						<MudList T="LocationEventResponse" Dense="true">
 							@foreach (var evt in _events)

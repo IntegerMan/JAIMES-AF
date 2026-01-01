@@ -9,20 +9,28 @@
 	</MudStack>
 	<MudText Typo="Typo.h4">Locations</MudText>
 
-	<MudText Class="mb-4">Browse locations by game. Locations are created by AI storytellers during gameplay.</MudText>
+	<MudText Class="mb-4">Browse and manage locations by game.</MudText>
 
-	<MudSelect T="Guid?" @bind-Value="SelectedGameId"
-	           Label="Filter by Game"
-	           Variant="Variant.Outlined"
-	           Class="mb-4"
-	           Style="max-width: 400px;"
-	           HelperText="Select a game to view its locations">
-		<MudSelectItem T="Guid?" Value="@((Guid?) null)">All Games</MudSelectItem>
-		@foreach (GameInfoResponse game in _games)
-		{
-			<MudSelectItem T="Guid?" Value="@((Guid?) game.GameId)">@FormatGameDisplay(game)</MudSelectItem>
-		}
-	</MudSelect>
+	<MudStack Row="true" Spacing="2" Class="mb-4" AlignItems="AlignItems.Center">
+		<MudSelect T="Guid?" @bind-Value="SelectedGameId"
+		           Label="Filter by Game"
+		           Variant="Variant.Outlined"
+		           Style="max-width: 400px;"
+		           HelperText="Select a game to view its locations">
+			<MudSelectItem T="Guid?" Value="@((Guid?) null)">All Games</MudSelectItem>
+			@foreach (GameInfoResponse game in _games)
+			{
+				<MudSelectItem T="Guid?" Value="@((Guid?) game.GameId)">@FormatGameDisplay(game)</MudSelectItem>
+			}
+		</MudSelect>
+
+		<MudButton Variant="Variant.Filled" Color="Color.Primary"
+		           StartIcon="@Icons.Material.Filled.Add"
+		           OnClick="OpenNewLocationDialog"
+		           Disabled="@(!_selectedGameId.HasValue)">
+			New Location
+		</MudButton>
+	</MudStack>
 
 	<div style="position: relative; min-height: 200px;">
 		@if (_isLoading)

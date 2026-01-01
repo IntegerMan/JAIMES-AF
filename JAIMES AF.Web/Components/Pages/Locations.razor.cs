@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
@@ -6,6 +7,8 @@ public partial class Locations
 {
     [Inject] public required IHttpClientFactory HttpClientFactory { get; set; }
     [Inject] public required ILoggerFactory LoggerFactory { get; set; }
+    [Inject] public required IDialogService DialogService { get; set; }
+    [Inject] public required ISnackbar Snackbar { get; set; }
 
     private List<BreadcrumbItem> _breadcrumbs = [];
     private GameInfoResponse[] _games = [];
@@ -104,6 +107,29 @@ public partial class Locations
         {
             _isLoading = false;
             StateHasChanged();
+        }
+    }
+
+    private async Task OpenNewLocationDialog()
+    {
+        if (!_selectedGameId.HasValue) return;
+
+        var parameters = new DialogParameters<NewLocationDialog>
+        {
+            { x => x.GameId, _selectedGameId.Value }
+        };
+
+        var dialog = await DialogService.ShowAsync<NewLocationDialog>("New Location", parameters, new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        });
+
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            await LoadLocationsAsync();
+            Snackbar.Add("Location created successfully!", Severity.Success);
         }
     }
 

@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
@@ -7,6 +8,7 @@ public partial class LocationDetails
 	[Parameter] public int LocationId { get; set; }
 	[Inject] public required IHttpClientFactory HttpClientFactory { get; set; }
 	[Inject] public required ILoggerFactory LoggerFactory { get; set; }
+	[Inject] public required ISnackbar Snackbar { get; set; }
 
 	private List<BreadcrumbItem> _breadcrumbs = [];
 	private LocationResponse? _location;
@@ -14,6 +16,12 @@ public partial class LocationDetails
 	private NearbyLocationResponse[] _nearbyLocations = [];
 	private bool _isLoading = true;
 	private string? _errorMessage;
+
+	// Add event form
+	private bool _showAddEventForm;
+	private string _newEventName = string.Empty;
+	private string _newEventDescription = string.Empty;
+	private bool _isAddingEvent;
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -50,7 +58,8 @@ public partial class LocationDetails
 				// Load events
 				try
 				{
-					_events = await client.GetFromJsonAsync<LocationEventResponse[]>($"/locations/{LocationId}/events") ?? [];
+					_events =
+						await client.GetFromJsonAsync<LocationEventResponse[]>($"/locations/{LocationId}/events") ?? [];
 				}
 				catch
 				{
@@ -61,7 +70,8 @@ public partial class LocationDetails
 				try
 				{
 					_nearbyLocations =
-						await client.GetFromJsonAsync<NearbyLocationResponse[]>($"/locations/{LocationId}/nearby") ?? [];
+						await client.GetFromJsonAsync<NearbyLocationResponse[]>($"/locations/{LocationId}/nearby") ??
+						[];
 				}
 				catch
 				{
@@ -86,12 +96,83 @@ public partial class LocationDetails
 		}
 		catch (Exception ex)
 		{
-			LoggerFactory.CreateLogger("LocationDetails").LogError(ex, "Failed to load location {LocationId}", LocationId);
+			LoggerFactory.CreateLogger("LocationDetails")
+				.LogError(ex, "Failed to load location {LocationId}", LocationId);
 			_errorMessage = "Failed to load location: " + ex.Message;
 		}
 		finally
 		{
 			_isLoading = false;
+			StateHasChanged();
+		}
+	}
+
+	private void ToggleAddEventForm()
+	{
+		_showAddEventForm = !_showAddEventForm;
+		if (!_showAddEventForm)
+		{
+			_newEventName = string.Empty;
+			_newEventDescription = string.Empty;
+		}
+	}
+
+	private void CancelAddEvent()
+	{
+		_showAddEventForm = false;
+		_newEventName = string.Empty;
+		_newEventDescription = string.Empty;
+	}
+
+	private async Task AddEventAsync()
+	{
+		if (string.IsNullOrWhiteSpace(_newEventName) || string.IsNullOrWhiteSpace(_newEventDescription))
+			return;
+
+		_isAddingEvent = true;
+		StateHasChanged();
+
+		try
+		{
+			var request = new
+			{
+				EventName = _newEventName,
+				EventDescription = _newEventDescription
+			};
+
+			var response = await CreateClient().PostAsJsonAsync($"/locations/{LocationId}/events", request);
+
+			if (response.IsSuccessStatusCode)
+			{
+				Snackbar.Add("Event added successfully!", Severity.Success);
+				_showAddEventForm = false;
+				_newEventName = string.Empty;
+				_newEventDescription = string.Empty;
+
+				// Reload events
+				try
+				{
+					_events = await CreateClient()
+						.GetFromJsonAsync<LocationEventResponse[]>($"/locations/{LocationId}/events") ?? [];
+				}
+				catch
+				{
+					// Ignore reload errors
+				}
+			}
+			else
+			{
+				var error = await response.Content.ReadAsStringAsync();
+				Snackbar.Add($"Failed to add event: {error}", Severity.Error);
+			}
+		}
+		catch (Exception ex)
+		{
+			Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+		}
+		finally
+		{
+			_isAddingEvent = false;
 			StateHasChanged();
 		}
 	}
