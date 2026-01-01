@@ -96,7 +96,7 @@ public class ChatService(
                 AIFunction getLocationFunction = AIFunctionFactory.Create(
                     (string locationName) => gameLocationTool.GetLocationByNameAsync(locationName),
                     "GetLocationByName",
-                    "Retrieves detailed information about a location by name, including its description, appearance, significant events that have occurred there, and nearby locations. Use this tool whenever you need to describe a location the player visits or references, or when you need to recall what has happened at a specific place. The search is case-insensitive.");
+                    "Retrieves detailed information about a location by name, including its description/appearance, significant events that have occurred there, and nearby locations. Use this tool whenever you need to describe a location the player visits or references, or when you need to recall what has happened at a specific place. The search is case-insensitive.");
                 toolList.Add(getLocationFunction);
 
                 AIFunction getAllLocationsFunction = AIFunctionFactory.Create(
@@ -109,11 +109,10 @@ public class ChatService(
                 LocationManagementTool locationManagementTool = new(game, _serviceProvider);
 
                 AIFunction createUpdateLocationFunction = AIFunctionFactory.Create(
-                    (string name, string description, string? storytellerNotes, string? appearance) =>
-                        locationManagementTool.CreateOrUpdateLocationAsync(name, description, storytellerNotes,
-                            appearance),
+                    (string name, string description, string? storytellerNotes) =>
+                        locationManagementTool.CreateOrUpdateLocationAsync(name, description, storytellerNotes),
                     "CreateOrUpdateLocation",
-                    "Creates a new location or updates an existing one. Use this tool to establish new places in the game world as they become relevant to the story. Every location must have a name and description. You can also add private storyteller notes that are hidden from the player to help you plan story elements.");
+                    "Creates a new location or updates an existing one. Use this tool to establish new places in the game world as they become relevant to the story. Every location must have a name and description / appearance. You can also add private storyteller notes that are hidden from the player to help you plan story elements.");
                 toolList.Add(createUpdateLocationFunction);
 
                 AIFunction addLocationEventFunction = AIFunctionFactory.Create(

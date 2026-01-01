@@ -10,7 +10,8 @@ public interface ILocationService
     /// <summary>
     /// Gets a location by name within a game (case-insensitive).
     /// </summary>
-    Task<LocationResponse?> GetLocationByNameAsync(Guid gameId, string name, CancellationToken cancellationToken = default);
+    Task<LocationResponse?> GetLocationByNameAsync(Guid gameId, string name,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets all locations for a game.
@@ -25,12 +26,14 @@ public interface ILocationService
     /// <summary>
     /// Creates a new location.
     /// </summary>
-    Task<LocationResponse> CreateLocationAsync(Guid gameId, string name, string description, string? storytellerNotes, string? appearance, CancellationToken cancellationToken = default);
+    Task<LocationResponse> CreateLocationAsync(Guid gameId, string name, string description, string? storytellerNotes,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Updates an existing location.
     /// </summary>
-    Task<LocationResponse?> UpdateLocationAsync(int locationId, string? description, string? storytellerNotes, string? appearance, CancellationToken cancellationToken = default);
+    Task<LocationResponse?> UpdateLocationAsync(int locationId, string? description, string? storytellerNotes,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes a location.
@@ -45,17 +48,20 @@ public interface ILocationService
     /// <summary>
     /// Adds an event to a location.
     /// </summary>
-    Task<LocationEventResponse> AddLocationEventAsync(int locationId, string eventName, string eventDescription, CancellationToken cancellationToken = default);
+    Task<LocationEventResponse> AddLocationEventAsync(int locationId, string eventName, string eventDescription,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets nearby locations for a location.
     /// </summary>
-    Task<NearbyLocationResponse[]> GetNearbyLocationsAsync(int locationId, CancellationToken cancellationToken = default);
+    Task<NearbyLocationResponse[]> GetNearbyLocationsAsync(int locationId,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Adds a nearby location relationship.
     /// </summary>
-    Task<NearbyLocationResponse?> AddNearbyLocationAsync(int sourceLocationId, int targetLocationId, string? distance, string? travelNotes, string? storytellerNotes, CancellationToken cancellationToken = default);
+    Task<NearbyLocationResponse?> AddNearbyLocationAsync(int sourceLocationId, int targetLocationId, string? distance,
+        string? travelNotes, string? storytellerNotes, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Checks if a location name exists in a game.

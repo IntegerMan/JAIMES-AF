@@ -19,18 +19,14 @@
                           Class="mb-4"/>
 
             <MudTextField T="string" @bind-Value="_description"
-                          Label="Description"
+                          Label="Description / Appearance"
                           Variant="Variant.Outlined"
                           Required="true"
                           RequiredError="Description is required"
-                          Lines="3"
+                          Lines="4"
                           Class="mb-4"/>
 
-            <MudTextField T="string" @bind-Value="_appearance"
-                          Label="Appearance (optional)"
-                          Variant="Variant.Outlined"
-                          Lines="2"
-                          Class="mb-4"/>
+
 
             <MudTextField T="string" @bind-Value="_storytellerNotes"
                           Label="Storyteller Notes (optional)"
@@ -70,7 +66,6 @@
 
     private string _name = string.Empty;
     private string _description = string.Empty;
-    private string? _appearance;
     private string? _storytellerNotes;
 
     private void Cancel() => MudDialog.Cancel();
@@ -93,7 +88,6 @@
             {
                 Name = _name,
                 Description = _description,
-                Appearance = _appearance,
                 StorytellerNotes = _storytellerNotes
             };
 

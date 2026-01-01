@@ -32,7 +32,7 @@ public class Location
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the player-facing description of the location.
+    /// Gets or sets the player-facing description and appearance of the location.
     /// </summary>
     [Required]
     public string Description { get; set; } = string.Empty;
@@ -42,11 +42,6 @@ public class Location
     /// These are not shown to players and help the AI plan story elements.
     /// </summary>
     public string? StorytellerNotes { get; set; }
-
-    /// <summary>
-    /// Gets or sets the physical appearance description of the location.
-    /// </summary>
-    public string? Appearance { get; set; }
 
     /// <summary>
     /// Gets or sets when this location was created.

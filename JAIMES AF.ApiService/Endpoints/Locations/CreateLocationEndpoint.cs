@@ -9,7 +9,6 @@ public class CreateLocationRequest
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string? StorytellerNotes { get; set; }
-    public string? Appearance { get; set; }
 }
 
 public class CreateLocationEndpoint : Endpoint<CreateLocationRequest, LocationResponse>
@@ -57,7 +56,7 @@ public class CreateLocationEndpoint : Endpoint<CreateLocationRequest, LocationRe
         }
 
         LocationResponse result = await LocationService.CreateLocationAsync(
-            gameId, req.Name, req.Description, req.StorytellerNotes, req.Appearance, ct);
+            gameId, req.Name, req.Description, req.StorytellerNotes, ct);
 
         await Send.CreatedAtAsync<GetLocationEndpoint>(
             new { locationId = result.Id },

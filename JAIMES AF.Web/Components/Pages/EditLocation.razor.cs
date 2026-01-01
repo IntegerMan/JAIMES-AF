@@ -22,7 +22,6 @@ public partial class EditLocation
 	// Form fields
 	private string _name = string.Empty;
 	private string _description = string.Empty;
-	private string? _appearance;
 	private string? _storytellerNotes;
 
 	protected override async Task OnInitializedAsync()
@@ -50,7 +49,6 @@ public partial class EditLocation
 			{
 				_name = _location.Name;
 				_description = _location.Description;
-				_appearance = _location.Appearance;
 				_storytellerNotes = _location.StorytellerNotes;
 
 				_breadcrumbs =
@@ -98,7 +96,6 @@ public partial class EditLocation
 			var updateRequest = new
 			{
 				Description = _description,
-				Appearance = _appearance,
 				StorytellerNotes = _storytellerNotes
 			};
 

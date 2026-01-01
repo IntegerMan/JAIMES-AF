@@ -109,7 +109,8 @@ public partial class LocationLookupTest
 			{
 				_toolOutput = $"Known locations ({response.TotalCount}):\n\n" +
 				              string.Join("\n\n", response.Locations.Select(l =>
-					              $"**{l.Name}**: {l.Description}" + (l.EventCount > 0 ? $" ({l.EventCount} event(s) recorded)" : "")));
+					              $"**{l.Name}**: {l.Description}" +
+					              (l.EventCount > 0 ? $" ({l.EventCount} event(s) recorded)" : "")));
 			}
 		}
 		catch (Exception ex)
@@ -129,13 +130,9 @@ public partial class LocationLookupTest
 		List<string> parts =
 		[
 			$"**{location.Name}**",
-			$"Description: {location.Description}"
+			$"Description / Appearance: {location.Description}"
 		];
 
-		if (!string.IsNullOrWhiteSpace(location.Appearance))
-		{
-			parts.Add($"Appearance: {location.Appearance}");
-		}
 
 		if (!string.IsNullOrWhiteSpace(location.StorytellerNotes))
 		{

@@ -6,7 +6,6 @@ public class UpdateLocationRequest
 {
     public string? Description { get; set; }
     public string? StorytellerNotes { get; set; }
-    public string? Appearance { get; set; }
 }
 
 public class UpdateLocationEndpoint : Endpoint<UpdateLocationRequest, LocationResponse>
@@ -35,7 +34,7 @@ public class UpdateLocationEndpoint : Endpoint<UpdateLocationRequest, LocationRe
         }
 
         LocationResponse? result = await LocationService.UpdateLocationAsync(
-            locationId, req.Description, req.StorytellerNotes, req.Appearance, ct);
+            locationId, req.Description, req.StorytellerNotes, ct);
 
         if (result == null)
         {

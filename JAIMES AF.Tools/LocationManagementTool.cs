@@ -20,14 +20,13 @@ public class LocationManagementTool(GameDto game, IServiceProvider serviceProvid
     /// Creates a new location or updates an existing one.
     /// </summary>
     /// <param name="name">The unique name of the location within this game.</param>
-    /// <param name="description">The player-facing description of the location (required).</param>
+    /// <param name="description">The player-facing description / appearance of the location (required).</param>
     /// <param name="storytellerNotes">Private notes for you (the AI) about this location. Hidden from the player.</param>
-    /// <param name="appearance">Physical appearance description of the location.</param>
     /// <returns>Confirmation of the operation or an error message.</returns>
     [Description(
-        "Creates a new location or updates an existing one. Use this tool to establish new places in the game world as they become relevant to the story. Every location must have a name and description. You can also add private storyteller notes that are hidden from the player to help you plan story elements.")]
+        "Creates a new location or updates an existing one. Use this tool to establish new places in the game world as they become relevant to the story. Every location must have a name and description / appearance. You can also add private storyteller notes that are hidden from the player to help you plan story elements.")]
     public async Task<string> CreateOrUpdateLocationAsync(string name, string description,
-        string? storytellerNotes = null, string? appearance = null)
+        string? storytellerNotes = null)
     {
         // Validation
         if (string.IsNullOrWhiteSpace(name))
@@ -60,7 +59,7 @@ public class LocationManagementTool(GameDto game, IServiceProvider serviceProvid
         {
             // Update existing location
             LocationResponse? updated =
-                await locationService.UpdateLocationAsync(existing.Id, description, storytellerNotes, appearance);
+                await locationService.UpdateLocationAsync(existing.Id, description, storytellerNotes);
             return updated != null
                 ? $"Location '{name}' has been updated."
                 : $"Error: Failed to update location '{name}'.";
@@ -68,7 +67,7 @@ public class LocationManagementTool(GameDto game, IServiceProvider serviceProvid
 
         // Create new location
         LocationResponse newLocation =
-            await locationService.CreateLocationAsync(_game.GameId, name, description, storytellerNotes, appearance);
+            await locationService.CreateLocationAsync(_game.GameId, name, description, storytellerNotes);
         return $"Location '{newLocation.Name}' has been created successfully.";
     }
 

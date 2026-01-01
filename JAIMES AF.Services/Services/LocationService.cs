@@ -12,7 +12,8 @@ namespace MattEland.Jaimes.ServiceLayer.Services;
 public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) : ILocationService
 {
     /// <inheritdoc />
-    public async Task<LocationResponse?> GetLocationByNameAsync(Guid gameId, string name, CancellationToken cancellationToken = default)
+    public async Task<LocationResponse?> GetLocationByNameAsync(Guid gameId, string name,
+        CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -25,7 +26,8 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
     }
 
     /// <inheritdoc />
-    public async Task<LocationListResponse> GetLocationsAsync(Guid gameId, CancellationToken cancellationToken = default)
+    public async Task<LocationListResponse> GetLocationsAsync(Guid gameId,
+        CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -44,7 +46,8 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
     }
 
     /// <inheritdoc />
-    public async Task<LocationResponse?> GetLocationByIdAsync(int locationId, CancellationToken cancellationToken = default)
+    public async Task<LocationResponse?> GetLocationByIdAsync(int locationId,
+        CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -57,7 +60,8 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
     }
 
     /// <inheritdoc />
-    public async Task<LocationResponse> CreateLocationAsync(Guid gameId, string name, string description, string? storytellerNotes, string? appearance, CancellationToken cancellationToken = default)
+    public async Task<LocationResponse> CreateLocationAsync(Guid gameId, string name, string description,
+        string? storytellerNotes, CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -67,7 +71,6 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
             Name = name,
             Description = description,
             StorytellerNotes = storytellerNotes,
-            Appearance = appearance,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -79,7 +82,8 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
     }
 
     /// <inheritdoc />
-    public async Task<LocationResponse?> UpdateLocationAsync(int locationId, string? description, string? storytellerNotes, string? appearance, CancellationToken cancellationToken = default)
+    public async Task<LocationResponse?> UpdateLocationAsync(int locationId, string? description,
+        string? storytellerNotes, CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -101,11 +105,6 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
         if (storytellerNotes != null)
         {
             location.StorytellerNotes = storytellerNotes;
-        }
-
-        if (appearance != null)
-        {
-            location.Appearance = appearance;
         }
 
         location.UpdatedAt = DateTime.UtcNow;
@@ -131,7 +130,8 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
     }
 
     /// <inheritdoc />
-    public async Task<LocationEventResponse[]> GetLocationEventsAsync(int locationId, CancellationToken cancellationToken = default)
+    public async Task<LocationEventResponse[]> GetLocationEventsAsync(int locationId,
+        CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -159,7 +159,8 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
     }
 
     /// <inheritdoc />
-    public async Task<LocationEventResponse> AddLocationEventAsync(int locationId, string eventName, string eventDescription, CancellationToken cancellationToken = default)
+    public async Task<LocationEventResponse> AddLocationEventAsync(int locationId, string eventName,
+        string eventDescription, CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -192,7 +193,8 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
     }
 
     /// <inheritdoc />
-    public async Task<NearbyLocationResponse[]> GetNearbyLocationsAsync(int locationId, CancellationToken cancellationToken = default)
+    public async Task<NearbyLocationResponse[]> GetNearbyLocationsAsync(int locationId,
+        CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -215,7 +217,8 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
     }
 
     /// <inheritdoc />
-    public async Task<NearbyLocationResponse?> AddNearbyLocationAsync(int sourceLocationId, int targetLocationId, string? distance, string? travelNotes, string? storytellerNotes, CancellationToken cancellationToken = default)
+    public async Task<NearbyLocationResponse?> AddNearbyLocationAsync(int sourceLocationId, int targetLocationId,
+        string? distance, string? travelNotes, string? storytellerNotes, CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -229,13 +232,15 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
 
         // Check if relationship already exists
         bool exists = await context.NearbyLocations
-            .AnyAsync(nl => nl.SourceLocationId == sourceLocationId && nl.TargetLocationId == targetLocationId, cancellationToken);
+            .AnyAsync(nl => nl.SourceLocationId == sourceLocationId && nl.TargetLocationId == targetLocationId,
+                cancellationToken);
 
         if (exists)
         {
             // Update existing relationship
             NearbyLocation? existing = await context.NearbyLocations
-                .FirstAsync(nl => nl.SourceLocationId == sourceLocationId && nl.TargetLocationId == targetLocationId, cancellationToken);
+                .FirstAsync(nl => nl.SourceLocationId == sourceLocationId && nl.TargetLocationId == targetLocationId,
+                    cancellationToken);
 
             existing.Distance = distance ?? existing.Distance;
             existing.TravelNotes = travelNotes ?? existing.TravelNotes;
@@ -282,7 +287,8 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
     public async Task<bool> LocationExistsAsync(Guid gameId, string name, CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        return await context.Locations.AnyAsync(l => l.GameId == gameId && l.Name.ToLower() == name.ToLower(), cancellationToken);
+        return await context.Locations.AnyAsync(l => l.GameId == gameId && l.Name.ToLower() == name.ToLower(),
+            cancellationToken);
     }
 
     private static LocationResponse MapToResponse(Location location)
@@ -294,7 +300,6 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
             Name = location.Name,
             Description = location.Description,
             StorytellerNotes = location.StorytellerNotes,
-            Appearance = location.Appearance,
             CreatedAt = location.CreatedAt,
             UpdatedAt = location.UpdatedAt,
             EventCount = location.Events.Count,

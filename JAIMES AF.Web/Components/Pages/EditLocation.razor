@@ -40,20 +40,15 @@
 						              Disabled="true"/>
 
 						<MudTextField @bind-Value="_description"
-						              Label="Description"
+						              Label="Description / Appearance"
 						              Variant="Variant.Outlined"
 						              Required="true"
 						              RequiredError="Description is required"
-						              Lines="4"
+						              Lines="6"
 						              Class="mb-4"
-						              HelperText="The player-facing description of this location"/>
+						              HelperText="The player-facing description and physical appearance of this location"/>
 
-						<MudTextField @bind-Value="_appearance"
-						              Label="Appearance"
-						              Variant="Variant.Outlined"
-						              Lines="3"
-						              Class="mb-4"
-						              HelperText="Physical appearance description (optional)"/>
+
 
 						<MudTextField @bind-Value="_storytellerNotes"
 						              Label="Storyteller Notes"

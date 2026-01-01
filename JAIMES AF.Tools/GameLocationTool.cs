@@ -19,9 +19,9 @@ public class GameLocationTool(GameDto game, IServiceProvider serviceProvider)
     /// This tool uses case-insensitive matching to find locations within the current game.
     /// </summary>
     /// <param name="locationName">The name of the location to look up (case-insensitive).</param>
-    /// <returns>A string containing the location's description, storyteller notes, appearance, significant events, and nearby locations.</returns>
+    /// <returns>A string containing the location's description / appearance, storyteller notes, significant events, and nearby locations.</returns>
     [Description(
-        "Retrieves detailed information about a location by name, including its description, appearance, significant events that have occurred there, and nearby locations. Use this tool whenever you need to describe a location the player visits or references, or when you need to recall what has happened at a specific place. The search is case-insensitive.")]
+        "Retrieves detailed information about a location by name, including its description/appearance, significant events that have occurred there, and nearby locations. Use this tool whenever you need to describe a location the player visits or references, or when you need to recall what has happened at a specific place. The search is case-insensitive.")]
     public async Task<string> GetLocationByNameAsync(string locationName)
     {
         if (string.IsNullOrWhiteSpace(locationName))
@@ -99,13 +99,9 @@ public class GameLocationTool(GameDto game, IServiceProvider serviceProvider)
         List<string> parts =
         [
             $"**{location.Name}**",
-            $"Description: {location.Description}"
+            $"Description / Appearance: {location.Description}"
         ];
 
-        if (!string.IsNullOrWhiteSpace(location.Appearance))
-        {
-            parts.Add($"Appearance: {location.Appearance}");
-        }
 
         if (!string.IsNullOrWhiteSpace(location.StorytellerNotes))
         {
