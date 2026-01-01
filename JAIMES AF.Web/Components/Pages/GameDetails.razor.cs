@@ -335,6 +335,7 @@ public partial class GameDetails : IAsyncDisposable
             // Track response messages by their temporary ID (from the streaming update)
             // This allows us to update the correct message bubble as tokens arrive
             Dictionary<string, int> messageIdToIndex = new();
+            Dictionary<string, System.Text.StringBuilder> messageIdToBuilder = new();
 
             // AGUI manages threads automatically via ConversationId
             // Don't pass a thread - AGUI will create/manage it via ConversationId to avoid MessageStore conflicts
@@ -346,26 +347,50 @@ public partial class GameDetails : IAsyncDisposable
             await foreach (var update in _agent.RunStreamingAsync(messagesToSend, thread: null))
             {
                 // Accept any role that isn't explicitly User. 
-                // Null role is fine (assumed to be part of the stream).
                 if (update.Role == ChatRole.User) continue;
 
                 string tempId = update.MessageId ?? "default";
-                bool isExisting = messageIdToIndex.TryGetValue(tempId, out int msgIndex);
-                string text = update.Text ?? string.Empty;
 
-                // If it's a new message
+                // Get or create the string builder for this message ID
+                if (!messageIdToBuilder.TryGetValue(tempId, out var sb))
+                {
+                    sb = new System.Text.StringBuilder();
+                    messageIdToBuilder[tempId] = sb;
+                }
+
+                // Append the delta text
+                if (!string.IsNullOrEmpty(update.Text))
+                {
+                    sb.Append(update.Text);
+                }
+
+                bool isExisting = messageIdToIndex.TryGetValue(tempId, out int msgIndex);
+                string accumulatedText = sb.ToString();
+
+                // Decide if we should show this message yet.
+                // We show it if we have text, OR if we have already established it.
+                // This keeps the "Typing..." indicator active until we have actual content.
+                if (string.IsNullOrWhiteSpace(accumulatedText) && !isExisting)
+                {
+                    continue;
+                }
+
+                // Once we have content to show, stop the main typing indicator
+                if (_isSending)
+                {
+                    _isSending = false;
+                    await InvokeAsync(StateHasChanged);
+                }
+
+                // If it's a new message (and we have content)
                 if (!isExisting)
                 {
-                    // Even if text is empty, we start the bubble to show "..." or just existence
-                    // unless it's strictly an empty keep-alive and we really don't want to show blank bubbles.
-                    // But showing a blank bubble is better than "Thinking..." forever.
-
                     string? authorName = update.AuthorName;
 
                     // Default to Assistant if Role is null
                     ChatRole roleToUse = update.Role ?? ChatRole.Assistant;
 
-                    var newMessage = new ChatMessage(roleToUse, text)
+                    var newMessage = new ChatMessage(roleToUse, accumulatedText)
                     {
                         AuthorName = authorName
                     };
@@ -375,7 +400,6 @@ public partial class GameDetails : IAsyncDisposable
                     msgIndex = _messages.Count - 1;
                     messageIdToIndex[tempId] = msgIndex;
 
-                    // Only populate pending agent info for Assistant to avoid weird avatars for Tools
                     if (roleToUse == ChatRole.Assistant)
                     {
                             AgentId = _selectedAgentId ?? _defaultAgentId,
@@ -398,21 +422,9 @@ public partial class GameDetails : IAsyncDisposable
                 }
                 else
                 {
-                    // Update existing message
+                    // Update existing message with the full accumulated text
                     var oldMsg = _messages[msgIndex];
-
-                    // If we have new text, update it. 
-                    // Note: If update.Text is null, we keep old text (don't overwrite with empty)
-                    // unless we are sure it's cumulative and null means "no change".
-                    // Assuming cumulative, update.Text should be the full text. 
-                    // If update.Text is null, it might just be a metadata update.
-                    string newText = text;
-                    if (string.IsNullOrEmpty(newText) && !string.IsNullOrEmpty(oldMsg.Text))
-                    {
-                        newText = oldMsg.Text;
-                    }
-
-                    var updatedMsg = new ChatMessage(oldMsg.Role, newText)
+                    var updatedMsg = new ChatMessage(oldMsg.Role, accumulatedText)
                     {
                         AuthorName = !string.IsNullOrEmpty(update.AuthorName) ? update.AuthorName : oldMsg.AuthorName
                     };
@@ -691,6 +703,8 @@ public partial class GameDetails : IAsyncDisposable
         NavigationManager.NavigateTo($"/admin/metrics/{messageId}");
     }
 
+    private HashSet<int> _loadedMetricsMessageIds = new();
+
     /// <summary>
     /// Loads metadata (feedback, metrics, tool calls, sentiment) for the specified message IDs in a single batch request.
     /// </summary>
@@ -709,6 +723,9 @@ public partial class GameDetails : IAsyncDisposable
             {
                 var metadata = await response.Content.ReadFromJsonAsync<MessagesMetadataResponse>();
                 if (metadata == null) return;
+
+                // Track that we have loaded metadata for these messages
+                _loadedMetricsMessageIds.UnionWith(messageIds);
 
                 foreach (var (msgId, fb) in metadata.Feedback)
                 {
@@ -830,6 +847,7 @@ public partial class GameDetails : IAsyncDisposable
                                  notification.Metrics != null)
                         {
                             _messageMetrics[notification.MessageId] = notification.Metrics;
+                            _loadedMetricsMessageIds.Add(notification.MessageId);
 
                             if (notification.HasMissingEvaluators.HasValue)
                             {

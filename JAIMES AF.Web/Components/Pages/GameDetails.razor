@@ -223,7 +223,8 @@
 									IsVersionSwitch="@isVersionSwitch"
 									ExemptFromProcessing="@isExempt"
 									IsScriptedMessage="@isExempt"
-									HasMissingEvaluators="@(messageId.HasValue && _messageHasMissingEvaluators.TryGetValue(messageId.Value, out var hasM) && hasM)"/>
+									HasMissingEvaluators="@(messageId.HasValue && _messageHasMissingEvaluators.TryGetValue(messageId.Value, out var hasM) && hasM)"
+									IsProcessing="@(!messageId.HasValue || !_loadedMetricsMessageIds.Contains(messageId.Value))"/>
 							}
 						}
 					}
@@ -262,8 +263,8 @@
 			<div class="message-bar">
 				<MudGrid Class="align-items-center">
 					<MudItem xs="10" sm="11">
-					<MudTextField @key="_chatInputKey" @ref="_chatInput" @bind-Value="_userMessage.Text" Label="Message" Placeholder="Type a message..."
-					              FullWidth="true" Immediate="true" TextUpdateSuppression="false" OnKeyDown="OnKeyDown"/>
+						<MudTextField @key="_chatInputKey" @ref="_chatInput" @bind-Value="_userMessage.Text" Label="Message" Placeholder="Type a message..."
+						              FullWidth="true" Immediate="true" TextUpdateSuppression="false" OnKeyDown="OnKeyDown"/>
 					</MudItem>
 					<MudItem xs="2" sm="1" Class="d-flex justify-end">
 						<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SendMessageAsync">
