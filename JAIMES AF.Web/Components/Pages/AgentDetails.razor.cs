@@ -1,3 +1,5 @@
+using MattEland.Jaimes.Web.Components.Dialogs;
+using MudBlazor;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 
@@ -74,38 +76,38 @@ public partial class AgentDetails
 
     private async Task RunTestsForVersionAsync(int versionId)
     {
-        if (string.IsNullOrEmpty(AgentId)) return;
+        if (string.IsNullOrEmpty(AgentId) || _agent == null) return;
 
-        try
+        var version = _versions?.FirstOrDefault(v => v.Id == versionId);
+
+        var parameters = new DialogParameters
         {
-            var request = new MattEland.Jaimes.ServiceDefinitions.Requests.RunTestCasesRequest
-            {
-                ExecutionName = $"Manual Test Run - {DateTime.UtcNow:yyyy-MM-dd HH:mm}"
-            };
+            { "AgentId", AgentId },
+            { "VersionId", versionId },
+            { "AgentName", _agent.Name },
+            { "VersionNumber", version?.VersionNumber }
+        };
 
-            var response = await Http.PostAsJsonAsync($"/agents/{AgentId}/versions/{versionId}/test-run", request);
-
-            if (response.IsSuccessStatusCode)
-            {
-                var result = await response.Content
-                    .ReadFromJsonAsync<MattEland.Jaimes.ServiceDefinitions.Responses.TestRunResultResponse>();
-                if (result != null)
-                {
-                    // Navigate to test cases page to see results
-                    NavigationManager.NavigateTo("/admin/test-cases");
-                }
-            }
-            else
-            {
-                _errorMessage = "Failed to run tests: " + await response.Content.ReadAsStringAsync();
-                StateHasChanged();
-            }
-        }
-        catch (Exception ex)
+        var options = new DialogOptions
         {
-            LoggerFactory.CreateLogger("AgentDetails").LogError(ex, "Failed to run tests");
-            _errorMessage = "Failed to run tests: " + ex.Message;
-            StateHasChanged();
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseOnEscapeKey = true
+        };
+
+        var dialog = await DialogService.ShowAsync<RunTestsDialog>("Run Test Cases", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is
+            {
+                Canceled: false, Data: MattEland.Jaimes.ServiceDefinitions.Responses.TestRunResultResponse testResult
+            })
+        {
+            // Navigate to test results page
+            if (!string.IsNullOrEmpty(testResult.ExecutionName))
+            {
+                NavigationManager.NavigateTo($"/admin/test-runs/{Uri.EscapeDataString(testResult.ExecutionName)}");
+            }
         }
     }
 }

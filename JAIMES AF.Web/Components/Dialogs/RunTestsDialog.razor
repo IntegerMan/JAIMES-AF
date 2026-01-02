@@ -1,0 +1,197 @@
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MudBlazor
+
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Science" Color="Color.Success" />
+            <MudText Typo="Typo.h6">Run Test Cases</MudText>
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        @if (_isLoading)
+        {
+            <div style="display: flex; justify-content: center; align-items: center; min-height: 150px;">
+                <MudProgressCircular Indeterminate="true"/>
+            </div>
+        }
+        else if (_isRunning)
+        {
+            <MudStack AlignItems="AlignItems.Center" Spacing="3" Class="pa-4">
+                <MudProgressCircular Indeterminate="true" Color="Color.Success" Size="Size.Large"/>
+                <MudText>Running @_selectedCount test case(s)...</MudText>
+                <MudText Typo="Typo.caption" Class="text-muted">This may take a while depending on the number of test cases.</MudText>
+            </MudStack>
+        }
+        else if (_testCases is null || _testCases.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">
+                No test cases available. Mark player messages as test cases from the game conversation view.
+            </MudAlert>
+        }
+        else
+        {
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.body1">
+                    Select test cases to run against <strong>@AgentName</strong> (Version @VersionNumber):
+                </MudText>
+                
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="SelectAll">Select All</MudButton>
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="SelectNone">Select None</MudButton>
+                </MudStack>
+                
+                <MudPaper Outlined="true" Style="max-height: 300px; overflow-y: auto;">
+                    <MudList T="int" Dense="true">
+                        @foreach (var testCase in _testCases)
+                        {
+                            <MudListItem>
+                                <MudCheckBox T="bool" 
+                                             Value="@_selectedTestCases.Contains(testCase.Id)"
+                                             ValueChanged="@((bool selected) => ToggleTestCase(testCase.Id, selected))"
+                                             Label="@testCase.Name"
+                                             Dense="true" />
+                                <MudText Typo="Typo.caption" Class="text-muted ml-8" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    @TruncateText(testCase.MessageText, 60)
+                                </MudText>
+                            </MudListItem>
+                        }
+                    </MudList>
+                </MudPaper>
+                
+                <MudText Typo="Typo.caption" Class="text-muted">
+                    @_selectedCount test case(s) selected
+                </MudText>
+            </MudStack>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (!_isRunning)
+        {
+            <MudButton Color="Color.Default" OnClick="Cancel">Cancel</MudButton>
+            <MudButton Color="Color.Success" 
+                       Variant="Variant.Filled" 
+                       Disabled="@(_selectedCount == 0 || _isLoading)"
+                       OnClick="RunTestsAsync">
+                <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Class="mr-1" Size="Size.Small"/>
+                Run Tests
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter] public required string AgentId { get; set; }
+    [Parameter] public required int VersionId { get; set; }
+    [Parameter] public string? AgentName { get; set; }
+    [Parameter] public int? VersionNumber { get; set; }
+
+    private List<TestCaseResponse>? _testCases;
+    private HashSet<int> _selectedTestCases = [];
+    private bool _isLoading = true;
+    private bool _isRunning = false;
+    
+    private int _selectedCount => _selectedTestCases.Count;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTestCasesAsync();
+    }
+
+    private async Task LoadTestCasesAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _testCases = await Http.GetFromJsonAsync<List<TestCaseResponse>>($"/test-cases?agentId={AgentId}");
+            // Select all by default
+            if (_testCases != null)
+            {
+                foreach (var tc in _testCases)
+                {
+                    _selectedTestCases.Add(tc.Id);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load test cases: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ToggleTestCase(int testCaseId, bool selected)
+    {
+        if (selected)
+            _selectedTestCases.Add(testCaseId);
+        else
+            _selectedTestCases.Remove(testCaseId);
+    }
+
+    private void SelectAll()
+    {
+        if (_testCases != null)
+        {
+            foreach (var tc in _testCases)
+            {
+                _selectedTestCases.Add(tc.Id);
+            }
+        }
+    }
+
+    private void SelectNone()
+    {
+        _selectedTestCases.Clear();
+    }
+
+    private async Task RunTestsAsync()
+    {
+        if (_selectedCount == 0) return;
+
+        _isRunning = true;
+        StateHasChanged();
+
+        try
+        {
+            var request = new { testCaseIds = _selectedTestCases.ToList() };
+            var response = await Http.PostAsJsonAsync($"/agents/{AgentId}/versions/{VersionId}/test-run", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<TestRunResultResponse>();
+                Snackbar.Add($"Test run completed: {result?.CompletedTestCases ?? 0} test(s) executed", Severity.Success);
+                MudDialog?.Close(DialogResult.Ok(result));
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Test run failed: {error}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Test run failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isRunning = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel() => MudDialog?.Cancel();
+
+    private static string TruncateText(string? text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text)) return "";
+        return text.Length <= maxLength ? text : text.Substring(0, maxLength) + "...";
+    }
+}
