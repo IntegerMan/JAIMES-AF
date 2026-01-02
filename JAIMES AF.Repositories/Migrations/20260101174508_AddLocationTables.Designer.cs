@@ -3,6 +3,7 @@ using System;
 using MattEland.Jaimes.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -12,9 +13,11 @@ using Pgvector;
 namespace MattEland.Jaimes.Repositories.Migrations
 {
     [DbContext(typeof(JaimesDbContext))]
-    partial class JaimesDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260101174508_AddLocationTables")]
+    partial class AddLocationTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -329,14 +332,8 @@ namespace MattEland.Jaimes.Repositories.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("AgentId")
-                        .HasColumnType("text");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<int?>("InstructionVersionId")
-                        .HasColumnType("integer");
 
                     b.Property<Guid?>("MostRecentHistoryId")
                         .HasColumnType("uuid");
@@ -359,10 +356,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AgentId");
-
-                    b.HasIndex("InstructionVersionId");
-
                     b.HasIndex("MostRecentHistoryId");
 
                     b.HasIndex("PlayerId");
@@ -382,6 +375,9 @@ namespace MattEland.Jaimes.Repositories.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Appearance")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -397,13 +393,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<string>("NameLower")
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasComputedColumnSql("LOWER(\"Name\")");
-
                     b.Property<string>("StorytellerNotes")
                         .HasColumnType("text");
 
@@ -412,7 +401,7 @@ namespace MattEland.Jaimes.Repositories.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("GameId", "NameLower")
+                    b.HasIndex("GameId", "Name")
                         .IsUnique();
 
                     b.ToTable("Locations");
@@ -960,7 +949,7 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.Property<string>("AgentId")
                         .HasColumnType("text");
 
-                    b.Property<int?>("InstructionVersionId")
+                    b.Property<int>("InstructionVersionId")
                         .HasColumnType("integer");
 
                     b.HasKey("ScenarioId", "AgentId");
@@ -1070,14 +1059,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
 
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Game", b =>
                 {
-                    b.HasOne("MattEland.Jaimes.Repositories.Entities.Agent", "Agent")
-                        .WithMany()
-                        .HasForeignKey("AgentId");
-
-                    b.HasOne("MattEland.Jaimes.Repositories.Entities.AgentInstructionVersion", "InstructionVersion")
-                        .WithMany()
-                        .HasForeignKey("InstructionVersionId");
-
                     b.HasOne("MattEland.Jaimes.Repositories.Entities.ChatHistory", "MostRecentHistory")
                         .WithMany()
                         .HasForeignKey("MostRecentHistoryId")
@@ -1100,10 +1081,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
                         .HasForeignKey("ScenarioId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("Agent");
-
-                    b.Navigation("InstructionVersion");
 
                     b.Navigation("MostRecentHistory");
 
@@ -1350,7 +1327,8 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.HasOne("MattEland.Jaimes.Repositories.Entities.AgentInstructionVersion", "InstructionVersion")
                         .WithMany("ScenarioAgents")
                         .HasForeignKey("InstructionVersionId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("MattEland.Jaimes.Repositories.Entities.Scenario", "Scenario")
                         .WithMany("ScenarioAgents")

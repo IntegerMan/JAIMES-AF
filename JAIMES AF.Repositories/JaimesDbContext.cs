@@ -38,6 +38,11 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
     public DbSet<Tool> Tools { get; set; } = null!;
     public DbSet<Evaluator> Evaluators { get; set; } = null!;
 
+    // Location tracking entities for AI storyteller
+    public DbSet<Location> Locations { get; set; } = null!;
+    public DbSet<LocationEvent> LocationEvents { get; set; } = null!;
+    public DbSet<NearbyLocation> NearbyLocations { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -481,6 +486,60 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.HasIndex(e => e.Name).IsUnique();
+        });
+
+        // Location tracking entity configurations
+        modelBuilder.Entity<Location>(entity =>
+        {
+            entity.HasKey(l => l.Id);
+            entity.Property(l => l.GameId).IsRequired();
+            entity.Property(l => l.Name).IsRequired().HasMaxLength(200);
+            entity.Property(l => l.NameLower)
+                .IsRequired()
+                .HasMaxLength(200)
+                .HasComputedColumnSql("LOWER(\"Name\")");
+            entity.Property(l => l.Description).IsRequired();
+            entity.Property(l => l.CreatedAt).IsRequired();
+            entity.Property(l => l.UpdatedAt).IsRequired();
+
+            // Unique constraint: location names must be unique within a game (case-insensitive)
+            // Using the NameLower computed column ensures the constraint is enforced at database level
+            entity.HasIndex(l => new { l.GameId, l.NameLower }).IsUnique();
+
+            entity.HasOne(l => l.Game)
+                .WithMany()
+                .HasForeignKey(l => l.GameId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<LocationEvent>(entity =>
+        {
+            entity.HasKey(le => le.Id);
+            entity.Property(le => le.LocationId).IsRequired();
+            entity.Property(le => le.EventName).IsRequired().HasMaxLength(200);
+            entity.Property(le => le.EventDescription).IsRequired();
+            entity.Property(le => le.CreatedAt).IsRequired();
+
+            entity.HasOne(le => le.Location)
+                .WithMany(l => l.Events)
+                .HasForeignKey(le => le.LocationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<NearbyLocation>(entity =>
+        {
+            entity.HasKey(nl => new { nl.SourceLocationId, nl.TargetLocationId });
+            entity.Property(nl => nl.Distance).HasMaxLength(100);
+
+            entity.HasOne(nl => nl.SourceLocation)
+                .WithMany(l => l.NearbyLocationsAsSource)
+                .HasForeignKey(nl => nl.SourceLocationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(nl => nl.TargetLocation)
+                .WithMany(l => l.NearbyLocationsAsTarget)
+                .HasForeignKey(nl => nl.TargetLocationId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // Model entity configuration

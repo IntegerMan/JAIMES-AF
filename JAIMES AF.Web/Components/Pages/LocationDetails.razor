@@ -1,0 +1,168 @@
+@page "/admin/locations/{LocationId:int}"
+@rendermode InteractiveServer
+
+<PageTitle>Location Details</PageTitle>
+
+<MudPaper Class="pa-4">
+	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+	</MudStack>
+
+	@if (_isLoading)
+	{
+		<div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+			<MudProgressCircular Indeterminate="true"/>
+		</div>
+	}
+
+	@if (!_isLoading && !string.IsNullOrEmpty(_errorMessage))
+	{
+		<MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+	}
+
+	@if (!_isLoading && _location != null)
+	{
+		<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+			<MudText Typo="Typo.h4">@_location.Name</MudText>
+			<MudButton Variant="Variant.Filled" Color="Color.Primary"
+			           Href="@($"/admin/locations/{LocationId}/edit")"
+			           StartIcon="@Icons.Material.Filled.Edit">
+				Edit Location
+			</MudButton>
+		</MudStack>
+
+		<MudGrid>
+			<MudItem xs="12" md="8">
+				<MudPaper Class="pa-4 mb-4" Elevation="1">
+					<MudText Typo="Typo.h6" Class="mb-3">Description / Appearance</MudText>
+					<MudText Typo="Typo.body1" Style="white-space: pre-wrap;">@_location.Description</MudText>
+				</MudPaper>
+
+
+
+				@if (!string.IsNullOrWhiteSpace(_location.StorytellerNotes))
+				{
+					<MudPaper Class="pa-4 mb-4" Elevation="1" Style="border-left: 4px solid var(--mud-palette-warning);">
+						<MudText Typo="Typo.h6" Class="mb-3">
+							<MudIcon Icon="@Icons.Material.Filled.VisibilityOff" Size="Size.Small" Class="me-2"/>
+							Storyteller Notes (Hidden from Player)
+						</MudText>
+						<MudText Typo="Typo.body1" Style="white-space: pre-wrap;">@_location.StorytellerNotes</MudText>
+					</MudPaper>
+				}
+
+				<MudPaper Class="pa-4 mb-4" Elevation="1">
+					<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+						<MudText Typo="Typo.h6">Events (@_events.Length)</MudText>
+						<MudButton Variant="Variant.Outlined" Color="Color.Primary"
+						           Size="Size.Small"
+						           StartIcon="@Icons.Material.Filled.Add"
+						           OnClick="ToggleAddEventForm">
+							Add Event
+						</MudButton>
+					</MudStack>
+
+					@if (_showAddEventForm)
+					{
+						<MudPaper Class="pa-3 mb-3" Elevation="0" Style="background-color: var(--mud-palette-background-gray);">
+							<MudTextField T="string" @bind-Value="_newEventName"
+							              Label="Event Name"
+							              Variant="Variant.Outlined"
+							              Margin="Margin.Dense"
+							              Class="mb-2"/>
+							<MudTextField T="string" @bind-Value="_newEventDescription"
+							              Label="Event Description"
+							              Variant="Variant.Outlined"
+							              Margin="Margin.Dense"
+							              Lines="2"
+							              Class="mb-2"/>
+							<MudStack Row="true" Spacing="2">
+								<MudButton Variant="Variant.Filled" Color="Color.Primary"
+								           Size="Size.Small"
+								           OnClick="AddEventAsync"
+								           Disabled="@(string.IsNullOrWhiteSpace(_newEventName) || string.IsNullOrWhiteSpace(_newEventDescription) || _isAddingEvent)">
+									@if (_isAddingEvent)
+									{
+										<MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-1"/>
+									}
+									Add
+								</MudButton>
+								<MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="CancelAddEvent">
+									Cancel
+								</MudButton>
+							</MudStack>
+						</MudPaper>
+					}
+
+					@if (_events.Length == 0 && !_showAddEventForm)
+					{
+						<MudText Class="text-muted">No events recorded at this location.</MudText>
+					}
+					else if (_events.Length > 0)
+					{
+						<MudList T="LocationEventResponse" Dense="true">
+							@foreach (var evt in _events)
+							{
+								<MudListItem T="LocationEventResponse">
+									<MudStack>
+										<MudText Typo="Typo.subtitle2"><strong>@evt.EventName</strong></MudText>
+										<MudText Typo="Typo.body2">@evt.EventDescription</MudText>
+										<MudText Typo="Typo.caption" Class="text-muted">@evt.CreatedAt.ToString("g")</MudText>
+									</MudStack>
+								</MudListItem>
+							}
+						</MudList>
+					}
+				</MudPaper>
+			</MudItem>
+
+			<MudItem xs="12" md="4">
+				<MudPaper Class="pa-4 mb-4" Elevation="1">
+					<MudText Typo="Typo.h6" Class="mb-3">
+						Nearby Locations (@_nearbyLocations.Length)
+					</MudText>
+					@if (_nearbyLocations.Length == 0)
+					{
+						<MudText Class="text-muted">No nearby locations linked.</MudText>
+					}
+					else
+					{
+						<MudList T="NearbyLocationResponse" Dense="true">
+							@foreach (var nearby in _nearbyLocations)
+							{
+								var linkedName = nearby.SourceLocationId == LocationId
+									? nearby.TargetLocationName
+									: nearby.SourceLocationName;
+								var linkedId = nearby.SourceLocationId == LocationId
+									? nearby.TargetLocationId
+									: nearby.SourceLocationId;
+
+								<MudListItem T="NearbyLocationResponse">
+									<MudStack>
+										<MudLink Href="@($"/admin/locations/{linkedId}")">
+											<strong>@linkedName</strong>
+										</MudLink>
+										@if (!string.IsNullOrWhiteSpace(nearby.Distance))
+										{
+											<MudText Typo="Typo.body2">Distance: @nearby.Distance</MudText>
+										}
+										@if (!string.IsNullOrWhiteSpace(nearby.TravelNotes))
+										{
+											<MudText Typo="Typo.body2" Class="text-muted">@nearby.TravelNotes</MudText>
+										}
+									</MudStack>
+								</MudListItem>
+							}
+						</MudList>
+					}
+				</MudPaper>
+
+				<MudPaper Class="pa-4" Elevation="1">
+					<MudText Typo="Typo.h6" Class="mb-3">Details</MudText>
+					<MudText Typo="Typo.body2"><strong>Created:</strong> @_location.CreatedAt.ToString("g")</MudText>
+					<MudText Typo="Typo.body2"><strong>Updated:</strong> @_location.UpdatedAt.ToString("g")</MudText>
+				</MudPaper>
+			</MudItem>
+		</MudGrid>
+	}
+</MudPaper>
