@@ -37,6 +37,7 @@ public class PromptImproverService(
             "metrics" => await GenerateMetricsInsightsAsync(agentId, versionId, cancellationToken),
             "sentiment" => await GenerateSentimentInsightsAsync(agentId, versionId, cancellationToken),
             "messages" => await GenerateMessageInsightsAsync(agentId, versionId, cancellationToken),
+            "tools" => await GenerateToolUsageInsightsAsync(agentId, versionId, cancellationToken),
             _ => new GenerateInsightsResponse
             {
                 Success = false,
@@ -374,6 +375,96 @@ public class PromptImproverService(
     }
 
     /// <summary>
+    /// Generates insights from tool usage patterns.
+    /// Analyzes tool usage appropriateness based on assistant messages and available tools.
+    /// </summary>
+    public async Task<GenerateInsightsResponse> GenerateToolUsageInsightsAsync(
+        string agentId,
+        int versionId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+            // Get assistant messages for this version (PlayerId is null for assistant messages)
+            List<Message> assistantMessages = await context.Messages
+                .Where(m => m.InstructionVersionId == versionId && m.PlayerId == null)
+                .OrderByDescending(m => m.CreatedAt)
+                .Take(MaxItemsToAnalyze)
+                .ToListAsync(cancellationToken);
+
+            if (assistantMessages.Count == 0)
+            {
+                return new GenerateInsightsResponse
+                {
+                    Success = true,
+                    InsightType = "tools",
+                    ItemsAnalyzed = 0,
+                    Insights = "No assistant messages available for tool usage analysis."
+                };
+            }
+
+            // Get tool calls for this version
+            List<MessageToolCall> toolCalls = await context.MessageToolCalls
+                .Include(mtc => mtc.Message)
+                .Where(mtc => mtc.InstructionVersionId == versionId ||
+                              (mtc.Message != null && mtc.Message.InstructionVersionId == versionId))
+                .OrderByDescending(mtc => mtc.CreatedAt)
+                .Take(MaxItemsToAnalyze * 2)
+                .ToListAsync(cancellationToken);
+
+            // Get all registered tools
+            List<Tool> registeredTools = await context.Tools
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
+
+            // Get the current prompt for context
+            string currentPrompt = await GetCurrentPromptAsync(context, versionId, cancellationToken);
+
+            // Build the user message with tool usage data and message samples
+            string userMessage =
+                BuildToolUsageInsightsPrompt(toolCalls, registeredTools, assistantMessages, currentPrompt);
+
+            // Call the AI
+            string insights = await GetAiResponseAsync(
+                PromptImproverSystemPrompts.ToolUsageInsightsPrompt,
+                userMessage,
+                cancellationToken);
+
+            string trimmedInsights = insights.Trim();
+            if (string.IsNullOrWhiteSpace(trimmedInsights))
+            {
+                return new GenerateInsightsResponse
+                {
+                    Success = false,
+                    InsightType = "tools",
+                    Error = "The AI returned an empty response for tool usage insights. Please try again."
+                };
+            }
+
+            return new GenerateInsightsResponse
+            {
+                Success = true,
+                InsightType = "tools",
+                ItemsAnalyzed = assistantMessages.Count,
+                Insights = trimmedInsights
+            };
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to generate tool usage insights for agent {AgentId} version {VersionId}",
+                agentId, versionId);
+            return new GenerateInsightsResponse
+            {
+                Success = false,
+                InsightType = "tools",
+                Error = ex.Message
+            };
+        }
+    }
+
+    /// <summary>
     /// Analyzes a single batch of messages and returns coaching insights.
     /// </summary>
     private async Task<string> AnalyzeMessageBatchAsync(
@@ -591,6 +682,87 @@ public class PromptImproverService(
     }
 
     /// <summary>
+    /// Builds the prompt for tool usage insights generation.
+    /// Includes assistant message samples for tool appropriateness analysis.
+    /// </summary>
+    public static string BuildToolUsageInsightsPrompt(
+        List<MessageToolCall> toolCalls,
+        List<Tool> registeredTools,
+        List<Message> assistantMessages,
+        string currentPrompt)
+    {
+        StringBuilder sb = new();
+        sb.AppendLine("## Current Agent Prompt");
+        sb.AppendLine(currentPrompt);
+        sb.AppendLine();
+
+        // List all available tools
+        if (registeredTools.Count > 0)
+        {
+            sb.AppendLine("## Available Tools");
+            sb.AppendLine();
+            foreach (Tool tool in registeredTools)
+            {
+                sb.AppendLine($"- **{tool.Name}**: {tool.Description ?? "(no description)"}");
+            }
+
+            sb.AppendLine();
+        }
+
+        // Group tool calls by name and get statistics
+        if (toolCalls.Count > 0)
+        {
+            var toolStats = toolCalls
+                .GroupBy(tc => tc.ToolName, StringComparer.OrdinalIgnoreCase)
+                .Select(g => new
+                {
+                    Name = g.Key,
+                    Count = g.Count(),
+                    LastUsed = g.Max(tc => tc.CreatedAt)
+                })
+                .OrderByDescending(x => x.Count)
+                .ToList();
+
+            sb.AppendLine("## Tool Usage Statistics");
+            sb.AppendLine();
+            foreach (var stat in toolStats)
+            {
+                sb.AppendLine($"- **{stat.Name}**: Called {stat.Count} time(s)");
+            }
+
+            sb.AppendLine();
+        }
+        else
+        {
+            sb.AppendLine("## Tool Usage Statistics");
+            sb.AppendLine();
+            sb.AppendLine("*No tools have been called by this agent version.*");
+            sb.AppendLine();
+        }
+
+        // Include sample assistant messages for context
+        sb.AppendLine("## Sample Assistant Messages (for tool usage context)");
+        sb.AppendLine();
+        foreach (Message message in assistantMessages.Take(10))
+        {
+            sb.AppendLine("---");
+            sb.AppendLine($"**Message {message.Id}** ({message.CreatedAt:yyyy-MM-dd HH:mm})");
+            sb.AppendLine();
+            // Truncate long messages to keep prompt reasonable
+            string text = message.Text ?? "";
+            if (text.Length > 500)
+            {
+                text = string.Concat(text.AsSpan(0, 500), "...");
+            }
+
+            sb.AppendLine(text);
+            sb.AppendLine();
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
     /// Builds the input for improved prompt generation.
     /// </summary>
     public static string BuildImprovedPromptInput(GenerateImprovedPromptRequest request)
@@ -638,6 +810,13 @@ public class PromptImproverService(
         {
             sb.AppendLine("## Insights from Conversation Messages");
             sb.AppendLine(request.MessageInsights);
+            sb.AppendLine();
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.ToolInsights))
+        {
+            sb.AppendLine("## Insights from Tool Usage");
+            sb.AppendLine(request.ToolInsights);
             sb.AppendLine();
         }
 
