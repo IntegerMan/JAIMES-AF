@@ -6,9 +6,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MattEland.Jaimes.ServiceLayer.Services;
 
-public class AgentInstructionVersionsService(IDbContextFactory<JaimesDbContext> contextFactory) : IAgentInstructionVersionsService
+public class AgentInstructionVersionsService(IDbContextFactory<JaimesDbContext> contextFactory)
+    : IAgentInstructionVersionsService
 {
-    public async Task<AgentInstructionVersionDto[]> GetInstructionVersionsAsync(string agentId, CancellationToken cancellationToken = default)
+    public async Task<AgentInstructionVersionDto[]> GetInstructionVersionsAsync(string agentId,
+        CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -18,10 +20,39 @@ public class AgentInstructionVersionsService(IDbContextFactory<JaimesDbContext> 
             .OrderByDescending(iv => iv.CreatedAt)
             .ToArrayAsync(cancellationToken);
 
-        return versions.ToDto();
+        // Get counts for each version
+        int[] versionIds = versions.Select(v => v.Id).ToArray();
+
+        var gameCounts = await context.Games
+            .Where(g => g.InstructionVersionId != null && versionIds.Contains(g.InstructionVersionId.Value))
+            .GroupBy(g => g.InstructionVersionId)
+            .Select(g => new { VersionId = g.Key!.Value, Count = g.Count() })
+            .ToDictionaryAsync(g => g.VersionId, g => g.Count, cancellationToken);
+
+        var messageCounts = await context.Messages
+            .Where(m => versionIds.Contains(m.InstructionVersionId))
+            .GroupBy(m => m.InstructionVersionId)
+            .Select(g => new { VersionId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(g => g.VersionId, g => g.Count, cancellationToken);
+
+        // Count games using the active version via "Latest" (InstructionVersionId is null)
+        AgentInstructionVersion? activeVersion = versions.FirstOrDefault(v => v.IsActive);
+        int latestGameCount = 0;
+        if (activeVersion != null)
+        {
+            latestGameCount = await context.Games
+                .CountAsync(g => g.AgentId == agentId && g.InstructionVersionId == null, cancellationToken);
+        }
+
+        return versions.Select(v => v.ToDto(
+            gameCounts.GetValueOrDefault(v.Id),
+            v.IsActive ? latestGameCount : 0,
+            messageCounts.GetValueOrDefault(v.Id)
+        )).ToArray();
     }
 
-    public async Task<AgentInstructionVersionDto?> GetInstructionVersionAsync(int id, CancellationToken cancellationToken = default)
+    public async Task<AgentInstructionVersionDto?> GetInstructionVersionAsync(int id,
+        CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -32,7 +63,8 @@ public class AgentInstructionVersionsService(IDbContextFactory<JaimesDbContext> 
         return version?.ToDto();
     }
 
-    public async Task<AgentInstructionVersionDto> CreateInstructionVersionAsync(string agentId, string versionNumber, string instructions, CancellationToken cancellationToken = default)
+    public async Task<AgentInstructionVersionDto> CreateInstructionVersionAsync(string agentId, string versionNumber,
+        string instructions, CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -45,7 +77,8 @@ public class AgentInstructionVersionsService(IDbContextFactory<JaimesDbContext> 
         bool versionExists = await context.AgentInstructionVersions
             .AnyAsync(iv => iv.AgentId == agentId && iv.VersionNumber == versionNumber, cancellationToken);
         if (versionExists)
-            throw new ArgumentException($"Version '{versionNumber}' already exists for agent '{agentId}'.", nameof(versionNumber));
+            throw new ArgumentException($"Version '{versionNumber}' already exists for agent '{agentId}'.",
+                nameof(versionNumber));
 
         // Deactivate all other active versions for this agent
         AgentInstructionVersion[] otherActiveVersions = await context.AgentInstructionVersions
@@ -73,7 +106,8 @@ public class AgentInstructionVersionsService(IDbContextFactory<JaimesDbContext> 
     }
 
 
-    public async Task<AgentInstructionVersionDto?> GetActiveInstructionVersionAsync(string agentId, CancellationToken cancellationToken = default)
+    public async Task<AgentInstructionVersionDto?> GetActiveInstructionVersionAsync(string agentId,
+        CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -86,7 +120,8 @@ public class AgentInstructionVersionsService(IDbContextFactory<JaimesDbContext> 
         return version?.ToDto();
     }
 
-    public async Task<AgentInstructionVersionDto> UpdateInstructionVersionAsync(int id, string versionNumber, string instructions, bool? isActive, CancellationToken cancellationToken = default)
+    public async Task<AgentInstructionVersionDto> UpdateInstructionVersionAsync(int id, string versionNumber,
+        string instructions, bool? isActive, CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -98,9 +133,11 @@ public class AgentInstructionVersionsService(IDbContextFactory<JaimesDbContext> 
 
         // Check if version number already exists for this agent (excluding current version)
         bool versionExists = await context.AgentInstructionVersions
-            .AnyAsync(iv => iv.AgentId == version.AgentId && iv.VersionNumber == versionNumber && iv.Id != id, cancellationToken);
+            .AnyAsync(iv => iv.AgentId == version.AgentId && iv.VersionNumber == versionNumber && iv.Id != id,
+                cancellationToken);
         if (versionExists)
-            throw new ArgumentException($"Version '{versionNumber}' already exists for agent '{version.AgentId}'.", nameof(versionNumber));
+            throw new ArgumentException($"Version '{versionNumber}' already exists for agent '{version.AgentId}'.",
+                nameof(versionNumber));
 
         version.VersionNumber = versionNumber;
         version.Instructions = instructions;

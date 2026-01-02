@@ -5,7 +5,8 @@ using MattEland.Jaimes.Repositories.Entities;
 
 public static class AgentInstructionVersionMapper
 {
-    public static AgentInstructionVersionDto ToDto(this AgentInstructionVersion version)
+    public static AgentInstructionVersionDto ToDto(this AgentInstructionVersion version, int gameCount = 0,
+        int latestGameCount = 0, int messageCount = 0)
     {
         return new AgentInstructionVersionDto
         {
@@ -14,13 +15,16 @@ public static class AgentInstructionVersionMapper
             VersionNumber = version.VersionNumber,
             Instructions = version.Instructions,
             CreatedAt = version.CreatedAt,
-            IsActive = version.IsActive
+            IsActive = version.IsActive,
+            GameCount = gameCount,
+            LatestGameCount = latestGameCount,
+            MessageCount = messageCount
         };
     }
 
     public static AgentInstructionVersionDto[] ToDto(this IEnumerable<AgentInstructionVersion> versions)
     {
-        return versions.Select(ToDto).ToArray();
+        return versions.Select(v => v.ToDto()).ToArray();
     }
 }
 
