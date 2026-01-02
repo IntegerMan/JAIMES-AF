@@ -1,4 +1,4 @@
-using MattEland.Jaimes.ServiceLayer.Evaluators;
+using MattEland.Jaimes.Evaluators;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
 using Microsoft.Extensions.Options;
@@ -61,5 +61,28 @@ public class BrevityEvaluatorTests
         // Act & Assert
         await Should.ThrowAsync<InvalidOperationException>(async () =>
             await evaluator.EvaluateAsync([], modelResponse, cancellationToken: TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task EvaluateAsync_WithNullText_ShouldReturnCorrectScore()
+    {
+        // Arrange
+        var options = Options.Create(new BrevityEvaluatorOptions
+        {
+            TargetCharacters = 500,
+            Margin = 100
+        });
+        var evaluator = new BrevityEvaluator(options);
+
+        var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, (string?)null));
+
+        // Act
+        var result =
+            await evaluator.EvaluateAsync([], modelResponse, cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        var metric = result.Get<NumericMetric>("Brevity");
+        metric.ShouldNotBeNull();
+        metric.Value.ShouldBe(1); // 0 chars is very under 500
     }
 }

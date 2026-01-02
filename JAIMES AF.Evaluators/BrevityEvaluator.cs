@@ -3,7 +3,7 @@ using Microsoft.Extensions.AI.Evaluation;
 using Microsoft.Extensions.Options;
 using System.ComponentModel;
 
-namespace MattEland.Jaimes.ServiceLayer.Evaluators;
+namespace MattEland.Jaimes.Evaluators;
 
 /// <summary>
 /// An evaluator that grades responses by their brevity relative to a target length.
@@ -22,7 +22,7 @@ public class BrevityEvaluator(IOptions<BrevityEvaluatorOptions> options) : IEval
         IEnumerable<EvaluationContext>? evaluationContext = null,
         CancellationToken cancellationToken = default)
     {
-        string text = modelResponse.Text;
+        string text = modelResponse.Text ?? string.Empty;
         int charCount = text.Length;
         int wordCount = text.Split([' ', '\r', '\n', '\t'], StringSplitOptions.RemoveEmptyEntries).Length;
 
@@ -80,3 +80,4 @@ public class BrevityEvaluator(IOptions<BrevityEvaluatorOptions> options) : IEval
         return new ValueTask<EvaluationResult>(result);
     }
 }
+
