@@ -1,0 +1,157 @@
+@page "/admin/run-tests"
+@rendermode InteractiveServer
+
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+
+@inject HttpClient Http
+@inject ILoggerFactory LoggerFactory
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<PageTitle>Run Tests</PageTitle>
+
+<MudPaper Class="pa-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+    </MudStack>
+
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+        <MudStack>
+            <MudText Typo="Typo.h4">Run Tests</MudText>
+            <MudText Class="text-muted">Select test cases and agent versions to run tests against.</MudText>
+        </MudStack>
+        @if (!_isLoading && !_isRunning)
+        {
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Size="Size.Large"
+                       StartIcon="@Icons.Material.Filled.PlayArrow"
+                       Disabled="@(!CanRun)"
+                       OnClick="RunTestsAsync">
+                Run @_selectedTestCases.Count Test(s) × @_selectedVersions.Count Version(s)
+            </MudButton>
+        }
+    </MudStack>
+
+    @if (_isLoading)
+    {
+        <div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+            <MudProgressCircular Indeterminate="true"/>
+        </div>
+    }
+    else if (_isRunning)
+    {
+        <MudPaper Class="pa-6" Elevation="2">
+            <MudStack AlignItems="AlignItems.Center" Spacing="4">
+                <MudProgressCircular Indeterminate="true" Color="Color.Success" Size="Size.Large"/>
+                <MudText Typo="Typo.h6">Running Tests...</MudText>
+                <MudText Class="text-muted">
+                    @_runProgress of @_totalRuns test runs
+                </MudText>
+            </MudStack>
+        </MudPaper>
+    }
+    else
+    {
+        <MudGrid Spacing="4">
+            @* Test Case Selection *@
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4" Elevation="2">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                        <MudText Typo="Typo.h6">Test Cases</MudText>
+                        <MudStack Row="true" Spacing="1">
+                            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="SelectAllTestCases">All</MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="SelectNoTestCases">None</MudButton>
+                        </MudStack>
+                    </MudStack>
+                    
+                    @if (_testCases is null || _testCases.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info">No test cases available.</MudAlert>
+                    }
+                    else
+                    {
+                        <div style="max-height: 400px; overflow-y: auto;">
+                            <MudList T="int" Dense="true">
+                                @foreach (var tc in _testCases)
+                                {
+                                    <MudListItem>
+                                        <MudCheckBox T="bool"
+                                                     Value="@_selectedTestCases.Contains(tc.Id)"
+                                                     ValueChanged="@((bool v) => ToggleTestCase(tc.Id, v))"
+                                                     Label="@tc.Name"
+                                                     Dense="true"/>
+                                    </MudListItem>
+                                }
+                            </MudList>
+                        </div>
+                        <MudText Typo="Typo.caption" Class="text-muted mt-2">
+                            @_selectedTestCases.Count selected
+                        </MudText>
+                    }
+                </MudPaper>
+            </MudItem>
+
+            @* Agent/Version Selection *@
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4" Elevation="2">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                        <MudText Typo="Typo.h6">Agent Versions</MudText>
+                        <MudStack Row="true" Spacing="1">
+                            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="SelectAllVersions">All</MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="SelectNoVersions">None</MudButton>
+                        </MudStack>
+                    </MudStack>
+
+                    @if (_agents is null || _agents.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info">No agents available.</MudAlert>
+                    }
+                    else
+                    {
+                        <div style="max-height: 400px; overflow-y: auto;">
+                            <MudExpansionPanels MultiExpansion="true">
+                                @foreach (var agent in _agents)
+                                {
+                                    <MudExpansionPanel Text="@agent.Name" Expanded="true">
+                                        @if (agent.Versions.Count == 0)
+                                        {
+                                            <MudText Class="text-muted">No versions</MudText>
+                                        }
+                                        else
+                                        {
+                                            <MudList T="int" Dense="true">
+                                                @foreach (var version in agent.Versions)
+                                                {
+                                                    <MudListItem>
+                                                        <MudCheckBox T="bool"
+                                                                     Value="@_selectedVersions.Contains(version.Id)"
+                                                                     ValueChanged="@((bool v) => ToggleVersion(version.Id, v))"
+                                                                     Dense="true">
+                                                            <ChildContent>
+                                                                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                                                    <MudText>@version.VersionNumber</MudText>
+                                                                    @if (version.IsActive)
+                                                                    {
+                                                                        <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
+                                                                    }
+                                                                </MudStack>
+                                                            </ChildContent>
+                                                        </MudCheckBox>
+                                                    </MudListItem>
+                                                }
+                                            </MudList>
+                                        }
+                                    </MudExpansionPanel>
+                                }
+                            </MudExpansionPanels>
+                        </div>
+                        <MudText Typo="Typo.caption" Class="text-muted mt-2">
+                            @_selectedVersions.Count version(s) selected
+                        </MudText>
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</MudPaper>

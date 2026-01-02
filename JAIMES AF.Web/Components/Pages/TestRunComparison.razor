@@ -1,0 +1,243 @@
+@page "/admin/test-runs/compare"
+@rendermode InteractiveServer
+
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+
+@inject HttpClient Http
+@inject ILoggerFactory LoggerFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Test Run Comparison</PageTitle>
+
+<MudPaper Class="pa-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+    </MudStack>
+
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+        <MudText Typo="Typo.h4">Test Run Comparison</MudText>
+        @if (_versionResults.Count > 0 && !string.IsNullOrEmpty(Executions))
+        {
+            <MudStack Row="true" Spacing="2">
+                @foreach (var vr in _versionResults)
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Visibility"
+                               Href="@($"/admin/test-runs/{Uri.EscapeDataString(vr.ExecutionName)}")"
+                               Size="Size.Small">
+                        @vr.AgentName @vr.VersionNumber Report
+                    </MudButton>
+                }
+            </MudStack>
+        }
+    </MudStack>
+
+    @if (_isLoading)
+    {
+        <div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+            <MudProgressCircular Indeterminate="true"/>
+        </div>
+    }
+    else if (_versionResults.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">No test results found.</MudAlert>
+    }
+    else
+    {
+        @* Summary Cards *@
+        <MudGrid Spacing="3" Class="mb-4">
+            @foreach (var vr in _versionResults)
+            {
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <MudPaper Class="pa-4" Elevation="2">
+                        <MudStack Spacing="2">
+                            <MudText Typo="Typo.subtitle1"><strong>@vr.AgentName</strong></MudText>
+                            <MudText Typo="Typo.body2">@vr.VersionNumber</MudText>
+                            <MudDivider/>
+                            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                <MudText>Tests:</MudText>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Info">@vr.Runs.Count</MudChip>
+                            </MudStack>
+                            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                <MudText>Avg Duration:</MudText>
+                                <MudText>@vr.AvgDuration.ToString("F0")ms</MudText>
+                            </MudStack>
+                            @if (vr.AvgScore.HasValue)
+                            {
+                                <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                    <MudText>Avg Score:</MudText>
+                                    <MudChip T="string" Size="Size.Small" Color="@GetScoreColor(vr.AvgScore.Value)">
+                                        @vr.AvgScore.Value.ToString("F2")
+                                    </MudChip>
+                                </MudStack>
+                            }
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+
+        @* Comparison Matrix *@
+        <MudText Typo="Typo.h5" Class="mb-3">Response Comparison</MudText>
+        <MudSimpleTable Dense="true" Hover="true" Style="overflow-x: auto;">
+            <thead>
+                <tr>
+                    <th style="min-width: 200px;">Test Case</th>
+                    @foreach (var vr in _versionResults)
+                    {
+                        <th style="min-width: 250px;">
+                            @vr.AgentName @vr.VersionNumber
+                        </th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var testCaseId in _testCaseIds)
+                {
+                    <tr>
+                        <td>
+                            <MudLink Href="@($"/admin/test-cases/{testCaseId}")">
+                                @GetTestCaseName(testCaseId)
+                            </MudLink>
+                        </td>
+                        @foreach (var vr in _versionResults)
+                        {
+                            var run = vr.Runs.FirstOrDefault(r => r.TestCaseId == testCaseId);
+                            <td>
+                                @if (run != null)
+                                {
+                                    <MudStack Spacing="1">
+                                        <MudTooltip Text="@run.GeneratedResponse" Placement="Placement.Top">
+                                            <MudText Style="max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.85rem;">
+                                                @TruncateText(run.GeneratedResponse, 40)
+                                            </MudText>
+                                        </MudTooltip>
+                                        <MudStack Row="true" Spacing="1" Style="flex-wrap: wrap;">
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Info">@run.DurationMs ms</MudChip>
+                                            @if (run.Metrics?.Any() == true)
+                                            {
+                                                foreach (var metric in run.Metrics)
+                                                {
+                                                    <MudTooltip Text="@(metric.EvaluatorName ?? metric.MetricName)">
+                                                        <MudChip T="string" Size="Size.Small" Color="@GetScoreColor(metric.Score)">
+                                                            @metric.Score.ToString("F2")
+                                                        </MudChip>
+                                                    </MudTooltip>
+                                                }
+                                            }
+                                        </MudStack>
+                                    </MudStack>
+                                }
+                                else
+                                {
+                                    <MudText Class="text-muted">-</MudText>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
+</MudPaper>
+
+@code {
+    [SupplyParameterFromQuery]
+    [Parameter] public string? Executions { get; set; }
+
+    private List<VersionResult> _versionResults = [];
+    private List<int> _testCaseIds = [];
+    private bool _isLoading = true;
+
+    private List<BreadcrumbItem> _breadcrumbs = new()
+    {
+        new BreadcrumbItem("Home", href: "/"),
+        new BreadcrumbItem("Admin", href: "/admin"),
+        new BreadcrumbItem("Test Cases", href: "/admin/test-cases"),
+        new BreadcrumbItem("Comparison", href: null, disabled: true)
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrEmpty(Executions))
+        {
+            _isLoading = false;
+            return;
+        }
+
+        try
+        {
+            var executionNames = Executions.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            
+            foreach (var execName in executionNames)
+            {
+                var runs = await Http.GetFromJsonAsync<List<TestCaseRunResponse>>(
+                    $"/test-case-runs?executionName={Uri.EscapeDataString(execName)}");
+
+                if (runs != null && runs.Count > 0)
+                {
+                    var first = runs.First();
+                    _versionResults.Add(new VersionResult
+                    {
+                        ExecutionName = execName,
+                        AgentName = first.AgentName ?? "Unknown",
+                        VersionNumber = first.VersionNumber ?? "?",
+                        Runs = runs,
+                        AvgDuration = runs.Where(r => r.DurationMs.HasValue).Select(r => r.DurationMs!.Value).DefaultIfEmpty(0).Average(),
+                        AvgScore = runs.SelectMany(r => r.Metrics ?? []).Any() 
+                            ? runs.SelectMany(r => r.Metrics ?? []).Average(m => m.Score) 
+                            : null
+                    });
+
+                    // Collect all test case IDs
+                    foreach (var run in runs)
+                    {
+                        if (!_testCaseIds.Contains(run.TestCaseId))
+                            _testCaseIds.Add(run.TestCaseId);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            LoggerFactory.CreateLogger("TestRunComparison").LogError(ex, "Failed to load comparison data");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private string GetTestCaseName(int testCaseId)
+    {
+        var run = _versionResults.SelectMany(vr => vr.Runs).FirstOrDefault(r => r.TestCaseId == testCaseId);
+        return run?.TestCaseName ?? $"Test {testCaseId}";
+    }
+
+    private static string TruncateText(string? text, int maxLength)
+    {
+        if (string.IsNullOrEmpty(text)) return "";
+        return text.Length <= maxLength ? text : text.Substring(0, maxLength) + "...";
+    }
+
+    private static Color GetScoreColor(double score)
+    {
+        return score switch
+        {
+            >= 0.7 => Color.Success,
+            >= 0.4 => Color.Warning,
+            _ => Color.Error
+        };
+    }
+
+    private record VersionResult
+    {
+        public required string ExecutionName { get; init; }
+        public required string AgentName { get; init; }
+        public required string VersionNumber { get; init; }
+        public List<TestCaseRunResponse> Runs { get; init; } = [];
+        public double AvgDuration { get; init; }
+        public double? AvgScore { get; init; }
+    }
+}
