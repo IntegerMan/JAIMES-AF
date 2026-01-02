@@ -38,6 +38,7 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
             .Include(m => m.MessageSentiment)
             .Include(m => m.InstructionVersion)
             .Include(m => m.Agent)
+            .Include(m => m.TestCase)
             .ToListAsync(cancellationToken);
 
         // Reverse to chronological order (oldest first)
@@ -58,6 +59,7 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
                 .Include(m => m.MessageSentiment)
                 .Include(m => m.InstructionVersion)
                 .Include(m => m.Agent)
+                .Include(m => m.TestCase)
                 .ToListAsync(cancellationToken);
 
             allMessages = allMessages.Concat(messagesAfter).ToList();

@@ -18,9 +18,9 @@ public class TestCaseService(IDbContextFactory<JaimesDbContext> contextFactory) 
 
         TestCase? testCase = await context.TestCases
             .Include(tc => tc.Message)
-                .ThenInclude(m => m!.Game)
+            .ThenInclude(m => m!.Game)
             .Include(tc => tc.Message)
-                .ThenInclude(m => m!.Agent)
+            .ThenInclude(m => m!.Agent)
             .Include(tc => tc.Runs)
             .AsNoTracking()
             .FirstOrDefaultAsync(tc => tc.Id == id, ct);
@@ -35,9 +35,9 @@ public class TestCaseService(IDbContextFactory<JaimesDbContext> contextFactory) 
 
         TestCase? testCase = await context.TestCases
             .Include(tc => tc.Message)
-                .ThenInclude(m => m!.Game)
+            .ThenInclude(m => m!.Game)
             .Include(tc => tc.Message)
-                .ThenInclude(m => m!.Agent)
+            .ThenInclude(m => m!.Agent)
             .Include(tc => tc.Runs)
             .AsNoTracking()
             .FirstOrDefaultAsync(tc => tc.MessageId == messageId, ct);
@@ -46,15 +46,16 @@ public class TestCaseService(IDbContextFactory<JaimesDbContext> contextFactory) 
     }
 
     /// <inheritdoc/>
-    public async Task<List<TestCaseResponse>> ListTestCasesAsync(string? agentId = null, bool includeInactive = false, CancellationToken ct = default)
+    public async Task<List<TestCaseResponse>> ListTestCasesAsync(string? agentId = null, bool includeInactive = false,
+        CancellationToken ct = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(ct);
 
         IQueryable<TestCase> query = context.TestCases
             .Include(tc => tc.Message)
-                .ThenInclude(m => m!.Game)
+            .ThenInclude(m => m!.Game)
             .Include(tc => tc.Message)
-                .ThenInclude(m => m!.Agent)
+            .ThenInclude(m => m!.Agent)
             .Include(tc => tc.Runs)
             .AsNoTracking();
 
@@ -76,7 +77,8 @@ public class TestCaseService(IDbContextFactory<JaimesDbContext> contextFactory) 
     }
 
     /// <inheritdoc/>
-    public async Task<TestCaseResponse> CreateTestCaseAsync(int messageId, string name, string? description, CancellationToken ct = default)
+    public async Task<TestCaseResponse> CreateTestCaseAsync(int messageId, string name, string? description,
+        CancellationToken ct = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(ct);
 
@@ -118,9 +120,9 @@ public class TestCaseService(IDbContextFactory<JaimesDbContext> contextFactory) 
         // Reload with includes
         testCase = await context.TestCases
             .Include(tc => tc.Message)
-                .ThenInclude(m => m!.Game)
+            .ThenInclude(m => m!.Game)
             .Include(tc => tc.Message)
-                .ThenInclude(m => m!.Agent)
+            .ThenInclude(m => m!.Agent)
             .Include(tc => tc.Runs)
             .FirstAsync(tc => tc.Id == testCase.Id, ct);
 
@@ -144,7 +146,34 @@ public class TestCaseService(IDbContextFactory<JaimesDbContext> contextFactory) 
     }
 
     /// <inheritdoc/>
-    public async Task<List<TestCaseRunResponse>> GetRunsByExecutionAsync(string executionName, CancellationToken ct = default)
+    public async Task<TestCaseResponse?> UpdateTestCaseAsync(int id, string name, string? description,
+        CancellationToken ct = default)
+    {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(ct);
+
+        TestCase? testCase = await context.TestCases
+            .Include(tc => tc.Message)
+            .ThenInclude(m => m!.Game)
+            .Include(tc => tc.Message)
+            .ThenInclude(m => m!.Agent)
+            .Include(tc => tc.Runs)
+            .FirstOrDefaultAsync(tc => tc.Id == id, ct);
+
+        if (testCase == null)
+        {
+            return null;
+        }
+
+        testCase.Name = name;
+        testCase.Description = description;
+        await context.SaveChangesAsync(ct);
+
+        return MapToResponse(testCase);
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<TestCaseRunResponse>> GetRunsByExecutionAsync(string executionName,
+        CancellationToken ct = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(ct);
 
@@ -153,7 +182,7 @@ public class TestCaseService(IDbContextFactory<JaimesDbContext> contextFactory) 
             .Include(tcr => tcr.Agent)
             .Include(tcr => tcr.InstructionVersion)
             .Include(tcr => tcr.Metrics)
-                .ThenInclude(m => m.Evaluator)
+            .ThenInclude(m => m.Evaluator)
             .AsNoTracking()
             .Where(tcr => tcr.ExecutionName == executionName)
             .OrderBy(tcr => tcr.ExecutedAt)
@@ -172,7 +201,7 @@ public class TestCaseService(IDbContextFactory<JaimesDbContext> contextFactory) 
             .Include(tcr => tcr.Agent)
             .Include(tcr => tcr.InstructionVersion)
             .Include(tcr => tcr.Metrics)
-                .ThenInclude(m => m.Evaluator)
+            .ThenInclude(m => m.Evaluator)
             .AsNoTracking()
             .Where(tcr => tcr.TestCaseId == testCaseId)
             .OrderByDescending(tcr => tcr.ExecutedAt)

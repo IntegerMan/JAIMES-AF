@@ -18,17 +18,25 @@ public interface ITestCaseService
     /// <summary>
     /// Lists all test cases, optionally filtered by agent ID.
     /// </summary>
-    Task<List<TestCaseResponse>> ListTestCasesAsync(string? agentId = null, bool includeInactive = false, CancellationToken ct = default);
+    Task<List<TestCaseResponse>> ListTestCasesAsync(string? agentId = null, bool includeInactive = false,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Creates a test case from a player message.
     /// </summary>
-    Task<TestCaseResponse> CreateTestCaseAsync(int messageId, string name, string? description, CancellationToken ct = default);
+    Task<TestCaseResponse> CreateTestCaseAsync(int messageId, string name, string? description,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Soft deletes a test case (sets IsActive to false).
     /// </summary>
     Task<bool> DeleteTestCaseAsync(int id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Updates a test case's name and description.
+    /// </summary>
+    Task<TestCaseResponse?> UpdateTestCaseAsync(int id, string name, string? description,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Gets test case runs for a specific execution.

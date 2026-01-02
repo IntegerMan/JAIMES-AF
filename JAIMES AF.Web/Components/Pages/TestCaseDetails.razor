@@ -28,7 +28,36 @@
 		<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
 			<MudStack>
 				<MudText Typo="Typo.h4">Test Case Details</MudText>
-				<MudText Typo="Typo.h6" Class="text-muted">@_testCase.Name</MudText>
+				@if (_isEditingTitle)
+				{
+					<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+						<MudTextField @bind-Value="_editableTitle"
+						              Variant="Variant.Outlined"
+						              Margin="Margin.Dense"
+						              Immediate="true"
+						              Placeholder="Enter test case name"
+						              Style="min-width: 300px;"/>
+						<MudIconButton Icon="@Icons.Material.Filled.Check"
+						               Color="Color.Success"
+						               Size="Size.Small"
+						               Disabled="@_isSavingTitle"
+						               OnClick="SaveTitleAndExitEditModeAsync"/>
+						<MudIconButton Icon="@Icons.Material.Filled.Close"
+						               Color="Color.Error"
+						               Size="Size.Small"
+						               OnClick="CancelTitleEdit"/>
+					</MudStack>
+				}
+				else
+				{
+					<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+						<MudText Typo="Typo.h6" Class="text-muted">@_testCase.Name</MudText>
+						<MudIconButton Icon="@Icons.Material.Filled.Edit"
+						               Size="Size.Small"
+						               Color="Color.Default"
+						               OnClick="EnterTitleEditMode"/>
+					</MudStack>
+				}
 				<MudText Typo="Typo.body2" Class="text-muted">@(_testCase.Description ?? "No description")</MudText>
 			</MudStack>
 			<MudStack Row="true" Spacing="2">

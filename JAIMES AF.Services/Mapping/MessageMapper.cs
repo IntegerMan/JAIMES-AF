@@ -130,10 +130,13 @@ public static partial class MessageMapper
     [MapperIgnoreSource(nameof(Message.NextMessage))]
     [MapperIgnoreSource(nameof(Message.Model))]
     [MapperIgnoreSource(nameof(Message.ModelId))]
-    [MapperIgnoreSource(nameof(Message.TestCase))]
+    [MapProperty(nameof(Message.TestCase),
+        nameof(MessageContextDto.IsTestCase),
+        Use = nameof(MapIsTestCaseFromTestCase))]
+    [MapProperty(nameof(Message.TestCase),
+        nameof(MessageContextDto.TestCaseId),
+        Use = nameof(MapTestCaseIdFromTestCase))]
     [MapperIgnoreTarget(nameof(MessageContextDto.HasMissingEvaluators))]
-    [MapperIgnoreTarget(nameof(MessageContextDto.IsTestCase))]
-    [MapperIgnoreTarget(nameof(MessageContextDto.TestCaseId))]
     public static partial MessageContextDto ToContextDto(this Message message);
 
     private static MessageFeedbackResponse? MapFeedbackFromCollection(ICollection<MessageFeedback> feedbacks)

@@ -213,11 +213,14 @@
 
         try
         {
+            // Use first 50 characters of message text as default name
+            string defaultName = Text.Length > 50 ? Text.Substring(0, 50) + "..." : Text;
+            
             var request = new MattEland.Jaimes.ServiceDefinitions.Requests.CreateTestCaseRequest
             {
                 MessageId = MessageId.Value,
-                Name = $"Test Case - Message {MessageId.Value}",
-                Description = $"Test case created from game conversation on {DateTime.Now:g}"
+                Name = defaultName,
+                Description = null
             };
 
             var response = await Http.PostAsJsonAsync("/test-cases", request);

@@ -63,4 +63,65 @@ public partial class TestCaseDetails
         if (string.IsNullOrEmpty(text)) return "";
         return text.Length <= maxLength ? text : text.Substring(0, maxLength) + "...";
     }
+
+    // Title editing state
+    private string? _editableTitle;
+    private bool _isEditingTitle = false;
+    private bool _isSavingTitle = false;
+
+    private void EnterTitleEditMode()
+    {
+        _editableTitle = _testCase?.Name;
+        _isEditingTitle = true;
+        StateHasChanged();
+    }
+
+    private void CancelTitleEdit()
+    {
+        _isEditingTitle = false;
+        _editableTitle = _testCase?.Name;
+        StateHasChanged();
+    }
+
+    private async Task SaveTitleAndExitEditModeAsync()
+    {
+        if (_testCase == null || string.IsNullOrWhiteSpace(_editableTitle)) return;
+
+        _isSavingTitle = true;
+        try
+        {
+            var request = new MattEland.Jaimes.ServiceDefinitions.Requests.UpdateTestCaseRequest
+            {
+                Name = _editableTitle,
+                Description = _testCase.Description
+            };
+
+            var response = await Http.PutAsJsonAsync($"/test-cases/{TestCaseId}", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var updated = await response.Content.ReadFromJsonAsync<TestCaseResponse>();
+                if (updated != null)
+                {
+                    _testCase = updated;
+                    UpdateBreadcrumbs();
+                }
+            }
+            else
+            {
+                LoggerFactory.CreateLogger("TestCaseDetails")
+                    .LogError("Failed to save title: {StatusCode}", response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            LoggerFactory.CreateLogger("TestCaseDetails").LogError(ex, "Failed to save test case title");
+        }
+        finally
+        {
+            _isSavingTitle = false;
+            _isEditingTitle = false;
+            StateHasChanged();
+        }
+    }
 }
