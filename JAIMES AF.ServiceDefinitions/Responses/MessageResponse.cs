@@ -35,4 +35,14 @@ public record MessageResponse
     /// True if this message is missing any registered evaluators.
     /// </summary>
     public bool HasMissingEvaluators { get; set; }
+
+    /// <summary>
+    /// True if this message is marked as a test case.
+    /// </summary>
+    public bool IsTestCase { get; set; }
+
+    /// <summary>
+    /// The ID of the test case if this message is a test case, null otherwise.
+    /// </summary>
+    public int? TestCaseId { get; set; }
 }
