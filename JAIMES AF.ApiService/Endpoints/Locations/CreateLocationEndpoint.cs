@@ -14,6 +14,7 @@ public class CreateLocationRequest
 public class CreateLocationEndpoint : Endpoint<CreateLocationRequest, LocationResponse>
 {
     public required ILocationService LocationService { get; set; }
+    public required IGameService GameService { get; set; }
 
     public override void Configure()
     {
@@ -22,6 +23,7 @@ public class CreateLocationEndpoint : Endpoint<CreateLocationRequest, LocationRe
         Description(b => b
             .Produces<LocationResponse>(StatusCodes.Status201Created)
             .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status404NotFound)
             .Produces(StatusCodes.Status409Conflict)
             .WithTags("Locations"));
     }
@@ -48,20 +50,38 @@ public class CreateLocationEndpoint : Endpoint<CreateLocationRequest, LocationRe
             return;
         }
 
-        // Check if location already exists
-        if (await LocationService.LocationExistsAsync(gameId, req.Name, ct))
+        // Verify game exists
+        if (await GameService.GetGameAsync(gameId, ct) == null)
         {
-            AddError($"A location named '{req.Name}' already exists in this game");
-            await SendErrorsAsync(StatusCodes.Status409Conflict, ct);
+            await Send.NotFoundAsync(ct);
             return;
         }
 
-        LocationResponse result = await LocationService.CreateLocationAsync(
-            gameId, req.Name, req.Description, req.StorytellerNotes, ct);
+        // Check if location already exists
+        if (await LocationService.LocationExistsAsync(gameId, req.Name, ct))
+        {
+            ThrowError($"A location named '{req.Name}' already exists in this game", StatusCodes.Status409Conflict);
+            return;
+        }
 
-        await Send.CreatedAtAsync<GetLocationEndpoint>(
-            new { locationId = result.Id },
-            result,
-            cancellation: ct);
+        try
+        {
+            LocationResponse result = await LocationService.CreateLocationAsync(
+                gameId, req.Name, req.Description, req.StorytellerNotes, ct);
+
+            await Send.CreatedAtAsync<GetLocationEndpoint>(
+                new { locationId = result.Id },
+                result,
+                cancellation: ct);
+        }
+        catch (ArgumentException ex)
+        {
+            ThrowError(ex.Message, StatusCodes.Status409Conflict);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            AddError(ex.Message);
+            await Send.NotFoundAsync(ct);
+        }
     }
 }

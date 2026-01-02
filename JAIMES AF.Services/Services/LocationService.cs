@@ -79,7 +79,28 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
         };
 
         context.Locations.Add(location);
-        await context.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex)
+        {
+            // Check for unique constraint violation on GameId and Name
+            if (await context.Locations.AnyAsync(l => l.GameId == gameId && l.Name.ToLower() == name.ToLower(),
+                    cancellationToken))
+            {
+                throw new ArgumentException($"A location named '{name}' already exists in this game", ex);
+            }
+
+            // Check for foreign key violation on GameId
+            if (!await context.Games.AnyAsync(g => g.Id == gameId, cancellationToken))
+            {
+                throw new KeyNotFoundException($"Game with ID {gameId} not found", ex);
+            }
+
+            throw;
+        }
 
         return MapToResponse(location);
     }
