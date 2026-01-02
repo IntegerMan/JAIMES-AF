@@ -114,7 +114,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.HasKey(sa => new { sa.ScenarioId, sa.AgentId });
             entity.Property(sa => sa.ScenarioId).IsRequired();
             entity.Property(sa => sa.AgentId).IsRequired();
-            entity.Property(sa => sa.InstructionVersionId).IsRequired();
+            entity.Property(sa => sa.InstructionVersionId);
 
             entity.HasOne(sa => sa.Scenario)
                 .WithMany(s => s.ScenarioAgents)

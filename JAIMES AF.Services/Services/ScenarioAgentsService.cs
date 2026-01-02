@@ -8,7 +8,8 @@ namespace MattEland.Jaimes.ServiceLayer.Services;
 
 public class ScenarioAgentsService(IDbContextFactory<JaimesDbContext> contextFactory) : IScenarioAgentsService
 {
-    public async Task<ScenarioAgentDto[]> GetScenarioAgentsAsync(string scenarioId, CancellationToken cancellationToken = default)
+    public async Task<ScenarioAgentDto[]> GetScenarioAgentsAsync(string scenarioId,
+        CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -20,7 +21,8 @@ public class ScenarioAgentsService(IDbContextFactory<JaimesDbContext> contextFac
         return scenarioAgents.ToDto();
     }
 
-    public async Task<ScenarioAgentDto> SetScenarioAgentAsync(string scenarioId, string agentId, int instructionVersionId, CancellationToken cancellationToken = default)
+    public async Task<ScenarioAgentDto> SetScenarioAgentAsync(string scenarioId, string agentId,
+        int? instructionVersionId, CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -34,11 +36,16 @@ public class ScenarioAgentsService(IDbContextFactory<JaimesDbContext> contextFac
         if (agent == null)
             throw new ArgumentException($"Agent '{agentId}' does not exist.", nameof(agentId));
 
-        // Verify instruction version exists and belongs to the agent
-        AgentInstructionVersion? version = await context.AgentInstructionVersions
-            .FirstOrDefaultAsync(iv => iv.Id == instructionVersionId && iv.AgentId == agentId, cancellationToken);
-        if (version == null)
-            throw new ArgumentException($"Instruction version '{instructionVersionId}' does not exist for agent '{agentId}'.", nameof(instructionVersionId));
+        // Verify instruction version exists and belongs to the agent (only if specific version requested)
+        if (instructionVersionId.HasValue)
+        {
+            AgentInstructionVersion? version = await context.AgentInstructionVersions
+                .FirstOrDefaultAsync(iv => iv.Id == instructionVersionId && iv.AgentId == agentId, cancellationToken);
+            if (version == null)
+                throw new ArgumentException(
+                    $"Instruction version '{instructionVersionId}' does not exist for agent '{agentId}'.",
+                    nameof(instructionVersionId));
+        }
 
         // Get or create scenario agent
         ScenarioAgent? scenarioAgent = await context.ScenarioAgents
@@ -64,7 +71,8 @@ public class ScenarioAgentsService(IDbContextFactory<JaimesDbContext> contextFac
         return scenarioAgent.ToDto();
     }
 
-    public async Task RemoveScenarioAgentAsync(string scenarioId, string agentId, CancellationToken cancellationToken = default)
+    public async Task RemoveScenarioAgentAsync(string scenarioId, string agentId,
+        CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -72,10 +80,13 @@ public class ScenarioAgentsService(IDbContextFactory<JaimesDbContext> contextFac
             .FirstOrDefaultAsync(sa => sa.ScenarioId == scenarioId && sa.AgentId == agentId, cancellationToken);
 
         if (scenarioAgent == null)
-            throw new ArgumentException($"Scenario agent for scenario '{scenarioId}' and agent '{agentId}' does not exist.", nameof(scenarioId));
+            throw new ArgumentException(
+                $"Scenario agent for scenario '{scenarioId}' and agent '{agentId}' does not exist.",
+                nameof(scenarioId));
 
         context.ScenarioAgents.Remove(scenarioAgent);
         await context.SaveChangesAsync(cancellationToken);
     }
 }
+
 

@@ -47,3 +47,4 @@ public class GetActiveAgentInstructionVersionEndpoint : EndpointWithoutRequest<A
         await Send.OkAsync(response, ct);
     }
 }
+

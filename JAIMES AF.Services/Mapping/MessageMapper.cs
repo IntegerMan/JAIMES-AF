@@ -15,6 +15,7 @@ public static partial class MessageMapper
     [MapProperty(nameof(Message.InstructionVersion),
         nameof(MessageDto.ModelEndpoint),
         Use = nameof(MapModelEndpointFromInstructionVersion))]
+    [MapProperty("InstructionVersion.VersionNumber", nameof(MessageDto.VersionNumber))]
     [MapProperty(nameof(Message.MessageSentiment),
         nameof(MessageDto.SentimentSource),
         Use = nameof(MapSentimentSourceFromMessageSentiment))]
@@ -95,6 +96,7 @@ public static partial class MessageMapper
     [MapProperty(nameof(Message.InstructionVersion),
         nameof(MessageDto.ModelEndpoint),
         Use = nameof(MapModelEndpointFromInstructionVersion))]
+    [MapProperty("InstructionVersion.VersionNumber", nameof(MessageDto.VersionNumber))]
     [MapProperty(nameof(Message.Player),
         nameof(MessageDto.ParticipantName),
         Use = nameof(MapParticipantNameFromPlayer))]

@@ -286,18 +286,9 @@ public class DatabaseInitializer(ActivitySource activitySource, ILogger<Database
                     continue;
                 }
 
-                // Get active instruction version for the agent
-                var instructionVersion = await context.AgentInstructionVersions
-                    .Where(iv => iv.AgentId == agentId && iv.IsActive)
-                    .OrderByDescending(iv => iv.CreatedAt)
-                    .FirstOrDefaultAsync(CancellationToken.None);
+                // We want to use the Latest (Dynamic) version for seeded scenarios
+                // So we don't need to look up a specific version ID anymore
 
-                if (instructionVersion == null)
-                {
-                    logger?.LogWarning(
-                        "Cannot seed ScenarioAgent: No active instruction version found for Agent {AgentId}", agentId);
-                    continue;
-                }
 
                 // Check if mapping already exists
                 var existingMapping = await context.ScenarioAgents
@@ -311,20 +302,20 @@ public class DatabaseInitializer(ActivitySource activitySource, ILogger<Database
                     {
                         ScenarioId = scenarioId,
                         AgentId = agentId,
-                        InstructionVersionId = instructionVersion.Id
+                        InstructionVersionId = null // Use null for dynamic/latest
                     });
-                    logger?.LogInformation("Seeded ScenarioAgent: {ScenarioId} -> {AgentId} (Version: {Version})",
-                        scenarioId, agentId, instructionVersion.Id);
+                    logger?.LogInformation("Seeded ScenarioAgent: {ScenarioId} -> {AgentId} (Version: Dynamic)",
+                        scenarioId, agentId);
                 }
                 else
                 {
-                    // Update instruction version if needed (ensure it points to the latest active version)
-                    if (existingMapping.InstructionVersionId != instructionVersion.Id)
+                    // Update instruction version if it's set to specific (we want dynamic)
+                    if (existingMapping.InstructionVersionId != null)
                     {
-                        existingMapping.InstructionVersionId = instructionVersion.Id;
+                        existingMapping.InstructionVersionId = null;
                         logger?.LogInformation(
-                            "Updated ScenarioAgent: {ScenarioId} -> {AgentId} to use Version: {Version}",
-                            scenarioId, agentId, instructionVersion.Id);
+                            "Updated ScenarioAgent: {ScenarioId} -> {AgentId} to use Version: Dynamic",
+                            scenarioId, agentId);
                     }
                 }
             }

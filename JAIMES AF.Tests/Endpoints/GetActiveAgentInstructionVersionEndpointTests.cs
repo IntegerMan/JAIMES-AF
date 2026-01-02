@@ -70,3 +70,4 @@ public class GetActiveAgentInstructionVersionEndpointTests : EndpointTestBase
         getResponse.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 }
+

@@ -32,7 +32,11 @@ public class ListGamesEndpoint : Ep.NoReq.Res<ListGamesResponse>
                         PlayerId = g.Player.Id,
                         PlayerName = g.Player.Name,
                         CreatedAt = g.CreatedAt,
-                        LastPlayedAt = g.LastPlayedAt
+                        LastPlayedAt = g.LastPlayedAt,
+                        AgentId = g.AgentId,
+                        AgentName = g.AgentName,
+                        InstructionVersionId = g.InstructionVersionId,
+                        VersionNumber = g.VersionNumber
                     })
                     .ToArray()
             },

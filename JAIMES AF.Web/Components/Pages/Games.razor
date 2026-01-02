@@ -45,6 +45,7 @@
 				<HeaderContent>
 					<MudTh></MudTh>
 					<MudTh>Title</MudTh>
+					<MudTh>Agent</MudTh>
 					<MudTh>Created</MudTh>
 					<MudTh>Last Played</MudTh>
 					<MudTh align="Align.Right">Actions</MudTh>
@@ -58,6 +59,16 @@
 					</MudTd>
 					<MudTd>
 						<MudLink Href="@($"/games/{context.GameId}")">@context.Title</MudLink>
+					</MudTd>
+					<MudTd>
+						@if (!string.IsNullOrEmpty(context.AgentId))
+						{
+							<MudLink Href="@($"/agents/{context.AgentId}")">@context.AgentName @context.VersionNumber</MudLink>
+						}
+						else
+						{
+							<MudText Typo="Typo.body2" Class="text-muted">None</MudText>
+						}
 					</MudTd>
 					<MudTd>@ToLocalTime(context.CreatedAt).ToString("g")</MudTd>
 					<MudTd>@(context.LastPlayedAt.HasValue ? ToLocalTime(context.LastPlayedAt.Value).ToString("g") : "Never")</MudTd>

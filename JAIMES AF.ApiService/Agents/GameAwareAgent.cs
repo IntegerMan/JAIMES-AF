@@ -238,7 +238,7 @@ public class GameAwareAgent(
             gameDto.Player.Name);
 
         // Get instructions from InstructionService
-        string? systemPrompt = await instructionService.GetInstructionsAsync(gameDto.Scenario.Id, cancellationToken);
+        string? systemPrompt = await instructionService.GetInstructionsForGameAsync(gameId, cancellationToken);
         if (string.IsNullOrWhiteSpace(systemPrompt))
         {
             _logger.LogWarning("Game {GameId} has no instructions configured, using default", gameId);
@@ -425,8 +425,61 @@ public class GameAwareAgent(
             throw new InvalidOperationException($"Scenario '{gameDto.Scenario.Id}' has no associated agent.");
         }
 
-        string agentId = scenarioAgent.AgentId;
-        int instructionVersionId = scenarioAgent.InstructionVersionId;
+        // Use the effective agent ID and version ID from the game DTO (which includes fallbacks)
+        string agentId = gameDto.AgentId ?? scenarioAgent.AgentId;
+        int? resolvedInstructionVersionId = gameDto.InstructionVersionId ??
+                                            (gameDto.AgentId == null ? scenarioAgent.InstructionVersionId : null);
+
+        // If version is null (Dynamic/Latest), resolve it now
+        if (!resolvedInstructionVersionId.HasValue)
+        {
+            // We need to look up the latest active version for the agent
+            var latestVersion = await dbContext.AgentInstructionVersions
+                .AsNoTracking()
+                .Where(v => v.AgentId == agentId && v.IsActive)
+                .OrderByDescending(v => v.CreatedAt)
+                .Select(v => new { v.Id })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (latestVersion != null)
+            {
+                resolvedInstructionVersionId = latestVersion.Id;
+            }
+            else
+            {
+                // Try finding any version for the current agent before falling back to the scenario default
+                var anyVersion = await dbContext.AgentInstructionVersions
+                    .AsNoTracking()
+                    .Where(v => v.AgentId == agentId)
+                    .OrderByDescending(v => v.CreatedAt)
+                    .Select(v => new { v.Id })
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (anyVersion != null)
+                {
+                    resolvedInstructionVersionId = anyVersion.Id;
+                }
+                else
+                {
+                    // Fallback to scenario default if resolution fails (safety net). 
+                    // If we fall back to the scenario's version, we MUST also use the scenario's agent ID
+                    // so that the AgentId and InstructionVersionId remain consistent.
+                    _logger.LogWarning(
+                        "Agent {AgentId} has no instruction versions. Falling back to scenario agent {ScenarioAgentId} and version {VersionId}",
+                        agentId, scenarioAgent.AgentId, scenarioAgent.InstructionVersionId);
+                    resolvedInstructionVersionId = scenarioAgent.InstructionVersionId;
+                    agentId = scenarioAgent.AgentId;
+                }
+            }
+        }
+
+        if (!resolvedInstructionVersionId.HasValue)
+        {
+            throw new InvalidOperationException(
+                $"Could not resolve an active instruction version for agent '{agentId}'.");
+        }
+
+        int instructionVersionId = resolvedInstructionVersionId.Value;
 
         // Determine context agent (Agent ID and Version) for the User Message
         // User requests that User messages inherit these from the message being replied to (the last message in the game)
@@ -443,12 +496,12 @@ public class GameAwareAgent(
             .ThenByDescending(m => m.Id)
             .Select(m => new { m.AgentId, m.InstructionVersionId })
             .FirstOrDefaultAsync(cancellationToken);
-
         if (lastMessageEntry != null)
         {
             userMessageAgentId = lastMessageEntry.AgentId;
             userMessageInstructionVersionId = lastMessageEntry.InstructionVersionId;
         }
+
         else
         {
             // Fallback to scenario default if no previous message (should be rare due to initial greeting)
@@ -467,6 +520,7 @@ public class GameAwareAgent(
             AgentId = userMessageAgentId,
             InstructionVersionId = userMessageInstructionVersionId
         };
+
         dbContext.Messages.Add(userMessageEntity);
         _logger.LogDebug("Added user message entity for game {GameId}", gameId);
 
@@ -484,6 +538,7 @@ public class GameAwareAgent(
                 ModelId = model?.Id
             })
             .ToList();
+
         dbContext.Messages.AddRange(aiMessageEntities);
         _logger.LogDebug("Added {Count} AI message entity/entities for game {GameId}", aiMessageEntities.Count, gameId);
 
@@ -595,7 +650,9 @@ public class GameAwareAgent(
             .ToListAsync(cancellationToken);
 
         // Link messages sequentially
-        for (int i = 0; i < allMessages.Count; i++)
+        for (int i = 0;
+             i < allMessages.Count;
+             i++)
         {
             Message currentMessage = allMessages[i];
 
@@ -634,8 +691,8 @@ public class GameAwareAgent(
             _logger.LogDebug("Enqueued user message {MessageId} for game {GameId}", userMessageEntity.Id, gameId);
         }
 
-        // Enqueue assistant messages
-        // Note: aiMessageEntities are already filtered to ChatRole.Assistant (tool calls excluded by the Where clause above)
+// Enqueue assistant messages
+// Note: aiMessageEntities are already filtered to ChatRole.Assistant (tool calls excluded by the Where clause above)
         foreach (Message aiMessage in aiMessageEntities)
         {
             ConversationMessageQueuedMessage assistantQueueMessage = new()
@@ -648,11 +705,11 @@ public class GameAwareAgent(
             _logger.LogDebug("Enqueued assistant message {MessageId} for game {GameId}", aiMessage.Id, gameId);
         }
 
-        // Get the last AI message ID for thread association
+// Get the last AI message ID for thread association
         int? lastAiMessageId = aiMessageEntities.LastOrDefault()?.Id;
 
-        // Use memory provider to persist thread state
-        // The memory provider provides a consistent interface for thread persistence
+// Use memory provider to persist thread state
+// The memory provider provides a consistent interface for thread persistence
         string memoryProviderKey = $"MemoryProvider_{gameId}";
         if (context != null && context.Items.TryGetValue(memoryProviderKey, out object? providerObj) &&
             providerObj is GameConversationMemoryProvider memoryProvider)
