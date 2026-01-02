@@ -45,6 +45,13 @@ public partial class GameDetails : IAsyncDisposable
     private bool _isSavingTitle = false;
     private bool _isEditingTitle = false;
 
+    // Agent and Version selection
+    private List<AgentResponse> _availableAgents = [];
+    private List<AgentInstructionVersionResponse> _availableVersions = [];
+    private string? _selectedAgentId;
+    private int? _selectedVersionId;
+    private bool _isChangingAgent = false;
+
 
     private readonly MessageResponse _userMessage = new()
     {
@@ -122,7 +129,7 @@ public partial class GameDetails : IAsyncDisposable
                         AgentId = message.AgentId,
                         AgentName = message.AgentName,
                         InstructionVersionId = message.InstructionVersionId,
-                        // We don't have version number either.
+                        VersionNumber = message.VersionNumber,
                         IsScriptedMessage = message.IsScriptedMessage
                     };
                     _messageAgentInfo[message.Id] = info;
@@ -158,6 +165,21 @@ public partial class GameDetails : IAsyncDisposable
         }
         finally
         {
+            if (_game != null)
+            {
+                _selectedAgentId = _game.AgentId ?? _defaultAgentId;
+                _selectedVersionId = _game.InstructionVersionId;
+                _defaultAgentName ??= _game.AgentName;
+                _defaultVersionNumber ??= _game.VersionNumber;
+
+                if (!string.IsNullOrEmpty(_selectedAgentId))
+                {
+                    await LoadAvailableVersionsAsync(_selectedAgentId);
+                }
+            }
+
+            await LoadAvailableAgentsAsync();
+
             _isLoading = false;
             // Scroll to bottom after initial load
             if (_messages.Count > 0) _shouldScrollToBottom = true;
@@ -382,15 +404,24 @@ public partial class GameDetails : IAsyncDisposable
                 // For Assistant messages, populate pending agent info so the icon/name appears immediately
                 if (normalizedRole == ChatRole.Assistant)
                 {
+                    string? agentName = (!string.IsNullOrWhiteSpace(message.AuthorName) &&
+                                         !message.AuthorName.StartsWith("game-", StringComparison.OrdinalIgnoreCase))
+                        ? message.AuthorName
+                        : (_availableAgents.FirstOrDefault(a => a.Id == _selectedAgentId)?.Name ?? _defaultAgentName);
+
+                    string? versionNumber = _selectedVersionId.HasValue
+                        ? _availableVersions.FirstOrDefault(v => v.Id == _selectedVersionId)?.VersionNumber
+                        : _availableVersions.FirstOrDefault(v => v.IsActive)
+                            ?.VersionNumber; // If dynamic, show active version
+
+                    versionNumber ??= _defaultVersionNumber;
+
                     _pendingMessageAgentInfo[normalizedMessage] = new MessageAgentInfo
                     {
-                        AgentId = _defaultAgentId, // Use default from history
-                        AgentName = (!string.IsNullOrWhiteSpace(message.AuthorName) &&
-                                     !message.AuthorName.StartsWith("game-", StringComparison.OrdinalIgnoreCase))
-                            ? message.AuthorName
-                            : _defaultAgentName,
-                        InstructionVersionId = _defaultInstructionVersionId,
-                        VersionNumber = _defaultVersionNumber,
+                        AgentId = _selectedAgentId ?? _defaultAgentId,
+                        AgentName = agentName,
+                        InstructionVersionId = _selectedVersionId ?? _defaultInstructionVersionId,
+                        VersionNumber = versionNumber,
                         IsScriptedMessage = false // Live messages are generally not scripted
                     };
                 }
@@ -868,8 +899,137 @@ public partial class GameDetails : IAsyncDisposable
         }
         catch (Exception ex)
         {
-            _logger?.LogWarning(ex, "Failed to connect to SignalR hub. Real-time updates will not be available.");
-            // Don't throw - the page should still work, just without real-time updates
+            _logger?.LogError(ex, "Failed to connect to SignalR hub");
+        }
+    }
+
+    private async Task LoadAvailableAgentsAsync()
+    {
+        try
+        {
+            HttpClient httpClient = HttpClientFactory.CreateClient("Api");
+            var response = await httpClient.GetFromJsonAsync<AgentListResponse>("/agents");
+            if (response?.Agents != null)
+            {
+                // Filter to just game master role agents as requested
+                var agents = response.Agents
+                    .Where(a => a.Role.Equals("Game Master", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                // Ensure the currently selected agent is in the list, even if it's not a "Game Master"
+                if (!string.IsNullOrEmpty(_selectedAgentId) && !agents.Any(a => a.Id == _selectedAgentId))
+                {
+                    var selectedAgent = response.Agents.FirstOrDefault(a => a.Id == _selectedAgentId);
+                    if (selectedAgent != null)
+                    {
+                        agents.Add(selectedAgent);
+                    }
+                }
+
+                _availableAgents = agents.OrderBy(a => a.Name).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to load available agents");
+        }
+    }
+
+    private async Task LoadAvailableVersionsAsync(string agentId)
+    {
+        try
+        {
+            HttpClient httpClient = HttpClientFactory.CreateClient("Api");
+            var response =
+                await httpClient.GetFromJsonAsync<AgentInstructionVersionListResponse>(
+                    $"/agents/{agentId}/instruction-versions");
+            if (response?.InstructionVersions != null)
+            {
+                _availableVersions = response.InstructionVersions.OrderByDescending(v => v.VersionNumber).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to load versions for agent {AgentId}", agentId);
+        }
+    }
+
+    private async Task OnAgentChanged(string agentId)
+    {
+        if (_selectedAgentId == agentId) return;
+
+        _selectedAgentId = agentId;
+        _selectedVersionId = null;
+        _availableVersions.Clear();
+
+        if (!string.IsNullOrEmpty(agentId))
+        {
+            await LoadAvailableVersionsAsync(agentId);
+            // Default to Dynamic/Latest (null) when agent changes
+            await SaveAgentSelectionAsync();
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task OnVersionChanged(int? versionId)
+    {
+        if (_selectedVersionId == versionId || _isChangingAgent) return;
+
+        _selectedVersionId = versionId;
+        if (!string.IsNullOrEmpty(_selectedAgentId))
+        {
+            await SaveAgentSelectionAsync();
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task SaveAgentSelectionAsync()
+    {
+        if (_game == null || string.IsNullOrEmpty(_selectedAgentId)) return;
+
+        _isChangingAgent = true;
+        try
+        {
+            HttpClient httpClient = HttpClientFactory.CreateClient("Api");
+            var request = new UpdateGameRequest
+            {
+                AgentId = _selectedAgentId,
+                InstructionVersionId = _selectedVersionId
+            };
+            var response = await httpClient.PutAsJsonAsync($"/games/{GameId}", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var updatedGame = await response.Content.ReadFromJsonAsync<GameInfoResponse>();
+                if (updatedGame != null)
+                {
+                    // Update local game state
+                    // Note: GameStateResponse doesn't have AgentId/VersionId yet, but the API will return them if we update it
+                    // For now, we trust the local selection and the API successfully saved it.
+                    // The next message sent will use the new agent because of GameAwareAgentFactory changes.
+
+                    // Re-initialize the agent to pick up new instructions
+                    HttpClient aguiHttpClient = HttpClientFactory.CreateClient("AGUI");
+                    string serverUrl = $"{aguiHttpClient.BaseAddress}games/{GameId}/chat";
+                    AGUIChatClient chatClient = new(aguiHttpClient, serverUrl);
+                    _agent = chatClient.CreateAIAgent(name: $"game-{GameId}", description: "Game Chat Agent");
+                }
+            }
+            else
+            {
+                _logger?.LogError("Failed to save agent selection: {StatusCode}", response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to save agent selection");
+        }
+        finally
+        {
+            _isChangingAgent = false;
+            StateHasChanged();
         }
     }
 

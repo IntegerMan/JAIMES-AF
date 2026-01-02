@@ -35,7 +35,7 @@ public partial class EditScenario
         public required string AgentId { get; init; }
         public required string AgentName { get; init; }
         public required string AgentRole { get; init; }
-        public required int InstructionVersionId { get; init; }
+        public required int? InstructionVersionId { get; init; }
         public required string VersionNumber { get; init; }
         public required string Instructions { get; init; }
         public required bool IsActive { get; init; }
@@ -164,6 +164,27 @@ public partial class EditScenario
                     IsActive = version.IsActive
                 });
             }
+            else if (scenarioAgent.InstructionVersionId == null)
+            {
+                // Retrieve the active version for dynamic display reference
+                // (or just show "Latest" placeholder if not loaded, but we likely want to show what "Latest" currently is)
+                var activeVersion = versions.FirstOrDefault(v => v.IsActive);
+
+                scenarioAgentsWithDetails.Add(new ScenarioAgentWithDetails
+                {
+                    ScenarioId = scenarioAgent.ScenarioId,
+                    AgentId = scenarioAgent.AgentId,
+                    AgentName = agent.Name,
+                    AgentRole = agent.Role,
+                    InstructionVersionId = null,
+                    VersionNumber = activeVersion != null
+                        ? $"{activeVersion.VersionNumber} (Latest)"
+                        : "Latest (Dynamic)",
+                    Instructions = activeVersion?.Instructions ??
+                                   "Instructions will be resolved dynamically to the latest active version.",
+                    IsActive = true
+                });
+            }
         }
 
         _scenarioAgents = scenarioAgentsWithDetails.ToArray();
@@ -289,12 +310,12 @@ public partial class EditScenario
         }
     }
 
-    private void ChangeAgentVersion(ScenarioAgentWithDetails scenarioAgent, int newVersionId)
+    private void ChangeAgentVersion(ScenarioAgentWithDetails scenarioAgent, int? newVersionId)
     {
         _ = ChangeAgentVersionAsync(scenarioAgent, newVersionId);
     }
 
-    private async Task ChangeAgentVersionAsync(ScenarioAgentWithDetails scenarioAgent, int newVersionId)
+    private async Task ChangeAgentVersionAsync(ScenarioAgentWithDetails scenarioAgent, int? newVersionId)
     {
         try
         {

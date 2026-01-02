@@ -34,6 +34,10 @@ public static partial class GameMapper
             title = $"{playerName} in {scenarioName} ({rulesetAbbrev})";
         }
 
+        ScenarioAgent? scenarioAgent = game.AgentId == null
+            ? game.Scenario?.ScenarioAgents?.FirstOrDefault()
+            : null;
+
         return new GameDto
         {
             GameId = game.Id,
@@ -57,7 +61,17 @@ public static partial class GameMapper
                 RulesetId = game.RulesetId,
                 Name = game.PlayerId
             },
-            Messages = messages
+            Messages = messages,
+            AgentId = game.AgentId ?? scenarioAgent?.AgentId,
+            AgentName = game.AgentId != null
+                ? game.Agent?.Name
+                : scenarioAgent?.Agent?.Name,
+            InstructionVersionId = game.AgentId != null
+                ? game.InstructionVersionId
+                : (game.InstructionVersionId ?? scenarioAgent?.InstructionVersionId),
+            VersionNumber = game.AgentId != null
+                ? game.InstructionVersion?.VersionNumber
+                : (game.InstructionVersion?.VersionNumber ?? scenarioAgent?.InstructionVersion?.VersionNumber)
         };
     }
 

@@ -12,4 +12,9 @@ public class GameDto
     public required RulesetDto Ruleset { get; init; }
     public required ScenarioDto Scenario { get; init; }
     public required PlayerDto Player { get; init; }
+
+    public string? AgentId { get; init; }
+    public string? AgentName { get; init; }
+    public int? InstructionVersionId { get; init; }
+    public string? VersionNumber { get; init; }
 }

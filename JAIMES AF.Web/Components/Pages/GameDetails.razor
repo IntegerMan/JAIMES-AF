@@ -59,6 +59,50 @@
 						               Color="Color.Default"
 						               OnClick="EnterTitleEditMode"/>
 					</MudStack>
+					<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+						@if (_availableAgents.Count > 1)
+						{
+							<MudSelect T="string" Label="Agent" Value="@_selectedAgentId" ValueChanged="OnAgentChanged" 
+									  Variant="Variant.Outlined" Margin="Margin.Dense" Style="min-width: 200px;" Dense="true"
+									  Disabled="_isChangingAgent">
+								@foreach (var agent in _availableAgents)
+								{
+									<MudSelectItem Value="@agent.Id">@agent.Name</MudSelectItem>
+								}
+							</MudSelect>
+						}
+						else if (_availableAgents.Count == 1)
+						{
+							<MudStack Spacing="0">
+								<MudText Typo="Typo.caption" Color="Color.Primary">Agent</MudText>
+								<MudText Typo="Typo.body1" Class="mr-2">@_availableAgents[0].Name</MudText>
+							</MudStack>
+						}
+						
+						@if (_availableVersions.Any())
+						{
+							<MudSelect T="int?" Label="Version" Value="@_selectedVersionId" ValueChanged="OnVersionChanged"
+									  Variant="Variant.Outlined" Margin="Margin.Dense" Style="min-width: 120px;" Dense="true"
+									  Disabled="_isChangingAgent">
+								<MudSelectItem T="int?" Value="@(null)">
+									<div class="d-flex align-center">
+										Latest (Dynamic)
+										<MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Text" Class="ml-2">Auto-Update</MudChip>
+									</div>
+								</MudSelectItem>
+								@foreach (var version in _availableVersions)
+								{
+									<MudSelectItem T="int?" Value="@version.Id">
+										@version.VersionNumber
+										@if (version.IsActive)
+										{
+											<MudChip T="string" Color="Color.Info" Size="Size.Small" Variant="Variant.Text" Class="ml-2">Latest</MudChip>
+										}
+									</MudSelectItem>
+								}
+							</MudSelect>
+						}
+					</MudStack>
 				}
 			</div>
 

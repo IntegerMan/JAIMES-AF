@@ -100,14 +100,15 @@
 							<MudTd>@context.AgentName</MudTd>
 							<MudTd>@context.AgentRole</MudTd>
 							<MudTd>
-								<MudSelect T="int"
+								<MudSelect T="int?"
 								           Value="@context.InstructionVersionId"
-								           ValueChanged="@((int newVersionId) => ChangeAgentVersion(context, newVersionId))"
+								           ValueChanged="@((int? newVersionId) => ChangeAgentVersion(context, newVersionId))"
 								           Dense="true"
 								           Disabled="_isSaving">
+                                    <MudSelectItem T="int?" Value="@(null)">Latest (Dynamic)</MudSelectItem>
 									@foreach (var version in GetAgentInstructionVersions(context.AgentId))
 									{
-										<MudSelectItem Value="@version.Id">@version.VersionNumber</MudSelectItem>
+										<MudSelectItem T="int?" Value="@(version.Id)">@version.VersionNumber</MudSelectItem>
 									}
 								</MudSelect>
 							</MudTd>

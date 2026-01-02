@@ -3,6 +3,7 @@ using System;
 using MattEland.Jaimes.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -12,9 +13,11 @@ using Pgvector;
 namespace MattEland.Jaimes.Repositories.Migrations
 {
     [DbContext(typeof(JaimesDbContext))]
-    partial class JaimesDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260101195111_AddAgentOverrideToGame")]
+    partial class AddAgentOverrideToGame
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -861,7 +864,7 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.Property<string>("AgentId")
                         .HasColumnType("text");
 
-                    b.Property<int?>("InstructionVersionId")
+                    b.Property<int>("InstructionVersionId")
                         .HasColumnType("integer");
 
                     b.HasKey("ScenarioId", "AgentId");
@@ -1210,7 +1213,8 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.HasOne("MattEland.Jaimes.Repositories.Entities.AgentInstructionVersion", "InstructionVersion")
                         .WithMany("ScenarioAgents")
                         .HasForeignKey("InstructionVersionId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("MattEland.Jaimes.Repositories.Entities.Scenario", "Scenario")
                         .WithMany("ScenarioAgents")

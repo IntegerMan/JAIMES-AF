@@ -15,3 +15,4 @@ public static partial class MessageToolCallMapper
     public static partial MessageToolCallDto[] ToDto(this IEnumerable<MessageToolCall> messageToolCalls);
 }
 
+

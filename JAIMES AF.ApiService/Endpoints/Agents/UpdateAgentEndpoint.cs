@@ -47,3 +47,4 @@ public class UpdateAgentEndpoint : Endpoint<UpdateAgentRequest, AgentResponse>
     }
 }
 
+

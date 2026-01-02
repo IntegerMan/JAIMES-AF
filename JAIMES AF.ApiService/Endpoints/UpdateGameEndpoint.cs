@@ -25,7 +25,8 @@ public class UpdateGameEndpoint : Endpoint<UpdateGameRequest, GameInfoResponse>
             return;
         }
 
-        GameDto? updatedGame = await GameService.UpdateGameAsync(gameId, req.Title, ct);
+        GameDto? updatedGame =
+            await GameService.UpdateGameAsync(gameId, req.Title, req.AgentId, req.InstructionVersionId, ct);
         if (updatedGame == null)
         {
             await Send.NotFoundAsync(ct);
