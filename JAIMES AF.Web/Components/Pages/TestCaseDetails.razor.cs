@@ -161,4 +161,35 @@ public partial class TestCaseDetails
             await LoadTestCaseAsync();
         }
     }
+
+    private string? GetComparisonLink(string? executionName)
+    {
+        if (string.IsNullOrEmpty(executionName)) return null;
+
+        // Check if this execution is part of a multi-version run
+        // Pattern: "multi-test-20260102-v1", "multi-test-20260102-v2", etc.
+        if (executionName.Contains("-v", StringComparison.Ordinal) &&
+            executionName.LastIndexOf("-v", StringComparison.Ordinal) > 0)
+        {
+            var baseExec = executionName.Substring(0, executionName.LastIndexOf("-v", StringComparison.Ordinal));
+
+            if (_runs == null) return null;
+
+            // Find all runs with this base execution name
+            var relatedRuns = _runs
+                .Where(r => r.ExecutionName != null &&
+                            r.ExecutionName.StartsWith(baseExec + "-v", StringComparison.Ordinal))
+                .Select(r => r.ExecutionName!)
+                .Distinct()
+                .ToList();
+
+            if (relatedRuns?.Count > 1)
+            {
+                var execParam = string.Join(",", relatedRuns);
+                return $"/admin/test-runs/compare?executions={Uri.EscapeDataString(execParam)}";
+            }
+        }
+
+        return null;
+    }
 }

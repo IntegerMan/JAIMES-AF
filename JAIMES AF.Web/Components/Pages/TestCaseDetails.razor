@@ -1,6 +1,7 @@
 @page "/admin/test-cases/{TestCaseId:int}"
 @rendermode InteractiveServer
 @using MattEland.Jaimes.Web.Components.Chat
+@using MattEland.Jaimes.Web.Components.Helpers
 
 @inject HttpClient Http
 @inject ILoggerFactory LoggerFactory
@@ -89,60 +90,89 @@
 
 		<MudGrid Spacing="4">
 			<MudItem xs="12" md="6">
-				<MudPaper Class="pa-4" Elevation="2">
-					<MudText Typo="Typo.h6" Class="mb-3">Test Case Details</MudText>
-					<MudStack Spacing="2">
-						<MudStack Row="true">
-							<MudText><strong>Agent:</strong></MudText>
-							<MudLink Href="@($"/agents/{_testCase.AgentId}")">@(_testCase.AgentName ?? "Unknown")</MudLink>
+				<MudStack Spacing="4">
+					@* Test Case Details Card *@
+					<MudPaper Class="pa-4" Elevation="2">
+						<MudText Typo="Typo.h6" Class="mb-3">Test Case Details</MudText>
+						<MudStack Spacing="2">
+							<MudStack Row="true">
+								<MudText><strong>Agent:</strong></MudText>
+								<MudLink Href="@($"/agents/{_testCase.AgentId}")">@(_testCase.AgentName ?? "Unknown")</MudLink>
+							</MudStack>
+							<MudStack Row="true">
+								<MudText><strong>Game:</strong></MudText>
+								<MudLink Href="@($"/games/{_testCase.GameId}")">@(_testCase.GameTitle ?? "Unknown")</MudLink>
+							</MudStack>
+							<MudStack Row="true">
+								<MudText><strong>Created:</strong></MudText>
+								<MudText>@_testCase.CreatedAt.ToLocalTime().ToString("g")</MudText>
+							</MudStack>
+							<MudStack Row="true">
+								<MudText><strong>Test Runs:</strong></MudText>
+								<MudChip T="string" Size="Size.Small" Color="Color.Info">@_testCase.RunCount</MudChip>
+							</MudStack>
 						</MudStack>
-						<MudStack Row="true">
-							<MudText><strong>Game:</strong></MudText>
-							<MudLink Href="@($"/games/{_testCase.GameId}")">@(_testCase.GameTitle ?? "Unknown")</MudLink>
-						</MudStack>
-						<MudStack Row="true">
-							<MudText><strong>Created:</strong></MudText>
-							<MudText>@_testCase.CreatedAt.ToLocalTime().ToString("g")</MudText>
-						</MudStack>
-						<MudStack Row="true">
-							<MudText><strong>Test Runs:</strong></MudText>
-							<MudChip T="string" Size="Size.Small" Color="Color.Info">@_testCase.RunCount</MudChip>
-						</MudStack>
-					</MudStack>
-				</MudPaper>
+					</MudPaper>
+
+					@* Test Runs Card *@
+					@if (_runs is not null && _runs.Count > 0)
+					{
+						<MudPaper Class="pa-4" Elevation="2">
+							<MudText Typo="Typo.h6" Class="mb-3">Test Runs (@_runs.Count)</MudText>
+							<div style="max-height: 400px; overflow-y: auto;">
+								<MudList T="string" Dense="true">
+									@foreach (var run in _runs)
+									{
+										<MudListItem>
+											<MudStack Spacing="1">
+												<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+													<MudText Typo="Typo.body2"><strong>@run.VersionNumber</strong></MudText>
+													<MudText Typo="Typo.caption" Class="text-muted">@run.ExecutedAt.ToLocalTime().ToString("g")</MudText>
+												</MudStack>
+												<MudStack Row="true" Spacing="1" Style="flex-wrap: wrap;">
+													@if (run.DurationMs.HasValue)
+													{
+														<MudChip T="string" Size="Size.Small" Color="Color.Info">@run.DurationMs ms</MudChip>
+													}
+													@if (run.Metrics?.Any() == true)
+													{
+														foreach (var metric in run.Metrics.Take(3))
+														{
+															<MudTooltip Text="@(metric.EvaluatorName ?? metric.MetricName)">
+																<MudChip T="string" Size="Size.Small" Color="@MetricColorHelper.GetScoreColor(metric.Score)">
+																	@metric.Score.ToString("F1")
+																</MudChip>
+															</MudTooltip>
+														}
+														@if (run.Metrics.Count > 3)
+														{
+															<MudText Typo="Typo.caption" Class="text-muted">+@(run.Metrics.Count - 3)</MudText>
+														}
+													}
+												</MudStack>
+												@if (!string.IsNullOrEmpty(GetComparisonLink(run.ExecutionName)))
+												{
+													<MudLink Href="@GetComparisonLink(run.ExecutionName)" Typo="Typo.caption">
+														View Comparison
+													</MudLink>
+												}
+											</MudStack>
+										</MudListItem>
+										<MudDivider/>
+									}
+								</MudList>
+							</div>
+						</MudPaper>
+					}
+				</MudStack>
 			</MudItem>
 
 			<MudItem xs="12" md="6">
-				<MudPaper Class="pa-4" Elevation="2">
+				<MudPaper Class="pa-4" Elevation="2" Style="min-height: 400px;">
 					<MudText Typo="Typo.h6" Class="mb-3">Conversation Context</MudText>
 					<ReadOnlyConversation MessageId="@_testCase.MessageId" ContextCount="5" />
 				</MudPaper>
 			</MudItem>
 		</MudGrid>
-
-		@if (_runs is not null && _runs.Count > 0)
-		{
-			<MudText Typo="Typo.h5" Class="mt-6 mb-4">Test Runs</MudText>
-			<MudTable Items="_runs" Dense="true" Hover="true">
-				<HeaderContent>
-					<MudTh>Execution</MudTh>
-					<MudTh>Version</MudTh>
-					<MudTh>Date</MudTh>
-					<MudTh Style="text-align: center">Duration</MudTh>
-					<MudTh>Response Preview</MudTh>
-				</HeaderContent>
-				<RowTemplate>
-					<MudTd>@context.ExecutionName</MudTd>
-					<MudTd>@(context.VersionNumber ?? context.InstructionVersionId.ToString())</MudTd>
-					<MudTd>@context.ExecutedAt.ToLocalTime().ToString("g")</MudTd>
-					<MudTd Style="text-align: center">@(context.DurationMs.HasValue ? $"{context.DurationMs}ms" : "-")</MudTd>
-					<MudTd Style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-						<MudTooltip Text="@context.GeneratedResponse">
-							@TruncateText(context.GeneratedResponse, 50)
-						</MudTooltip>
-					</MudTd>
-				</RowTemplate>
-			</MudTable>
-		}
 	}
 </MudPaper>

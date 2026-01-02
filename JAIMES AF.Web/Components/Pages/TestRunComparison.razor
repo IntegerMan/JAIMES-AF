@@ -6,6 +6,7 @@
 @inject HttpClient Http
 @inject ILoggerFactory LoggerFactory
 @inject NavigationManager NavigationManager
+@using MattEland.Jaimes.Web.Components.Helpers
 
 <PageTitle>Test Run Comparison</PageTitle>
 
@@ -67,7 +68,7 @@
                             {
                                 <MudStack Row="true" Justify="Justify.SpaceBetween">
                                     <MudText>Avg Score:</MudText>
-                                    <MudChip T="string" Size="Size.Small" Color="@GetScoreColor(vr.AvgScore.Value)">
+                                    <MudChip T="string" Size="Size.Small" Color="@MetricColorHelper.GetScoreColor(vr.AvgScore.Value)">
                                         @vr.AvgScore.Value.ToString("F2")
                                     </MudChip>
                                 </MudStack>
@@ -120,7 +121,7 @@
                                                 foreach (var metric in run.Metrics)
                                                 {
                                                     <MudTooltip Text="@(metric.EvaluatorName ?? metric.MetricName)">
-                                                        <MudChip T="string" Size="Size.Small" Color="@GetScoreColor(metric.Score)">
+                                                        <MudChip T="string" Size="Size.Small" Color="@MetricColorHelper.GetScoreColor(metric.Score)">
                                                             @metric.Score.ToString("F2")
                                                         </MudChip>
                                                     </MudTooltip>
@@ -219,16 +220,6 @@
     {
         if (string.IsNullOrEmpty(text)) return "";
         return text.Length <= maxLength ? text : text.Substring(0, maxLength) + "...";
-    }
-
-    private static Color GetScoreColor(double score)
-    {
-        return score switch
-        {
-            >= 0.7 => Color.Success,
-            >= 0.4 => Color.Warning,
-            _ => Color.Error
-        };
     }
 
     private record VersionResult

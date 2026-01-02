@@ -5,6 +5,7 @@
 @inject HttpClient Http
 @inject ILoggerFactory LoggerFactory
 @inject NavigationManager NavigationManager
+@using MattEland.Jaimes.Web.Components.Helpers
 
 <PageTitle>Test Run Results</PageTitle>
 
@@ -101,7 +102,7 @@
                         @foreach (var metric in context.Metrics.Take(3))
                         {
                             <MudTooltip Text="@($"{metric.MetricName}: {metric.Score:F2}")" Placement="Placement.Top">
-                                <MudChip T="string" Size="Size.Small" Color="@GetScoreColor(metric.Score)" Class="mr-1">
+                                <MudChip T="string" Size="Size.Small" Color="@MetricColorHelper.GetScoreColor(metric.Score)" Class="mr-1">
                                     @metric.Score.ToString("F1")
                                 </MudChip>
                             </MudTooltip>
@@ -211,15 +212,5 @@
     {
         if (string.IsNullOrEmpty(text)) return "";
         return text.Length <= maxLength ? text : text.Substring(0, maxLength) + "...";
-    }
-
-    private static Color GetScoreColor(double score)
-    {
-        return score switch
-        {
-            >= 0.7 => Color.Success,
-            >= 0.4 => Color.Warning,
-            _ => Color.Error
-        };
     }
 }
