@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
 using Microsoft.Extensions.AI.Evaluation.Reporting;
-using MattEland.Jaimes.ServiceLayer.Evaluators;
+using MattEland.Jaimes.Evaluators;
 
 namespace MattEland.Jaimes.Workers.AssistantMessageWorker.Services;
 

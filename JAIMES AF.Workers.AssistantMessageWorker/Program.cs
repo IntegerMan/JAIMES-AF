@@ -5,7 +5,7 @@ using MattEland.Jaimes.ServiceLayer;
 using MattEland.Jaimes.Workers.AssistantMessageWorker.Services;
 using Microsoft.Extensions.AI.Evaluation;
 using Microsoft.Extensions.AI.Evaluation.Quality;
-using MattEland.Jaimes.ServiceLayer.Evaluators;
+using MattEland.Jaimes.Evaluators;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 

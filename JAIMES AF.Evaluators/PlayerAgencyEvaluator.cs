@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
 
-namespace MattEland.Jaimes.Workers.AssistantMessageWorker.Services;
+namespace MattEland.Jaimes.Evaluators;
 
 /// <summary>
 /// An evaluator that scores a conversation based on how much the AI assistant respected the player's agency.
@@ -202,3 +202,4 @@ public class PlayerAgencyEvaluator(IChatClient chatClient) : IEvaluator
         return new EvaluationResult(metric);
     }
 }
+

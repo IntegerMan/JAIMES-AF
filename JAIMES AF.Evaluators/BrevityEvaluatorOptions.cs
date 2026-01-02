@@ -1,4 +1,4 @@
-namespace MattEland.Jaimes.ServiceLayer.Evaluators;
+namespace MattEland.Jaimes.Evaluators;
 
 /// <summary>
 /// Options for the brevity evaluator.
@@ -15,3 +15,4 @@ public class BrevityEvaluatorOptions
     /// </summary>
     public int Margin { get; set; } = 100;
 }
+

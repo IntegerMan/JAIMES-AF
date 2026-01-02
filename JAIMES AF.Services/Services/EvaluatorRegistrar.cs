@@ -1,10 +1,11 @@
+using System.ComponentModel;
 using System.Reflection;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI.Evaluation.Quality;
+using MattEland.Jaimes.Evaluators;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Services;
-using Microsoft.EntityFrameworkCore;
-using System.ComponentModel;
 
 namespace MattEland.Jaimes.ServiceLayer.Services;
 
@@ -24,15 +25,11 @@ public class EvaluatorRegistrar(
         // Scan for IEvaluator implementations in our own assemblies
         List<Assembly> assembliesToScan = [Assembly.GetExecutingAssembly()];
 
-        // Try to load the worker assembly if it's available
-        Assembly? workerAssembly = TryLoadAssembly("MattEland.Jaimes.Workers.AssistantMessageWorker");
-        if (workerAssembly != null)
-        {
-            assembliesToScan.Add(workerAssembly);
-        }
+        // Add the evaluators assembly by getting it from a direct type reference
+        Assembly evaluatorsAssembly = typeof(PlayerAgencyEvaluator).Assembly;
+        assembliesToScan.Add(evaluatorsAssembly);
 
         var allTypes = assembliesToScan
-            .Where(a => a != null)
             .SelectMany(a => a.GetTypes())
             .Where(t => typeof(Microsoft.Extensions.AI.Evaluation.IEvaluator).IsAssignableFrom(t) &&
                         !t.IsInterface &&
@@ -151,15 +148,4 @@ public class EvaluatorRegistrar(
         }
     }
 
-    private static Assembly? TryLoadAssembly(string name)
-    {
-        try
-        {
-            return Assembly.Load(name);
-        }
-        catch
-        {
-            return null;
-        }
-    }
 }
