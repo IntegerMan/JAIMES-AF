@@ -32,6 +32,14 @@ public class Location
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the lowercase name used for case-insensitive uniqueness constraints.
+    /// This is a generated column computed from Name and should not be set manually.
+    /// </summary>
+    [Required]
+    [MaxLength(200)]
+    public string NameLower { get; set; } = string.Empty;
+
+    /// <summary>
     /// Gets or sets the player-facing description and appearance of the location.
     /// </summary>
     [Required]

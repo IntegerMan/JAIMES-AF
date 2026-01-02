@@ -22,7 +22,7 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
             .Include(l => l.Events)
             .Include(l => l.NearbyLocationsAsSource)
             .Include(l => l.NearbyLocationsAsTarget)
-            .FirstOrDefaultAsync(l => l.GameId == gameId && l.Name.ToLower() == name.ToLower(), cancellationToken);
+            .FirstOrDefaultAsync(l => l.GameId == gameId && l.NameLower == name.ToLower(), cancellationToken);
 
         return location == null ? null : MapToResponse(location);
     }
@@ -81,7 +81,7 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
         }
 
         // Check for existing location (common case / handles InMemoryDatabase limitations)
-        if (await context.Locations.AnyAsync(l => l.GameId == gameId && l.Name.ToLower() == name.ToLower(),
+        if (await context.Locations.AnyAsync(l => l.GameId == gameId && l.NameLower == name.ToLower(),
                 cancellationToken))
         {
             throw new DuplicateResourceException($"A location named '{name}' already exists in this game");
@@ -106,7 +106,7 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
         catch (DbUpdateException ex)
         {
             // Check for unique constraint violation on GameId and Name
-            if (await context.Locations.AnyAsync(l => l.GameId == gameId && l.Name.ToLower() == name.ToLower(),
+            if (await context.Locations.AnyAsync(l => l.GameId == gameId && l.NameLower == name.ToLower(),
                     cancellationToken))
             {
                 throw new DuplicateResourceException($"A location named '{name}' already exists in this game", ex);

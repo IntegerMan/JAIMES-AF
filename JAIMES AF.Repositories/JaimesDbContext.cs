@@ -494,12 +494,17 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.HasKey(l => l.Id);
             entity.Property(l => l.GameId).IsRequired();
             entity.Property(l => l.Name).IsRequired().HasMaxLength(200);
+            entity.Property(l => l.NameLower)
+                .IsRequired()
+                .HasMaxLength(200)
+                .HasComputedColumnSql("LOWER(\"Name\")");
             entity.Property(l => l.Description).IsRequired();
             entity.Property(l => l.CreatedAt).IsRequired();
             entity.Property(l => l.UpdatedAt).IsRequired();
 
-            // Unique constraint: location names must be unique within a game
-            entity.HasIndex(l => new { l.GameId, l.Name }).IsUnique();
+            // Unique constraint: location names must be unique within a game (case-insensitive)
+            // Using the NameLower computed column ensures the constraint is enforced at database level
+            entity.HasIndex(l => new { l.GameId, l.NameLower }).IsUnique();
 
             entity.HasOne(l => l.Game)
                 .WithMany()

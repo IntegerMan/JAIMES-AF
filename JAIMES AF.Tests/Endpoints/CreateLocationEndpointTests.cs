@@ -100,6 +100,38 @@ public class CreateLocationEndpointTests : EndpointTestBase
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
     }
 
+    [Fact]
+    public async Task CreateLocation_WithCaseInsensitiveDuplicateName_ReturnsConflict()
+    {
+        // Arrange - Verify that location names are case-insensitive for uniqueness
+        // This tests the database-level constraint enforced by the NameLower computed column
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        string gameId = Guid.NewGuid().ToString();
+        await CreateTestGameAsync(gameId, ct);
+
+        var request1 = new
+        {
+            Name = "Village",
+            Description = "A small village"
+        };
+
+        var request2 = new
+        {
+            Name = "village", // Different case
+            Description = "Should conflict with Village"
+        };
+
+        // Create the first location with "Village"
+        HttpResponseMessage response1 = await Client.PostAsJsonAsync($"/games/{gameId}/locations", request1, ct);
+        response1.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        // Act - Try to create "village" (different case)
+        HttpResponseMessage response2 = await Client.PostAsJsonAsync($"/games/{gameId}/locations", request2, ct);
+
+        // Assert - Should fail due to case-insensitive uniqueness
+        response2.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+    }
+
     private async Task CreateTestGameAsync(string gameId, CancellationToken ct)
     {
         using var scope = Factory.Services.CreateScope();
