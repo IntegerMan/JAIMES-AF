@@ -1,4 +1,5 @@
 using MattEland.Jaimes.ServiceDefinitions.Responses;
+using MattEland.Jaimes.Web.Components.Dialogs;
 using MudBlazor;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
@@ -63,6 +64,47 @@ public partial class TestCases
             LoggerFactory.CreateLogger("TestCases").LogError(ex, "Failed to deactivate test case");
             _errorMessage = "Failed to deactivate test case: " + ex.Message;
             StateHasChanged();
+        }
+    }
+
+    private async Task RunAllTestsAsync()
+    {
+        // Open the RunTestsDialog - user will select agent/version there
+        // For now, we navigate to agents page to let user pick an agent version
+        // A more sophisticated approach would be a dialog that lets you pick agent + version
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseOnEscapeKey = true
+        };
+
+        // Get the first test case's agent to use as default
+        string? defaultAgentId = _testCases?.FirstOrDefault()?.AgentId;
+
+        if (string.IsNullOrEmpty(defaultAgentId))
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters
+        {
+            { "AgentId", defaultAgentId },
+            { "VersionId", 0 }, // Will need to be selected in dialog
+            { "AgentName", _testCases?.FirstOrDefault()?.AgentName },
+            { "VersionNumber", (int?)null }
+        };
+
+        var dialog = await DialogService.ShowAsync<RunTestsDialog>("Run Test Cases", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: TestRunResultResponse testResult })
+        {
+            if (!string.IsNullOrEmpty(testResult.ExecutionName))
+            {
+                NavigationManager.NavigateTo($"/admin/test-runs/{Uri.EscapeDataString(testResult.ExecutionName)}");
+            }
         }
     }
 

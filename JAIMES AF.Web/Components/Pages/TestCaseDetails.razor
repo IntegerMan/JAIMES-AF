@@ -5,6 +5,8 @@
 @inject HttpClient Http
 @inject ILoggerFactory LoggerFactory
 @inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@using MattEland.Jaimes.Web.Components.Dialogs
 
 <PageTitle>Test Case Details</PageTitle>
 
@@ -64,6 +66,13 @@
 				@if (_testCase.IsActive)
 				{
 					<MudChip T="string" Color="Color.Success" Size="Size.Medium">Active</MudChip>
+					<MudButton Variant="Variant.Filled"
+					           Color="Color.Success"
+					           Size="Size.Small"
+					           StartIcon="@Icons.Material.Filled.PlayArrow"
+					           OnClick="RunThisTestAsync">
+						Run This Test
+					</MudButton>
 				}
 				else
 				{

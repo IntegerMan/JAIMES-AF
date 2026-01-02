@@ -1,4 +1,5 @@
 using MattEland.Jaimes.ServiceDefinitions.Responses;
+using MattEland.Jaimes.Web.Components.Dialogs;
 using MudBlazor;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
@@ -122,6 +123,42 @@ public partial class TestCaseDetails
             _isSavingTitle = false;
             _isEditingTitle = false;
             StateHasChanged();
+        }
+    }
+
+    private async Task RunThisTestAsync()
+    {
+        if (_testCase == null || string.IsNullOrEmpty(_testCase.AgentId)) return;
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseOnEscapeKey = true
+        };
+
+        var parameters = new DialogParameters
+        {
+            { "AgentId", _testCase.AgentId },
+            { "VersionId", 0 }, // Will be selected in dialog
+            { "AgentName", _testCase.AgentName },
+            { "VersionNumber", (int?)null }
+        };
+
+        var dialog = await DialogService.ShowAsync<RunTestsDialog>("Run Test Case", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: TestRunResultResponse testResult })
+        {
+            if (!string.IsNullOrEmpty(testResult.ExecutionName))
+            {
+                NavigationManager.NavigateTo($"/admin/test-runs/{Uri.EscapeDataString(testResult.ExecutionName)}");
+            }
+        }
+        else
+        {
+            // Refresh the page to show new runs
+            await LoadTestCaseAsync();
         }
     }
 }

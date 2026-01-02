@@ -4,6 +4,8 @@
 @inject HttpClient Http
 @inject ILoggerFactory LoggerFactory
 @inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@using MattEland.Jaimes.Web.Components.Dialogs
 
 <PageTitle>Test Cases</PageTitle>
 
@@ -14,6 +16,17 @@
 	<MudText Typo="Typo.h4">Test Cases</MudText>
 
 	<MudText Class="mb-4">Manage test cases for agent evaluation. Test cases are player messages that can be used to test agent versions.</MudText>
+
+	@if (_testCases is not null && _testCases.Count > 0)
+	{
+		<MudButton Variant="Variant.Filled" 
+		           Color="Color.Success" 
+		           StartIcon="@Icons.Material.Filled.PlayArrow"
+		           OnClick="RunAllTestsAsync"
+		           Class="mb-4">
+			Run All Tests
+		</MudButton>
+	}
 
 	<div style="position: relative; min-height: 200px;">
 		@if (_isLoading)
