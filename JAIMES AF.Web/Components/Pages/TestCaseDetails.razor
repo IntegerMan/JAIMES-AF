@@ -1,5 +1,6 @@
 @page "/admin/test-cases/{TestCaseId:int}"
 @rendermode InteractiveServer
+@using MattEland.Jaimes.Web.Components.Chat
 
 @inject HttpClient Http
 @inject ILoggerFactory LoggerFactory
@@ -26,7 +27,8 @@
 	{
 		<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
 			<MudStack>
-				<MudText Typo="Typo.h4">@_testCase.Name</MudText>
+				<MudText Typo="Typo.h4">Test Case Details</MudText>
+				<MudText Typo="Typo.h6" Class="text-muted">@_testCase.Name</MudText>
 				<MudText Typo="Typo.body2" Class="text-muted">@(_testCase.Description ?? "No description")</MudText>
 			</MudStack>
 			<MudStack Row="true" Spacing="2">
@@ -68,10 +70,8 @@
 
 			<MudItem xs="12" md="6">
 				<MudPaper Class="pa-4" Elevation="2">
-					<MudText Typo="Typo.h6" Class="mb-3">Test Message</MudText>
-					<MudPaper Class="pa-3" Outlined="true">
-						<MudText>@_testCase.MessageText</MudText>
-					</MudPaper>
+					<MudText Typo="Typo.h6" Class="mb-3">Conversation Context</MudText>
+					<ReadOnlyConversation MessageId="@_testCase.MessageId" ContextCount="5" />
 				</MudPaper>
 			</MudItem>
 		</MudGrid>
