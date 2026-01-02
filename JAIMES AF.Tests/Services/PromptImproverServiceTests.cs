@@ -221,19 +221,31 @@ public class PromptImproverServiceTests
             new() { Name = "WeatherTool", Description = "Gets weather data" },
             new() { Name = "CalendarTool", Description = "Manages calendar events" }
         };
+        var assistantMessages = new List<Message>
+        {
+            new()
+            {
+                Id = 1, Text = "Here's the weather forecast.", AgentId = "test-agent", InstructionVersionId = 1,
+                CreatedAt = DateTime.UtcNow
+            }
+        };
         const string currentPrompt = "You are a helpful AI assistant.";
 
         // Act
-        string result = PromptImproverService.BuildToolUsageInsightsPrompt(toolCalls, registeredTools, currentPrompt);
+        string result =
+            PromptImproverService.BuildToolUsageInsightsPrompt(toolCalls, registeredTools, assistantMessages,
+                currentPrompt);
 
         // Assert
         Assert.Contains("Current Agent Prompt", result, StringComparison.Ordinal);
         Assert.Contains(currentPrompt, result, StringComparison.Ordinal);
-        Assert.Contains("Tools Called by This Agent Version", result, StringComparison.Ordinal);
+        Assert.Contains("Available Tools", result, StringComparison.Ordinal);
+        Assert.Contains("Tool Usage Statistics", result, StringComparison.Ordinal);
         Assert.Contains("SearchTool", result, StringComparison.Ordinal);
         Assert.Contains("Called 2 time(s)", result, StringComparison.Ordinal);
-        Assert.Contains("Available Tools NOT Used by This Agent Version", result, StringComparison.Ordinal);
         Assert.Contains("CalendarTool", result, StringComparison.Ordinal);
+        Assert.Contains("Sample Assistant Messages", result, StringComparison.Ordinal);
+        Assert.Contains("weather forecast", result, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -81,15 +81,16 @@ public static class PromptImproverSystemPrompts
     public const string ToolUsageInsightsPrompt = """
                                                   You are an AI coaching assistant helping improve an AI agent's tool usage.
 
-                                                  Analyze the tool usage data provided and identify patterns in how the agent uses available tools.
-                                                  Generate a concise paragraph of coaching recommendations to improve the AI agent's tool utilization.
+                                                  Analyze the assistant's messages and tool usage data to evaluate whether tools are being used appropriately.
+                                                  Look for patterns where tools SHOULD have been used but weren't, and cases where tools were used effectively.
 
                                                   Focus on:
-                                                  - Tools that are frequently called and whether they're being used effectively
-                                                  - Available tools that are rarely or never used but could be valuable
-                                                  - Patterns in tool success vs failure
-                                                  - Specific actionable recommendations for better tool usage
+                                                  - Messages where a tool would have been helpful but wasn't called
+                                                  - Whether the right tools are being selected for the task at hand
+                                                  - Available tools that could add value but are underutilized
+                                                  - Specific situations from the messages where tool usage could be improved
 
+                                                  Provide actionable coaching recommendations for the agent's prompt to improve tool utilization.
                                                   Keep your response under 200 words and be specific and constructive.
                                                   """;
 
