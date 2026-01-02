@@ -70,21 +70,21 @@
 						}
 					</MudTd>
 					<MudTd Style="text-align: right">
-						<MudTooltip Text="View Details">
+						<MudTooltip Text="View Details" Placement="Placement.Top">
 							<MudIconButton Icon="@Icons.Material.Filled.Visibility"
 							               Color="Color.Primary"
 							               Size="Size.Small"
 							               Href="@($"/admin/test-cases/{context.Id}")"/>
 						</MudTooltip>
-						<MudTooltip Text="View Game">
-							<MudIconButton Icon="@Icons.Material.Filled.SportsEsports"
+						<MudTooltip Text="View Game" Placement="Placement.Top">
+							<MudIconButton Icon="@Icons.Material.Filled.Gamepad"
 							               Color="Color.Secondary"
 							               Size="Size.Small"
 							               Href="@($"/games/{context.GameId}")"/>
 						</MudTooltip>
 						@if (context.IsActive)
 						{
-							<MudTooltip Text="Deactivate Test Case">
+							<MudTooltip Text="Deactivate Test Case" Placement="Placement.Top">
 								<MudIconButton Icon="@Icons.Material.Filled.Delete"
 								               Color="Color.Error"
 								               Size="Size.Small"
