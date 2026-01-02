@@ -51,13 +51,13 @@ public class MessageEvaluationService(
         if (evaluatorsToRun != null && evaluatorsToRun.Any())
         {
             var evaluatorNamesSet = new HashSet<string>(evaluatorsToRun, StringComparer.OrdinalIgnoreCase);
-            activeEvaluators = evaluators.Where(e => evaluatorNamesSet.Contains(e.GetType().Name)).ToList();
+            activeEvaluators = evaluatorList.Where(e => evaluatorNamesSet.Contains(e.GetType().Name)).ToList();
 
             logger.LogInformation(
                 "Filtering evaluators for message {MessageId}: running {Count} of {Total} ({EvaluatorNames})",
                 message.Id,
                 activeEvaluators.Count(),
-                evaluators.Count(),
+                evaluatorList.Count,
                 string.Join(", ", activeEvaluators.Select(e => e.GetType().Name)));
 
             if (!activeEvaluators.Any())
