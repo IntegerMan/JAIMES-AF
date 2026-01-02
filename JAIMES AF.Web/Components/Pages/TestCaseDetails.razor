@@ -120,47 +120,63 @@
 						<MudPaper Class="pa-4" Elevation="2">
 							<MudText Typo="Typo.h6" Class="mb-3">Test Runs (@_runs.Count)</MudText>
 							<div style="max-height: 400px; overflow-y: auto;">
-								<MudList T="string" Dense="true">
-									@foreach (var run in _runs)
-									{
-										<MudListItem>
-											<MudStack Spacing="1">
-												<MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-													<MudText Typo="Typo.body2"><strong>@run.VersionNumber</strong></MudText>
-													<MudText Typo="Typo.caption" Class="text-muted">@run.ExecutedAt.ToLocalTime().ToString("g")</MudText>
-												</MudStack>
-												<MudStack Row="true" Spacing="1" Style="flex-wrap: wrap;">
-													@if (run.DurationMs.HasValue)
-													{
-														<MudChip T="string" Size="Size.Small" Color="Color.Info">@run.DurationMs ms</MudChip>
-													}
-													@if (run.Metrics?.Any() == true)
-													{
-														foreach (var metric in run.Metrics.Take(3))
-														{
-															<MudTooltip Text="@(metric.EvaluatorName ?? metric.MetricName)">
-																<MudChip T="string" Size="Size.Small" Color="@MetricColorHelper.GetScoreColor(metric.Score)">
-																	@metric.Score.ToString("F1")
-																</MudChip>
-															</MudTooltip>
-														}
-														@if (run.Metrics.Count > 3)
-														{
-															<MudText Typo="Typo.caption" Class="text-muted">+@(run.Metrics.Count - 3)</MudText>
-														}
-													}
-												</MudStack>
-												@if (!string.IsNullOrEmpty(GetComparisonLink(run.ExecutionName)))
-												{
-													<MudLink Href="@GetComparisonLink(run.ExecutionName)" Typo="Typo.caption">
-														View Comparison
-													</MudLink>
-												}
+								<MudTable Items="_runs" Dense="true" Hover="true">
+									<HeaderContent>
+										<MudTh>Version</MudTh>
+										<MudTh>Avg Score</MudTh>
+										<MudTh>Metrics</MudTh>
+										<MudTh>Actions</MudTh>
+									</HeaderContent>
+									<RowTemplate>
+										<MudTd>
+											<MudStack Spacing="0">
+												<MudText Typo="Typo.body2"><strong>@context.VersionNumber</strong></MudText>
+												<MudText Typo="Typo.caption" Class="text-muted">@context.ExecutedAt.ToLocalTime().ToString("g")</MudText>
 											</MudStack>
-										</MudListItem>
-										<MudDivider/>
-									}
-								</MudList>
+										</MudTd>
+										<MudTd>
+											@if (context.Metrics?.Any() == true)
+											{
+												var avgScore = context.Metrics.Average(m => m.Score);
+												<MudChip T="string" Size="Size.Medium" Color="@MetricColorHelper.GetScoreColor(avgScore)">
+													@avgScore.ToString("F2")
+												</MudChip>
+											}
+											else
+											{
+												<MudText Class="text-muted">-</MudText>
+											}
+										</MudTd>
+										<MudTd>
+											@if (context.Metrics?.Any() == true)
+											{
+												<MudStack Row="true" Spacing="1" Style="flex-wrap: wrap;">
+													@foreach (var metric in context.Metrics)
+													{
+														<MudTooltip Text="@(metric.EvaluatorName ?? metric.MetricName)">
+															<MudChip T="string" Size="Size.Small" Color="@MetricColorHelper.GetScoreColor(metric.Score)">
+																@metric.MetricName.Substring(0, 1).ToUpper()@(metric.Score.ToString("F1"))
+															</MudChip>
+														</MudTooltip>
+													}
+												</MudStack>
+												<MudText Typo="Typo.caption" Class="text-muted mt-1">@context.DurationMs ms</MudText>
+											}
+											else
+											{
+												<MudText Class="text-muted">No metrics</MudText>
+											}
+										</MudTd>
+										<MudTd>
+											@if (!string.IsNullOrEmpty(GetComparisonLink(context.ExecutionName)))
+											{
+												<MudLink Href="@GetComparisonLink(context.ExecutionName)" Typo="Typo.caption">
+													Comparison
+												</MudLink>
+											}
+										</MudTd>
+									</RowTemplate>
+								</MudTable>
 							</div>
 						</MudPaper>
 					}
