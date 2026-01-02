@@ -8,6 +8,9 @@ public record AgentInstructionVersionResponse
     public required string Instructions { get; init; }
     public DateTime CreatedAt { get; init; }
     public bool IsActive { get; init; }
+    public int GameCount { get; init; }
+    public int LatestGameCount { get; init; }
+    public int MessageCount { get; init; }
 }
 
 

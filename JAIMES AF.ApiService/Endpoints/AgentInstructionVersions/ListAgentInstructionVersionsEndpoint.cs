@@ -26,7 +26,8 @@ public class ListAgentInstructionVersionsEndpoint : Ep.NoReq.Res<AgentInstructio
             return;
         }
 
-        AgentInstructionVersionDto[] versions = await InstructionVersionsService.GetInstructionVersionsAsync(agentId, ct);
+        AgentInstructionVersionDto[] versions =
+            await InstructionVersionsService.GetInstructionVersionsAsync(agentId, ct);
         await Send.OkAsync(new AgentInstructionVersionListResponse
         {
             InstructionVersions = versions.Select(v => new AgentInstructionVersionResponse
@@ -36,7 +37,10 @@ public class ListAgentInstructionVersionsEndpoint : Ep.NoReq.Res<AgentInstructio
                 VersionNumber = v.VersionNumber,
                 Instructions = v.Instructions,
                 CreatedAt = v.CreatedAt,
-                IsActive = v.IsActive
+                IsActive = v.IsActive,
+                GameCount = v.GameCount,
+                LatestGameCount = v.LatestGameCount,
+                MessageCount = v.MessageCount
             }).ToArray()
         }, ct);
     }

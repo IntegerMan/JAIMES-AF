@@ -59,10 +59,12 @@
             else
             {
                 <MudTable Items="_versions" Dense="true" Hover="true">
-                    <HeaderContent>
+                        <HeaderContent>
                         <MudTh>Version</MudTh>
                         <MudTh>Created</MudTh>
                         <MudTh>Active</MudTh>
+                        <MudTh>Games</MudTh>
+                        <MudTh>Messages</MudTh>
                         <MudTh>Instructions Preview</MudTh>
                         <MudTh align="Align.Right">Actions</MudTh>
                     </HeaderContent>
@@ -81,6 +83,21 @@
                                 <MudText Typo="Typo.body2" Class="text-muted">No</MudText>
                             }
                         </MudTd>
+                        <MudTd>
+                            @if (context.GameCount > 0)
+                            {
+                                <MudChip T="string" Color="Color.Primary" Size="Size.Small">@context.GameCount using</MudChip>
+                            }
+                            @if (context.LatestGameCount > 0 && context.IsActive)
+                            {
+                                <MudChip T="string" Color="Color.Success" Size="Size.Small">@context.LatestGameCount using latest</MudChip>
+                            }
+                            @if (context.GameCount == 0 && (context.LatestGameCount == 0 || !context.IsActive))
+                            {
+                                <MudText Typo="Typo.body2" Class="text-muted">0</MudText>
+                            }
+                        </MudTd>
+                        <MudTd>@context.MessageCount</MudTd>
                         <MudTd>
                             <MudTooltip Text="@context.Instructions">
                                 <span>@(context.Instructions.Length > 50 ? context.Instructions.Substring(0, 50) + "..." : context.Instructions)</span>
