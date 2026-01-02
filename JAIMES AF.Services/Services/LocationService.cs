@@ -91,6 +91,7 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
         {
             GameId = gameId,
             Name = name,
+            NameLower = name.ToLower(), // Manually set for InMemoryDatabase compatibility
             Description = description,
             StorytellerNotes = storytellerNotes,
             CreatedAt = DateTime.UtcNow,
