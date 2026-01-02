@@ -34,6 +34,13 @@ public class TestCaseRun
     [MaxLength(250)]
     public string? ExecutionName { get; set; }
 
+    /// <summary>
+    /// Reference to the stored HTML report file.
+    /// </summary>
+    public int? ReportFileId { get; set; }
+
+    public StoredFile? ReportFile { get; set; }
+
     // Navigation properties
     public ICollection<TestCaseRunMetric> Metrics { get; set; } = [];
 }

@@ -47,6 +47,8 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
     public DbSet<TestCase> TestCases { get; set; } = null!;
     public DbSet<TestCaseRun> TestCaseRuns { get; set; } = null!;
     public DbSet<TestCaseRunMetric> TestCaseRunMetrics { get; set; } = null!;
+    // File storage for reports and other binary content
+    public DbSet<StoredFile> StoredFiles { get; set; } = null!;
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -724,6 +726,26 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 .HasForeignKey(tcrm => tcrm.EvaluatorId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
+
+        // StoredFile entity configuration
+        modelBuilder.Entity<StoredFile>(entity =>
+        {
+            entity.HasKey(sf => sf.Id);
+            entity.Property(sf => sf.ItemKind).IsRequired().HasMaxLength(50);
+            entity.Property(sf => sf.FileName).IsRequired().HasMaxLength(255);
+            entity.Property(sf => sf.ContentType).IsRequired().HasMaxLength(100);
+            entity.Property(sf => sf.CreatedAt).IsRequired();
+
+            // Create index on ItemKind for efficient queries by type
+            entity.HasIndex(sf => sf.ItemKind);
+        });
+
+        // Add relationship from TestCaseRun to StoredFile for reports
+        modelBuilder.Entity<TestCaseRun>()
+            .HasOne(tcr => tcr.ReportFile)
+            .WithMany()
+            .HasForeignKey(tcr => tcr.ReportFileId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         // Seed data - use lowercase ids for new defaults
         // IMPORTANT: When modifying any seed data values (e.g., ScenarioInstructions, InitialGreeting, or any HasData() values),

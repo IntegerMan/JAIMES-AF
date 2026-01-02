@@ -127,6 +127,7 @@ public class Program
         // Register TestCaseService for managing test cases
         // Note: TestCaseService is in MattEland.Jaimes.Services.Services namespace which Scrutor doesn't scan
         builder.Services.AddScoped<ITestCaseService, MattEland.Jaimes.Services.Services.TestCaseService>();
+        builder.Services.AddScoped<ITestCaseReportService, MattEland.Jaimes.Services.Services.TestCaseReportService>();
 
         // Configure Qdrant client for embedding management using centralized extension method
         // ApiService uses "qdrant" as default API key and allows fallback to localhost:6334
