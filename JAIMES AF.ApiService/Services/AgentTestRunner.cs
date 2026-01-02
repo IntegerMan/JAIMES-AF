@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using MattEland.Jaimes.Agents.Helpers;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
@@ -286,7 +287,8 @@ public class AgentTestRunner(
                 }
             }
 
-            // Store metrics
+            // Store metrics with diagnostics
+            DateTime evaluatedAt = DateTime.UtcNow;
             foreach (var metricPair in result.Metrics)
             {
                 if (metricPair.Value is NumericMetric metric && metric.Value != null)
@@ -300,13 +302,23 @@ public class AgentTestRunner(
                         }
                     }
 
+                    // Serialize diagnostics
+                    string? diagnosticsJson = null;
+                    if (metric.Diagnostics?.Any() == true)
+                    {
+                        var diagnostics = metric.Diagnostics.Select(d => d.Message).ToList();
+                        diagnosticsJson = JsonSerializer.Serialize(diagnostics);
+                    }
+
                     context.TestCaseRunMetrics.Add(new TestCaseRunMetric
                     {
                         TestCaseRunId = run.Id,
                         MetricName = metricPair.Key,
                         Score = metric.Value.Value,
                         Remarks = metric.Reason,
-                        EvaluatorId = evaluatorId
+                        EvaluatorId = evaluatorId,
+                        EvaluatedAt = evaluatedAt,
+                        Diagnostics = diagnosticsJson
                     });
                 }
             }

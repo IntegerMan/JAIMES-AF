@@ -27,6 +27,7 @@
         <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection"/>
         <PackageReference Include="Microsoft.Extensions.AI.Evaluation" />
         <PackageReference Include="Microsoft.Extensions.AI.Evaluation.Quality" />
+        <PackageReference Include="Microsoft.Extensions.AI.Evaluation.Reporting" />
         <PackageReference Include="Microsoft.Extensions.Http.Polly"/>
         <PackageReference Include="Riok.Mapperly"/>
         <PackageReference Include="Scrutor"/>
