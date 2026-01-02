@@ -25,7 +25,8 @@ public static class ServiceCollectionExtensions
 
         services.Scan(scan => scan
             .FromAssemblies([
-                typeof(EvaluatorRegistrar).Assembly
+                typeof(EvaluatorRegistrar).Assembly,
+                typeof(MattEland.Jaimes.Evaluators.PlayerAgencyEvaluator).Assembly
             ])
             .AddClasses(classes => classes.AssignableTo<Microsoft.Extensions.AI.Evaluation.IEvaluator>())
             .AsImplementedInterfaces()

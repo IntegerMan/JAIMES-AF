@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
 using Microsoft.Extensions.AI.Evaluation.Reporting;
-using MattEland.Jaimes.ServiceLayer.Evaluators;
+using MattEland.Jaimes.Evaluators;
 
 namespace MattEland.Jaimes.Workers.AssistantMessageWorker.Services;
 
@@ -38,18 +38,26 @@ public class MessageEvaluationService(
             return;
         }
 
+        // Log available evaluators for debugging
+        var evaluatorList = evaluators.ToList();
+        logger.LogInformation(
+            "Available evaluators for message {MessageId}: {Count} evaluators ({EvaluatorNames})",
+            message.Id,
+            evaluatorList.Count,
+            string.Join(", ", evaluatorList.Select(e => e.GetType().Name)));
+
         // Filter evaluators if specific ones are requested
-        IEnumerable<IEvaluator> activeEvaluators = evaluators;
+        IEnumerable<IEvaluator> activeEvaluators = evaluatorList;
         if (evaluatorsToRun != null && evaluatorsToRun.Any())
         {
             var evaluatorNamesSet = new HashSet<string>(evaluatorsToRun, StringComparer.OrdinalIgnoreCase);
-            activeEvaluators = evaluators.Where(e => evaluatorNamesSet.Contains(e.GetType().Name)).ToList();
+            activeEvaluators = evaluatorList.Where(e => evaluatorNamesSet.Contains(e.GetType().Name)).ToList();
 
             logger.LogInformation(
                 "Filtering evaluators for message {MessageId}: running {Count} of {Total} ({EvaluatorNames})",
                 message.Id,
                 activeEvaluators.Count(),
-                evaluators.Count(),
+                evaluatorList.Count,
                 string.Join(", ", activeEvaluators.Select(e => e.GetType().Name)));
 
             if (!activeEvaluators.Any())

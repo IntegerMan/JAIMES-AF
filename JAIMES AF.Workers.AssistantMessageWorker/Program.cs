@@ -4,7 +4,8 @@ using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.ServiceLayer;
 using MattEland.Jaimes.Workers.AssistantMessageWorker.Services;
 using Microsoft.Extensions.AI.Evaluation;
-using MattEland.Jaimes.ServiceLayer.Evaluators;
+using Microsoft.Extensions.AI.Evaluation.Quality;
+using MattEland.Jaimes.Evaluators;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
@@ -39,8 +40,9 @@ builder.Services.AddJaimesServices();
 builder.Services.AddChatClient(builder.Configuration, "TextGenerationModel");
 
 // Configure evaluators
+// Note: Individual evaluators are already registered as IEvaluator by AddJaimesServices()
+// We only need to configure options for BrevityEvaluator
 builder.Services.Configure<BrevityEvaluatorOptions>(builder.Configuration.GetSection("Evaluation:Brevity"));
-
 // Register evaluation service
 builder.Services.AddScoped<IMessageEvaluationService, MessageEvaluationService>();
 
@@ -105,6 +107,13 @@ using IHost host = builder.Build();
 ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 
 await host.WaitForMigrationsAsync();
+
+// Log registered evaluators for debugging
+var registeredEvaluators = host.Services.GetServices<IEvaluator>().ToList();
+logger.LogInformation(
+    "Registered {Count} evaluators: {EvaluatorNames}",
+    registeredEvaluators.Count,
+    string.Join(", ", registeredEvaluators.Select(e => e.GetType().Name)));
 
 logger.LogInformation("Starting Assistant Message Worker");
 

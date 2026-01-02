@@ -27,10 +27,11 @@ public class AssistantMessageConsumer(
             // No need to filter by role here
 
             logger.LogInformation(
-                "Processing assistant message: MessageId={MessageId}, GameId={GameId}, EvaluateMissingOnly={EvaluateMissingOnly}",
+                "Processing assistant message: MessageId={MessageId}, GameId={GameId}, EvaluateMissingOnly={EvaluateMissingOnly}, EvaluatorsToRun={EvaluatorsToRun}",
                 message.MessageId,
                 message.GameId,
-                message.EvaluateMissingOnly);
+                message.EvaluateMissingOnly,
+                message.EvaluatorsToRun != null ? string.Join(", ", message.EvaluatorsToRun) : "(all)");
 
             // Load message from database
             await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
