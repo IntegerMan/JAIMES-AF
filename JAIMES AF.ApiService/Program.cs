@@ -121,6 +121,13 @@ public class Program
         // Register PromptImproverService for AI-powered prompt improvement
         builder.Services.AddScoped<MattEland.Jaimes.ApiService.Services.PromptImproverService>();
 
+        // Register AgentTestRunner for running agents against test cases in isolation
+        builder.Services.AddScoped<IAgentTestRunner, AgentTestRunner>();
+
+        // Register TestCaseService for managing test cases
+        // Note: TestCaseService is in MattEland.Jaimes.Services.Services namespace which Scrutor doesn't scan
+        builder.Services.AddScoped<ITestCaseService, MattEland.Jaimes.Services.Services.TestCaseService>();
+
         // Configure Qdrant client for embedding management using centralized extension method
         // ApiService uses "qdrant" as default API key and allows fallback to localhost:6334
         builder.Services.AddQdrantClient(builder.Configuration,

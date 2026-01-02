@@ -57,7 +57,12 @@ erDiagram
     Location ||--o{ LocationEvent : "has events"
     Location ||--o{ NearbyLocation : "nearby from"
     Location ||--o{ NearbyLocation : "nearby to"
-
+    Message ||--o| TestCase : "is test case"
+    TestCase ||--o{ TestCaseRun : "has runs"
+    TestCaseRun ||--o{ TestCaseRunMetric : "has metrics"
+    TestCaseRun }o--|| Agent : "tested by"
+    TestCaseRun }o--|| AgentInstructionVersion : "uses version"
+    TestCaseRun |o--o| StoredFile : "has report"
     ScenarioAgent {
         string ScenarioId FK
         string AgentId FK
@@ -275,6 +280,35 @@ erDiagram
         string TravelNotes "nullable"
         string StorytellerNotes "nullable"
     }
+
+    TestCase {
+        int Id PK
+        int MessageId FK
+        string Name
+        string Description "nullable"
+        datetime CreatedAt
+        bool IsActive
+    }
+
+    TestCaseRun {
+        int Id PK
+        int TestCaseId FK
+        string AgentId FK
+        int InstructionVersionId FK
+        datetime ExecutedAt
+        string GeneratedResponse
+        int DurationMs "nullable"
+        string ExecutionName "nullable"
+    }
+
+    TestCaseRunMetric {
+        int Id PK
+        int TestCaseRunId FK
+        string MetricName
+        double Score
+        string Remarks "nullable"
+        int EvaluatorId FK "nullable"
+    }
 ```
 
 ## Core Entities
@@ -330,6 +364,17 @@ A named run of an evaluation suite, grouping multiple scenario iterations.
 
 ### EvaluationScenarioIteration
 The results of a specific scenario run within an evaluation execution, stored as JSON.
+
+## Test Case Entities
+
+### TestCase
+References a player message as a test case for agent evaluation. When running tests, the agent receives the last 5 messages prior to this message plus the agent's prompt as the system prompt.
+
+### TestCaseRun
+Stores the results of running a specific test case against an agent version. Captures the generated response and execution metadata.
+
+### TestCaseRunMetric
+Stores evaluation metrics from test case runs, similar to `MessageEvaluationMetric` but for test runs that are not persisted to the Messages table.
 
 ## RAG & Document Storage
 

@@ -43,6 +43,10 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
     public DbSet<LocationEvent> LocationEvents { get; set; } = null!;
     public DbSet<NearbyLocation> NearbyLocations { get; set; } = null!;
 
+    // Test case entities for agent evaluation
+    public DbSet<TestCase> TestCases { get; set; } = null!;
+    public DbSet<TestCaseRun> TestCaseRuns { get; set; } = null!;
+    public DbSet<TestCaseRunMetric> TestCaseRunMetrics { get; set; } = null!;
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -650,6 +654,77 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 .HasForeignKey(si => si.ExecutionName)
                 .OnDelete(DeleteBehavior.Cascade);
         });
+
+        // Test case entity configurations
+        modelBuilder.Entity<TestCase>(entity =>
+        {
+            entity.HasKey(tc => tc.Id);
+            entity.Property(tc => tc.MessageId).IsRequired();
+            entity.Property(tc => tc.Name).IsRequired().HasMaxLength(200);
+            entity.Property(tc => tc.Description).HasMaxLength(2000);
+            entity.Property(tc => tc.CreatedAt).IsRequired();
+            entity.Property(tc => tc.IsActive).IsRequired();
+
+            // Create unique index on MessageId to prevent duplicate test cases for same message
+            entity.HasIndex(tc => tc.MessageId).IsUnique();
+
+            entity.HasOne(tc => tc.Message)
+                .WithMany()
+                .HasForeignKey(tc => tc.MessageId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TestCaseRun>(entity =>
+        {
+            entity.HasKey(tcr => tcr.Id);
+            entity.Property(tcr => tcr.TestCaseId).IsRequired();
+            entity.Property(tcr => tcr.AgentId).IsRequired();
+            entity.Property(tcr => tcr.InstructionVersionId).IsRequired();
+            entity.Property(tcr => tcr.ExecutedAt).IsRequired();
+            entity.Property(tcr => tcr.GeneratedResponse).IsRequired();
+            entity.Property(tcr => tcr.ExecutionName).HasMaxLength(250);
+
+            // Create index on ExecutionName for report queries
+            entity.HasIndex(tcr => tcr.ExecutionName);
+
+            entity.HasOne(tcr => tcr.TestCase)
+                .WithMany(tc => tc.Runs)
+                .HasForeignKey(tcr => tcr.TestCaseId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(tcr => tcr.Agent)
+                .WithMany()
+                .HasForeignKey(tcr => tcr.AgentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(tcr => tcr.InstructionVersion)
+                .WithMany()
+                .HasForeignKey(tcr => tcr.InstructionVersionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TestCaseRunMetric>(entity =>
+        {
+            entity.HasKey(tcrm => tcrm.Id);
+            entity.Property(tcrm => tcrm.TestCaseRunId).IsRequired();
+            entity.Property(tcrm => tcrm.MetricName).IsRequired().HasMaxLength(100);
+            entity.Property(tcrm => tcrm.Score).IsRequired();
+            entity.Property(tcrm => tcrm.Remarks).HasMaxLength(2000);
+
+            // Create index on TestCaseRunId for efficient queries
+            entity.HasIndex(tcrm => tcrm.TestCaseRunId);
+
+            entity.HasOne(tcrm => tcrm.TestCaseRun)
+                .WithMany(tcr => tcr.Metrics)
+                .HasForeignKey(tcrm => tcrm.TestCaseRunId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(tcrm => tcrm.Evaluator)
+                .WithMany()
+                .HasForeignKey(tcrm => tcrm.EvaluatorId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         // Seed data - use lowercase ids for new defaults
         // IMPORTANT: When modifying any seed data values (e.g., ScenarioInstructions, InitialGreeting, or any HasData() values),
         // you MUST create a new EF Core migration. See AGENTS.md for the migration command.

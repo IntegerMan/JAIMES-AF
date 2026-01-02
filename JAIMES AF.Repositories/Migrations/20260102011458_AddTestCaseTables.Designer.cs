@@ -3,6 +3,7 @@ using System;
 using MattEland.Jaimes.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -12,9 +13,11 @@ using Pgvector;
 namespace MattEland.Jaimes.Repositories.Migrations
 {
     [DbContext(typeof(JaimesDbContext))]
-    partial class JaimesDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260102011458_AddTestCaseTables")]
+    partial class AddTestCaseTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -374,80 +377,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.ToTable("Games");
                 });
 
-            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Location", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("GameId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("NameLower")
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasComputedColumnSql("LOWER(\"Name\")", true);
-
-                    b.Property<string>("StorytellerNotes")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GameId", "NameLower")
-                        .IsUnique();
-
-                    b.ToTable("Locations");
-                });
-
-            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.LocationEvent", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("EventDescription")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("EventName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<int>("LocationId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LocationId");
-
-                    b.ToTable("LocationEvents");
-                });
-
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Message", b =>
                 {
                     b.Property<int>("Id")
@@ -734,31 +663,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("Name", "Provider", "Endpoint"), false);
 
                     b.ToTable("Models");
-                });
-
-            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.NearbyLocation", b =>
-                {
-                    b.Property<int>("SourceLocationId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("TargetLocationId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Distance")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("StorytellerNotes")
-                        .HasColumnType("text");
-
-                    b.Property<string>("TravelNotes")
-                        .HasColumnType("text");
-
-                    b.HasKey("SourceLocationId", "TargetLocationId");
-
-                    b.HasIndex("TargetLocationId");
-
-                    b.ToTable("NearbyLocations");
                 });
 
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Player", b =>
@@ -1228,28 +1132,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.Navigation("Scenario");
                 });
 
-            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Location", b =>
-                {
-                    b.HasOne("MattEland.Jaimes.Repositories.Entities.Game", "Game")
-                        .WithMany()
-                        .HasForeignKey("GameId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Game");
-                });
-
-            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.LocationEvent", b =>
-                {
-                    b.HasOne("MattEland.Jaimes.Repositories.Entities.Location", "Location")
-                        .WithMany("Events")
-                        .HasForeignKey("LocationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Location");
-                });
-
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Message", b =>
                 {
                     b.HasOne("MattEland.Jaimes.Repositories.Entities.Agent", "Agent")
@@ -1401,25 +1283,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.Navigation("Tool");
                 });
 
-            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.NearbyLocation", b =>
-                {
-                    b.HasOne("MattEland.Jaimes.Repositories.Entities.Location", "SourceLocation")
-                        .WithMany("NearbyLocationsAsSource")
-                        .HasForeignKey("SourceLocationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("MattEland.Jaimes.Repositories.Entities.Location", "TargetLocation")
-                        .WithMany("NearbyLocationsAsTarget")
-                        .HasForeignKey("TargetLocationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("SourceLocation");
-
-                    b.Navigation("TargetLocation");
-                });
-
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Player", b =>
                 {
                     b.HasOne("MattEland.Jaimes.Repositories.Entities.Ruleset", "Ruleset")
@@ -1564,15 +1427,6 @@ namespace MattEland.Jaimes.Repositories.Migrations
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Game", b =>
                 {
                     b.Navigation("Messages");
-                });
-
-            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Location", b =>
-                {
-                    b.Navigation("Events");
-
-                    b.Navigation("NearbyLocationsAsSource");
-
-                    b.Navigation("NearbyLocationsAsTarget");
                 });
 
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Message", b =>
