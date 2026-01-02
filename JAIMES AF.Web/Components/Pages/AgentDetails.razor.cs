@@ -71,4 +71,41 @@ public partial class AgentDetails
             StateHasChanged();
         }
     }
+
+    private async Task RunTestsForVersionAsync(int versionId)
+    {
+        if (string.IsNullOrEmpty(AgentId)) return;
+
+        try
+        {
+            var request = new MattEland.Jaimes.ServiceDefinitions.Requests.RunTestCasesRequest
+            {
+                ExecutionName = $"Manual Test Run - {DateTime.UtcNow:yyyy-MM-dd HH:mm}"
+            };
+
+            var response = await Http.PostAsJsonAsync($"/agents/{AgentId}/versions/{versionId}/test-run", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content
+                    .ReadFromJsonAsync<MattEland.Jaimes.ServiceDefinitions.Responses.TestRunResultResponse>();
+                if (result != null)
+                {
+                    // Navigate to test cases page to see results
+                    NavigationManager.NavigateTo("/admin/test-cases");
+                }
+            }
+            else
+            {
+                _errorMessage = "Failed to run tests: " + await response.Content.ReadAsStringAsync();
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            LoggerFactory.CreateLogger("AgentDetails").LogError(ex, "Failed to run tests");
+            _errorMessage = "Failed to run tests: " + ex.Message;
+            StateHasChanged();
+        }
+    }
 }

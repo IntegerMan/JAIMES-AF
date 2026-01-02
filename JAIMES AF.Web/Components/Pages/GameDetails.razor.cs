@@ -26,6 +26,7 @@ public partial class GameDetails : IAsyncDisposable
     private Dictionary<int, List<MessageEvaluationMetricResponse>> _messageMetrics = new();
     private Dictionary<int, MessageSentimentInfo> _messageSentiment = new();
     private Dictionary<int, bool> _messageHasMissingEvaluators = new();
+    private Dictionary<int, int> _messageTestCases = new(); // Key: messageId, Value: testCaseId
     private Dictionary<int, MessageAgentInfo> _messageAgentInfo = new();
     private string? _defaultAgentId;
     private string? _defaultAgentName;

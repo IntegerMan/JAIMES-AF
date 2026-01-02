@@ -197,7 +197,9 @@
 								Sentiment="@sentimentInfo?.Sentiment"
 								Confidence="@sentimentInfo?.Confidence"
 								SentimentSource="@sentimentInfo?.SentimentSource"
-								SentimentId="@sentimentInfo?.SentimentId"/>
+								SentimentId="@sentimentInfo?.SentimentId"
+								IsTestCase="@(messageId.HasValue && _messageTestCases.ContainsKey(messageId.Value))"
+								TestCaseId="@(messageId.HasValue && _messageTestCases.TryGetValue(messageId.Value, out var tcId) ? tcId : null)"/>
 						}
 						else
 						{

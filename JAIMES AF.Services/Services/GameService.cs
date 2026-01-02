@@ -151,6 +151,8 @@ public class GameService(
             .Include(g => g.Messages)
             .ThenInclude(message => message.InstructionVersion)
             .ThenInclude(iv => iv!.Model)
+            .Include(g => g.Messages)
+            .ThenInclude(message => message.TestCase)
             .Include(g => g.Scenario)
             .ThenInclude(s => s!.ScenarioAgents)
             .ThenInclude(sa => sa!.Agent)

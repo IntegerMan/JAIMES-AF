@@ -21,6 +21,8 @@ public static partial class MessageResponseMapper
     [MapProperty(nameof(MessageDto.ModelEndpoint), nameof(MessageResponse.ModelEndpoint))]
     [MapProperty(nameof(MessageDto.HasMissingEvaluators), nameof(MessageResponse.HasMissingEvaluators))]
     [MapProperty(nameof(MessageDto.VersionNumber), nameof(MessageResponse.VersionNumber))]
+    [MapProperty(nameof(MessageDto.IsTestCase), nameof(MessageResponse.IsTestCase))]
+    [MapProperty(nameof(MessageDto.TestCaseId), nameof(MessageResponse.TestCaseId))]
     [MapProperty(nameof(MessageDto.PlayerId),
         nameof(MessageResponse.Participant),
         Use = nameof(MapParticipantFromPlayerId))]

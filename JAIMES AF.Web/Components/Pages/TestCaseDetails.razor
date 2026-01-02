@@ -1,0 +1,104 @@
+@page "/admin/test-cases/{TestCaseId:int}"
+@rendermode InteractiveServer
+
+@inject HttpClient Http
+@inject ILoggerFactory LoggerFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Test Case Details</PageTitle>
+
+<MudPaper Class="pa-4">
+	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+	</MudStack>
+
+	@if (_isLoading)
+	{
+		<div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+			<MudProgressCircular Indeterminate="true"/>
+		</div>
+	}
+	else if (!string.IsNullOrEmpty(_errorMessage))
+	{
+		<MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
+	}
+	else if (_testCase != null)
+	{
+		<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+			<MudStack>
+				<MudText Typo="Typo.h4">@_testCase.Name</MudText>
+				<MudText Typo="Typo.body2" Class="text-muted">@(_testCase.Description ?? "No description")</MudText>
+			</MudStack>
+			<MudStack Row="true" Spacing="2">
+				@if (_testCase.IsActive)
+				{
+					<MudChip T="string" Color="Color.Success" Size="Size.Medium">Active</MudChip>
+				}
+				else
+				{
+					<MudChip T="string" Color="Color.Default" Size="Size.Medium">Inactive</MudChip>
+				}
+			</MudStack>
+		</MudStack>
+
+		<MudGrid Spacing="4">
+			<MudItem xs="12" md="6">
+				<MudPaper Class="pa-4" Elevation="2">
+					<MudText Typo="Typo.h6" Class="mb-3">Test Case Details</MudText>
+					<MudStack Spacing="2">
+						<MudStack Row="true">
+							<MudText><strong>Agent:</strong></MudText>
+							<MudLink Href="@($"/agents/{_testCase.AgentId}")">@(_testCase.AgentName ?? "Unknown")</MudLink>
+						</MudStack>
+						<MudStack Row="true">
+							<MudText><strong>Game:</strong></MudText>
+							<MudLink Href="@($"/games/{_testCase.GameId}")">@(_testCase.GameTitle ?? "Unknown")</MudLink>
+						</MudStack>
+						<MudStack Row="true">
+							<MudText><strong>Created:</strong></MudText>
+							<MudText>@_testCase.CreatedAt.ToLocalTime().ToString("g")</MudText>
+						</MudStack>
+						<MudStack Row="true">
+							<MudText><strong>Test Runs:</strong></MudText>
+							<MudChip T="string" Size="Size.Small" Color="Color.Info">@_testCase.RunCount</MudChip>
+						</MudStack>
+					</MudStack>
+				</MudPaper>
+			</MudItem>
+
+			<MudItem xs="12" md="6">
+				<MudPaper Class="pa-4" Elevation="2">
+					<MudText Typo="Typo.h6" Class="mb-3">Test Message</MudText>
+					<MudPaper Class="pa-3" Outlined="true">
+						<MudText>@_testCase.MessageText</MudText>
+					</MudPaper>
+				</MudPaper>
+			</MudItem>
+		</MudGrid>
+
+		@if (_runs is not null && _runs.Count > 0)
+		{
+			<MudText Typo="Typo.h5" Class="mt-6 mb-4">Test Runs</MudText>
+			<MudTable Items="_runs" Dense="true" Hover="true">
+				<HeaderContent>
+					<MudTh>Execution</MudTh>
+					<MudTh>Version</MudTh>
+					<MudTh>Date</MudTh>
+					<MudTh Style="text-align: center">Duration</MudTh>
+					<MudTh>Response Preview</MudTh>
+				</HeaderContent>
+				<RowTemplate>
+					<MudTd>@context.ExecutionName</MudTd>
+					<MudTd>@(context.VersionNumber ?? context.InstructionVersionId.ToString())</MudTd>
+					<MudTd>@context.ExecutedAt.ToLocalTime().ToString("g")</MudTd>
+					<MudTd Style="text-align: center">@(context.DurationMs.HasValue ? $"{context.DurationMs}ms" : "-")</MudTd>
+					<MudTd Style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+						<MudTooltip Text="@context.GeneratedResponse">
+							@TruncateText(context.GeneratedResponse, 50)
+						</MudTooltip>
+					</MudTd>
+				</RowTemplate>
+			</MudTable>
+		}
+	}
+</MudPaper>

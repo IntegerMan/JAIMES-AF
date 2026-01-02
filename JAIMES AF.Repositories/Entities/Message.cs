@@ -46,4 +46,7 @@ public class Message
 
     // Navigation property for tool calls
     public ICollection<MessageToolCall> ToolCalls { get; set; } = [];
+
+    // Navigation property for test case (optional 1:0..1 relationship)
+    public TestCase? TestCase { get; set; }
 }

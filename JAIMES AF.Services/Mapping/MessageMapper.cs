@@ -38,9 +38,25 @@ public static partial class MessageMapper
     [MapperIgnoreSource(nameof(Message.ModelId))]
     [MapperIgnoreSource(nameof(Message.ToolCalls))]
     [MapperIgnoreTarget(nameof(MessageDto.HasMissingEvaluators))]
+    [MapProperty(nameof(Message.TestCase),
+        nameof(MessageDto.IsTestCase),
+        Use = nameof(MapIsTestCaseFromTestCase))]
+    [MapProperty(nameof(Message.TestCase),
+        nameof(MessageDto.TestCaseId),
+        Use = nameof(MapTestCaseIdFromTestCase))]
     public static partial MessageDto ToDto(this Message message);
 
     public static partial MessageDto[] ToDto(this IEnumerable<Message> messages);
+
+    private static bool MapIsTestCaseFromTestCase(TestCase? testCase)
+    {
+        return testCase != null && testCase.IsActive;
+    }
+
+    private static int? MapTestCaseIdFromTestCase(TestCase? testCase)
+    {
+        return testCase?.IsActive == true ? testCase.Id : null;
+    }
 
     private static string MapParticipantNameFromPlayer(Player? player)
     {
@@ -114,7 +130,10 @@ public static partial class MessageMapper
     [MapperIgnoreSource(nameof(Message.NextMessage))]
     [MapperIgnoreSource(nameof(Message.Model))]
     [MapperIgnoreSource(nameof(Message.ModelId))]
+    [MapperIgnoreSource(nameof(Message.TestCase))]
     [MapperIgnoreTarget(nameof(MessageContextDto.HasMissingEvaluators))]
+    [MapperIgnoreTarget(nameof(MessageContextDto.IsTestCase))]
+    [MapperIgnoreTarget(nameof(MessageContextDto.TestCaseId))]
     public static partial MessageContextDto ToContextDto(this Message message);
 
     private static MessageFeedbackResponse? MapFeedbackFromCollection(ICollection<MessageFeedback> feedbacks)

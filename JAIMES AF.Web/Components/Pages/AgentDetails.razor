@@ -3,6 +3,7 @@
 
 @inject HttpClient Http
 @inject ILoggerFactory LoggerFactory
+@inject NavigationManager NavigationManager
 
 <PageTitle>Agent Details</PageTitle>
 
@@ -109,6 +110,12 @@
                                                Color="Color.Primary"
                                                Size="Size.Small"
                                                Href="@($"/agents/{AgentId}/versions/{context.Id}")"/>
+                            </MudTooltip>
+                            <MudTooltip Text="Run Test Cases">
+                                <MudIconButton Icon="@Icons.Material.Filled.Science"
+                                               Color="Color.Success"
+                                               Size="Size.Small"
+                                               OnClick="@(() => RunTestsForVersionAsync(context.Id))"/>
                             </MudTooltip>
                         </MudTd>
                     </RowTemplate>
