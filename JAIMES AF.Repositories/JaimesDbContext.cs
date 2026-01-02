@@ -669,8 +669,8 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.HasIndex(tc => tc.MessageId).IsUnique();
 
             entity.HasOne(tc => tc.Message)
-                .WithMany()
-                .HasForeignKey(tc => tc.MessageId)
+                .WithOne(m => m.TestCase)
+                .HasForeignKey<TestCase>(tc => tc.MessageId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

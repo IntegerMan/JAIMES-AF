@@ -13,7 +13,7 @@ using Pgvector;
 namespace MattEland.Jaimes.Repositories.Migrations
 {
     [DbContext(typeof(JaimesDbContext))]
-    [Migration("20260102011458_AddTestCaseTables")]
+    [Migration("20260102061720_AddTestCaseTables")]
     partial class AddTestCaseTables
     {
         /// <inheritdoc />
@@ -1345,8 +1345,8 @@ namespace MattEland.Jaimes.Repositories.Migrations
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.TestCase", b =>
                 {
                     b.HasOne("MattEland.Jaimes.Repositories.Entities.Message", "Message")
-                        .WithMany()
-                        .HasForeignKey("MessageId")
+                        .WithOne("TestCase")
+                        .HasForeignKey("MattEland.Jaimes.Repositories.Entities.TestCase", "MessageId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1434,6 +1434,8 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.Navigation("MessageEmbedding");
 
                     b.Navigation("MessageSentiment");
+
+                    b.Navigation("TestCase");
 
                     b.Navigation("ToolCalls");
                 });

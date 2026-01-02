@@ -26,6 +26,17 @@
                                    OnClick="ViewTestCase" />
                 </MudTooltip>
             }
+            else if (MessageId.HasValue)
+            {
+                <MudTooltip Text="Mark as test case - Save this message and prior conversation as a test case for evaluating future agent versions" Placement="Placement.Top">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Science"
+                                   Color="Color.Default"
+                                   Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Class="pa-0"
+                                   OnClick="CreateTestCaseAsync" />
+                </MudTooltip>
+            }
             @if (MessageId.HasValue && Sentiment.HasValue)
             {
                 @if (ReadOnly && NavigateOnClick && SentimentId.HasValue)
@@ -193,6 +204,48 @@
         if (TestCaseId.HasValue)
         {
             NavigationManager.NavigateTo($"/admin/test-cases/{TestCaseId.Value}");
+        }
+    }
+
+    private async Task CreateTestCaseAsync()
+    {
+        if (!MessageId.HasValue) return;
+
+        try
+        {
+            var request = new MattEland.Jaimes.ServiceDefinitions.Requests.CreateTestCaseRequest
+            {
+                MessageId = MessageId.Value,
+                Name = $"Test Case - Message {MessageId.Value}",
+                Description = $"Test case created from game conversation on {DateTime.Now:g}"
+            };
+
+            var response = await Http.PostAsJsonAsync("/test-cases", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var testCase = await response.Content.ReadFromJsonAsync<MattEland.Jaimes.ServiceDefinitions.Responses.TestCaseResponse>();
+                if (testCase != null)
+                {
+                    // Update local state to show the green icon
+                    IsTestCase = true;
+                    TestCaseId = testCase.Id;
+                    Snackbar.Add("Message marked as a test case!", Severity.Success);
+                }
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                Snackbar.Add("This message is already a test case.", Severity.Warning);
+            }
+            else
+            {
+                var errorMsg = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to create test case: {errorMsg}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to create test case: {ex.Message}", Severity.Error);
         }
     }
 

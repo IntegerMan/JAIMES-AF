@@ -1482,8 +1482,8 @@ namespace MattEland.Jaimes.Repositories.Migrations
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.TestCase", b =>
                 {
                     b.HasOne("MattEland.Jaimes.Repositories.Entities.Message", "Message")
-                        .WithMany()
-                        .HasForeignKey("MessageId")
+                        .WithOne("TestCase")
+                        .HasForeignKey("MattEland.Jaimes.Repositories.Entities.TestCase", "MessageId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1580,6 +1580,8 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.Navigation("MessageEmbedding");
 
                     b.Navigation("MessageSentiment");
+
+                    b.Navigation("TestCase");
 
                     b.Navigation("ToolCalls");
                 });
