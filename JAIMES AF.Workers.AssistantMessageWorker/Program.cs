@@ -4,6 +4,7 @@ using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.ServiceLayer;
 using MattEland.Jaimes.Workers.AssistantMessageWorker.Services;
 using Microsoft.Extensions.AI.Evaluation;
+using Microsoft.Extensions.AI.Evaluation.Quality;
 using MattEland.Jaimes.ServiceLayer.Evaluators;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
@@ -42,6 +43,12 @@ builder.Services.AddChatClient(builder.Configuration, "TextGenerationModel");
 builder.Services.Configure<BrevityEvaluatorOptions>(builder.Configuration.GetSection("Evaluation:Brevity"));
 builder.Services.AddSingleton<BrevityEvaluator>();
 builder.Services.AddSingleton<PlayerAgencyEvaluator>();
+
+// Register RelevanceTruthAndCompletenessEvaluator as concrete type (it's already registered as IEvaluator in AddJaimesServices)
+// We need to register it as the concrete type so we can resolve it directly for the CompositeEvaluator
+builder.Services.AddSingleton<RelevanceTruthAndCompletenessEvaluator>(
+    sp => (RelevanceTruthAndCompletenessEvaluator)
+        sp.GetServices<IEvaluator>().First(e => e is RelevanceTruthAndCompletenessEvaluator));
 
 // Register CompositeEvaluator as the primary IEvaluator
 builder.Services.AddSingleton<IEvaluator>(sp =>
