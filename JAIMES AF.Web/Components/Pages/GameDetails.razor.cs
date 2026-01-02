@@ -1,8 +1,7 @@
+using System.Net.Http.Json;
 using System.Text.Json;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
-using Microsoft.Agents.AI;
-using Microsoft.Agents.AI.AGUI;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.AI;
 using MudBlazor;
@@ -27,12 +26,10 @@ public partial class GameDetails : IAsyncDisposable
     private Dictionary<int, MessageSentimentInfo> _messageSentiment = new();
     private Dictionary<int, bool> _messageHasMissingEvaluators = new();
     private Dictionary<int, MessageAgentInfo> _messageAgentInfo = new();
-    private Dictionary<ChatMessage, MessageAgentInfo> _pendingMessageAgentInfo = new();
     private string? _defaultAgentId;
     private string? _defaultAgentName;
     private int? _defaultInstructionVersionId;
     private string? _defaultVersionNumber;
-    private AIAgent? _agent;
 
     private GameStateResponse? _game;
     private bool _isLoading = true;
@@ -118,7 +115,6 @@ public partial class GameDetails : IAsyncDisposable
 
             // Track agent info per message
             _messageAgentInfo.Clear();
-            _pendingMessageAgentInfo.Clear();
             foreach (var message in orderedMessages)
             {
                 if ((!string.IsNullOrEmpty(message.AgentId) || message.InstructionVersionId.HasValue) &&
@@ -145,18 +141,8 @@ public partial class GameDetails : IAsyncDisposable
                 }
             }
 
-            // Create AG-UI client for this game
-            HttpClient aguiHttpClient = HttpClientFactory.CreateClient("AGUI");
-            string serverUrl = $"{aguiHttpClient.BaseAddress}games/{GameId}/chat";
-            AGUIChatClient chatClient = new(aguiHttpClient, serverUrl);
-            _agent = chatClient.CreateAIAgent(name: $"game-{GameId}", description: "Game Chat Agent");
-
             // Initialize editable title
             _editableTitle = _game?.Title;
-
-            // AGUI manages threads via ConversationId automatically
-            // Don't deserialize server-side threads as they use MessageStore which conflicts with AGUI's ConversationId
-            // Don't create a thread here - let AGUI manage it completely via ConversationId
         }
         catch (Exception ex)
         {
@@ -286,175 +272,201 @@ public partial class GameDetails : IAsyncDisposable
         _failedMessageIndex = null;
         int currentMessageIndex = -1;
 
-        // Check if this is the first player message (no User messages yet)
-        bool isFirstPlayerMessage = IsFirstPlayerMessage();
-
         try
         {
-            // Indicate message is being sent
+            // Add user message to UI
             _messages.Add(new(ChatRole.User, messageText));
-            _messageIds.Add(null); // User messages don't have database IDs yet
+            _messageIds.Add(null); // Will be set when we receive the persisted event
             currentMessageIndex = _messages.Count - 1;
 
-            _logger?.LogInformation("Sending message {Text} from User (first message: {IsFirst})",
-                messageText,
-                isFirstPlayerMessage);
+            _logger?.LogInformation("Sending message {Text} from User", messageText);
 
             // Scroll to bottom after adding user message and showing typing indicator
             _shouldScrollToBottom = true;
             await InvokeAsync(StateHasChanged);
 
-            // Send message to API
-            if (_agent == null)
+            // Send message to API using SSE
+            HttpClient httpClient = HttpClientFactory.CreateClient("Api");
+            ChatRequest request = new()
             {
-                _errorMessage = "Agent not initialized";
-                _failedMessageIndex = currentMessageIndex;
-                return;
-            }
+                GameId = GameId,
+                Message = messageText
+            };
 
-            // Build the messages to send to the agent
-            // For the first message, send TWO messages: the initial greeting as Assistant, then the player's response as User
-            // For subsequent messages, just send the player's new message
-            List<ChatMessage> messagesToSend = [];
-
-            if (isFirstPlayerMessage)
+            HttpRequestMessage httpRequest = new(HttpMethod.Post, $"/games/{GameId}/chat")
             {
-                string? initialGreeting = GetInitialGreeting();
-                if (!string.IsNullOrWhiteSpace(initialGreeting))
-                {
-                    // First, add the initial greeting as an Assistant message so the agent knows what was displayed
-                    messagesToSend.Add(new ChatMessage(ChatRole.Assistant, initialGreeting));
-                    _logger?.LogInformation(
-                        "First player message - including initial greeting as Assistant message for agent context");
-                }
-            }
+                Content = JsonContent.Create(request)
+            };
 
-            // Add the player's message
-            messagesToSend.Add(new ChatMessage(ChatRole.User, messageText));
+            HttpResponseMessage response = await httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead);
+            response.EnsureSuccessStatusCode();
 
-            // Track response messages by their temporary ID (from the streaming update)
-            // This allows us to update the correct message bubble as tokens arrive
-            Dictionary<string, int> messageIdToIndex = new();
-            Dictionary<string, System.Text.StringBuilder> messageIdToBuilder = new();
+            // Track accumulated text per message ID
+            Dictionary<string, System.Text.StringBuilder> messageBuilders = new();
+            Dictionary<string, int> messageIndexes = new();
 
-            // AGUI manages threads automatically via ConversationId
-            // Don't pass a thread - AGUI will create/manage it via ConversationId to avoid MessageStore conflicts
-            // AGUI manages conversation history, so we only need to send the NEW message(s), not all messages
-            _logger?.LogDebug(
-                "Sending {Count} message(s) to AGUI (AGUI manages conversation history via ConversationId)",
-                messagesToSend.Count);
+            // Read SSE stream
+            await using Stream stream = await response.Content.ReadAsStreamAsync();
+            using StreamReader reader = new(stream);
 
-            await foreach (var update in _agent.RunStreamingAsync(messagesToSend, thread: null))
+            while (!reader.EndOfStream)
             {
-                // Accept any role that isn't explicitly User. 
-                if (update.Role == ChatRole.User) continue;
+                string? line = await reader.ReadLineAsync();
+                if (string.IsNullOrWhiteSpace(line)) continue;
 
-                string tempId = update.MessageId ?? "default";
-
-                // Get or create the string builder for this message ID
-                if (!messageIdToBuilder.TryGetValue(tempId, out var sb))
+                // Parse SSE format: "event: eventType" and "data: jsonData"
+                if (line.StartsWith("event: ", StringComparison.Ordinal))
                 {
-                    sb = new System.Text.StringBuilder();
-                    messageIdToBuilder[tempId] = sb;
-                }
+                    string eventType = line.Substring(7);
 
-                // Append the delta text
-                if (!string.IsNullOrEmpty(update.Text))
-                {
-                    sb.Append(update.Text);
-                }
+                    // Read the data line
+                    string? dataLine = await reader.ReadLineAsync();
+                    if (dataLine == null || !dataLine.StartsWith("data: ", StringComparison.Ordinal)) continue;
 
-                bool isExisting = messageIdToIndex.TryGetValue(tempId, out int msgIndex);
-                string accumulatedText = sb.ToString();
+                    string jsonData = dataLine.Substring(6);
 
-                _logger?.LogInformation(
-                    "Stream update. Id: {Id}, TextUpdate: '{TextUpdate}', Acc: '{Acc}', Exists: {Exists}, Sending: {Sending}",
-                    tempId,
-                    update.Text,
-                    accumulatedText,
-                    isExisting,
-                    _isSending);
-
-                // Decide if we should show this message yet.
-                // We show it if we have text, OR if we have already established it.
-                // This keeps the "Typing..." indicator active until we have actual content.
-                if (string.IsNullOrWhiteSpace(accumulatedText) && !isExisting)
-                {
-                    continue;
-                }
-
-                // Once we have content to show, stop the main typing indicator
-                if (_isSending)
-                {
-                    _isSending = false;
-                    await InvokeAsync(StateHasChanged);
-                }
-
-                // If it's a new message (and we have content)
-                if (!isExisting)
-                {
-                    string? authorName = update.AuthorName;
-
-                    // Default to Assistant if Role is null
-                    ChatRole roleToUse = update.Role ?? ChatRole.Assistant;
-
-                    var newMessage = new ChatMessage(roleToUse, accumulatedText)
+                    if (eventType == "delta")
                     {
-                        AuthorName = authorName
-                    };
-
-                    _messages.Add(newMessage);
-                    _messageIds.Add(null);
-                    msgIndex = _messages.Count - 1;
-                    messageIdToIndex[tempId] = msgIndex;
-
-                    if (roleToUse == ChatRole.Assistant)
-                    {
-                            AgentId = _selectedAgentId ?? _defaultAgentId,
-                            AgentName = agentName,
-                            InstructionVersionId = _selectedVersionId ?? _defaultInstructionVersionId,
-                            VersionNumber = versionNumber,
-                            IsScriptedMessage = false // Live messages are generally not scripted
-                        _pendingMessageAgentInfo[newMessage] = new MessageAgentInfo
+                        // Parse streaming delta
+                        var delta = JsonSerializer.Deserialize<ChatStreamEvent>(jsonData, new JsonSerializerOptions
                         {
-                            AgentId = _defaultAgentId,
-                            AgentName = (!string.IsNullOrWhiteSpace(authorName) &&
-                                         !authorName.StartsWith("game-", StringComparison.OrdinalIgnoreCase))
-                                ? authorName
-                                : _defaultAgentName,
-                            InstructionVersionId = _defaultInstructionVersionId,
-                            VersionNumber = _defaultVersionNumber,
-                            IsScriptedMessage = false
-                        };
+                            PropertyNameCaseInsensitive = true
+                        });
+
+                        if (delta == null) continue;
+
+                        // Get or create message builder
+                        if (!messageBuilders.TryGetValue(delta.MessageId, out var sb))
+                        {
+                            sb = new System.Text.StringBuilder();
+                            messageBuilders[delta.MessageId] = sb;
+                        }
+
+                        // Append delta
+                        if (!string.IsNullOrEmpty(delta.TextDelta))
+                        {
+                            sb.Append(delta.TextDelta);
+                        }
+
+                        string accumulatedText = sb.ToString();
+
+                        // Check if message already exists in UI
+                        bool isExisting = messageIndexes.TryGetValue(delta.MessageId, out int msgIndex);
+
+                        // Only show message if we have content
+                        if (string.IsNullOrWhiteSpace(accumulatedText) && !isExisting)
+                        {
+                            continue;
+                        }
+
+                        // Stop typing indicator once we have content
+                        if (_isSending)
+                        {
+                            _isSending = false;
+                            await InvokeAsync(StateHasChanged);
+                        }
+
+                        if (!isExisting)
+                        {
+                            // Create new message
+                            var newMessage = new ChatMessage(ChatRole.Assistant, accumulatedText)
+                            {
+                                AuthorName = delta.AuthorName
+                            };
+
+                            _messages.Add(newMessage);
+                            _messageIds.Add(null); // Will be set in persisted event
+                            msgIndex = _messages.Count - 1;
+                            messageIndexes[delta.MessageId] = msgIndex;
+                        }
+                        else
+                        {
+                            // Update existing message
+                            var oldMsg = _messages[msgIndex];
+                            _messages[msgIndex] = new ChatMessage(oldMsg.Role, accumulatedText)
+                            {
+                                AuthorName = delta.AuthorName ?? oldMsg.AuthorName
+                            };
+                        }
+
+                        // Update UI
+                        _shouldScrollToBottom = true;
+                        await InvokeAsync(StateHasChanged);
                     }
-                }
-                else
-                {
-                    // Update existing message with the full accumulated text
-                    var oldMsg = _messages[msgIndex];
-                    var updatedMsg = new ChatMessage(oldMsg.Role, accumulatedText)
+                    else if (eventType == "persisted")
                     {
-                        AuthorName = !string.IsNullOrEmpty(update.AuthorName) ? update.AuthorName : oldMsg.AuthorName
-                    };
-
-                    if (_pendingMessageAgentInfo.TryGetValue(oldMsg, out var pendingInfo))
-                    {
-                        _pendingMessageAgentInfo.Remove(oldMsg);
-                        _pendingMessageAgentInfo[updatedMsg] = pendingInfo;
-
-                        if (!string.IsNullOrEmpty(update.AuthorName))
+                        // Parse persisted message IDs
+                        var persistedData = JsonSerializer.Deserialize<MessagePersistedEvent>(jsonData, new JsonSerializerOptions
                         {
-                            pendingInfo.AgentName = update.AuthorName;
+                            PropertyNameCaseInsensitive = true
+                        });
+
+                        if (persistedData != null)
+                        {
+                            _logger?.LogInformation("Received persisted IDs - User: {UserId}, Assistant: {AssistantIds}",
+                                persistedData.UserMessageId,
+                                string.Join(",", persistedData.AssistantMessageIds ?? new List<int>()));
+
+                            // Set user message ID
+                            if (persistedData.UserMessageId.HasValue && currentMessageIndex >= 0)
+                            {
+                                _messageIds[currentMessageIndex] = persistedData.UserMessageId.Value;
+
+                                // Add agent info for this user message
+                                _messageAgentInfo[persistedData.UserMessageId.Value] = new MessageAgentInfo
+                                {
+                                    AgentId = _defaultAgentId,
+                                    AgentName = _defaultAgentName,
+                                    InstructionVersionId = _defaultInstructionVersionId,
+                                    VersionNumber = _defaultVersionNumber,
+                                    IsScriptedMessage = false
+                                };
+                            }
+
+                            // Set assistant message IDs
+                            if (persistedData.AssistantMessageIds != null)
+                            {
+                                int assistantStartIndex = currentMessageIndex + 1;
+                                for (int i = 0; i < persistedData.AssistantMessageIds.Count; i++)
+                                {
+                                    int messageIndex = assistantStartIndex + i;
+                                    if (messageIndex < _messageIds.Count)
+                                    {
+                                        int dbId = persistedData.AssistantMessageIds[i];
+                                        _messageIds[messageIndex] = dbId;
+
+                                        // Add agent info for assistant message
+                                        _messageAgentInfo[dbId] = new MessageAgentInfo
+                                        {
+                                            AgentId = _defaultAgentId,
+                                            AgentName = _defaultAgentName,
+                                            InstructionVersionId = _defaultInstructionVersionId,
+                                            VersionNumber = _defaultVersionNumber,
+                                            IsScriptedMessage = false
+                                        };
+                                    }
+                                }
+                            }
+
+                            await InvokeAsync(StateHasChanged);
                         }
                     }
-
-                    _messages[msgIndex] = updatedMsg;
+                    else if (eventType == "done")
+                    {
+                        _logger?.LogInformation("Stream completed successfully");
+                        break;
+                    }
+                    else if (eventType == "error")
+                    {
+                        var errorData = JsonSerializer.Deserialize<ErrorEvent>(jsonData, new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        });
+                        _errorMessage = $"Server error: {errorData?.Error ?? "Unknown error"}";
+                        _failedMessageIndex = currentMessageIndex;
+                        break;
+                    }
                 }
-
-                // Force UI update
-                _shouldScrollToBottom = true;
-                await InvokeAsync(StateHasChanged);
-                await InvokeAsync(StateHasChanged);
             }
 
             _logger?.LogInformation("Finished streaming loop");
@@ -470,14 +482,16 @@ public partial class GameDetails : IAsyncDisposable
             _logger?.LogInformation("Entering Finally block. IsSending: {IsSending}", _isSending);
             _isSending = false;
 
-            // Don't reload game state here - SignalR will notify us when sentiment is analyzed
-            // and we'll update the message ID at that point
-
             // Scroll after typing indicator disappears
             _shouldScrollToBottom = true;
             await InvokeAsync(StateHasChanged);
         }
     }
+
+    // SSE event models
+    private record ChatStreamEvent(string MessageId, string TextDelta, string Role, string? AuthorName);
+    private record MessagePersistedEvent(string Type, int? UserMessageId, List<int>? AssistantMessageIds);
+    private record ErrorEvent(string Error, string Type);
 
     private string updatedTextPreview(string text)
     {
@@ -521,32 +535,6 @@ public partial class GameDetails : IAsyncDisposable
         }
     }
 
-    /// <summary>
-    /// Checks if the player has not yet sent any messages in this game.
-    /// This is used to determine whether to include the initial greeting context
-    /// when sending the first message to the agent.
-    /// </summary>
-    private bool IsFirstPlayerMessage()
-    {
-        // Check if there are any User (player) messages in the current message list
-        // Note: We check before adding the new message, so if there are no User messages,
-        // this is the first player message
-        return !_messages.Any(m => m.Role == ChatRole.User);
-    }
-
-    /// <summary>
-    /// Gets the initial greeting message from the Game Master.
-    /// This is the first Assistant message in the conversation, which was displayed
-    /// to the player when the game started.
-    /// </summary>
-    private string? GetInitialGreeting()
-    {
-        // The initial greeting is the first Assistant message (from Game Master)
-        return _messages
-            .Where(m => m.Role == ChatRole.Assistant)
-            .Select(m => m.Text)
-            .FirstOrDefault();
-    }
 
     /// <summary>
     /// Converts a UTC DateTime to local time for display.
@@ -821,6 +809,7 @@ public partial class GameDetails : IAsyncDisposable
                     await InvokeAsync(async () =>
                     {
                         // Update local state based on update type
+                        // Note: We no longer need content matching since IDs are received immediately via SSE
                         if (notification.UpdateType == MessageUpdateType.SentimentAnalyzed &&
                             notification.Sentiment.HasValue)
                         {
@@ -831,29 +820,6 @@ public partial class GameDetails : IAsyncDisposable
                                 Confidence = notification.SentimentConfidence,
                                 SentimentSource = notification.SentimentSource
                             };
-
-                            // Match by content using text from notification
-                            // Only proceed if we don't already have this message ID mapped
-                            if (!_messageIds.Contains(notification.MessageId) &&
-                                !string.IsNullOrWhiteSpace(notification.MessageText))
-                            {
-                                string normalizedText = notification.MessageText.Trim();
-
-                                for (int i = 0; i < _messages.Count; i++)
-                                {
-                                    if (_messageIds[i] == null &&
-                                        _messages[i].Role == ChatRole.User &&
-                                        _messages[i].Text.Trim().Equals(normalizedText, StringComparison.Ordinal))
-                                    {
-                                        _messageIds[i] = notification.MessageId;
-                                        _logger?.LogDebug(
-                                            "Assigned User message ID {MessageId} to index {Index} by content matching",
-                                            notification.MessageId,
-                                            i);
-                                        break;
-                                    }
-                                }
-                            }
                         }
                         else if (notification.UpdateType == MessageUpdateType.MetricsEvaluated &&
                                  notification.Metrics != null)
@@ -866,62 +832,12 @@ public partial class GameDetails : IAsyncDisposable
                                 _messageHasMissingEvaluators[notification.MessageId] =
                                     notification.HasMissingEvaluators.Value;
                             }
-
-                            // Match by content using text from notification
-                            // Only proceed if we don't already have this message ID mapped
-                            if (!_messageIds.Contains(notification.MessageId) &&
-                                !string.IsNullOrWhiteSpace(notification.MessageText))
-                            {
-                                string normalizedText = notification.MessageText.Trim();
-
-                                for (int i = 0; i < _messages.Count; i++)
-                                {
-                                    if (_messageIds[i] == null &&
-                                        _messages[i].Role == ChatRole.Assistant &&
-                                        _messages[i].Text.Trim().Equals(normalizedText, StringComparison.Ordinal))
-                                    {
-                                        _messageIds[i] = notification.MessageId;
-
-                                        // Persist agent info from pending to permanent dictionary now that we have an ID
-                                        if (_pendingMessageAgentInfo.TryGetValue(_messages[i], out var agentInfo))
-                                        {
-                                            _messageAgentInfo[notification.MessageId] = agentInfo;
-                                        }
-
-                                        _logger?.LogDebug(
-                                            "Assigned Assistant message ID {MessageId} to index {Index} by content matching",
-                                            notification.MessageId,
-                                            i);
-                                        break;
-                                    }
-                                }
-                            }
                         }
                         else if (notification.UpdateType == MessageUpdateType.ToolCallsProcessed &&
                                  notification.HasToolCalls == true)
                         {
                             // Fetch metadata for this message immediately to get the tool calls
-                            // Since the notification payload doesn't contain the full tool call data,
-                            // we need to reload metadata for this specific message
                             await LoadMessagesMetadataAsync(new List<int> {notification.MessageId});
-
-                            // Match by content if ID is not yet known locally (rare for tool calls but possible)
-                            if (!_messageIds.Contains(notification.MessageId) &&
-                                !string.IsNullOrWhiteSpace(notification.MessageText))
-                            {
-                                string normalizedText = notification.MessageText.Trim();
-
-                                for (int i = 0; i < _messages.Count; i++)
-                                {
-                                    if (_messageIds[i] == null &&
-                                        _messages[i].Role == ChatRole.Assistant &&
-                                        _messages[i].Text.Trim().Equals(normalizedText, StringComparison.Ordinal))
-                                    {
-                                        _messageIds[i] = notification.MessageId;
-                                        break;
-                                    }
-                                }
-                            }
                         }
 
                         StateHasChanged();

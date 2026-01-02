@@ -118,7 +118,7 @@ public class GameAwareAgent(
         // Persist messages and thread after completion
         // Pass both incoming messages (for user message) and response (for assistant messages)
         // Also pass the thread so we can update it with the new conversation state
-        await PersistGameStateAsync(messagesList, response, gameThread, cancellationToken);
+        _ = await PersistGameStateAsync(messagesList, response, gameThread, cancellationToken);
 
         _logger.LogInformation("Game state persisted for game {GameId}", gameId);
 
@@ -206,7 +206,21 @@ public class GameAwareAgent(
             gameId,
             assistantMessages.Count);
 
-        await PersistGameStateAsync(messagesList, finalResponse, gameThread ?? thread, cancellationToken);
+        (int? userMessageId, List<int> assistantMessageIds) = await PersistGameStateAsync(messagesList, finalResponse, gameThread ?? thread, cancellationToken);
+
+        // Send a final update with the persisted message IDs
+        // This allows the client to immediately link streamed messages to their database records
+        yield return new AgentRunResponseUpdate
+        {
+            Role = ChatRole.System,
+            Contents = {new TextContent(JsonSerializer.Serialize(new
+            {
+                Type = "MessagePersisted",
+                UserMessageId = userMessageId,
+                AssistantMessageIds = assistantMessageIds
+            }))},
+            MessageId = "persistence-complete"
+        };
     }
 
     private async Task<AIAgent> GetOrCreateGameAgentAsync(CancellationToken cancellationToken)
@@ -236,12 +250,12 @@ public class GameAwareAgent(
 
         _logger.LogInformation("Creating new agent for game {GameId}", gameId);
 
-        // Get scoped services
-        using IServiceScope scope = _serviceProvider.CreateScope();
-        IGameService gameService = scope.ServiceProvider.GetRequiredService<IGameService>();
-        IInstructionService instructionService = scope.ServiceProvider.GetRequiredService<IInstructionService>();
-        IChatClient chatClient = scope.ServiceProvider.GetRequiredService<IChatClient>();
-        ILogger scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<GameAwareAgent>>();
+        // Use request services to ensure they last for the duration of the request/stream
+        IServiceProvider requestServices = context.RequestServices;
+        IGameService gameService = requestServices.GetRequiredService<IGameService>();
+        IInstructionService instructionService = requestServices.GetRequiredService<IInstructionService>();
+        IChatClient chatClient = requestServices.GetRequiredService<IChatClient>();
+        ILogger scopedLogger = requestServices.GetRequiredService<ILogger<GameAwareAgent>>();
 
         // Get the game
         _logger.LogDebug("Fetching game data for game {GameId}", gameId);
@@ -270,7 +284,7 @@ public class GameAwareAgent(
         }
 
         // Create tools once and reuse for both agent creation and logging
-        IList<AITool>? tools = CreateTools(gameDto);
+        IList<AITool>? tools = CreateTools(gameDto, requestServices);
 
         IChatClient instrumentedChatClient = chatClient.WrapWithInstrumentation(scopedLogger);
         AIAgent gameAgent = instrumentedChatClient.CreateJaimesAgent(
@@ -359,7 +373,7 @@ public class GameAwareAgent(
         return gameThread;
     }
 
-    private async Task PersistGameStateAsync(IEnumerable<ChatMessage> incomingMessages,
+    private async Task<(int? UserMessageId, List<int> AssistantMessageIds)> PersistGameStateAsync(IEnumerable<ChatMessage> incomingMessages,
         AgentRunResponse response,
         AgentThread? thread,
         CancellationToken cancellationToken)
@@ -369,13 +383,13 @@ public class GameAwareAgent(
             gameIdObj is not Guid gameId)
         {
             _logger.LogWarning("Cannot persist game state - HttpContext or GameId not available");
-            return;
+            return (null, new List<int>());
         }
 
         if (!context.Items.TryGetValue("GameDto", out object? gameDtoObj) || gameDtoObj is not GameDto gameDto)
         {
             _logger.LogWarning("Cannot persist game state for game {GameId} - GameDto not available", gameId);
-            return;
+            return (null, new List<int>());
         }
 
         // Thread is optional - if not provided, we'll create a new one for persistence
@@ -395,7 +409,7 @@ public class GameAwareAgent(
             {
                 _logger.LogWarning("Cannot create thread for persistence - agent not available for game {GameId}",
                     gameId);
-                return;
+                return (null, new List<int>());
             }
         }
 
@@ -406,7 +420,7 @@ public class GameAwareAgent(
         {
             _logger.LogDebug("No user message found in incoming messages for game {GameId}, skipping persistence",
                 gameId);
-            return;
+            return (null, new List<int>());
         }
 
         _logger.LogInformation("Persisting game state for game {GameId} - User message: {Text}",
@@ -752,9 +766,12 @@ public class GameAwareAgent(
             await chatHistoryService.SaveThreadJsonAsync(gameId, threadJson, lastAiMessageId, cancellationToken);
             _logger.LogInformation("Saved thread JSON for game {GameId}", gameId);
         }
+
+        // Return the persisted message IDs
+        return (userMessageEntity.Id, aiMessageEntities.Select(m => m.Id).ToList());
     }
 
-    private IList<AITool>? CreateTools(GameDto game)
+    private IList<AITool>? CreateTools(GameDto game, IServiceProvider requestServices)
     {
         List<AITool> toolList = [];
 
@@ -768,11 +785,10 @@ public class GameAwareAgent(
         // Check if IRulesSearchService is available in the service provider
         // We pass the service provider to RulesSearchTool so it can resolve the service on each call
         // This avoids ObjectDisposedException when the tool outlives the scope that created it
-        using IServiceScope scope = _serviceProvider.CreateScope();
-        IRulesSearchService? rulesSearchService = scope.ServiceProvider.GetService<IRulesSearchService>();
+        IRulesSearchService? rulesSearchService = requestServices.GetService<IRulesSearchService>();
         if (rulesSearchService != null)
         {
-            RulesSearchTool rulesSearchTool = new(game, _serviceProvider);
+            RulesSearchTool rulesSearchTool = new(game, requestServices);
             AIFunction rulesSearchFunction = AIFunctionFactory.Create(
                 (string query) => rulesSearchTool.SearchRulesAsync(query),
                 "SearchRules",
@@ -782,10 +798,10 @@ public class GameAwareAgent(
 
         // Add conversation search tool if the service is available
         IConversationSearchService? conversationSearchService =
-            scope.ServiceProvider.GetService<IConversationSearchService>();
+            requestServices.GetService<IConversationSearchService>();
         if (conversationSearchService != null)
         {
-            ConversationSearchTool conversationSearchTool = new(game, _serviceProvider);
+            ConversationSearchTool conversationSearchTool = new(game, requestServices);
 
             AIFunction conversationSearchFunction = AIFunctionFactory.Create(
                 (string query) => conversationSearchTool.SearchConversationsAsync(query),
@@ -796,10 +812,10 @@ public class GameAwareAgent(
 
         // Add player sentiment tool if database context factory is available
         IDbContextFactory<JaimesDbContext>? dbContextFactory =
-            scope.ServiceProvider.GetService<IDbContextFactory<JaimesDbContext>>();
+            requestServices.GetService<IDbContextFactory<JaimesDbContext>>();
         if (dbContextFactory != null)
         {
-            PlayerSentimentTool playerSentimentTool = new(game, _serviceProvider);
+            PlayerSentimentTool playerSentimentTool = new(game, requestServices);
 
             AIFunction playerSentimentFunction = AIFunctionFactory.Create(
                 () => playerSentimentTool.GetRecentSentimentsAsync(),

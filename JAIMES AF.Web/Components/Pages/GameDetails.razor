@@ -122,13 +122,11 @@
 					MessageAgentInfo? agentInfo = null;
 					if (messageId.HasValue)
 						_messageAgentInfo.TryGetValue(messageId.Value, out agentInfo);
-					else
-						_pendingMessageAgentInfo.TryGetValue(m, out agentInfo);
 
 					if (m.Role == ChatRole.Assistant && agentInfo != null)
 					{
 						agentId = agentInfo.AgentId;
-						agentName = agentInfo.AgentName ?? _agent?.Name; // Fallback to current agent name
+						agentName = agentInfo.AgentName;
 						instructionVersionId = agentInfo.InstructionVersionId;
 						versionNumber = agentInfo.VersionNumber ?? "1"; // Default to v1 if unknown
 						isExempt = agentInfo.IsScriptedMessage;
@@ -143,7 +141,6 @@
 
 							MessageAgentInfo? prevAgentInfo = null;
 							if (prevMsgId.HasValue) _messageAgentInfo.TryGetValue(prevMsgId.Value, out prevAgentInfo);
-							else _pendingMessageAgentInfo.TryGetValue(prevMsg, out prevAgentInfo);
 
 							if (prevMsg.Role == ChatRole.Assistant && prevAgentInfo != null)
 							{

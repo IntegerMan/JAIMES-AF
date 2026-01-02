@@ -265,60 +265,102 @@ public static class TextGenerationServiceExtensions
                 Stream = true
             };
 
+            string json = System.Text.Json.JsonSerializer.Serialize(request);
+            logger.LogInformation("Sending Ollama Request: {Json}", json);
+
             // Send streaming request
             var httpRequest = new HttpRequestMessage(HttpMethod.Post, requestUrl)
             {
-                Content = JsonContent.Create(request)
+                Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
             };
 
-            using HttpResponseMessage response = await httpClient.SendAsync(httpRequest,
-                HttpCompletionOption.ResponseHeadersRead,
-                cancellationToken);
-
-            if (!response.IsSuccessStatusCode)
+            HttpResponseMessage? response = null;
+            try
             {
-                string errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                logger.LogError("Failed to stream text. Status: {StatusCode}, Response: {Response}",
-                    response.StatusCode,
-                    errorContent);
-                response.EnsureSuccessStatusCode();
+                // Bypass the DI-configured HttpClient and its handlers to rule out middleware issues
+                using HttpClient simpleClient = new HttpClient();
+                simpleClient.Timeout = TimeSpan.FromMinutes(5);
+
+                Console.WriteLine($"[DEBUG] Initiating Ollama request to {requestUrl}");
+                logger.LogInformation("Initiating Ollama request to {Url}", requestUrl);
+
+                response = await simpleClient.SendAsync(httpRequest,
+                    HttpCompletionOption.ResponseHeadersRead,
+                    cancellationToken);
+
+                Console.WriteLine($"[DEBUG] Ollama response received: {response.StatusCode}");
+                logger.LogInformation("Ollama SendAsync completed with status {StatusCode}", response.StatusCode);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    string errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                    logger.LogError("Failed to stream text. Status: {StatusCode}, Response: {Response}",
+                        response.StatusCode,
+                        errorContent);
+                    response.EnsureSuccessStatusCode();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DEBUG] Ollama error: {ex.Message}");
+                logger.LogError(ex, "Exception occurred during Ollama request initiation");
+                response?.Dispose();
+                throw;
             }
 
-            // Read SSE stream
-            using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            using StreamReader reader = new(stream);
-
-            while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
+            using (response)
             {
-                string? line = await reader.ReadLineAsync(cancellationToken);
-                if (string.IsNullOrWhiteSpace(line)) continue;
+                using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                using StreamReader reader = new(stream, System.Text.Encoding.UTF8);
 
-                logger.LogInformation("Ollama SSE Line: {LineLength}", line.Length);
+                logger.LogInformation("Ollama Stream opened. Reading lines...");
 
-                OllamaChatResponse? chatResponse = null;
-                try
+                while (true)
                 {
-                    chatResponse = System.Text.Json.JsonSerializer.Deserialize<OllamaChatResponse>(line);
-                }
-                catch (System.Text.Json.JsonException)
-                {
-                    // Ignore malformed JSON chunks
-                    continue;
-                }
-
-                if (chatResponse?.Message?.Content != null)
-                {
-                    yield return new ChatResponseUpdate
+                    string? line;
+                    try
                     {
-                        Role = ChatRole.Assistant,
-                        Contents = {new TextContent(chatResponse.Message.Content)}
-                    };
+                        if (reader.EndOfStream || cancellationToken.IsCancellationRequested) break;
+                        line = await reader.ReadLineAsync(cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Exception occurred while reading from Ollama stream");
+                        throw;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(line)) continue;
+
+                    logger.LogInformation("Ollama SSE Line: {LineLength}", line.Length);
+
+                    OllamaChatResponse? chatResponse = null;
+                    try
+                    {
+                        chatResponse = System.Text.Json.JsonSerializer.Deserialize<OllamaChatResponse>(line);
+                    }
+                    catch (System.Text.Json.JsonException jex)
+                    {
+                        logger.LogWarning(jex, "Failed to deserialize Ollama JSON chunk: {Line}", line);
+                        continue;
+                    }
+
+                    if (chatResponse?.Message?.Content != null)
+                    {
+                        yield return new ChatResponseUpdate
+                        {
+                            Role = ChatRole.Assistant,
+                            Contents = {new TextContent(chatResponse.Message.Content)}
+                        };
+                    }
+
+                    if (chatResponse?.Done == true)
+                    {
+                        logger.LogInformation("Ollama stream marked as done.");
+                        break;
+                    }
                 }
 
-                if (chatResponse?.Done == true)
-                {
-                    break;
-                }
+                logger.LogInformation("Ollama streaming loop finished naturally.");
             }
         }
 
