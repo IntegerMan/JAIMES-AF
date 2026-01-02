@@ -66,7 +66,25 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
     public async Task<LocationResponse> CreateLocationAsync(Guid gameId, string name, string description,
         string? storytellerNotes, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Name is required", nameof(name));
+        if (name.Length > 200) throw new ArgumentException("Name must be 200 characters or less", nameof(name));
+        if (string.IsNullOrWhiteSpace(description))
+            throw new ArgumentException("Description is required", nameof(description));
+
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        // Explicit check for game existence
+        if (!await context.Games.AnyAsync(g => g.Id == gameId, cancellationToken))
+        {
+            throw new KeyNotFoundException($"Game with ID {gameId} not found");
+        }
+
+        // Check for existing location (common case / handles InMemoryDatabase limitations)
+        if (await context.Locations.AnyAsync(l => l.GameId == gameId && l.Name.ToLower() == name.ToLower(),
+                cancellationToken))
+        {
+            throw new ArgumentException($"A location named '{name}' already exists in this game");
+        }
 
         Location location = new()
         {

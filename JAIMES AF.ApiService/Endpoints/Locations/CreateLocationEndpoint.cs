@@ -14,7 +14,6 @@ public class CreateLocationRequest
 public class CreateLocationEndpoint : Endpoint<CreateLocationRequest, LocationResponse>
 {
     public required ILocationService LocationService { get; set; }
-    public required IGameService GameService { get; set; }
 
     public override void Configure()
     {
@@ -47,20 +46,6 @@ public class CreateLocationEndpoint : Endpoint<CreateLocationRequest, LocationRe
         if (string.IsNullOrWhiteSpace(req.Description))
         {
             ThrowError("Description is required");
-            return;
-        }
-
-        // Verify game exists
-        if (await GameService.GetGameAsync(gameId, ct) == null)
-        {
-            await Send.NotFoundAsync(ct);
-            return;
-        }
-
-        // Check if location already exists
-        if (await LocationService.LocationExistsAsync(gameId, req.Name, ct))
-        {
-            ThrowError($"A location named '{req.Name}' already exists in this game", StatusCodes.Status409Conflict);
             return;
         }
 

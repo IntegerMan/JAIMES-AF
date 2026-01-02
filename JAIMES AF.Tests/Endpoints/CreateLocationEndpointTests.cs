@@ -24,13 +24,13 @@ public class CreateLocationEndpointTests : EndpointTestBase
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
-        
+
         LocationResponse? location = await response.Content.ReadFromJsonAsync<LocationResponse>(ct);
         location.ShouldNotBeNull();
         location.Name.ShouldBe(request.Name);
         location.Description.ShouldBe(request.Description);
         location.Id.ShouldBeGreaterThan(0);
-        
+
         response.Headers.Location.ShouldNotBeNull();
         response.Headers.Location.ToString().ShouldContain($"/locations/{location.Id}");
     }
@@ -53,6 +53,27 @@ public class CreateLocationEndpointTests : EndpointTestBase
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task CreateLocation_WithInvalidData_ReturnsBadRequest()
+    {
+        // Arrange
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        string gameId = Guid.NewGuid().ToString();
+        await CreateTestGameAsync(gameId, ct);
+
+        var request = new
+        {
+            Name = "", // Invalid: empty name
+            Description = "A description"
+        };
+
+        // Act
+        HttpResponseMessage response = await Client.PostAsJsonAsync($"/games/{gameId}/locations", request, ct);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     }
 
     [Fact]
@@ -83,7 +104,7 @@ public class CreateLocationEndpointTests : EndpointTestBase
     {
         using var scope = Factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<JaimesDbContext>();
-        
+
         context.Games.Add(new Game
         {
             Id = Guid.Parse(gameId),
@@ -93,7 +114,7 @@ public class CreateLocationEndpointTests : EndpointTestBase
             PlayerId = "test-player",
             CreatedAt = DateTime.UtcNow
         });
-        
+
         await context.SaveChangesAsync(ct);
     }
 }
