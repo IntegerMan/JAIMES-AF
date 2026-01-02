@@ -10,13 +10,21 @@ public class GetNearbyLocationsEndpoint : EndpointWithoutRequest<NearbyLocationR
         AllowAnonymous();
         Description(b => b
             .Produces<NearbyLocationResponse[]>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status404NotFound)
             .WithTags("Locations"));
     }
 
     public override async Task HandleAsync(CancellationToken ct)
     {
         int locationId = Route<int>("locationId");
-        NearbyLocationResponse[] nearby = await LocationService.GetNearbyLocationsAsync(locationId, ct);
+        NearbyLocationResponse[]? nearby = await LocationService.GetNearbyLocationsAsync(locationId, ct);
+
+        if (nearby == null)
+        {
+            await Send.NotFoundAsync(ct);
+            return;
+        }
+
         await Send.OkAsync(nearby, ct);
     }
 }

@@ -10,13 +10,21 @@ public class GetLocationEventsEndpoint : EndpointWithoutRequest<LocationEventRes
         AllowAnonymous();
         Description(b => b
             .Produces<LocationEventResponse[]>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status404NotFound)
             .WithTags("Locations"));
     }
 
     public override async Task HandleAsync(CancellationToken ct)
     {
         int locationId = Route<int>("locationId");
-        LocationEventResponse[] events = await LocationService.GetLocationEventsAsync(locationId, ct);
+        LocationEventResponse[]? events = await LocationService.GetLocationEventsAsync(locationId, ct);
+
+        if (events == null)
+        {
+            await Send.NotFoundAsync(ct);
+            return;
+        }
+
         await Send.OkAsync(events, ct);
     }
 }

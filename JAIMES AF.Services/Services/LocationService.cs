@@ -173,7 +173,7 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
     }
 
     /// <inheritdoc />
-    public async Task<LocationEventResponse[]> GetLocationEventsAsync(int locationId,
+    public async Task<LocationEventResponse[]?> GetLocationEventsAsync(int locationId,
         CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -184,7 +184,7 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
 
         if (location == null)
         {
-            return [];
+            return null;
         }
 
         return location.Events
@@ -236,10 +236,16 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
     }
 
     /// <inheritdoc />
-    public async Task<NearbyLocationResponse[]> GetNearbyLocationsAsync(int locationId,
+    public async Task<NearbyLocationResponse[]?> GetNearbyLocationsAsync(int locationId,
         CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        // Verify location exists
+        if (!await context.Locations.AnyAsync(l => l.Id == locationId, cancellationToken))
+        {
+            return null;
+        }
 
         List<NearbyLocation> nearbyLocations = await context.NearbyLocations
             .Include(nl => nl.SourceLocation)

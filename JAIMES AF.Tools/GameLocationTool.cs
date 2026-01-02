@@ -109,7 +109,7 @@ public class GameLocationTool(GameDto game, IServiceProvider serviceProvider)
         }
 
         // Get events
-        LocationEventResponse[] events = await locationService.GetLocationEventsAsync(location.Id);
+        LocationEventResponse[] events = await locationService.GetLocationEventsAsync(location.Id) ?? [];
         if (events.Length > 0)
         {
             parts.Add("\nSignificant Events:");
@@ -120,7 +120,7 @@ public class GameLocationTool(GameDto game, IServiceProvider serviceProvider)
         }
 
         // Get nearby locations
-        NearbyLocationResponse[] nearbyLocations = await locationService.GetNearbyLocationsAsync(location.Id);
+        NearbyLocationResponse[] nearbyLocations = await locationService.GetNearbyLocationsAsync(location.Id) ?? [];
         if (nearbyLocations.Length > 0)
         {
             parts.Add("\nNearby Locations:");

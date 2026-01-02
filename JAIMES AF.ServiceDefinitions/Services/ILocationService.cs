@@ -43,7 +43,8 @@ public interface ILocationService
     /// <summary>
     /// Gets events for a location.
     /// </summary>
-    Task<LocationEventResponse[]> GetLocationEventsAsync(int locationId, CancellationToken cancellationToken = default);
+    Task<LocationEventResponse[]?>
+        GetLocationEventsAsync(int locationId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Adds an event to a location.
@@ -54,7 +55,7 @@ public interface ILocationService
     /// <summary>
     /// Gets nearby locations for a location.
     /// </summary>
-    Task<NearbyLocationResponse[]> GetNearbyLocationsAsync(int locationId,
+    Task<NearbyLocationResponse[]?> GetNearbyLocationsAsync(int locationId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
