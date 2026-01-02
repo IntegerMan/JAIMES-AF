@@ -41,7 +41,9 @@ public class PlayerAgencyEvaluator(IChatClient chatClient) : IEvaluator
                          Tasks: To complete your evaluation you will be asked to evaluate the Data in different ways.
 
                          Definition
-                         Player Agency refers to the degree to which an AI Game Master respects the player's autonomy and decision-making authority in a role-playing game context. A response that preserves player agency allows the player to make their own choices, avoids making decisions on the player's behalf, and refrains from presenting restrictive multiple-choice lists that limit player creativity. The AI should describe the world and consequences of actions without assuming what the player will do or forcing them into predetermined paths.
+                         Player Agency refers to the degree to which an AI Game Master respects the player's autonomy and decision-making authority in a role-playing game context. A response that preserves player agency allows the player to make their own choices, avoids making decisions on the player's behalf, and refrains from presenting multiple-choice lists that limit player creativity. The AI should describe the world and consequences of actions without assuming what the player will do or forcing them into predetermined paths.
+
+                         CRITICAL: Presenting numbered lists, bulleted lists, or explicit "menu" options (e.g., "Do you want to: 1) X, 2) Y, 3) Z") is a significant agency violation that should NEVER score above 4, regardless of how well-written the descriptive prose is. Even beautiful prose followed by a choice list is hand-holding the player and limiting their creativity.
 
                          Ratings
                          [PlayerAgency: 1] (No Agency Respect)
@@ -53,7 +55,7 @@ public class PlayerAgencyEvaluator(IChatClient chatClient) : IEvaluator
                          Response: "What would you like to do? A) Go north B) Go south C) Attack the guard D) Talk to the merchant"
 
                          [PlayerAgency: 2] (Minimal Agency Respect)
-                         Definition: The response has significant issues with agency. It frequently makes assumptions about player actions, takes some decisions for the player, or presents overly restrictive choice lists. The player's sense of control and autonomy is substantially diminished.
+                         Definition: The response has significant issues with agency. It frequently makes assumptions about player actions, takes some decisions for the player, or presents overly restrictive choice lists with minimal description. The player's sense of control and autonomy is substantially diminished.
 
                          Examples:
                          Response: "You walk down the corridor and notice a hidden passage. You investigate it and find a secret room."
@@ -61,15 +63,17 @@ public class PlayerAgencyEvaluator(IChatClient chatClient) : IEvaluator
                          Response: "You can either: 1) Fight the dragon 2) Run away 3) Try to negotiate"
 
                          [PlayerAgency: 3] (Partial Agency Respect)
-                         Definition: The response has some issues with agency. It may occasionally make minor assumptions, suggest a list of possible actions (which limits creativity), or slightly overstep by describing what the player does rather than what happens. The response communicates the situation but doesn't fully preserve player autonomy.
+                         Definition: The response has notable issues with agency. It may have good descriptive prose BUT undermines it by presenting numbered/bulleted choice lists, asking the player to pick from explicit options, or making minor assumptions about player actions. The response communicates the situation but doesn't fully preserve player autonomy because it hand-holds the player with suggested actions.
 
                          Examples:
                          Response: "The door creaks open. You step inside and look around the dimly lit chamber."
 
                          Response: "You might want to consider: searching the room, talking to the NPC, or examining the artifact."
 
+                         Response: "[Beautiful descriptive prose about a magical tree]... What do you wish to examine further? Do you want to: 1) Gently reach for a glowing fruit 2) Peer into the hollow of the tree 3) Sit down and meditate. What does your character choose to do?"
+
                          [PlayerAgency: 4] (Good Agency Respect)
-                         Definition: The response respects player agency with only minor issues. It generally allows the player to make their own decisions and describes the world and consequences without taking actions for the player. There may be occasional minor assumptions or suggestions, but they don't significantly impact player autonomy. A common issue at this level is presenting choices in a question format like "Would you like to X, Y, or Z?" which, while less restrictive than numbered lists, still limits player creativity by suggesting specific options rather than allowing open-ended exploration.
+                         Definition: The response respects player agency with only minor issues. It generally allows the player to make their own decisions and describes the world and consequences without taking actions for the player. There may be occasional minor assumptions or soft suggestions embedded in prose, but no explicit numbered/bulleted choice lists. A response at this level might ask an open-ended question like "What do you do?" or present subtle hints in the prose rather than explicit menu options.
 
                          Examples:
                          Response: "The door stands before you, slightly ajar. A faint light spills from the crack. The air carries a musty scent, and you hear distant sounds echoing from within."
@@ -78,10 +82,10 @@ public class PlayerAgencyEvaluator(IChatClient chatClient) : IEvaluator
 
                          Response: "The path splits ahead. Would you like to follow the left trail into the forest, take the right path toward the mountains, or investigate the strange markings on the ground?"
 
-                         Response: "You've reached the tavern. Would you like to order a drink, talk to the bartender, or look for information about the quest?"
+                         Response: "You've reached the tavern. The bartender polishes a glass while eyeing you curiously, and a hooded figure in the corner seems to be watching. What do you do?"
 
                          [PlayerAgency: 5] (Exceptional Agency Respect)
-                         Definition: The response perfectly respects player agency. It describes the world, situations, and consequences without making any assumptions about what the player will do. It never takes actions on the player's behalf or presents restrictive choice lists. The player feels fully in control of their character's decisions and actions.
+                         Definition: The response perfectly respects player agency. It describes the world, situations, and consequences without making any assumptions about what the player will do. It never takes actions on the player's behalf, never presents numbered/bulleted choice lists, and never asks players to choose from explicit options. The player feels fully in control of their character's decisions and actions. The response may end with an open-ended prompt like "What do you do?" but never suggests specific actions.
 
                          Examples:
                          Response: "The ancient door stands before you, its surface carved with runes that seem to shift in the torchlight. The air grows colder as you approach, and you notice the lock mechanism appears to be of dwarven craftsmanship."
