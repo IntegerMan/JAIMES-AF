@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
@@ -8,6 +9,7 @@ namespace MattEland.Jaimes.Workers.AssistantMessageWorker.Services;
 /// An evaluator that scores a conversation based on how much the AI assistant respected the player's agency.
 /// </summary>
 /// <param name="chatClient">The chat client to use for evaluation.</param>
+[Description("Evaluates assistant responses for how well they preserve player agency by avoiding making decisions on the player's behalf or presenting restrictive choice lists.")]
 public class PlayerAgencyEvaluator(IChatClient chatClient) : IEvaluator
 {
     public const string MetricName = "PlayerAgency";
