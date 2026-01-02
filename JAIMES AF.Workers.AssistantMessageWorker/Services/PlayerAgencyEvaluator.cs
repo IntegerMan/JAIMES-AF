@@ -67,12 +67,16 @@ public class PlayerAgencyEvaluator(IChatClient chatClient) : IEvaluator
                          Response: "You might want to consider: searching the room, talking to the NPC, or examining the artifact."
 
                          [PlayerAgency: 4] (Good Agency Respect)
-                         Definition: The response respects player agency with only minor issues. It generally allows the player to make their own decisions and describes the world and consequences without taking actions for the player. There may be occasional minor assumptions or suggestions, but they don't significantly impact player autonomy.
+                         Definition: The response respects player agency with only minor issues. It generally allows the player to make their own decisions and describes the world and consequences without taking actions for the player. There may be occasional minor assumptions or suggestions, but they don't significantly impact player autonomy. A common issue at this level is presenting choices in a question format like "Would you like to X, Y, or Z?" which, while less restrictive than numbered lists, still limits player creativity by suggesting specific options rather than allowing open-ended exploration.
 
                          Examples:
                          Response: "The door stands before you, slightly ajar. A faint light spills from the crack. The air carries a musty scent, and you hear distant sounds echoing from within."
 
                          Response: "The merchant eyes you warily as you approach. His hand moves toward a hidden weapon, but he hasn't drawn it yet. The marketplace bustles around you, and other shoppers seem to be watching the interaction."
+
+                         Response: "The path splits ahead. Would you like to follow the left trail into the forest, take the right path toward the mountains, or investigate the strange markings on the ground?"
+
+                         Response: "You've reached the tavern. Would you like to order a drink, talk to the bartender, or look for information about the quest?"
 
                          [PlayerAgency: 5] (Exceptional Agency Respect)
                          Definition: The response perfectly respects player agency. It describes the world, situations, and consequences without making any assumptions about what the player will do. It never takes actions on the player's behalf or presents restrictive choice lists. The player feels fully in control of their character's decisions and actions.
@@ -110,7 +114,7 @@ public class PlayerAgencyEvaluator(IChatClient chatClient) : IEvaluator
         };
 
         ChatResponse response = await chatClient.GetResponseAsync(requestMessages, chatOptions, cancellationToken);
-        string responseText = response.Text ?? string.Empty;
+        string responseText = response.Text;
 
         // Parse the response for S0, S1, S2 tags
         int score = 1;
