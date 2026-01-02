@@ -35,6 +35,12 @@ public class AddLocationEventEndpoint : Endpoint<AddLocationEventRequest, Locati
             return;
         }
 
+        if (req.EventName.Length > 200)
+        {
+            ThrowError("Event name must be 200 characters or less");
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(req.EventDescription))
         {
             ThrowError("Event description is required");
