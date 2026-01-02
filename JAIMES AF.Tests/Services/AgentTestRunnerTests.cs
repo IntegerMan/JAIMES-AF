@@ -4,6 +4,8 @@ using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.AI.Evaluation;
+using Microsoft.Extensions.AI.Evaluation.Reporting;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -103,7 +105,11 @@ public class AgentTestRunnerTests : IAsyncLifetime
         // Setup mock chat client to return a simple response
         SetupMockChatClient("This is the agent's test response.");
 
-        _testRunner = new AgentTestRunner(_contextFactory, _mockChatClient.Object, _mockLogger.Object);
+        var mockResultStore = new Mock<IEvaluationResultStore>();
+        var emptyEvaluators = new List<IEvaluator>();
+
+        _testRunner = new AgentTestRunner(_contextFactory, _mockChatClient.Object, emptyEvaluators,
+            mockResultStore.Object, _mockLogger.Object);
     }
 
     public async ValueTask DisposeAsync()
@@ -131,7 +137,8 @@ public class AgentTestRunnerTests : IAsyncLifetime
 
         // Act & Assert
         var exception = await Should.ThrowAsync<InvalidOperationException>(async () =>
-            await _testRunner.RunTestCasesAsync(nonExistentAgentId, 1, null, null, TestContext.Current.CancellationToken));
+            await _testRunner.RunTestCasesAsync(nonExistentAgentId, 1, null, null,
+                TestContext.Current.CancellationToken));
 
         exception.Message.ShouldContain("nonexistent-agent");
         exception.Message.ShouldContain("not found");
@@ -145,7 +152,8 @@ public class AgentTestRunnerTests : IAsyncLifetime
 
         // Act & Assert
         var exception = await Should.ThrowAsync<InvalidOperationException>(async () =>
-            await _testRunner.RunTestCasesAsync("test-agent", nonExistentVersionId, null, null, TestContext.Current.CancellationToken));
+            await _testRunner.RunTestCasesAsync("test-agent", nonExistentVersionId, null, null,
+                TestContext.Current.CancellationToken));
 
         exception.Message.ShouldContain("99999");
         exception.Message.ShouldContain("not found");
@@ -277,6 +285,7 @@ public class AgentTestRunnerTests : IAsyncLifetime
     private class TestDbContextFactory(DbContextOptions<JaimesDbContext> options) : IDbContextFactory<JaimesDbContext>
     {
         public JaimesDbContext CreateDbContext() => new(options);
+
         public Task<JaimesDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
             => Task.FromResult(new JaimesDbContext(options));
     }

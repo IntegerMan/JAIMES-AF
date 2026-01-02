@@ -6,6 +6,8 @@ using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.AI.Evaluation;
+using Microsoft.Extensions.AI.Evaluation.Reporting;
 using Microsoft.Extensions.Logging;
 
 namespace MattEland.Jaimes.ApiService.Services;
@@ -17,6 +19,8 @@ namespace MattEland.Jaimes.ApiService.Services;
 public class AgentTestRunner(
     IDbContextFactory<JaimesDbContext> contextFactory,
     IChatClient chatClient,
+    IEnumerable<IEvaluator> evaluators,
+    IEvaluationResultStore resultStore,
     ILogger<AgentTestRunner> logger) : IAgentTestRunner
 {
     private const int MaxContextMessages = 5;
@@ -169,6 +173,9 @@ public class AgentTestRunner(
         context.TestCaseRuns.Add(run);
         await context.SaveChangesAsync(ct);
 
+        // Evaluate the response
+        await EvaluateTestRunAsync(context, run, testCase, chatMessages, generatedResponse, version, ct);
+
         return new TestCaseRunResponse
         {
             Id = run.Id,
@@ -219,5 +226,98 @@ public class AgentTestRunner(
                 string.IsNullOrEmpty(m.PlayerId) ? ChatRole.Assistant : ChatRole.User,
                 m.Text))
             .ToList();
+    }
+
+    private async Task EvaluateTestRunAsync(
+        JaimesDbContext context,
+        TestCaseRun run,
+        TestCase testCase,
+        List<ChatMessage> contextMessages,
+        string generatedResponse,
+        AgentInstructionVersion version,
+        CancellationToken ct)
+    {
+        try
+        {
+            logger.LogInformation("Evaluating test run {RunId}", run.Id);
+
+            // Create the assistant response
+            ChatMessage assistantMessage = new(ChatRole.Assistant, generatedResponse);
+            ChatResponse assistantResponse = new(assistantMessage);
+
+            // Create evaluation context
+            List<ChatMessage> evaluationContext = [new ChatMessage(ChatRole.System, version.Instructions)];
+            evaluationContext.AddRange(contextMessages);
+
+            // Create composite evaluator
+            IEvaluator compositeEvaluator = new CompositeEvaluator(evaluators);
+
+            // Create ReportingConfiguration
+            ChatConfiguration chatConfiguration = new(chatClient);
+            ReportingConfiguration reportConfig = new(
+                [compositeEvaluator],
+                resultStore,
+                executionName: $"TestRun_{run.ExecutionName}",
+                chatConfiguration: chatConfiguration);
+
+            // Create scenario run
+            await using ScenarioRun scenarioRun = await reportConfig.CreateScenarioRunAsync(
+                scenarioName: $"TestCase_{testCase.Id}",
+                iterationName: $"Version_{version.Id}",
+                cancellationToken: ct);
+
+            // Perform evaluation
+            EvaluationResult result = await scenarioRun.EvaluateAsync(
+                evaluationContext,
+                assistantResponse,
+                cancellationToken: ct);
+
+            // Load evaluator lookups
+            var evaluatorIdLookup = await context.Evaluators
+                .ToDictionaryAsync(e => e.Name.ToLower(), e => e.Id, ct);
+
+            var metricToEvaluatorMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var evaluator in evaluators)
+            {
+                string className = evaluator.GetType().Name;
+                foreach (var metricName in evaluator.EvaluationMetricNames)
+                {
+                    metricToEvaluatorMap[metricName] = className;
+                }
+            }
+
+            // Store metrics
+            foreach (var metricPair in result.Metrics)
+            {
+                if (metricPair.Value is NumericMetric metric && metric.Value != null)
+                {
+                    int? evaluatorId = null;
+                    if (metricToEvaluatorMap.TryGetValue(metricPair.Key, out string? evaluatorClassName))
+                    {
+                        if (evaluatorIdLookup.TryGetValue(evaluatorClassName.ToLower(), out int id))
+                        {
+                            evaluatorId = id;
+                        }
+                    }
+
+                    context.TestCaseRunMetrics.Add(new TestCaseRunMetric
+                    {
+                        TestCaseRunId = run.Id,
+                        MetricName = metricPair.Key,
+                        Score = metric.Value.Value,
+                        Remarks = metric.Reason,
+                        EvaluatorId = evaluatorId
+                    });
+                }
+            }
+
+            await context.SaveChangesAsync(ct);
+            logger.LogInformation("Evaluation complete for run {RunId}: {MetricCount} metrics", run.Id,
+                result.Metrics.Count);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Evaluation failed for run {RunId}", run.Id);
+        }
     }
 }
