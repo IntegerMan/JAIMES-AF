@@ -204,4 +204,65 @@ public class PromptImproverServiceTests
         Assert.DoesNotContain(request.CurrentPrompt, result, StringComparison.Ordinal);
         Assert.DoesNotContain("User's Specific Requests", result, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void BuildToolUsageInsightsPrompt_WithToolData_ReturnsValidPrompt()
+    {
+        // Arrange
+        var toolCalls = new List<MessageToolCall>
+        {
+            new() { ToolName = "SearchTool", CreatedAt = DateTime.UtcNow },
+            new() { ToolName = "SearchTool", CreatedAt = DateTime.UtcNow.AddMinutes(-5) },
+            new() { ToolName = "WeatherTool", CreatedAt = DateTime.UtcNow.AddMinutes(-10) }
+        };
+        var registeredTools = new List<Tool>
+        {
+            new() { Name = "SearchTool", Description = "Searches for information" },
+            new() { Name = "WeatherTool", Description = "Gets weather data" },
+            new() { Name = "CalendarTool", Description = "Manages calendar events" }
+        };
+        var assistantMessages = new List<Message>
+        {
+            new()
+            {
+                Id = 1, Text = "Here's the weather forecast.", AgentId = "test-agent", InstructionVersionId = 1,
+                CreatedAt = DateTime.UtcNow
+            }
+        };
+        const string currentPrompt = "You are a helpful AI assistant.";
+
+        // Act
+        string result =
+            PromptImproverService.BuildToolUsageInsightsPrompt(toolCalls, registeredTools, assistantMessages,
+                currentPrompt);
+
+        // Assert
+        Assert.Contains("Current Agent Prompt", result, StringComparison.Ordinal);
+        Assert.Contains(currentPrompt, result, StringComparison.Ordinal);
+        Assert.Contains("Available Tools", result, StringComparison.Ordinal);
+        Assert.Contains("Tool Usage Statistics", result, StringComparison.Ordinal);
+        Assert.Contains("SearchTool", result, StringComparison.Ordinal);
+        Assert.Contains("Called 2 time(s)", result, StringComparison.Ordinal);
+        Assert.Contains("CalendarTool", result, StringComparison.Ordinal);
+        Assert.Contains("Sample Assistant Messages", result, StringComparison.Ordinal);
+        Assert.Contains("weather forecast", result, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BuildImprovedPromptInput_WithToolInsights_IncludesSection()
+    {
+        // Arrange
+        var request = new GenerateImprovedPromptRequest
+        {
+            CurrentPrompt = "You are a helpful AI assistant.",
+            ToolInsights = "Agent is not using the CalendarTool when appropriate"
+        };
+
+        // Act
+        string result = PromptImproverService.BuildImprovedPromptInput(request);
+
+        // Assert
+        Assert.Contains("Insights from Tool Usage", result, StringComparison.Ordinal);
+        Assert.Contains("CalendarTool", result, StringComparison.Ordinal);
+    }
 }

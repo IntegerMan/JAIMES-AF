@@ -1,6 +1,9 @@
 @using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.ServiceDefinitions.Requests
 @using MudBlazor
 @inject IHttpClientFactory HttpClientFactory
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
 
 <MudDataGrid T="ToolUsageItemDto"
              ServerData="ServerReload"
@@ -217,4 +220,72 @@
             Items = []
         };
     }
+
+    // Insights generation state
+    private bool _isGeneratingInsights;
+    private string? _insightsResult;
+    private int _insightsItemCount;
+
+    /// <summary>
+    /// Generates AI insights and shows them in a dialog.
+    /// </summary>
+    public async Task GenerateInsightsAsync()
+    {
+        if (!InstructionVersionId.HasValue || string.IsNullOrEmpty(AgentId))
+            return;
+
+        _isGeneratingInsights = true;
+        StateHasChanged();
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient("Api");
+            var request = new GenerateInsightsRequest { InsightType = "tools" };
+            
+            var response = await client.PostAsJsonAsync(
+                $"/agents/{AgentId}/instruction-versions/{InstructionVersionId}/generate-insights",
+                request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<GenerateInsightsResponse>();
+                if (result?.Success == true)
+                {
+                    _insightsResult = result.Insights;
+                    _insightsItemCount = result.ItemsAnalyzed;
+                    
+                    // Show dialog with markdown content
+                    var parameters = new DialogParameters<InsightsDialog>
+                    {
+                        { x => x.Title, "Tool Usage Insights" },
+                        { x => x.Content, result.Insights ?? "No insights available." },
+                        { x => x.ItemCount, result.ItemsAnalyzed }
+                    };
+                    await DialogService.ShowAsync<InsightsDialog>("AI Insights", parameters);
+                }
+                else
+                {
+                    Snackbar.Add(result?.Error ?? "Failed to generate insights", Severity.Error);
+                }
+            }
+            else
+            {
+                Snackbar.Add("Failed to generate insights", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isGeneratingInsights = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Returns true if insights generation is in progress.
+    /// </summary>
+    public bool IsGeneratingInsights => _isGeneratingInsights;
 }
