@@ -94,7 +94,7 @@
 
             <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
                 <MudText Typo="Typo.h5">Version Analysis</MudText>
-                @if (_activeTabIndex is 0 or 1 or 3 or 4)
+                @if (_activeTabIndex is 0 or 1 or 2 or 3 or 4)
                 {
                     <MudButton Variant="Variant.Filled"
                                Color="Color.Secondary"
@@ -123,7 +123,7 @@
                     <MattEland.Jaimes.Web.Components.Shared.FeedbackGrid @ref="_feedbackGrid" AgentId="@AgentId" InstructionVersionId="@VersionId"/>
                 </MudTabPanel>
                 <MudTabPanel Text="Tool Usage">
-                    <MattEland.Jaimes.Web.Components.Shared.ToolUsageGrid AgentId="@AgentId" InstructionVersionId="@VersionId"/>
+                    <MattEland.Jaimes.Web.Components.Shared.ToolUsageGrid @ref="_toolUsageGrid" AgentId="@AgentId" InstructionVersionId="@VersionId"/>
                 </MudTabPanel>
                 <MudTabPanel Text="Metrics">
                     <MattEland.Jaimes.Web.Components.Shared.MetricsGrid @ref="_metricsGrid" AgentId="@AgentId" InstructionVersionId="@VersionId"/>

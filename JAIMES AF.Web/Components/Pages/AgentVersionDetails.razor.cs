@@ -118,6 +118,7 @@ public partial class AgentVersionDetails
     private bool _isGeneratingInsights;
     private MattEland.Jaimes.Web.Components.Agents.AgentMessagesList? _messagesGrid;
     private MattEland.Jaimes.Web.Components.Shared.FeedbackGrid? _feedbackGrid;
+    private MattEland.Jaimes.Web.Components.Shared.ToolUsageGrid? _toolUsageGrid;
     private MattEland.Jaimes.Web.Components.Shared.MetricsGrid? _metricsGrid;
     private MattEland.Jaimes.Web.Components.Shared.SentimentGrid? _sentimentGrid;
 
@@ -137,6 +138,10 @@ public partial class AgentVersionDetails
                 case 1: // Feedback
                     if (_feedbackGrid != null)
                         await _feedbackGrid.GenerateInsightsAsync();
+                    break;
+                case 2: // Tool Usage
+                    if (_toolUsageGrid != null)
+                        await _toolUsageGrid.GenerateInsightsAsync();
                     break;
                 case 3: // Metrics
                     if (_metricsGrid != null)
