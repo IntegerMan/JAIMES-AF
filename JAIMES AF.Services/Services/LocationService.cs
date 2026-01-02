@@ -2,6 +2,7 @@ using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Services;
+using MattEland.Jaimes.ServiceDefinitions.Exceptions;
 using Microsoft.EntityFrameworkCore;
 
 namespace MattEland.Jaimes.ServiceLayer.Services;
@@ -83,7 +84,7 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
         if (await context.Locations.AnyAsync(l => l.GameId == gameId && l.Name.ToLower() == name.ToLower(),
                 cancellationToken))
         {
-            throw new ArgumentException($"A location named '{name}' already exists in this game");
+            throw new DuplicateResourceException($"A location named '{name}' already exists in this game");
         }
 
         Location location = new()
@@ -108,7 +109,7 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
             if (await context.Locations.AnyAsync(l => l.GameId == gameId && l.Name.ToLower() == name.ToLower(),
                     cancellationToken))
             {
-                throw new ArgumentException($"A location named '{name}' already exists in this game", ex);
+                throw new DuplicateResourceException($"A location named '{name}' already exists in this game", ex);
             }
 
             // Check for foreign key violation on GameId
@@ -210,7 +211,7 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
         Location? location = await context.Locations.FindAsync([locationId], cancellationToken);
         if (location == null)
         {
-            throw new InvalidOperationException($"Location with ID {locationId} not found.");
+            throw new KeyNotFoundException($"Location with ID {locationId} not found.");
         }
 
         LocationEvent evt = new()

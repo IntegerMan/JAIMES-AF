@@ -47,20 +47,19 @@ public class AddLocationEventEndpoint : Endpoint<AddLocationEventRequest, Locati
             return;
         }
 
-        // Check if location exists
-        LocationResponse? location = await LocationService.GetLocationByIdAsync(locationId, ct);
-        if (location == null)
+        try
+        {
+            LocationEventResponse result = await LocationService.AddLocationEventAsync(
+                locationId, req.EventName, req.EventDescription, ct);
+
+            await Send.CreatedAtAsync<GetLocationEventsEndpoint>(
+                new { locationId },
+                result,
+                cancellation: ct);
+        }
+        catch (KeyNotFoundException)
         {
             await Send.NotFoundAsync(ct);
-            return;
         }
-
-        LocationEventResponse result = await LocationService.AddLocationEventAsync(
-            locationId, req.EventName, req.EventDescription, ct);
-
-        await Send.CreatedAtAsync<GetLocationEventsEndpoint>(
-            new { locationId },
-            result,
-            cancellation: ct);
     }
 }

@@ -1,5 +1,6 @@
 using FastEndpoints;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
+using MattEland.Jaimes.ServiceDefinitions.Exceptions;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 
 namespace MattEland.Jaimes.ApiService.Endpoints.Locations;
@@ -59,9 +60,13 @@ public class CreateLocationEndpoint : Endpoint<CreateLocationRequest, LocationRe
                 result,
                 cancellation: ct);
         }
-        catch (ArgumentException ex)
+        catch (DuplicateResourceException ex)
         {
             ThrowError(ex.Message, StatusCodes.Status409Conflict);
+        }
+        catch (ArgumentException ex)
+        {
+            ThrowError(ex.Message, StatusCodes.Status400BadRequest);
         }
         catch (KeyNotFoundException ex)
         {
