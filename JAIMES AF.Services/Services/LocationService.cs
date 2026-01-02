@@ -168,6 +168,17 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
             return false;
         }
 
+        // Delete any nearby location records where this is the target location
+        // NOTE: SourceLocation has Cascade delete, but TargetLocation has Restrict to avoid circular paths in some DB providers
+        List<NearbyLocation> targetNearby = await context.NearbyLocations
+            .Where(nl => nl.TargetLocationId == locationId)
+            .ToListAsync(cancellationToken);
+        
+        if (targetNearby.Count != 0)
+        {
+            context.NearbyLocations.RemoveRange(targetNearby);
+        }
+
         context.Locations.Remove(location);
         await context.SaveChangesAsync(cancellationToken);
         return true;
