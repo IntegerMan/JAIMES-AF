@@ -40,24 +40,9 @@ builder.Services.AddJaimesServices();
 builder.Services.AddChatClient(builder.Configuration, "TextGenerationModel");
 
 // Configure evaluators
+// Note: Individual evaluators are already registered as IEvaluator by AddJaimesServices()
+// We only need to configure options for BrevityEvaluator
 builder.Services.Configure<BrevityEvaluatorOptions>(builder.Configuration.GetSection("Evaluation:Brevity"));
-builder.Services.AddSingleton<BrevityEvaluator>();
-builder.Services.AddSingleton<PlayerAgencyEvaluator>();
-
-// Register RelevanceTruthAndCompletenessEvaluator as concrete type (it's already registered as IEvaluator in AddJaimesServices)
-// We need to register it as the concrete type so we can resolve it directly for the CompositeEvaluator
-builder.Services.AddSingleton<RelevanceTruthAndCompletenessEvaluator>(
-    sp => (RelevanceTruthAndCompletenessEvaluator)
-        sp.GetServices<IEvaluator>().First(e => e is RelevanceTruthAndCompletenessEvaluator));
-
-// Register CompositeEvaluator as the primary IEvaluator
-builder.Services.AddSingleton<IEvaluator>(sp =>
-    new CompositeEvaluator(
-    [
-        sp.GetRequiredService<RelevanceTruthAndCompletenessEvaluator>(),
-        sp.GetRequiredService<BrevityEvaluator>(),
-        sp.GetRequiredService<PlayerAgencyEvaluator>()
-    ]));
 // Register evaluation service
 builder.Services.AddScoped<IMessageEvaluationService, MessageEvaluationService>();
 
@@ -122,6 +107,13 @@ using IHost host = builder.Build();
 ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 
 await host.WaitForMigrationsAsync();
+
+// Log registered evaluators for debugging
+var registeredEvaluators = host.Services.GetServices<IEvaluator>().ToList();
+logger.LogInformation(
+    "Registered {Count} evaluators: {EvaluatorNames}",
+    registeredEvaluators.Count,
+    string.Join(", ", registeredEvaluators.Select(e => e.GetType().Name)));
 
 logger.LogInformation("Starting Assistant Message Worker");
 

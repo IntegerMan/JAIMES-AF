@@ -38,8 +38,16 @@ public class MessageEvaluationService(
             return;
         }
 
+        // Log available evaluators for debugging
+        var evaluatorList = evaluators.ToList();
+        logger.LogInformation(
+            "Available evaluators for message {MessageId}: {Count} evaluators ({EvaluatorNames})",
+            message.Id,
+            evaluatorList.Count,
+            string.Join(", ", evaluatorList.Select(e => e.GetType().Name)));
+
         // Filter evaluators if specific ones are requested
-        IEnumerable<IEvaluator> activeEvaluators = evaluators;
+        IEnumerable<IEvaluator> activeEvaluators = evaluatorList;
         if (evaluatorsToRun != null && evaluatorsToRun.Any())
         {
             var evaluatorNamesSet = new HashSet<string>(evaluatorsToRun, StringComparer.OrdinalIgnoreCase);
