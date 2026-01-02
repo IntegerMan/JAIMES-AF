@@ -229,7 +229,7 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
         Location? source = await context.Locations.FindAsync([sourceLocationId], cancellationToken);
         Location? target = await context.Locations.FindAsync([targetLocationId], cancellationToken);
 
-        if (source == null || target == null)
+        if (source == null || target == null || source.GameId != target.GameId)
         {
             return null;
         }

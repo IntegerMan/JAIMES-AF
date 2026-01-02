@@ -51,7 +51,8 @@ public class CreateLocationEndpoint : Endpoint<CreateLocationRequest, LocationRe
         // Check if location already exists
         if (await LocationService.LocationExistsAsync(gameId, req.Name, ct))
         {
-            ThrowError($"A location named '{req.Name}' already exists in this game");
+            AddError($"A location named '{req.Name}' already exists in this game");
+            await SendErrorsAsync(StatusCodes.Status409Conflict, ct);
             return;
         }
 
