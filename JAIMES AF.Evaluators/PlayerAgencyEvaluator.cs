@@ -198,9 +198,12 @@ public class PlayerAgencyEvaluator(IChatClient chatClient) : IEvaluator
         }
         else
         {
+            string rawResponseText = string.IsNullOrWhiteSpace(responseText) ? "{Empty}" : responseText;
+            int length = Math.Min(200, rawResponseText.Length);
+            
             metric.Diagnostics.Add(new EvaluationDiagnostic(
                 EvaluationDiagnosticSeverity.Warning,
-                $"Failed to parse evaluation response. Raw response: {responseText.Substring(0, Math.Min(200, responseText.Length))}"));
+                $"Failed to parse evaluation response. Raw response: {rawResponseText.Substring(0, length)}"));
         }
 
         return new EvaluationResult(metric);

@@ -33,13 +33,14 @@ public class PlayerAgencyEvaluatorTests
     {
         // Arrange
         string responseText = """
-            <S0>Let's think step by step: The response describes the world without taking actions for the player. It presents the situation and allows the player to decide what to do.</S0>
-            <S1>The response respects player agency by describing the environment without assumptions.</S1>
-            <S2>5</S2>
-            """;
+                              <S0>Let's think step by step: The response describes the world without taking actions for the player. It presents the situation and allows the player to decide what to do.</S0>
+                              <S1>The response respects player agency by describing the environment without assumptions.</S1>
+                              <S2>5</S2>
+                              """;
 
         _mockChatClient
-            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, responseText)));
 
         var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "The door stands before you."));
@@ -50,7 +51,8 @@ public class PlayerAgencyEvaluatorTests
         };
 
         // Act
-        var result = await _evaluator.EvaluateAsync(messages, modelResponse, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _evaluator.EvaluateAsync(messages, modelResponse,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var metric = result.Get<NumericMetric>(PlayerAgencyEvaluator.MetricName);
@@ -58,7 +60,7 @@ public class PlayerAgencyEvaluatorTests
         metric.Value.ShouldBe(5);
         metric.Reason.ShouldNotBeNull();
         metric.Reason.ShouldContain("respects player agency");
-        
+
         metric.Diagnostics.ShouldNotBeNull();
         metric.Diagnostics.ShouldContain(d => d.Message.Contains("Player Agency Score: 5 (Pass)"));
         metric.Diagnostics.ShouldContain(d => d.Message.Contains("ThoughtChain:"));
@@ -69,20 +71,22 @@ public class PlayerAgencyEvaluatorTests
     {
         // Arrange
         string responseText = """
-            <s0>Let's think step by step: Analysis here.</s0>
-            <s1>Explanation here.</s1>
-            <s2>4</s2>
-            """;
+                              <s0>Let's think step by step: Analysis here.</s0>
+                              <s1>Explanation here.</s1>
+                              <s2>4</s2>
+                              """;
 
         _mockChatClient
-            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, responseText)));
 
         var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
         var messages = new List<ChatMessage> { new(ChatRole.User, "Test") };
 
         // Act
-        var result = await _evaluator.EvaluateAsync(messages, modelResponse, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _evaluator.EvaluateAsync(messages, modelResponse,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var metric = result.Get<NumericMetric>(PlayerAgencyEvaluator.MetricName);
@@ -97,23 +101,25 @@ public class PlayerAgencyEvaluatorTests
     {
         // Arrange
         string responseText = """
-            <S0>Let's think step by step:
-            First, I analyze the response.
-            Then, I check for agency issues.
-            Finally, I assign a score.</S0>
-            <S1>This is a multi-line explanation that should be parsed correctly.</S1>
-            <S2>3</S2>
-            """;
+                              <S0>Let's think step by step:
+                              First, I analyze the response.
+                              Then, I check for agency issues.
+                              Finally, I assign a score.</S0>
+                              <S1>This is a multi-line explanation that should be parsed correctly.</S1>
+                              <S2>3</S2>
+                              """;
 
         _mockChatClient
-            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, responseText)));
 
         var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
         var messages = new List<ChatMessage> { new(ChatRole.User, "Test") };
 
         // Act
-        var result = await _evaluator.EvaluateAsync(messages, modelResponse, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _evaluator.EvaluateAsync(messages, modelResponse,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var metric = result.Get<NumericMetric>(PlayerAgencyEvaluator.MetricName);
@@ -121,7 +127,7 @@ public class PlayerAgencyEvaluatorTests
         metric.Value.ShouldBe(3);
         metric.Reason.ShouldNotBeNull();
         metric.Reason.ShouldContain("multi-line explanation");
-        
+
         var thoughtChainDiagnostic = metric.Diagnostics?.FirstOrDefault(d => d.Message.Contains("ThoughtChain:"));
         thoughtChainDiagnostic.ShouldNotBeNull();
         thoughtChainDiagnostic!.Message.ShouldNotBeNull();
@@ -133,26 +139,28 @@ public class PlayerAgencyEvaluatorTests
     {
         // Arrange
         string responseText = """
-            <S1>Explanation without ThoughtChain.</S1>
-            <S2>2</S2>
-            """;
+                              <S1>Explanation without ThoughtChain.</S1>
+                              <S2>2</S2>
+                              """;
 
         _mockChatClient
-            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, responseText)));
 
         var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
         var messages = new List<ChatMessage> { new(ChatRole.User, "Test") };
 
         // Act
-        var result = await _evaluator.EvaluateAsync(messages, modelResponse, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _evaluator.EvaluateAsync(messages, modelResponse,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var metric = result.Get<NumericMetric>(PlayerAgencyEvaluator.MetricName);
         metric.ShouldNotBeNull();
         metric.Value.ShouldBe(2);
         metric.Reason.ShouldBe("Explanation without ThoughtChain.");
-        
+
         // Should not have ThoughtChain diagnostic
         var thoughtChainDiagnostic = metric.Diagnostics?.FirstOrDefault(d => d.Message.Contains("ThoughtChain:"));
         thoughtChainDiagnostic.ShouldBeNull();
@@ -163,28 +171,31 @@ public class PlayerAgencyEvaluatorTests
     {
         // Arrange
         string responseText = """
-            <S0>Let's think step by step: Analysis here.</S0>
-            <S1>Explanation here.</S1>
-            """;
+                              <S0>Let's think step by step: Analysis here.</S0>
+                              <S1>Explanation here.</S1>
+                              """;
 
         _mockChatClient
-            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, responseText)));
 
         var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
         var messages = new List<ChatMessage> { new(ChatRole.User, "Test") };
 
         // Act
-        var result = await _evaluator.EvaluateAsync(messages, modelResponse, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _evaluator.EvaluateAsync(messages, modelResponse,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var metric = result.Get<NumericMetric>(PlayerAgencyEvaluator.MetricName);
         metric.ShouldNotBeNull();
         metric.Value.ShouldBe(1); // Default score when parsing fails
         metric.Reason.ShouldBe("Explanation here.");
-        
+
         // Should have warning about parsing failure
-        var warningDiagnostic = metric.Diagnostics?.FirstOrDefault(d => d.Severity == EvaluationDiagnosticSeverity.Warning);
+        var warningDiagnostic =
+            metric.Diagnostics?.FirstOrDefault(d => d.Severity == EvaluationDiagnosticSeverity.Warning);
         warningDiagnostic.ShouldNotBeNull();
         warningDiagnostic.Message.ShouldContain("Failed to parse evaluation response");
     }
@@ -194,20 +205,22 @@ public class PlayerAgencyEvaluatorTests
     {
         // Arrange
         string responseText = """
-            <S0>Let's think step by step: Analysis.</S0>
-            <S1>Explanation.</S1>
-            <S2>10</S2>
-            """;
+                              <S0>Let's think step by step: Analysis.</S0>
+                              <S1>Explanation.</S1>
+                              <S2>10</S2>
+                              """;
 
         _mockChatClient
-            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, responseText)));
 
         var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
         var messages = new List<ChatMessage> { new(ChatRole.User, "Test") };
 
         // Act
-        var result = await _evaluator.EvaluateAsync(messages, modelResponse, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _evaluator.EvaluateAsync(messages, modelResponse,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var metric = result.Get<NumericMetric>(PlayerAgencyEvaluator.MetricName);
@@ -220,20 +233,22 @@ public class PlayerAgencyEvaluatorTests
     {
         // Arrange
         string responseText = """
-            <S0>Let's think step by step: Analysis.</S0>
-            <S1>Explanation.</S1>
-            <S2>-5</S2>
-            """;
+                              <S0>Let's think step by step: Analysis.</S0>
+                              <S1>Explanation.</S1>
+                              <S2>-5</S2>
+                              """;
 
         _mockChatClient
-            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, responseText)));
 
         var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
         var messages = new List<ChatMessage> { new(ChatRole.User, "Test") };
 
         // Act
-        var result = await _evaluator.EvaluateAsync(messages, modelResponse, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _evaluator.EvaluateAsync(messages, modelResponse,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var metric = result.Get<NumericMetric>(PlayerAgencyEvaluator.MetricName);
@@ -246,26 +261,28 @@ public class PlayerAgencyEvaluatorTests
     {
         // Arrange
         string responseText = """
-            <S0>Let's think step by step: Analysis.</S0>
-            <S1>Explanation.</S1>
-            <S2>4</S2>
-            """;
+                              <S0>Let's think step by step: Analysis.</S0>
+                              <S1>Explanation.</S1>
+                              <S2>4</S2>
+                              """;
 
         _mockChatClient
-            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, responseText)));
 
         var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
         var messages = new List<ChatMessage> { new(ChatRole.User, "Test") };
 
         // Act
-        var result = await _evaluator.EvaluateAsync(messages, modelResponse, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _evaluator.EvaluateAsync(messages, modelResponse,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var metric = result.Get<NumericMetric>(PlayerAgencyEvaluator.MetricName);
         metric.ShouldNotBeNull();
         metric.Value.ShouldBe(4);
-        
+
         var passDiagnostic = metric.Diagnostics?.FirstOrDefault(d => d.Message.Contains("(Pass)"));
         passDiagnostic.ShouldNotBeNull();
         passDiagnostic.Message.ShouldContain("Player Agency Score: 4 (Pass)");
@@ -276,26 +293,28 @@ public class PlayerAgencyEvaluatorTests
     {
         // Arrange
         string responseText = """
-            <S0>Let's think step by step: Analysis.</S0>
-            <S1>Explanation.</S1>
-            <S2>3</S2>
-            """;
+                              <S0>Let's think step by step: Analysis.</S0>
+                              <S1>Explanation.</S1>
+                              <S2>3</S2>
+                              """;
 
         _mockChatClient
-            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, responseText)));
 
         var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
         var messages = new List<ChatMessage> { new(ChatRole.User, "Test") };
 
         // Act
-        var result = await _evaluator.EvaluateAsync(messages, modelResponse, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _evaluator.EvaluateAsync(messages, modelResponse,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var metric = result.Get<NumericMetric>(PlayerAgencyEvaluator.MetricName);
         metric.ShouldNotBeNull();
         metric.Value.ShouldBe(3);
-        
+
         var failDiagnostic = metric.Diagnostics?.FirstOrDefault(d => d.Message.Contains("(Fail)"));
         failDiagnostic.ShouldNotBeNull();
         failDiagnostic.Message.ShouldContain("Player Agency Score: 3 (Fail)");
@@ -306,23 +325,54 @@ public class PlayerAgencyEvaluatorTests
     {
         // Arrange
         _mockChatClient
-            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, string.Empty)));
 
         var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
         var messages = new List<ChatMessage> { new(ChatRole.User, "Test") };
 
         // Act
-        var result = await _evaluator.EvaluateAsync(messages, modelResponse, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _evaluator.EvaluateAsync(messages, modelResponse,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var metric = result.Get<NumericMetric>(PlayerAgencyEvaluator.MetricName);
         metric.ShouldNotBeNull();
         metric.Value.ShouldBe(1); // Default score
         metric.Reason.ShouldBe("Failed to parse evaluation response.");
-        
-        var warningDiagnostic = metric.Diagnostics?.FirstOrDefault(d => d.Severity == EvaluationDiagnosticSeverity.Warning);
+
+        var warningDiagnostic =
+            metric.Diagnostics?.FirstOrDefault(d => d.Severity == EvaluationDiagnosticSeverity.Warning);
         warningDiagnostic.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task EvaluateAsync_WithNullResponse_ShouldUseDefaultValues()
+    {
+        // Arrange
+        _mockChatClient
+            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, (string?)null)));
+
+        var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
+        var messages = new List<ChatMessage> { new(ChatRole.User, "Test") };
+
+        // Act
+        var result = await _evaluator.EvaluateAsync(messages, modelResponse,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        // Assert
+        var metric = result.Get<NumericMetric>(PlayerAgencyEvaluator.MetricName);
+        metric.ShouldNotBeNull();
+        metric.Value.ShouldBe(1); // Default score
+        metric.Reason.ShouldBe("Failed to parse evaluation response.");
+
+        var warningDiagnostic =
+            metric.Diagnostics?.FirstOrDefault(d => d.Severity == EvaluationDiagnosticSeverity.Warning);
+        warningDiagnostic.ShouldNotBeNull();
+        warningDiagnostic.Message.ShouldContain("Failed to parse evaluation response. Raw response: {Empty}");
     }
 
     [Fact]
@@ -330,13 +380,14 @@ public class PlayerAgencyEvaluatorTests
     {
         // Arrange
         string responseText = """
-            <S0>Let's think step by step: Analysis.</S0>
-            <S1>Explanation.</S1>
-            <S2>5</S2>
-            """;
+                              <S0>Let's think step by step: Analysis.</S0>
+                              <S1>Explanation.</S1>
+                              <S2>5</S2>
+                              """;
 
         _mockChatClient
-            .Setup(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(),
+                It.IsAny<CancellationToken>()))
             .Callback<IEnumerable<ChatMessage>, ChatOptions, CancellationToken>((msgs, opts, ct) =>
             {
                 // Verify system prompt is included
@@ -355,10 +406,13 @@ public class PlayerAgencyEvaluatorTests
         };
 
         // Act
-        await _evaluator.EvaluateAsync(messages, modelResponse, cancellationToken: TestContext.Current.CancellationToken);
+        await _evaluator.EvaluateAsync(messages, modelResponse,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert - verified in callback
-        _mockChatClient.Verify(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()), Times.Once);
+        _mockChatClient.Verify(
+            x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(),
+                It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -366,13 +420,14 @@ public class PlayerAgencyEvaluatorTests
     {
         // Arrange
         string responseText = """
-            <S0>Let's think step by step: Analysis.</S0>
-            <S1>Explanation.</S1>
-            <S2>5</S2>
-            """;
+                              <S0>Let's think step by step: Analysis.</S0>
+                              <S1>Explanation.</S1>
+                              <S2>5</S2>
+                              """;
 
         _mockChatClient
-            .Setup(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(),
+                It.IsAny<CancellationToken>()))
             .Callback<IEnumerable<ChatMessage>, ChatOptions, CancellationToken>((msgs, opts, ct) =>
             {
                 // Verify conversation context is included
@@ -393,10 +448,13 @@ public class PlayerAgencyEvaluatorTests
         };
 
         // Act
-        await _evaluator.EvaluateAsync(messages, modelResponse, cancellationToken: TestContext.Current.CancellationToken);
+        await _evaluator.EvaluateAsync(messages, modelResponse,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert - verified in callback
-        _mockChatClient.Verify(x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()), Times.Once);
+        _mockChatClient.Verify(
+            x => x.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions>(),
+                It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -404,20 +462,22 @@ public class PlayerAgencyEvaluatorTests
     {
         // Arrange
         string responseText = """
-            <S0>Let's think step by step: Analysis.</S0>
-            <S1>Explanation.</S1>
-            <S2>invalid</S2>
-            """;
+                              <S0>Let's think step by step: Analysis.</S0>
+                              <S1>Explanation.</S1>
+                              <S2>invalid</S2>
+                              """;
 
         _mockChatClient
-            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, responseText)));
 
         var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
         var messages = new List<ChatMessage> { new(ChatRole.User, "Test") };
 
         // Act
-        var result = await _evaluator.EvaluateAsync(messages, modelResponse, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _evaluator.EvaluateAsync(messages, modelResponse,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var metric = result.Get<NumericMetric>(PlayerAgencyEvaluator.MetricName);
@@ -430,27 +490,29 @@ public class PlayerAgencyEvaluatorTests
     {
         // Arrange
         string responseText = """
-            <S0>   Let's think step by step: Analysis with spaces.   </S0>
-            <S1>   Explanation with spaces.   </S1>
-            <S2>   5   </S2>
-            """;
+                              <S0>   Let's think step by step: Analysis with spaces.   </S0>
+                              <S1>   Explanation with spaces.   </S1>
+                              <S2>   5   </S2>
+                              """;
 
         _mockChatClient
-            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetResponseAsync(It.IsAny<List<ChatMessage>>(), It.IsAny<ChatOptions>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, responseText)));
 
         var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
         var messages = new List<ChatMessage> { new(ChatRole.User, "Test") };
 
         // Act
-        var result = await _evaluator.EvaluateAsync(messages, modelResponse, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await _evaluator.EvaluateAsync(messages, modelResponse,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
         var metric = result.Get<NumericMetric>(PlayerAgencyEvaluator.MetricName);
         metric.ShouldNotBeNull();
         metric.Value.ShouldBe(5);
         metric.Reason.ShouldBe("Explanation with spaces.");
-        
+
         var thoughtChainDiagnostic = metric.Diagnostics?.FirstOrDefault(d => d.Message.Contains("ThoughtChain:"));
         thoughtChainDiagnostic.ShouldNotBeNull();
         thoughtChainDiagnostic.Message.ShouldContain("Analysis with spaces");

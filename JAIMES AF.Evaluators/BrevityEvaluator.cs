@@ -22,7 +22,7 @@ public class BrevityEvaluator(IOptions<BrevityEvaluatorOptions> options) : IEval
         IEnumerable<EvaluationContext>? evaluationContext = null,
         CancellationToken cancellationToken = default)
     {
-        string text = modelResponse.Text;
+        string text = modelResponse.Text ?? string.Empty;
         int charCount = text.Length;
         int wordCount = text.Split([' ', '\r', '\n', '\t'], StringSplitOptions.RemoveEmptyEntries).Length;
 
