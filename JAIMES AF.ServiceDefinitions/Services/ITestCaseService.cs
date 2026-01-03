@@ -57,4 +57,13 @@ public interface ITestCaseService
     /// Gets stored test reports.
     /// </summary>
     Task<List<StoredReportResponse>> GetStoredReportsAsync(int limit = 100, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes a stored report file but leaves the test run metrics intact.
+    /// </summary>
+    /// <param name="reportId">The ID of the report file to delete.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>True if the report was deleted, false if not found.</returns>
+    Task<bool> DeleteReportFileAsync(int reportId, CancellationToken ct = default);
 }
+

@@ -208,7 +208,7 @@
                                                 <MudTd Class="metric-cell">
                                                     @if (metric != null)
                                                     {
-                                                        <MudTooltip Text="@($"{metricName}: {metric.Score:F2}\n{metric.Remarks ?? ""}")">
+                                                        <MudTooltip Text="@GetMetricTooltip(metricName, metric.Score, metric.Remarks)">
                                                             <MudChip T="string" Size="Size.Small" Color="@MetricColorHelper.GetScoreColor(metric.Score)">
                                                                 @metric.Score.ToString("F1")
                                                             </MudChip>
@@ -289,7 +289,7 @@
                                                     <MudTd Class="metric-cell">
                                                         @if (metric != null)
                                                         {
-                                                            <MudTooltip Text="@($"{metricName}: {metric.Score:F2}\n{metric.Remarks ?? ""}")">
+                                                            <MudTooltip Text="@GetMetricTooltip(metricName, metric.Score, metric.Remarks)">
                                                                 <MudChip T="string" Size="Size.Small" Color="@MetricColorHelper.GetScoreColor(metric.Score)">
                                                                     @metric.Score.ToString("F1")
                                                                 </MudChip>
@@ -465,6 +465,15 @@
     {
         var run = _versionResults.SelectMany(vr => vr.Runs).FirstOrDefault(r => r.TestCaseId == testCaseId);
         return run?.TestCaseName ?? $"Test Case {testCaseId}";
+    }
+
+    private static string GetMetricTooltip(string metricName, double score, string? remarks)
+    {
+        if (string.IsNullOrWhiteSpace(remarks))
+        {
+            return $"{metricName}: {score:F2}";
+        }
+        return $"{metricName}: {score:F2}\n\nReasoning: {remarks}";
     }
 
 

@@ -12,9 +12,24 @@ public record StoredReportResponse
 
     // Related run info
     public required string ExecutionName { get; init; }
-    public required string AgentId { get; init; }
-    public required string AgentName { get; init; }
-    public required int InstructionVersionId { get; init; }
-    public required string VersionNumber { get; init; }
-    public int TestCaseCount { get; init; }
+
+    /// <summary>
+    /// All agent versions included in this report.
+    /// </summary>
+    public List<ReportAgentVersionInfo> AgentVersions { get; init; } = [];
+
+    /// <summary>
+    /// Total number of test cases across all agent versions.
+    /// </summary>
+    public int TotalTestCaseCount { get; init; }
+
+    /// <summary>
+    /// Number of unique evaluators that produced metrics for this report.
+    /// </summary>
+    public int EvaluatorCount { get; init; }
+
+    /// <summary>
+    /// True if the report file was deleted but the metrics remain.
+    /// </summary>
+    public bool IsDeleted { get; init; }
 }

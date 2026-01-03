@@ -10,18 +10,19 @@ namespace MattEland.Jaimes.Tests.Workers;
 public class BrevityEvaluatorTests
 {
     [Theory]
-    [InlineData(500, 5)] // Perfect
-    [InlineData(400, 5)] // On margin (low)
-    [InlineData(600, 5)] // On margin (high)
-    [InlineData(601, 4)] // Just outside margin (high)
-    [InlineData(399, 4)] // Just outside margin (low)
-    [InlineData(700, 4)] // Exactly one margin over
-    [InlineData(300, 4)] // Exactly one margin under
-    [InlineData(701, 3)] // Just outside two margins over
-    [InlineData(299, 3)] // Just outside two margins under
-    [InlineData(1000, 1)] // Very over
-    [InlineData(10, 1)] // Very under
-    public async Task EvaluateAsync_ShouldReturnCorrectScore(int charCount, int expectedScore)
+    [InlineData(500, 5, EvaluationRating.Good)] // Perfect
+    [InlineData(400, 5, EvaluationRating.Good)] // On margin (low)
+    [InlineData(600, 5, EvaluationRating.Good)] // On margin (high)
+    [InlineData(601, 4, EvaluationRating.Good)] // Just outside margin (high)
+    [InlineData(399, 4, EvaluationRating.Good)] // Just outside margin (low)
+    [InlineData(700, 4, EvaluationRating.Good)] // Exactly one margin over
+    [InlineData(300, 4, EvaluationRating.Good)] // Exactly one margin under
+    [InlineData(701, 3, EvaluationRating.Inconclusive)] // Just outside two margins over - FAIL
+    [InlineData(299, 3, EvaluationRating.Inconclusive)] // Just outside two margins under - FAIL
+    [InlineData(1000, 1, EvaluationRating.Inconclusive)] // Very over - FAIL
+    [InlineData(10, 1, EvaluationRating.Inconclusive)] // Very under - FAIL
+    public async Task EvaluateAsync_ShouldReturnCorrectScoreAndInterpretation(int charCount, int expectedScore,
+        EvaluationRating expectedInterpretation)
     {
         // Arrange
         var options = Options.Create(new BrevityEvaluatorOptions
@@ -42,6 +43,7 @@ public class BrevityEvaluatorTests
         var metric = result.Get<NumericMetric>("Brevity");
         metric.ShouldNotBeNull();
         metric.Value.ShouldBe(expectedScore);
+        metric.Interpretation.ShouldBe(expectedInterpretation);
     }
 
     [Fact]

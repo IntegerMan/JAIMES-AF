@@ -2,9 +2,12 @@
 @rendermode InteractiveServer
 
 @using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Shared
 
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
 
 <PageTitle>Test Reports</PageTitle>
 
@@ -13,7 +16,15 @@
         <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
     </MudStack>
 
-    <MudText Typo="Typo.h4" GutterBottom="true">Test Reports</MudText>
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+        <MudText Typo="Typo.h4" GutterBottom="false">Test Reports</MudText>
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Checklist"
+                   Href="/admin/test-cases">
+            View Test Cases
+        </MudButton>
+    </MudStack>
     <MudText Typo="Typo.body2" Class="text-muted mb-4">
         Browse stored test execution reports.
     </MudText>
@@ -39,47 +50,85 @@
         <MudTable Items="_pagedReports" Hover="true" Dense="true" Elevation="2">
             <HeaderContent>
                 <MudTh>Execution</MudTh>
+                <MudTh>Agent Versions</MudTh>
                 <MudTh>Tests</MudTh>
+                <MudTh>Evaluators</MudTh>
                 <MudTh>Created</MudTh>
                 <MudTh>Size</MudTh>
                 <MudTh Style="text-align: right;">Actions</MudTh>
             </HeaderContent>
             <RowTemplate>
                 <MudTd DataLabel="Execution">
-                    <MudStack>
+                    <MudStack Spacing="0">
                         <MudLink Href="@($"/admin/test-runs/compare?executions={Uri.EscapeDataString(context.ExecutionName)}")">
                             @context.ExecutionName
                         </MudLink>
-                        <MudText Typo="Typo.caption" Class="text-muted">
-                            <MattEland.Jaimes.Web.Components.Shared.AgentVersionDisplay
-                                AgentId="@context.AgentId"
-                                AgentName="@(context.AgentName ?? "Unknown")"
-                                VersionId="@context.InstructionVersionId"
-                                VersionNumber="@context.VersionNumber"/>
-                        </MudText>
+                        @if (context.IsDeleted)
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Warning">(report deleted)</MudText>
+                        }
+                    </MudStack>
+                </MudTd>
+                <MudTd DataLabel="Agent Versions">
+                    @{
+                        // Group versions by agent
+                        var agentGroups = context.AgentVersions.GroupBy(v => v.AgentId).ToList();
+                    }
+                    <MudStack Spacing="1">
+                        @foreach (var agentGroup in agentGroups)
+                        {
+                            var firstVersion = agentGroup.First();
+                            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                <AgentLink AgentId="@firstVersion.AgentId" AgentName="@firstVersion.AgentName"/>
+                                @foreach (var version in agentGroup)
+                                {
+                                    <AgentVersionLink AgentId="@version.AgentId"
+                                                      VersionId="@version.InstructionVersionId"
+                                                      VersionNumber="@version.VersionNumber"/>
+                                }
+                            </MudStack>
+                        }
                     </MudStack>
                 </MudTd>
                 <MudTd DataLabel="Tests">
-                    <MudChip T="string" Size="Size.Small" Color="Color.Primary">@context.TestCaseCount tests</MudChip>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Primary">@context.TotalTestCaseCount tests</MudChip>
+                </MudTd>
+                <MudTd DataLabel="Evaluators">
+                    <MudChip T="string" Size="Size.Small" Color="Color.Secondary">@context.EvaluatorCount</MudChip>
                 </MudTd>
                 <MudTd DataLabel="Created">@context.CreatedAt.ToString("yyyy-MM-dd HH:mm")</MudTd>
-                <MudTd DataLabel="Size">@FormatSize(context.SizeBytes)</MudTd>
+                <MudTd DataLabel="Size">
+                    @if (context.IsDeleted)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Warning">(deleted)</MudText>
+                    }
+                    else
+                    {
+                        @FormatSize(context.SizeBytes)
+                    }
+                </MudTd>
                 <MudTd Style="text-align: right;">
                     <MudStack Row="true" Spacing="1" Justify="Justify.FlexEnd">
-                        <MudTooltip Text="View Comparison">
-                            <MudButton Variant="Variant.Outlined"
-                                       Size="Size.Small"
-                                       Color="Color.Primary"
-                                       StartIcon="@Icons.Material.Filled.Compare"
-                                       Href="@($"/admin/test-runs/compare?executions={Uri.EscapeDataString(context.ExecutionName)}")">
-                                Compare
-                            </MudButton>
-                        </MudTooltip>
-                        <MudTooltip Text="View Raw Report">
-                            <MudIconButton Icon="@Icons.Material.Filled.Article"
+                        <MudTooltip Text="View Comparison" Placement="Placement.Top">
+                            <MudIconButton Icon="@Icons.Material.Filled.Compare"
                                            Size="Size.Small"
-                                           OnClick="@(() => ViewReport(context.ReportId))"/>
+                                           Color="Color.Primary"
+                                           Href="@($"/admin/test-runs/compare?executions={Uri.EscapeDataString(context.ExecutionName)}")"/>
                         </MudTooltip>
+                        @if (!context.IsDeleted)
+                        {
+                            <MudTooltip Text="View Raw Report" Placement="Placement.Top">
+                                <MudIconButton Icon="@Icons.Material.Filled.Article"
+                                               Size="Size.Small"
+                                               OnClick="@(() => ViewReport(context.ReportId))"/>
+                            </MudTooltip>
+                            <MudTooltip Text="Delete Report File" Placement="Placement.Top">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               OnClick="@(() => ConfirmDeleteReport(context))"/>
+                            </MudTooltip>
+                        }
                     </MudStack>
                 </MudTd>
             </RowTemplate>
@@ -210,6 +259,41 @@
         {
             _loadingReport = false;
             StateHasChanged();
+        }
+    }
+
+    private async Task ConfirmDeleteReport(StoredReportResponse report)
+    {
+        bool? result = await DialogService.ShowMessageBox(
+            "Delete Report",
+            $"Delete report file for '{report.ExecutionName}'? The test run metrics will be preserved.",
+            "Delete",
+            cancelText: "Cancel");
+
+        if (result == true)
+        {
+            await DeleteReportAsync(report.ReportId);
+        }
+    }
+
+    private async Task DeleteReportAsync(int reportId)
+    {
+        try
+        {
+            var response = await Http.DeleteAsync($"test-reports/{reportId}");
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Report file deleted. Metrics preserved.", Severity.Success);
+                await LoadReportsAsync();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to delete report: {response.StatusCode}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
         }
     }
 

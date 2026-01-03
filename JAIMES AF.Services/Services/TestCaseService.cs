@@ -234,35 +234,64 @@ public class TestCaseService(IDbContextFactory<JaimesDbContext> contextFactory) 
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(ct);
 
-        // Query runs that have stored reports, grouped by execution name
+        // Query runs that have stored reports, including metrics for evaluator count
         var runsWithReports = await context.TestCaseRuns
             .Include(tcr => tcr.ReportFile)
             .Include(tcr => tcr.Agent)
             .Include(tcr => tcr.InstructionVersion)
+            .Include(tcr => tcr.Metrics)
             .AsNoTracking()
             .Where(tcr => tcr.ReportFileId != null)
             .OrderByDescending(tcr => tcr.ReportFile!.CreatedAt)
             .ToListAsync(ct);
 
-        // Group by execution name and report file to get unique reports
+        // Group by report file to get unique reports
         var reports = runsWithReports
-            .Where(r => r.ReportFile != null && r.ExecutionName != null)
+            .Where(r => r.ExecutionName != null)
             .GroupBy(r => r.ReportFileId)
             .Select(g =>
             {
                 var firstRun = g.First();
+                var isDeleted = firstRun.ReportFile == null;
+
+                // Collect all unique agent/version combinations
+                var agentVersions = g
+                    .GroupBy(r => new { r.AgentId, r.InstructionVersionId })
+                    .Select(av =>
+                    {
+                        var run = av.First();
+                        return new ReportAgentVersionInfo
+                        {
+                            AgentId = run.AgentId,
+                            AgentName = run.Agent?.Name ?? run.AgentId,
+                            InstructionVersionId = run.InstructionVersionId,
+                            VersionNumber = run.InstructionVersion?.VersionNumber ?? "?",
+                            TestCaseCount = av.Count()
+                        };
+                    })
+                    .OrderBy(av => av.AgentName)
+                    .ThenBy(av => av.VersionNumber)
+                    .ToList();
+
+                // Count unique evaluators from all metrics
+                var evaluatorCount = g
+                    .SelectMany(r => r.Metrics ?? [])
+                    .Where(m => m.EvaluatorId.HasValue)
+                    .Select(m => m.EvaluatorId!.Value)
+                    .Distinct()
+                    .Count();
+
                 return new StoredReportResponse
                 {
-                    ReportId = firstRun.ReportFile!.Id,
-                    FileName = firstRun.ReportFile.FileName,
-                    CreatedAt = firstRun.ReportFile.CreatedAt,
-                    SizeBytes = firstRun.ReportFile.SizeBytes,
+                    ReportId = firstRun.ReportFileId ?? 0,
+                    FileName = firstRun.ReportFile?.FileName ?? "(deleted)",
+                    CreatedAt = firstRun.ReportFile?.CreatedAt ?? firstRun.ExecutedAt,
+                    SizeBytes = firstRun.ReportFile?.SizeBytes,
                     ExecutionName = firstRun.ExecutionName!,
-                    AgentId = firstRun.AgentId,
-                    AgentName = firstRun.Agent?.Name ?? firstRun.AgentId,
-                    InstructionVersionId = firstRun.InstructionVersionId,
-                    VersionNumber = firstRun.InstructionVersion?.VersionNumber ?? "?",
-                    TestCaseCount = g.Count()
+                    AgentVersions = agentVersions,
+                    TotalTestCaseCount = g.Count(),
+                    EvaluatorCount = evaluatorCount,
+                    IsDeleted = isDeleted
                 };
             })
             .Take(limit)
@@ -270,6 +299,7 @@ public class TestCaseService(IDbContextFactory<JaimesDbContext> contextFactory) 
 
         return reports;
     }
+
 
     private static TestCaseResponse MapToResponse(TestCase testCase) => new()
     {
@@ -310,4 +340,34 @@ public class TestCaseService(IDbContextFactory<JaimesDbContext> contextFactory) 
             EvaluatorName = m.Evaluator?.Name
         }).ToList() ?? []
     };
+
+    /// <inheritdoc/>
+    public async Task<bool> DeleteReportFileAsync(int reportId, CancellationToken ct = default)
+    {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(ct);
+
+        // Find the stored file
+        var storedFile = await context.StoredFiles.FindAsync([reportId], ct);
+        if (storedFile == null)
+        {
+            return false;
+        }
+
+        // Clear references from test case runs (keeps the runs but removes file link)
+        var runsWithReport = await context.TestCaseRuns
+            .Where(tcr => tcr.ReportFileId == reportId)
+            .ToListAsync(ct);
+
+        foreach (var run in runsWithReport)
+        {
+            run.ReportFileId = null;
+        }
+
+        // Delete the stored file
+        context.StoredFiles.Remove(storedFile);
+        await context.SaveChangesAsync(ct);
+
+        return true;
+    }
 }
+
