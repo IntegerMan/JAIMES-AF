@@ -46,16 +46,31 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
     // Test case entities for agent evaluation
     public DbSet<TestCase> TestCases { get; set; } = null!;
     public DbSet<TestCaseRun> TestCaseRuns { get; set; } = null!;
+
     public DbSet<TestCaseRunMetric> TestCaseRunMetrics { get; set; } = null!;
+
     // File storage for reports and other binary content
     public DbSet<StoredFile> StoredFiles { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
         // Enable pgvector extension for PostgreSQL (skip for in-memory database used in tests)
         // Only call HasPostgresExtension if we're using the Npgsql provider
-        string providerName = Database.ProviderName ?? "Npgsql.EntityFrameworkCore.PostgreSQL";
+        // Note: Database.ProviderName can throw an exception at design-time when EF Core tools are running
+        // (e.g., during dotnet ef migrations add), so we wrap this in a try-catch and default to PostgreSQL
+        string providerName;
+        try
+        {
+            providerName = Database.ProviderName ?? "Npgsql.EntityFrameworkCore.PostgreSQL";
+        }
+        catch
+        {
+            // At design-time, Database.ProviderName may throw. Default to PostgreSQL.
+            providerName = "Npgsql.EntityFrameworkCore.PostgreSQL";
+        }
+
         if (string.Equals(providerName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
             modelBuilder.HasPostgresExtension("vector");
 
@@ -118,12 +133,12 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 .HasForeignKey(iv => iv.ModelId)
                 .OnDelete(DeleteBehavior.NoAction);
 
-            entity.HasIndex(iv => new {iv.AgentId, iv.VersionNumber}).IsUnique();
+            entity.HasIndex(iv => new { iv.AgentId, iv.VersionNumber }).IsUnique();
         });
 
         modelBuilder.Entity<ScenarioAgent>(entity =>
         {
-            entity.HasKey(sa => new {sa.ScenarioId, sa.AgentId});
+            entity.HasKey(sa => new { sa.ScenarioId, sa.AgentId });
             entity.Property(sa => sa.ScenarioId).IsRequired();
             entity.Property(sa => sa.AgentId).IsRequired();
             entity.Property(sa => sa.InstructionVersionId);
@@ -487,7 +502,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
 
             // Unique constraint: location names must be unique within a game (case-insensitive)
             // Using the NameLower computed column ensures the constraint is enforced at database level
-            entity.HasIndex(l => new {l.GameId, l.NameLower}).IsUnique();
+            entity.HasIndex(l => new { l.GameId, l.NameLower }).IsUnique();
 
             entity.HasOne(l => l.Game)
                 .WithMany()
@@ -511,7 +526,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
 
         modelBuilder.Entity<NearbyLocation>(entity =>
         {
-            entity.HasKey(nl => new {nl.SourceLocationId, nl.TargetLocationId});
+            entity.HasKey(nl => new { nl.SourceLocationId, nl.TargetLocationId });
             entity.Property(nl => nl.Distance).HasMaxLength(100);
 
             entity.HasOne(nl => nl.SourceLocation)
@@ -535,7 +550,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.Property(m => m.CreatedAt).IsRequired();
 
             // Create unique index on Name + Provider + Endpoint to prevent duplicates
-            var indexBuilder = entity.HasIndex(m => new {m.Name, m.Provider, m.Endpoint})
+            var indexBuilder = entity.HasIndex(m => new { m.Name, m.Provider, m.Endpoint })
                 .IsUnique();
 
             // AreNullsDistinct is a relational-only feature. PostgreSQL 15+ supports it.
@@ -596,7 +611,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
 
         modelBuilder.Entity<EvaluationScenarioIteration>(entity =>
         {
-            entity.HasKey(si => new {si.ExecutionName, si.ScenarioName, si.IterationName});
+            entity.HasKey(si => new { si.ExecutionName, si.ScenarioName, si.IterationName });
             entity.Property(si => si.ExecutionName).IsRequired().HasMaxLength(250);
             entity.Property(si => si.ScenarioName).IsRequired().HasMaxLength(250);
             entity.Property(si => si.IterationName).IsRequired().HasMaxLength(250);
@@ -724,12 +739,12 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
         // you MUST create a new EF Core migration. See AGENTS.md for the migration command.
         modelBuilder.Entity<Ruleset>()
             .HasData(
-                new Ruleset {Id = "dnd5e", Name = "Dungeons and Dragons 5th Edition"}
+                new Ruleset { Id = "dnd5e", Name = "Dungeons and Dragons 5th Edition" }
             );
 
         modelBuilder.Entity<Player>()
             .HasData(
-                new Player {Id = "emcee", RulesetId = "dnd5e", Description = "Default player", Name = "Emcee"},
+                new Player { Id = "emcee", RulesetId = "dnd5e", Description = "Default player", Name = "Emcee" },
                 new Player
                 {
                     Id = "kigorath", RulesetId = "dnd5e",

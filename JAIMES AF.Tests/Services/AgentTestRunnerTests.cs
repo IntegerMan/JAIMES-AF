@@ -136,8 +136,8 @@ public class AgentTestRunnerTests : IAsyncLifetime
         string nonExistentAgentId = "nonexistent-agent";
 
         // Act & Assert
-        var exception = await Should.ThrowAsync<InvalidOperationException>(async () =>
-            await _testRunner.RunTestCasesAsync(nonExistentAgentId, 1, null, null,
+        var exception = await Should.ThrowAsync<KeyNotFoundException>(async () =>
+            await _testRunner.RunTestCasesAsync(nonExistentAgentId, 1, null, null, null,
                 TestContext.Current.CancellationToken));
 
         exception.Message.ShouldContain("nonexistent-agent");
@@ -151,8 +151,8 @@ public class AgentTestRunnerTests : IAsyncLifetime
         int nonExistentVersionId = 99999;
 
         // Act & Assert
-        var exception = await Should.ThrowAsync<InvalidOperationException>(async () =>
-            await _testRunner.RunTestCasesAsync("test-agent", nonExistentVersionId, null, null,
+        var exception = await Should.ThrowAsync<KeyNotFoundException>(async () =>
+            await _testRunner.RunTestCasesAsync("test-agent", nonExistentVersionId, null, null, null,
                 TestContext.Current.CancellationToken));
 
         exception.Message.ShouldContain("99999");
@@ -175,8 +175,9 @@ public class AgentTestRunnerTests : IAsyncLifetime
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act & Assert - Try to use version 2 (belongs to other-agent) with test-agent
-        var exception = await Should.ThrowAsync<InvalidOperationException>(async () =>
-            await _testRunner.RunTestCasesAsync("test-agent", 2, null, null, TestContext.Current.CancellationToken));
+        var exception = await Should.ThrowAsync<KeyNotFoundException>(async () =>
+            await _testRunner.RunTestCasesAsync("test-agent", 2, null, null, null,
+                TestContext.Current.CancellationToken));
 
         exception.Message.ShouldContain("not found");
     }
@@ -189,8 +190,9 @@ public class AgentTestRunnerTests : IAsyncLifetime
         await _context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act & Assert
-        var exception = await Should.ThrowAsync<InvalidOperationException>(async () =>
-            await _testRunner.RunTestCasesAsync("test-agent", 1, null, null, TestContext.Current.CancellationToken));
+        var exception = await Should.ThrowAsync<KeyNotFoundException>(async () =>
+            await _testRunner.RunTestCasesAsync("test-agent", 1, null, null, null,
+                TestContext.Current.CancellationToken));
 
         exception.Message.ShouldContain("No test cases found");
     }
@@ -200,7 +202,7 @@ public class AgentTestRunnerTests : IAsyncLifetime
     {
         // Act
         var result = await _testRunner.RunTestCasesAsync(
-            "test-agent", 1, null, "test-execution", TestContext.Current.CancellationToken);
+            "test-agent", 1, null, "test-execution", null, TestContext.Current.CancellationToken);
 
         // Assert
         result.ShouldNotBeNull();
@@ -219,7 +221,7 @@ public class AgentTestRunnerTests : IAsyncLifetime
     {
         // Act
         var result = await _testRunner.RunTestCasesAsync(
-            "test-agent", 1, null, null, TestContext.Current.CancellationToken);
+            "test-agent", 1, null, null, null, TestContext.Current.CancellationToken);
 
         // Assert
         result.ExecutionName.ShouldNotBeNullOrEmpty();
@@ -255,7 +257,7 @@ public class AgentTestRunnerTests : IAsyncLifetime
 
         // Act - Only run the first test case
         var result = await _testRunner.RunTestCasesAsync(
-            "test-agent", 1, [_testCase.Id], null, TestContext.Current.CancellationToken);
+            "test-agent", 1, [_testCase.Id], null, null, TestContext.Current.CancellationToken);
 
         // Assert
         result.TotalTestCases.ShouldBe(1);
@@ -268,7 +270,7 @@ public class AgentTestRunnerTests : IAsyncLifetime
     {
         // Act
         var result = await _testRunner.RunTestCasesAsync(
-            "test-agent", 1, null, "persist-test", TestContext.Current.CancellationToken);
+            "test-agent", 1, null, "persist-test", null, TestContext.Current.CancellationToken);
 
         // Assert - Verify run was persisted
         var persistedRun = await _context.TestCaseRuns

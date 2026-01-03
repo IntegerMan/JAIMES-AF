@@ -39,6 +39,11 @@ public class RunTestCasesEndpoint : Ep.Req<RunTestCasesRequest>.Res<TestRunResul
 
             await Send.OkAsync(result, ct);
         }
+        catch (KeyNotFoundException ex)
+        {
+            Logger.LogWarning(ex, "Resource not found: {Message}", ex.Message);
+            await Send.NotFoundAsync(ct);
+        }
         catch (InvalidOperationException ex)
         {
             Logger.LogWarning(ex, "Test run failed: {Message}", ex.Message);

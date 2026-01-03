@@ -50,14 +50,14 @@ public class AgentTestRunner(
         Agent? agent = await context.Agents.FindAsync([agentId], ct);
         if (agent == null)
         {
-            throw new InvalidOperationException($"Agent {agentId} not found.");
+            throw new KeyNotFoundException($"Agent {agentId} not found.");
         }
 
         AgentInstructionVersion? version = await context.AgentInstructionVersions
             .FirstOrDefaultAsync(v => v.Id == instructionVersionId && v.AgentId == agentId, ct);
         if (version == null)
         {
-            throw new InvalidOperationException(
+            throw new KeyNotFoundException(
                 $"Instruction version {instructionVersionId} not found for agent {agentId}.");
         }
 
@@ -75,7 +75,7 @@ public class AgentTestRunner(
         List<TestCase> testCases = await testCaseQuery.ToListAsync(ct);
         if (testCases.Count == 0)
         {
-            throw new InvalidOperationException("No test cases found to run.");
+            throw new KeyNotFoundException("No test cases found to run.");
         }
 
         logger.LogInformation("Running {TestCaseCount} test cases", testCases.Count);

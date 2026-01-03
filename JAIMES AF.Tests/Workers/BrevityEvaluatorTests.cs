@@ -43,7 +43,7 @@ public class BrevityEvaluatorTests
         var metric = result.Get<NumericMetric>("Brevity");
         metric.ShouldNotBeNull();
         metric.Value.ShouldBe(expectedScore);
-        metric.Interpretation.ShouldBe(expectedInterpretation);
+        metric.Interpretation?.Rating.ShouldBe(expectedInterpretation);
     }
 
     [Fact]

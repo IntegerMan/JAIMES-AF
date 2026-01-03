@@ -33,7 +33,10 @@ public class DownloadTestReportEndpoint : EndpointWithoutRequest
 
         var bytes = System.Text.Encoding.UTF8.GetBytes(report);
         HttpContext.Response.ContentType = "application/octet-stream";
-        HttpContext.Response.Headers.ContentDisposition = $"attachment; filename=\"{executionName}-report.html\"";
+        // Sanitize executionName to prevent header injection from special characters
+        string sanitizedName =
+            new string(executionName.Where(c => !char.IsControl(c) && c != '"' && c != '\\').ToArray());
+        HttpContext.Response.Headers.ContentDisposition = $"attachment; filename=\"{sanitizedName}-report.html\"";
         await HttpContext.Response.Body.WriteAsync(bytes, ct);
     }
 }
