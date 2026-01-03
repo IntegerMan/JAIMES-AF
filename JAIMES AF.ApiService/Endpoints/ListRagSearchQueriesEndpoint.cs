@@ -20,7 +20,10 @@ public class ListRagSearchQueriesEndpoint(IDbContextFactory<JaimesDbContext> dbC
     {
         string indexName = Route<string>("indexName") ?? string.Empty;
         int page = Query<int?>("page") ?? 1;
+        if (page < 1) page = 1;
         int pageSize = Query<int?>("pageSize") ?? 25;
+        if (pageSize < 1) pageSize = 1;
+        if (pageSize > 100) pageSize = 100;
         string? documentName = Query<string?>("documentName");
 
         if (string.IsNullOrWhiteSpace(indexName))
@@ -50,7 +53,8 @@ public class ListRagSearchQueriesEndpoint(IDbContextFactory<JaimesDbContext> dbC
         // If filtering by document, only include queries that have results from that document
         if (!string.IsNullOrWhiteSpace(documentName))
         {
-            baseQuery = baseQuery.Where(q => q.ResultChunks.Any(r => r.DocumentName == documentName));
+            string normalizedDoc = documentName.ToLower();
+            baseQuery = baseQuery.Where(q => q.ResultChunks.Any(r => r.DocumentName.ToLower() == normalizedDoc));
         }
 
         // Get total count for pagination

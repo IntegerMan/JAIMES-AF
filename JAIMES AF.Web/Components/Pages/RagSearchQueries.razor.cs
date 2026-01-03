@@ -20,9 +20,9 @@ public partial class RagSearchQueries
 
     private int TotalPages => _statistics == null
         ? 1
-        : (int) Math.Ceiling((double) _statistics.TotalCount / _statistics.PageSize);
+        : (int)Math.Ceiling((double)_statistics.TotalCount / _statistics.PageSize);
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
         _breadcrumbs = new List<BreadcrumbItem>
         {
@@ -31,7 +31,11 @@ public partial class RagSearchQueries
             new BreadcrumbItem("RAG Collections", href: "/admin/rag-collections"),
             new BreadcrumbItem("Search Queries", href: null, disabled: true)
         };
+    }
 
+    protected override async Task OnParametersSetAsync()
+    {
+        _currentPage = 1; // Reset page when parameters change
         await LoadDataAsync();
     }
 
