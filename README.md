@@ -2,17 +2,28 @@
 
 **Join AI in Making Epic Stories — Agent Framework Edition**
 
-JAIMES AF is a .NET 10 Aspire solution that coordinates FastEndpoints APIs, Blazor UI, EF Core repositories,
-document-processing workers, and Azure OpenAI-powered assistants to help groups co-create roleplaying adventures with
-rich observability and testing.
+JAIMES AF is a .NET Aspire solution that coordinates FastEndpoints APIs, Blazor UI, EF Core repositories, document-processing workers, and Azure OpenAI-powered assistants to help groups co-create roleplaying adventures with rich observability and testing.
 
-The documentation below highlights the core moving pieces, how information flows through the system, and how to get
-productive quickly. Refer to `TECHNICAL_OVERVIEW.md` for deeper architectural notes and `SCHEMA.md` for database schema details.
+## Getting Started
+
+> [!TIP]
+> **New to the project?**
+> Check out **[GETTING_STARTED.md](GETTING_STARTED.md)** for setup instructions, prerequisites, and rapid start commands.
+
+## Documentation Index
+
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** - Setup, configuration, and development guidelines.
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - High-level system architecture, design patterns, and data flow.
+- **[AGENT_FRAMEWORK.md](AGENT_FRAMEWORK.md)** - Concepts behind the AI agent integration, tools, and conversation threads.
+- **[CHAT_STREAMING.md](CHAT_STREAMING.md)** - Architecture of the real-time chat streaming system (Server-Sent Events).
+- **[MESSAGE_BUS.md](MESSAGE_BUS.md)** - Overview of the message bus and background worker roles.
+- **[VECTOR_SEARCH.md](VECTOR_SEARCH.md)** - Explanation of the RAG pipeline and vector search implementation.
+- **[SCHEMA.md](SCHEMA.md)** - Database schema and entity relationships.
+- **[TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md)** - Comprehensive index of technical topics.
 
 ## Solution Topology
 
 The Aspire AppHost wires together the API, background workers, and dependencies (PostgreSQL, Redis Stack, Azure OpenAI).
-The diagram below shows the high-level structure.
 
 ```mermaid
 flowchart LR
@@ -67,190 +78,12 @@ sequenceDiagram
 
 ## Core Capabilities
 
-- FastEndpoints-backed API surface for game, player, scenario, and ruleset management
-- Modular service layer with Scrutor-powered discovery and Shouldly-tested behavior
-- EF Core repositories with PostgreSQL default and SQL Server / Azure SQL option
-- Document processing pipeline (scanner → cracking → chunking → embedding) backed by Aspire workers and Redis Kernel
-  Memory
-- Azure OpenAI integration for chat service prompts and vector embeddings
-- Observability, resilience, and configuration defaults consolidated through `JAIMES AF.ServiceDefaults`
+- **FastEndpoints-backed API** surface for game, player, scenario, and ruleset management.
+- **Modular Service Layer** with clear interfaces and business logic encapsulation.
+- **EF Core Repositories** supporting PostgreSQL with robust migrations.
+- **Document Processing Pipeline** that cracks, chunks, and embeds documents for RAG.
+- **Azure OpenAI Integration** for intelligent, context-aware responses.
+- **Observability** baked in via OpenTelemetry and Aspire dashboards.
 
-## Project Map
+For deep dives into these capabilities, please refer to the files listed in the **Documentation Index**.
 
-- `JAIMES AF.ApiService` — HTTP endpoints, request/response models, DI root
-- `JAIMES AF.Web` — Blazor front-end with interactive components
-- `JAIMES AF.Services` — Business logic, DTO mappers, Scrutor registrations
-- `JAIMES AF.Repositories` — Entities, DbContext, and migrations
-- `JAIMES AF.Agents` / `JAIMES AF.Tools` — Agent Framework integrations and custom tools
-- `JAIMES AF.Workers.*` — Aspire background processes for document change detection, cracking, chunking, embedding, and
-  scanning
-- `JAIMES AF.AppHost` — Orchestrates services, Redis Stack, and health dashboards
-- `JAIMES AF.Tests` — Endpoint, service, and repository tests using Shouldly assertions
-
-## Prerequisites
-
-- .NET 10 SDK
-- Docker Desktop or another container runtime (required by Aspire to provision PostgreSQL, Redis Stack, MongoDB, and
-  other services)
-- Azure OpenAI resource for chat + embeddings
-
-## Quickstart
-
-1. **Configure secrets (Azure OpenAI)**
-   ```bash
-   cd "JAIMES AF.ApiService"
-   dotnet user-secrets set "ChatService:Endpoint" "https://YourResource.openai.azure.com/"
-   dotnet user-secrets set "ChatService:ApiKey" "your-real-api-key"
-   ```
-
-2. **Run the Aspire host**
-   ```bash
-   dotnet run --project "JAIMES AF.AppHost"
-   ```
-
-3. **Open the Aspire dashboard** to inspect health, logs, and Redis Stack observability.
-
-## Database Configuration
-
-- **PostgreSQL (default):** The Aspire AppHost automatically provisions a PostgreSQL database with pgvector support. The
-  connection string is provided by Aspire via the `postgres-db` connection name. Migrations are applied automatically on
-  startup with seed data (D&D 5e ruleset, default player, and island test scenario).
-- **Local Development:** For local development without Aspire, a fallback connection string is provided in
-  `appsettings.Development.json` pointing to `localhost:5432`.
-- **Production:** In production, the connection string should be provided via environment variables or a secure
-  configuration provider (Azure App Configuration, Key Vault, etc.).
-
-## Redis & Kernel Memory
-
-- Aspire automatically provisions Redis Stack for vector storage when you launch `JAIMES AF.AppHost`.
-- Data persists under `%LocalAppData%/Aspire/jaimes-redis-data` (Windows) or the equivalent container volume on
-  Linux/macOS.
-- RedisInsight is exposed at `http://localhost:8001` for local inspection.
-- Troubleshooting tips:
-    - Ensure Docker Desktop is running (`docker ps` should succeed).
-    - Restart Docker if Aspire reports the runtime as unhealthy.
-    - Free port `6379` if another Redis instance is already bound.
-
-Advanced override (rarely needed):
-
-```json
-{
-  "VectorDb": {
-    "ConnectionString": "localhost:6379"
-  }
-}
-```
-
-## Chat Service Configuration
-
-The `ChatService` configuration section supports multiple providers: Ollama, OpenAI, and Azure OpenAI. Configure via `appsettings.json` or user secrets.
-
-### Provider Selection
-
-Set the `Provider` property to one of:
-- `Ollama` - Local or remote Ollama server
-- `OpenAi` - OpenAI API
-- `AzureOpenAi` - Azure OpenAI service
-
-### Azure OpenAI Configuration
-
-**Required properties:**
-- `Provider`: `"AzureOpenAi"`
-- `Endpoint`: Azure OpenAI endpoint URL (e.g., `"https://YourResource.openai.azure.com/"`)
-- `Name`: Deployment name (e.g., `"gpt-4o-mini"`)
-
-**Authentication options:**
-
-1. **API Key authentication** (default):
-   ```bash
-   cd "JAIMES AF.ApiService"
-   dotnet user-secrets set "ChatService:Provider" "AzureOpenAi"
-   dotnet user-secrets set "ChatService:Endpoint" "https://YourResource.openai.azure.com/"
-   dotnet user-secrets set "ChatService:ApiKey" "your-actual-api-key"
-   dotnet user-secrets set "ChatService:Name" "gpt-4o-mini"
-   ```
-
-2. **Azure Managed Identity** (for Azure-hosted deployments):
-   - You may omit the `ApiKey` setting, or set it to an empty string (`""`). The value is ignored when using Managed Identity.
-   - The application will use Azure Managed Identity automatically.
-   ```bash
-   dotnet user-secrets set "ChatService:Provider" "AzureOpenAi"
-   dotnet user-secrets set "ChatService:Endpoint" "https://YourResource.openai.azure.com/"
-   dotnet user-secrets set "ChatService:ApiKey" ""
-   dotnet user-secrets set "ChatService:Name" "gpt-4o-mini"
-   ```
-
-### OpenAI Configuration
-
-**Required properties:**
-- `Provider`: `"OpenAi"`
-- `Name`: Model name (e.g., `"gpt-4o-mini"`)
-- `ApiKey`: OpenAI API key
-
-**Optional properties:**
-- `Endpoint`: Custom endpoint URL (defaults to `https://api.openai.com/v1` if not provided)
-
-```bash
-cd "JAIMES AF.ApiService"
-dotnet user-secrets set "ChatService:Provider" "OpenAi"
-dotnet user-secrets set "ChatService:ApiKey" "your-openai-api-key"
-dotnet user-secrets set "ChatService:Name" "gpt-4o-mini"
-# Optional: dotnet user-secrets set "ChatService:Endpoint" "https://custom-endpoint.com/v1"
-```
-
-### Ollama Configuration
-
-**Required properties:**
-- `Provider`: `"Ollama"`
-
-**Optional properties:**
-- `Endpoint`: Ollama server endpoint (defaults to Aspire connection string or `http://localhost:11434`)
-- `Name`: Model name (defaults to Aspire connection string or `"gemma3"`)
-- `ApiKey`: Typically not needed for local Ollama instances
-
-```bash
-cd "JAIMES AF.ApiService"
-# Minimal configuration (uses Aspire defaults)
-dotnet user-secrets set "ChatService:Provider" "Ollama"
-
-# Or specify explicitly
-dotnet user-secrets set "ChatService:Provider" "Ollama"
-dotnet user-secrets set "ChatService:Endpoint" "http://localhost:11434"
-dotnet user-secrets set "ChatService:Name" "gemma3"
-```
-
-## Running Tests
-
-```bash
-# Build everything
-dotnet build
-
-# Full suite (Microsoft Test Platform)
-dotnet run --project "JAIMES AF.Tests/JAIMES AF.Tests.csproj"
-
-# Targeted suites
-dotnet run --project "JAIMES AF.Tests/JAIMES AF.Tests.csproj" -- --filter "FullyQualifiedName~Endpoints"
-dotnet run --project "JAIMES AF.Tests/JAIMES AF.Tests.csproj" -- --filter "FullyQualifiedName~Services"
-dotnet run --project "JAIMES AF.Tests/JAIMES AF.Tests.csproj" -- --filter "FullyQualifiedName~Repositories"
-```
-
-Guidelines:
-
-- Always use Shouldly assertions.
-- Keep tests aligned with service contracts when adding properties/behavior.
-- Use the in-memory DbContext helpers for repository specs.
-
-## Development Notes
-
-- Services, mappers, and validators are registered automatically via Scrutor conventions—implement the interface, and
-  the DI container will pick it up.
-- Prefer small, composable endpoints that delegate logic to services.
-- Update documentation and tests when modifying DTOs, migrations, or background flows.
-- See `TECHNICAL_OVERVIEW.md` for detailed layer responsibilities and data schemas (including Mermaid diagrams).
-
-### Code Analysis
-
-- Solution-wide analyzers (Roslyn, StyleCop, Meziantou) execute via `dotnet format style` and `dotnet format analyzers`.
-  Run them locally to match CI.
-- Code coverage is collected via Coverlet during `dotnet test`, and the resulting OpenCover report (
-  `TestResults/coverage/coverage.opencover.xml`) is published to SonarCloud for quality gates.
