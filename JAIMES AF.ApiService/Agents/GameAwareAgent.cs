@@ -66,18 +66,33 @@ public class GameAwareAgent(
 
                 if (assistantUpdatesByMessageId.TryGetValue(messageKey, out var existingUpdate))
                 {
-                    assistantUpdatesByMessageId[messageKey] = new AgentRunResponseUpdate
+                    // Accumulate text for persistence by adding contents to our stored update.
+                    // We avoid modifying the 'update' object itself as it is yielded back to the caller
+                    // which expects it to be a delta.
+                    foreach (var content in update.Contents)
                     {
-                        Contents = {new TextContent(update.Text)},
-                        Role = update.Role,
-                        MessageId = update.MessageId,
-                        AuthorName = update.AuthorName ?? existingUpdate.AuthorName,
-                        ResponseId = update.ResponseId
-                    };
+                        existingUpdate.Contents.Add(content);
+                    }
+
+                    existingUpdate.AuthorName = update.AuthorName ?? existingUpdate.AuthorName;
+                    existingUpdate.ResponseId = update.ResponseId;
                 }
                 else
                 {
-                    assistantUpdatesByMessageId[messageKey] = update;
+                    // Create a new cumulative update for this message ID
+                    AgentRunResponseUpdate cumulativeUpdate = new()
+                    {
+                        Role = update.Role,
+                        MessageId = update.MessageId,
+                        AuthorName = update.AuthorName,
+                        ResponseId = update.ResponseId
+                    };
+                    foreach (var content in update.Contents)
+                    {
+                        cumulativeUpdate.Contents.Add(content);
+                    }
+
+                    assistantUpdatesByMessageId[messageKey] = cumulativeUpdate;
                 }
             }
 

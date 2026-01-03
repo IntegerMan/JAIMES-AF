@@ -313,8 +313,15 @@ public partial class GameDetails : IAsyncDisposable
 
                         if (delta == null) continue;
 
-                        // Use the provided cumulative text directly
-                        string accumulatedText = delta.TextDelta;
+                        // Accumulate text per message
+                        if (!messageBuilders.TryGetValue(delta.MessageId, out var builder))
+                        {
+                            builder = new System.Text.StringBuilder();
+                            messageBuilders[delta.MessageId] = builder;
+                        }
+
+                        builder.Append(delta.TextDelta);
+                        string accumulatedText = builder.ToString();
 
                         // Check if message already exists in UI
                         bool isExisting = messageIndexes.TryGetValue(delta.MessageId, out int msgIndex);
