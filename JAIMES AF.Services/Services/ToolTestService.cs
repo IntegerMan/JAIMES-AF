@@ -37,7 +37,7 @@ public class ToolTestService(
             .Where(t => t.Name.EndsWith("Tool", StringComparison.Ordinal) && t.IsClass && !t.IsAbstract)
             .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance)
                 .Where(m => m.GetCustomAttribute<DescriptionAttribute>() != null)
-                .Select(m => new { Type = t, Method = m }))
+                .Select(m => new {Type = t, Method = m}))
             .ToList();
 
         foreach (var toolInfo in toolMethods)
@@ -72,7 +72,7 @@ public class ToolTestService(
                 {
                     Name = param.Name ?? "unknown",
                     TypeName = GetFriendlyTypeName(param.ParameterType),
-                    IsRequired = !param.IsOptional && !IsNullable(param.ParameterType),
+                    IsRequired = !param.IsOptional && !IsNullable(param),
                     Description = paramDesc?.Description,
                     DefaultValue = param.HasDefaultValue ? param.DefaultValue?.ToString() : null
                 });
@@ -111,7 +111,7 @@ public class ToolTestService(
                 .Where(t => t.Name.EndsWith("Tool", StringComparison.Ordinal) && t.IsClass && !t.IsAbstract)
                 .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance)
                     .Where(m => m.GetCustomAttribute<DescriptionAttribute>() != null)
-                    .Select(m => new { Type = t, Method = m }))
+                    .Select(m => new {Type = t, Method = m}))
                 .FirstOrDefault(x =>
                 {
                     string methodName = x.Method.Name;
@@ -119,6 +119,7 @@ public class ToolTestService(
                     {
                         methodName = methodName[..^5];
                     }
+
                     return methodName.Equals(request.ToolName, StringComparison.OrdinalIgnoreCase);
                 });
 
@@ -205,7 +206,7 @@ public class ToolTestService(
                 {
                     parameterValues[i] = param.DefaultValue;
                 }
-                else if (IsNullable(param.ParameterType))
+                else if (IsNullable(param))
                 {
                     parameterValues[i] = null;
                 }
@@ -374,9 +375,17 @@ public class ToolTestService(
         return JsonSerializer.Deserialize(value, targetType);
     }
 
+    private static bool IsNullable(ParameterInfo param)
+    {
+        if (Nullable.GetUnderlyingType(param.ParameterType) != null) return true;
+        if (param.ParameterType.IsValueType) return false;
+
+        return new NullabilityInfoContext().Create(param).WriteState == NullabilityState.Nullable;
+    }
+
     private static bool IsNullable(Type type)
     {
-        return !type.IsValueType || Nullable.GetUnderlyingType(type) != null;
+        return Nullable.GetUnderlyingType(type) != null;
     }
 
     private static string GetFriendlyTypeName(Type type)
