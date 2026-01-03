@@ -47,7 +47,92 @@ IResourceBuilder<OllamaModelResource>? chatModel = null;
 IResourceBuilder<OllamaModelResource>? embedModel = null;
 
 // ========================================
-// INFRASTRUCTURE (Created first, displayed last)
+// ========================================
+// APP GROUP (Ensures App is top of list)
+// ========================================
+
+IResourceBuilder<ContainerResource> appGroup = builder
+    .AddContainer("app", "mcr.microsoft.com/dotnet/runtime-deps", "10.0")
+    .WithIconName("Window")
+    .WithEnvironment("DOTNET_RUNNING_IN_CONTAINER", "true")
+    .ExcludeFromManifest();
+
+// ========================================
+// WEB APPLICATION
+// ========================================
+
+IResourceBuilder<ProjectResource> webApp = builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")
+    .WithParentRelationship(appGroup)
+    .WithIconName("GameChat")
+    .WithExternalHttpEndpoints()
+    .WithHttpHealthCheck("/health")
+    .WithUrlForEndpoint("http",
+        static _ => new ResourceUrlAnnotation
+        {
+            Url = "/health",
+            DisplayText = "👨‍⚕️ Health"
+        })
+    .WithUrlForEndpoint("http", static url => url.DisplayText = "🏠 Home")
+    .WithUrlForEndpoint("http",
+        static _ => new ResourceUrlAnnotation
+        {
+            Url = "/games",
+            DisplayText = "🎮 Games"
+        })
+    .WithUrlForEndpoint("http",
+        static _ => new ResourceUrlAnnotation
+        {
+            Url = "/admin",
+            DisplayText = "⚙️ Admin"
+        })
+    .WithUrlForEndpoint("http",
+        static _ => new ResourceUrlAnnotation
+        {
+            Url = "/scenarios",
+            DisplayText = "📖 Scenarios"
+        })
+    .WithUrlForEndpoint("http",
+        static _ => new ResourceUrlAnnotation
+        {
+            Url = "/players",
+            DisplayText = "👤 Players"
+        });
+
+// ========================================
+// API SERVICE (Second in UI)
+// ========================================
+
+// Note: MongoDB has been replaced with PostgreSQL + JSONB for document storage
+// All document data (metadata, cracked documents, and chunks) are now stored in PostgreSQL
+
+IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIMES_AF_ApiService>("jaimes-api")
+    .WithParentRelationship(appGroup)
+    .WithIconName("DocumentGlobe", IconVariant.Regular)
+    .WithExternalHttpEndpoints()
+    //.WithUrls(u => u.Urls.Clear())
+    .WithUrlForEndpoint("http", static url => url.DisplayText = "🌳 Root")
+    .WithUrlForEndpoint("http",
+        static _ => new ResourceUrlAnnotation
+        {
+            Url = "/openapi/v1.json",
+            DisplayText = "🌐 OpenAPI"
+        })
+    .WithUrlForEndpoint("http",
+        static _ => new ResourceUrlAnnotation
+        {
+            Url = "/swagger",
+            DisplayText = "📃 Swagger"
+        })
+    .WithHttpHealthCheck("/health")
+    .WithUrlForEndpoint("http",
+        static _ => new ResourceUrlAnnotation
+        {
+            Url = "/health",
+            DisplayText = "👨‍⚕️ Health"
+        });
+
+// ========================================
+// INFRASTRUCTURE
 // ========================================
 
 // Create a parent group for all data resources
@@ -140,77 +225,6 @@ IResourceBuilder<ProjectResource> databaseMigrationWorker = builder
     .WaitFor(postgresdb)
     .WithParentRelationship(workersGroup);
 
-// ========================================
-// WEB APPLICATION (First in UI)
-// ========================================
-
-IResourceBuilder<ProjectResource> webApp = builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")
-    .WithIconName("GameChat")
-    .WithExternalHttpEndpoints()
-    .WithHttpHealthCheck("/health")
-    .WithUrlForEndpoint("http",
-        static _ => new ResourceUrlAnnotation
-        {
-            Url = "/health",
-            DisplayText = "👨‍⚕️ Health"
-        })
-    .WithUrlForEndpoint("http", static url => url.DisplayText = "🏠 Home")
-    .WithUrlForEndpoint("http",
-        static _ => new ResourceUrlAnnotation
-        {
-            Url = "/games",
-            DisplayText = "🎮 Games"
-        })
-    .WithUrlForEndpoint("http",
-        static _ => new ResourceUrlAnnotation
-        {
-            Url = "/admin",
-            DisplayText = "⚙️ Admin"
-        })
-    .WithUrlForEndpoint("http",
-        static _ => new ResourceUrlAnnotation
-        {
-            Url = "/scenarios",
-            DisplayText = "📖 Scenarios"
-        })
-    .WithUrlForEndpoint("http",
-        static _ => new ResourceUrlAnnotation
-        {
-            Url = "/players",
-            DisplayText = "👤 Players"
-        });
-
-// ========================================
-// API SERVICE (Second in UI)
-// ========================================
-
-// Note: MongoDB has been replaced with PostgreSQL + JSONB for document storage
-// All document data (metadata, cracked documents, and chunks) are now stored in PostgreSQL
-
-IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIMES_AF_ApiService>("jaimes-api")
-    .WithIconName("DocumentGlobe", IconVariant.Regular)
-    .WithExternalHttpEndpoints()
-    //.WithUrls(u => u.Urls.Clear())
-    .WithUrlForEndpoint("http", static url => url.DisplayText = "🌳 Root")
-    .WithUrlForEndpoint("http",
-        static _ => new ResourceUrlAnnotation
-        {
-            Url = "/openapi/v1.json",
-            DisplayText = "🌐 OpenAPI"
-        })
-    .WithUrlForEndpoint("http",
-        static _ => new ResourceUrlAnnotation
-        {
-            Url = "/swagger",
-            DisplayText = "📃 Swagger"
-        })
-    .WithHttpHealthCheck("/health")
-    .WithUrlForEndpoint("http",
-        static _ => new ResourceUrlAnnotation
-        {
-            Url = "/health",
-            DisplayText = "👨‍⚕️ Health"
-        });
 
 apiService = apiService
     .WithOllamaReferences(ollama, chatModel, embedModel, needsChatModel: true, needsEmbedModel: true)
