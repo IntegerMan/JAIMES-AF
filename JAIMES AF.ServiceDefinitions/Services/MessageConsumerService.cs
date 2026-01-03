@@ -8,7 +8,9 @@ public class MessageConsumerService<T>(
     IConnectionFactory connectionFactory,
     IMessageConsumer<T> messageHandler,
     ILogger<MessageConsumerService<T>> logger,
-    ActivitySource? activitySource = null)
+    ActivitySource? activitySource = null,
+    IPipelineStatusReporter? pipelineStatusReporter = null,
+    string? pipelineStage = null)
     : BackgroundService
     where T : class
 {
@@ -19,6 +21,7 @@ public class MessageConsumerService<T>(
     private IConnection? _connection;
     private IChannel? _channel;
     private string? _consumerTag;
+    private static readonly TimeSpan StatusReportInterval = TimeSpan.FromSeconds(10);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -107,8 +110,33 @@ public class MessageConsumerService<T>(
                     queueInfo.MessageCount,
                     queueInfo.ConsumerCount);
 
-            // Keep the service running
-            while (!stoppingToken.IsCancellationRequested) await Task.Delay(1000, stoppingToken);
+            // Keep the service running and periodically report queue status
+            DateTimeOffset lastStatusReport = DateTimeOffset.MinValue;
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                await Task.Delay(1000, stoppingToken);
+
+                // Report queue status periodically if a reporter is configured
+                if (pipelineStatusReporter != null && !string.IsNullOrEmpty(pipelineStage) &&
+                    DateTimeOffset.UtcNow - lastStatusReport >= StatusReportInterval)
+                {
+                    try
+                    {
+                        using IChannel statusChannel = await _connection.CreateChannelAsync(cancellationToken: stoppingToken);
+                        QueueDeclareOk? statusQueueInfo = await statusChannel.QueueDeclarePassiveAsync(queueName, stoppingToken);
+                        int currentQueueSize = (int)(statusQueueInfo?.MessageCount ?? 0);
+                        
+                        await pipelineStatusReporter.ReportQueueSizeAsync(pipelineStage, currentQueueSize, stoppingToken);
+                        lastStatusReport = DateTimeOffset.UtcNow;
+                        
+                        logger.LogDebug("Reported queue size for {Stage}: {QueueSize}", pipelineStage, currentQueueSize);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogDebug(ex, "Failed to report queue status");
+                    }
+                }
+            }
         }
         catch (Exception ex)
         {

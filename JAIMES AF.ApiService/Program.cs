@@ -164,6 +164,9 @@ public class Program
         builder.Services.AddSignalR();
         builder.Services.AddSingleton<IMessageUpdateNotifier, SignalRMessageUpdateNotifier>();
 
+        // Register pipeline status service for document processing monitoring
+        builder.Services.AddSingleton<IPipelineStatusService, PipelineStatusService>();
+
         WebApplication app = builder.Build();
 
         app.ScheduleDatabaseInitialization();
@@ -185,6 +188,9 @@ public class Program
 
         // Map SignalR hub for real-time message updates
         app.MapHub<MessageHub>("/hubs/messages");
+
+        // Map SignalR hub for document pipeline status updates
+        app.MapHub<PipelineStatusHub>("/hubs/pipeline-status");
 
         await app.RunAsync();
     }

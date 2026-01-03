@@ -43,8 +43,41 @@ builder.Services.AddSingleton<IMessagePublisher, MessagePublisher>();
 // Register consumer
 builder.Services.AddSingleton<IMessageConsumer<CrackDocumentMessage>, CrackDocumentConsumer>();
 
-// Register consumer service (background service)
-builder.Services.AddHostedService<MessageConsumerService<CrackDocumentMessage>>();
+// Configure HTTP client for API service communication (pipeline status reporting)
+string? apiBaseUrl = builder.Configuration["Services:apiservice:http:0"]
+    ?? builder.Configuration["Services:apiservice:https:0"]
+    ?? builder.Configuration["ApiService:BaseUrl"];
+
+// Register pipeline status reporter if API service is configured
+if (!string.IsNullOrEmpty(apiBaseUrl))
+{
+    builder.Services.AddHttpClient("ApiService", client =>
+    {
+        client.BaseAddress = new Uri(apiBaseUrl);
+        client.Timeout = TimeSpan.FromSeconds(5);
+    });
+
+    builder.Services.AddSingleton<IPipelineStatusReporter>(sp =>
+    {
+        IHttpClientFactory httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+        HttpClient httpClient = httpClientFactory.CreateClient("ApiService");
+        ILogger<HttpPipelineStatusReporter> reporterLogger = sp.GetRequiredService<ILogger<HttpPipelineStatusReporter>>();
+        return new HttpPipelineStatusReporter(httpClient, reporterLogger, "DocumentCrackerWorker");
+    });
+}
+
+// Register consumer service (background service) with pipeline status reporting
+builder.Services.AddHostedService(sp =>
+{
+    IConnectionFactory connFactory = sp.GetRequiredService<IConnectionFactory>();
+    IMessageConsumer<CrackDocumentMessage> consumer = sp.GetRequiredService<IMessageConsumer<CrackDocumentMessage>>();
+    ILogger<MessageConsumerService<CrackDocumentMessage>> consumerLogger = sp.GetRequiredService<ILogger<MessageConsumerService<CrackDocumentMessage>>>();
+    ActivitySource? activity = sp.GetService<ActivitySource>();
+    IPipelineStatusReporter? statusReporter = sp.GetService<IPipelineStatusReporter>();
+    
+    return new MessageConsumerService<CrackDocumentMessage>(
+        connFactory, consumer, consumerLogger, activity, statusReporter, "cracking");
+});
 
 // Configure OpenTelemetry ActivitySource
 const string activitySourceName = "Jaimes.Workers.DocumentCrackerWorker";
