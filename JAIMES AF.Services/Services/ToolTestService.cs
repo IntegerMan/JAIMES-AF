@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
@@ -343,17 +344,17 @@ public class ToolTestService(
 
         if (underlyingType == typeof(int))
         {
-            return int.Parse(value);
+            return int.Parse(value, CultureInfo.InvariantCulture);
         }
 
         if (underlyingType == typeof(long))
         {
-            return long.Parse(value);
+            return long.Parse(value, CultureInfo.InvariantCulture);
         }
 
         if (underlyingType == typeof(double))
         {
-            return double.Parse(value);
+            return double.Parse(value, CultureInfo.InvariantCulture);
         }
 
         if (underlyingType == typeof(bool))
@@ -368,7 +369,7 @@ public class ToolTestService(
 
         if (underlyingType == typeof(DateTime))
         {
-            return DateTime.Parse(value);
+            return DateTime.Parse(value, CultureInfo.InvariantCulture);
         }
 
         // Try JSON deserialization for complex types
