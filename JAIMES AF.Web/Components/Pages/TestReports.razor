@@ -72,11 +72,6 @@
                                            Size="Size.Small"
                                            OnClick="@(() => ViewReport(context.ReportId))"/>
                         </MudTooltip>
-                        <MudTooltip Text="Download Report">
-                            <MudIconButton Icon="@Icons.Material.Filled.Download"
-                                           Size="Size.Small"
-                                           OnClick="@(() => DownloadReport(context.ReportId, context.FileName))"/>
-                        </MudTooltip>
                     </MudStack>
                 </MudTd>
             </RowTemplate>

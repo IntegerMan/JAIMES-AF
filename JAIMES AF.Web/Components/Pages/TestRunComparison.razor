@@ -11,6 +11,64 @@
 
 <PageTitle>Test Run Comparison</PageTitle>
 
+<style>
+    .comparison-grid {
+        border-collapse: separate;
+        border-spacing: 0;
+        table-layout: auto;
+        width: auto !important;
+        min-width: 100%;
+        border: 1px solid var(--mud-palette-divider) !important;
+    }
+    .sticky-column {
+        position: sticky;
+        left: 0;
+        z-index: 5;
+        background-color: var(--mud-palette-surface) !important;
+        border-right: 2px solid var(--mud-palette-divider) !important;
+        min-width: 180px;
+        max-width: 350px;
+        white-space: normal;
+        overflow-wrap: break-word;
+        padding: 4px 12px !important;
+    }
+    th.sticky-column {
+        background-color: var(--mud-palette-background-grey) !important;
+        font-weight: bold;
+        z-index: 6;
+    }
+    .metric-cell {
+        text-align: center;
+        width: 80px;
+        min-width: 80px;
+        border-right: 1px solid var(--mud-palette-divider) !important;
+        padding: 2px 4px !important;
+    }
+    .avg-cell {
+        font-weight: bold;
+        text-align: center;
+        width: 65px;
+        min-width: 65px;
+        border-right: 1px solid var(--mud-palette-divider) !important;
+        padding: 2px 4px !important;
+        background-color: var(--mud-palette-background-grey) !important;
+    }
+    .time-cell {
+        text-align: right;
+        width: 85px;
+        min-width: 85px;
+        padding: 4px 8px !important;
+    }
+    .mud-table-cell {
+        border-bottom: 1px solid var(--mud-palette-divider) !important;
+    }
+    /* Ensure MudChip is compact in the grid */
+    .comparison-grid .mud-chip {
+        margin: 0 !important;
+        height: 24px !important;
+    }
+</style>
+
 <MudPaper Class="pa-4">
     <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
         <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
@@ -32,12 +90,6 @@
                            StartIcon="@Icons.Material.Filled.Visibility"
                            OnClick="ViewCombinedReport">
                     View Report
-                </MudButton>
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.Download"
-                           OnClick="DownloadCombinedReport">
-                    Download Report
                 </MudButton>
             </MudStack>
         }
@@ -97,114 +149,39 @@
             <div style="overflow-x: auto;">
                 @if (_groupBy == "agent")
                 {
-                    @* Grouped by Agent: each agent is a section, rows are test cases *@
                     @foreach (var vr in _versionResults)
                     {
-                        <MudText Typo="Typo.subtitle1" Class="mb-2 mt-3">
-                            <MudLink Href="@($"/admin/agents/{vr.AgentId}/versions/{vr.InstructionVersionId}")">
-                                @vr.AgentName - @vr.VersionNumber
-                            </MudLink>
-                        </MudText>
-                        <table class="mud-table mud-table-dense mud-table-hover" style="width: 100%; margin-bottom: 16px;">
-                            <thead>
-                                <tr style="background-color: var(--mud-palette-surface);">
-                                    <th style="min-width: 200px; padding: 8px; text-align: left;">Test Case</th>
-                                    <th style="padding: 8px; text-align: center; width: 80px;">Avg</th>
-                                    @foreach (var metricName in _metricNames)
-                                    {
-                                        <th style="padding: 8px; text-align: center; width: 80px;">
-                                            <MudTooltip Text="@metricName">@TruncateMetricName(metricName)</MudTooltip>
-                                        </th>
-                                    }
-                                    <th style="padding: 8px; text-align: right; width: 80px;">Time</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var run in vr.Runs.OrderBy(r => r.TestCaseId))
-                                {
-                                    var avgScore = run.Metrics?.Any() == true ? run.Metrics.Average(m => m.Score) : (double?)null;
+                        <div class="mb-6">
+                            <MudText Typo="Typo.subtitle1" Class="mb-2 mt-3 font-weight-bold">
+                                <MudLink Href="@($"/admin/agents/{vr.AgentId}/versions/{vr.InstructionVersionId}")">
+                                    @vr.AgentName - @vr.VersionNumber
+                                </MudLink>
+                            </MudText>
+                            <MudSimpleTable Bordered="true" Striped="true" Hover="true" Dense="true" Class="comparison-grid">
+                                <thead>
                                     <tr>
-                                        <td style="padding: 8px;">
-                                            <MudLink Href="@($"/admin/test-cases/{run.TestCaseId}")">
-                                                @run.TestCaseName
-                                            </MudLink>
-                                        </td>
-                                        <td style="padding: 4px; text-align: center;">
-                                            @if (avgScore.HasValue)
-                                            {
-                                                <MudChip T="string" Size="Size.Small" Color="@MetricColorHelper.GetScoreColor(avgScore.Value)">
-                                                    @avgScore.Value.ToString("F1")
-                                                </MudChip>
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted">-</span>
-                                            }
-                                        </td>
+                                        <MudTh Class="sticky-column">Test Case</MudTh>
+                                        <MudTh Class="avg-cell">Avg</MudTh>
                                         @foreach (var metricName in _metricNames)
                                         {
-                                            var metric = run.Metrics?.FirstOrDefault(m => m.MetricName == metricName);
-                                            <td style="padding: 4px; text-align: center;">
-                                                @if (metric != null)
-                                                {
-                                                    <MudTooltip Text="@($"{metricName}: {metric.Score:F2}\n{metric.Remarks ?? ""}")">
-                                                        <MudChip T="string" Size="Size.Small" Color="@MetricColorHelper.GetScoreColor(metric.Score)">
-                                                            @metric.Score.ToString("F1")
-                                                        </MudChip>
-                                                    </MudTooltip>
-                                                }
-                                                else
-                                                {
-                                                    <span class="text-muted">-</span>
-                                                }
-                                            </td>
+                                            <MudTh Class="metric-cell">
+                                                <MudTooltip Text="@metricName">@TruncateMetricName(metricName)</MudTooltip>
+                                            </MudTh>
                                         }
-                                        <td style="padding: 8px; text-align: right;">
-                                            <MudText Typo="Typo.caption" Class="text-muted">@run.DurationMs ms</MudText>
-                                        </td>
+                                        <MudTh Class="time-cell">Time</MudTh>
                                     </tr>
-                                }
-                            </tbody>
-                        </table>
-                    }
-                }
-                else
-                {
-                    @* Grouped by Test Case: each test case is a section, rows are agent versions *@
-                    @foreach (var testCaseId in _testCaseIds)
-                    {
-                        var testCaseName = GetTestCaseName(testCaseId);
-                        <MudText Typo="Typo.subtitle1" Class="mb-2 mt-3">
-                            <MudLink Href="@($"/admin/test-cases/{testCaseId}")">@testCaseName</MudLink>
-                        </MudText>
-                        <table class="mud-table mud-table-dense mud-table-hover" style="width: 100%; margin-bottom: 16px;">
-                            <thead>
-                                <tr style="background-color: var(--mud-palette-surface);">
-                                    <th style="min-width: 200px; padding: 8px; text-align: left;">Agent Version</th>
-                                    <th style="padding: 8px; text-align: center; width: 80px;">Avg</th>
-                                    @foreach (var metricName in _metricNames)
-                                    {
-                                        <th style="padding: 8px; text-align: center; width: 80px;">
-                                            <MudTooltip Text="@metricName">@TruncateMetricName(metricName)</MudTooltip>
-                                        </th>
-                                    }
-                                    <th style="padding: 8px; text-align: right; width: 80px;">Time</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var vr in _versionResults)
-                                {
-                                    var run = vr.Runs.FirstOrDefault(r => r.TestCaseId == testCaseId);
-                                    @if (run != null)
+                                </thead>
+                                <tbody>
+                                    @foreach (var run in vr.Runs.OrderBy(r => r.TestCaseId))
                                     {
                                         var avgScore = run.Metrics?.Any() == true ? run.Metrics.Average(m => m.Score) : (double?)null;
                                         <tr>
-                                            <td style="padding: 8px;">
-                                                <MudLink Href="@($"/admin/agents/{vr.AgentId}/versions/{vr.InstructionVersionId}")">
-                                                    @vr.AgentName - @vr.VersionNumber
+                                            <MudTd Class="sticky-column">
+                                                <MudLink Href="@($"/admin/test-cases/{run.TestCaseId}")">
+                                                    @run.TestCaseName
                                                 </MudLink>
-                                            </td>
-                                            <td style="padding: 4px; text-align: center;">
+                                            </MudTd>
+                                            <MudTd Class="avg-cell">
                                                 @if (avgScore.HasValue)
                                                 {
                                                     <MudChip T="string" Size="Size.Small" Color="@MetricColorHelper.GetScoreColor(avgScore.Value)">
@@ -215,11 +192,11 @@
                                                 {
                                                     <span class="text-muted">-</span>
                                                 }
-                                            </td>
+                                            </MudTd>
                                             @foreach (var metricName in _metricNames)
                                             {
                                                 var metric = run.Metrics?.FirstOrDefault(m => m.MetricName == metricName);
-                                                <td style="padding: 4px; text-align: center;">
+                                                <MudTd Class="metric-cell">
                                                     @if (metric != null)
                                                     {
                                                         <MudTooltip Text="@($"{metricName}: {metric.Score:F2}\n{metric.Remarks ?? ""}")">
@@ -232,29 +209,107 @@
                                                     {
                                                         <span class="text-muted">-</span>
                                                     }
-                                                </td>
+                                                </MudTd>
                                             }
-                                            <td style="padding: 8px; text-align: right;">
+                                            <MudTd Class="time-cell">
                                                 <MudText Typo="Typo.caption" Class="text-muted">@run.DurationMs ms</MudText>
-                                            </td>
+                                            </MudTd>
                                         </tr>
                                     }
-                                    else
+                                </tbody>
+                            </MudSimpleTable>
+                        </div>
+                    }
+                }
+                else
+                {
+                    @* Grouped by Test Case: each test case is a section, rows are agent versions *@
+                    @foreach (var testCaseId in _testCaseIds)
+                    {
+                        var testCaseName = GetTestCaseName(testCaseId);
+                        <div class="mb-6">
+                            <MudText Typo="Typo.subtitle1" Class="mb-2 mt-3 font-weight-bold">
+                                <MudLink Href="@($"/admin/test-cases/{testCaseId}")">@testCaseName</MudLink>
+                            </MudText>
+                            <MudSimpleTable Bordered="true" Striped="true" Hover="true" Dense="true" Class="comparison-grid">
+                                <thead>
+                                    <tr>
+                                        <MudTh Class="sticky-column">Agent Version</MudTh>
+                                        <MudTh Class="avg-cell">Avg</MudTh>
+                                        @foreach (var metricName in _metricNames)
+                                        {
+                                            <MudTh Class="metric-cell">
+                                                <MudTooltip Text="@metricName">@TruncateMetricName(metricName)</MudTooltip>
+                                            </MudTh>
+                                        }
+                                        <MudTh Class="time-cell">Time</MudTh>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var vr in _versionResults)
                                     {
-                                        <tr>
-                                            <td style="padding: 8px;">
-                                                <MudLink Href="@($"/admin/agents/{vr.AgentId}/versions/{vr.InstructionVersionId}")">
-                                                    @vr.AgentName - @vr.VersionNumber
-                                                </MudLink>
-                                            </td>
-                                            <td colspan="@(_metricNames.Count + 2)" style="text-align: center;">
-                                                <span class="text-muted">No run</span>
-                                            </td>
-                                        </tr>
+                                        var run = vr.Runs.FirstOrDefault(r => r.TestCaseId == testCaseId);
+                                        @if (run != null)
+                                        {
+                                            var avgScore = run.Metrics?.Any() == true ? run.Metrics.Average(m => m.Score) : (double?)null;
+                                            <tr>
+                                                <MudTd Class="sticky-column">
+                                                    <MudLink Href="@($"/admin/agents/{vr.AgentId}/versions/{vr.InstructionVersionId}")">
+                                                        @vr.AgentName - @vr.VersionNumber
+                                                    </MudLink>
+                                                </MudTd>
+                                                <MudTd Class="avg-cell">
+                                                    @if (avgScore.HasValue)
+                                                    {
+                                                        <MudChip T="string" Size="Size.Small" Color="@MetricColorHelper.GetScoreColor(avgScore.Value)">
+                                                            @avgScore.Value.ToString("F1")
+                                                        </MudChip>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-muted">-</span>
+                                                    }
+                                                </MudTd>
+                                                @foreach (var metricName in _metricNames)
+                                                {
+                                                    var metric = run.Metrics?.FirstOrDefault(m => m.MetricName == metricName);
+                                                    <MudTd Class="metric-cell">
+                                                        @if (metric != null)
+                                                        {
+                                                            <MudTooltip Text="@($"{metricName}: {metric.Score:F2}\n{metric.Remarks ?? ""}")">
+                                                                <MudChip T="string" Size="Size.Small" Color="@MetricColorHelper.GetScoreColor(metric.Score)">
+                                                                    @metric.Score.ToString("F1")
+                                                                </MudChip>
+                                                            </MudTooltip>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-muted">-</span>
+                                                        }
+                                                    </MudTd>
+                                                }
+                                                <MudTd Class="time-cell">
+                                                    <MudText Typo="Typo.caption" Class="text-muted">@run.DurationMs ms</MudText>
+                                                </MudTd>
+                                            </tr>
+                                        }
+                                        else
+                                        {
+                                            <tr>
+                                                <MudTd Class="sticky-column">
+                                                    <MudLink Href="@($"/admin/agents/{vr.AgentId}/versions/{vr.InstructionVersionId}")">
+                                                        @vr.AgentName - @vr.VersionNumber
+                                                    </MudLink>
+                                                </MudTd>
+                                                <MudTd colspan="@(_metricNames.Count + 2)" Style="text-align: center;">
+                                                    <span class="text-muted">No run</span>
+                                                </MudTd>
+                                            </tr>
+                                        }
                                     }
-                                }
-                            </tbody>
-                        </table>
+                                </tbody>
+                            </MudSimpleTable>
+                        </div>
                     }
                 }
             </div>
@@ -285,7 +340,6 @@
         }
     </DialogContent>
     <DialogActions>
-        <MudButton Color="Color.Primary" OnClick="DownloadCombinedReport" Disabled="_loadingReport">Download</MudButton>
         <MudButton Color="Color.Default" OnClick="@(() => _showReportDialog = false)">Close</MudButton>
     </DialogActions>
 </MudDialog>
@@ -387,16 +441,8 @@
 
     private static string TruncateMetricName(string name)
     {
-        return name switch
-        {
-            "Relevance" => "Rel",
-            "Truth" => "Truth",
-            "Completeness" => "Comp",
-            "Fluency" => "Flu",
-            "Coherence" => "Coh",
-            "PlayerAgency" => "Agency",
-            _ => name.Length > 8 ? name.Substring(0, 7) + "." : name
-        };
+        // Only truncate if extremely long, otherwise let it wrap
+        return name.Length > 20 ? name.Substring(0, 17) + "..." : name;
     }
 
     private async Task ViewCombinedReport()
