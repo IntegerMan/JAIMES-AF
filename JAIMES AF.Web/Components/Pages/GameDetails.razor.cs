@@ -72,6 +72,8 @@ public partial class GameDetails : IAsyncDisposable
         _isLoading = true;
         _errorMessage = null;
         _isContentModerationError = false;
+        _failedMessageIndex = null;
+        _contentModerationMessageIndexes.Clear();
         try
         {
             HttpClient httpClient = HttpClientFactory.CreateClient("Api");
