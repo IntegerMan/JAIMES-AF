@@ -28,10 +28,19 @@
 
 		@if (_statistics != null)
 		{
-			<MudText Typo="Typo.body1" Class="mb-4">
-				<MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" Class="me-1"/>
-				<strong>@_statistics.TotalCount</strong> total queries
-			</MudText>
+			<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Spacing="4">
+				<MudText Typo="Typo.body1">
+					<MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" Class="me-1"/>
+					<strong>@_statistics.TotalCount</strong> total queries
+				</MudText>
+
+				@if (!string.IsNullOrWhiteSpace(DocumentName))
+				{
+					<MudChip T="string" Color="Color.Primary" OnClose="ClearDocumentFilter" Icon="@Icons.Material.Filled.FilterAlt">
+						Filtering by: @DocumentName
+					</MudChip>
+				}
+			</MudStack>
 
 			@if (_statistics.Queries.Length == 0)
 			{
@@ -52,7 +61,19 @@
 							</CellTemplate>
 						</TemplateColumn>
 						<PropertyColumn Property="x => x.CreatedAt" Title="Date" Format="g"/>
-						<PropertyColumn Property="x => x.ResultCount" Title="Results"/>
+						<TemplateColumn Title="Results">
+							<CellTemplate>
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+									<MudText Typo="Typo.body2">@context.Item.ResultCount</MudText>
+									@if (!string.IsNullOrWhiteSpace(DocumentName) && context.Item.Results.Any(r => string.Equals(r.DocumentName, DocumentName, StringComparison.OrdinalIgnoreCase)))
+									{
+										<MudTooltip Text="@($"Contains results from {DocumentName}")">
+											<MudIcon Icon="@Icons.Material.Filled.Bookmark" Size="Size.Small" Color="Color.Primary"/>
+										</MudTooltip>
+									}
+								</MudStack>
+							</CellTemplate>
+						</TemplateColumn>
 						<TemplateColumn Title="Ruleset">
 							<CellTemplate>
 								@if (!string.IsNullOrEmpty(context.Item.RulesetId))
@@ -99,8 +120,10 @@
 												<tbody>
 													@foreach (var result in context.Item.Results)
 													{
-														<tr>
-															<td>@result.DocumentName</td>
+														<tr style="@(string.Equals(result.DocumentName, DocumentName, StringComparison.OrdinalIgnoreCase) ? "background-color: var(--mud-palette-primary-hover); font-weight: bold;" : "")">
+															<td>
+																@result.DocumentName
+															</td>
 															<td><code>@result.ChunkId</code></td>
 															<td>
 																<MudChip T="string" 

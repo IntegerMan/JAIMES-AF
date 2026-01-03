@@ -91,4 +91,9 @@ public partial class RagSearchQueries
         _expandedRows.Clear();
         await LoadDataAsync();
     }
+
+    private void ClearDocumentFilter()
+    {
+        NavigationManager.NavigateTo($"/admin/rag-collections/{IndexName}/queries");
+    }
 }
