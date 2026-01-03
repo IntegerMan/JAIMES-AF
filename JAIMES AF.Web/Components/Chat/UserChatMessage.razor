@@ -15,6 +15,18 @@
     @if (IsLastParagraph)
     {
         <MudChatFooter Class="d-flex justify-content-end align-items-center gap-2 mt-1">
+            @if (TriggeredContentModeration)
+            {
+                <MudTooltip Text="This message triggered Azure's content moderation policy. Click to learn more." Placement="Placement.Top">
+                    <MudIconButton Icon="@Icons.Material.Filled.ReportProblem"
+                                   Color="Color.Error"
+                                   Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Class="pa-0"
+                                   Href="https://go.microsoft.com/fwlink/?linkid=2198766"
+                                   Target="_blank" />
+                </MudTooltip>
+            }
             @if (IsTestCase && TestCaseId.HasValue)
             {
                 <MudTooltip Text="This message is marked as a test case - Click to view details" Placement="Placement.Top">
@@ -37,63 +49,76 @@
                                    OnClick="CreateTestCaseAsync" />
                 </MudTooltip>
             }
-            @if (MessageId.HasValue && Sentiment.HasValue)
+            @if (MessageId.HasValue)
             {
-                @if (ReadOnly && NavigateOnClick && SentimentId.HasValue)
+                @if (Sentiment.HasValue)
                 {
-                    @* Read-only mode with clickable navigation to details *@
-                    <MudTooltip Text="@GetClickableTooltipText()" Placement="Placement.Top">
-                        <MudIconButton Icon="@GetSentimentIcon()"
-                                       Color="@GetSentimentColor()"
-                                       Size="Size.Small"
-                                       Variant="Variant.Text"
-                                       Class="pa-0"
-                                       OnClick="ViewDetails" />
-                    </MudTooltip>
-                }
-                else if (ReadOnly)
-                {
-                    @* Read-only mode without navigation *@
-                    <MudTooltip Text="@GetSentimentTooltipText()" Placement="Placement.Top">
-                        <MudIcon Icon="@GetSentimentIcon()"
-                                 Color="@GetSentimentColor()"
-                                 Size="Size.Small" />
-                    </MudTooltip>
+                    @if (ReadOnly && NavigateOnClick && SentimentId.HasValue)
+                    {
+                        @* Read-only mode with clickable navigation to details *@
+                        <MudTooltip Text="@GetClickableTooltipText()" Placement="Placement.Top">
+                            <MudIconButton Icon="@GetSentimentIcon()"
+                                           Color="@GetSentimentColor()"
+                                           Size="Size.Small"
+                                           Variant="Variant.Text"
+                                           Class="pa-0"
+                                           OnClick="ViewDetails" />
+                        </MudTooltip>
+                    }
+                    else if (ReadOnly)
+                    {
+                        @* Read-only mode without navigation *@
+                        <MudTooltip Text="@GetSentimentTooltipText()" Placement="Placement.Top">
+                            <MudIcon Icon="@GetSentimentIcon()"
+                                     Color="@GetSentimentColor()"
+                                     Size="Size.Small" />
+                        </MudTooltip>
+                    }
+                    else
+                    {
+                        @* Editable mode with menu *@
+                        <MudMenu AnchorOrigin="Origin.TopCenter" TransformOrigin="Origin.BottomCenter" Dense="true">
+                            <ActivatorContent>
+                                <MudTooltip Text="@GetSentimentTooltipText()" Placement="Placement.Top">
+                                    <MudIconButton Icon="@GetSentimentIcon()"
+                                                   Color="@GetSentimentColor()"
+                                                   Size="Size.Small"
+                                                   Variant="Variant.Text"
+                                                   Class="pa-0" />
+                                </MudTooltip>
+                            </ActivatorContent>
+                            <ChildContent>
+                                <MudMenuItem OnClick="@(() => SetSentimentAsync(1))" Icon="@Icons.Material.Filled.ThumbUp" IconColor="Color.Success">Positive</MudMenuItem>
+                                <MudMenuItem OnClick="@(() => SetSentimentAsync(0))" Icon="@Icons.Material.Filled.Balance" IconColor="Color.Default">Neutral</MudMenuItem>
+                                <MudMenuItem OnClick="@(() => SetSentimentAsync(-1))" Icon="@Icons.Material.Filled.ThumbDown" IconColor="Color.Error">Negative</MudMenuItem>
+                                @if (SentimentId.HasValue)
+                                {
+                                    <MudDivider />
+                                    <MudMenuItem OnClick="ViewDetails" Icon="@Icons.Material.Filled.Visibility" IconColor="Color.Primary">View Details</MudMenuItem>
+                                }
+                            </ChildContent>
+                        </MudMenu>
+                    }
                 }
                 else
                 {
-                    @* Editable mode with menu *@
-                    <MudMenu AnchorOrigin="Origin.TopCenter" TransformOrigin="Origin.BottomCenter" Dense="true">
-                        <ActivatorContent>
-                            <MudTooltip Text="@GetSentimentTooltipText()" Placement="Placement.Top">
-                                <MudIconButton Icon="@GetSentimentIcon()"
-                                               Color="@GetSentimentColor()"
-                                               Size="Size.Small"
-                                               Variant="Variant.Text"
-                                               Class="pa-0" />
-                            </MudTooltip>
-                        </ActivatorContent>
-                        <ChildContent>
-                            <MudMenuItem OnClick="@(() => SetSentimentAsync(1))" Icon="@Icons.Material.Filled.ThumbUp" IconColor="Color.Success">Positive</MudMenuItem>
-                            <MudMenuItem OnClick="@(() => SetSentimentAsync(0))" Icon="@Icons.Material.Filled.Balance" IconColor="Color.Default">Neutral</MudMenuItem>
-                            <MudMenuItem OnClick="@(() => SetSentimentAsync(-1))" Icon="@Icons.Material.Filled.ThumbDown" IconColor="Color.Error">Negative</MudMenuItem>
-                            @if (SentimentId.HasValue)
-                            {
-                                <MudDivider />
-                                <MudMenuItem OnClick="ViewDetails" Icon="@Icons.Material.Filled.Visibility" IconColor="Color.Primary">View Details</MudMenuItem>
-                            }
-                        </ChildContent>
-                    </MudMenu>
+                    <MudTooltip Text="Analyzing Sentiment..." Placement="Placement.Top">
+                        <MudIcon Icon="@Icons.Material.Filled.HourglassBottom"
+                                 Color="Color.Default"
+                                 Size="Size.Small"
+                                 Class="spin-icon" />
+                    </MudTooltip>
                 }
             }
-            else
+            else if (!ReadOnly)
             {
-                 <MudTooltip Text="Analyzing Sentiment..." Placement="Placement.Top">
-                    <MudIcon Icon="@Icons.Material.Filled.HourglassBottom" 
-                             Color="Color.Default" 
+                @* Show spinner when message hasn't been persisted yet (MessageId is null) and not in read-only mode *@
+                <MudTooltip Text="Analyzing Sentiment..." Placement="Placement.Top">
+                    <MudIcon Icon="@Icons.Material.Filled.HourglassBottom"
+                             Color="Color.Default"
                              Size="Size.Small"
                              Class="spin-icon" />
-                 </MudTooltip>
+                </MudTooltip>
             }
         </MudChatFooter>
     }
@@ -153,7 +178,11 @@
     [Parameter]
     public int? TestCaseId { get; set; }
 
-
+    /// <summary>
+    /// When true, shows a red exclamation mark indicating this message triggered Azure content moderation.
+    /// </summary>
+    [Parameter]
+    public bool TriggeredContentModeration { get; set; }
     private string GetSentimentIcon() => Sentiment switch
     {
         > 0 => Icons.Material.Filled.ThumbUp,

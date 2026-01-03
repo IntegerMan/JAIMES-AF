@@ -129,13 +129,26 @@ public static class ChatClientMiddleware
                 ChatClientInvocations.Add(1, new KeyValuePair<string, object?>("status", "error"));
                 ChatClientDuration.Record(durationMs);
 
-                logger.LogError(
-                    ex,
-                    "Chat client invocation failed");
+                // Check if this is an Azure Content Moderation error
+                bool isContentModerationError = IsContentModerationException(ex);
+
+                if (isContentModerationError)
+                {
+                    logger.LogWarning(
+                        ex,
+                        "⚠️ Azure Content Moderation blocked the request. The prompt was filtered due to content policy.");
+                }
+                else
+                {
+                    logger.LogError(
+                        ex,
+                        "Chat client invocation failed");
+                }
 
                 if (activity != null)
                 {
                     activity.SetTag("chat.error", ex.Message);
+                    activity.SetTag("chat.error_type", isContentModerationError ? "content_moderation" : "general");
                     activity.SetTag("chat.duration_ms", durationMs);
                     activity.SetStatus(ActivityStatusCode.Error, ex.Message);
                 }
@@ -188,7 +201,110 @@ public static class ChatClientMiddleware
                 "💬 Chat client streaming invocation started: {MessageCount} message(s)",
                 messageCount);
 
-            return innerChatClient.GetStreamingResponseAsync(messages, options, cancellationToken);
+            return WrapStreamingWithErrorHandling(
+                innerChatClient.GetStreamingResponseAsync(messages, options, cancellationToken),
+                logger);
         };
+    }
+
+    /// <summary>
+    /// Wraps a streaming response to handle Azure Content Moderation and other exceptions.
+    /// </summary>
+    private static async IAsyncEnumerable<ChatResponseUpdate> WrapStreamingWithErrorHandling(
+        IAsyncEnumerable<ChatResponseUpdate> stream,
+        ILogger logger,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await using var enumerator = stream.GetAsyncEnumerator(cancellationToken);
+
+        bool streamComplete = false;
+        Exception? caughtException = null;
+
+        while (!streamComplete)
+        {
+            ChatResponseUpdate? current = null;
+
+            try
+            {
+                if (!await enumerator.MoveNextAsync())
+                {
+                    streamComplete = true;
+                    break;
+                }
+
+                current = enumerator.Current;
+            }
+            catch (Exception ex)
+            {
+                caughtException = ex;
+                streamComplete = true;
+            }
+
+            if (current != null)
+            {
+                yield return current;
+            }
+        }
+
+        // Handle any caught exception after the streaming loop
+        if (caughtException != null)
+        {
+            // Check if this is an Azure Content Moderation error
+            bool isContentModerationError = IsContentModerationException(caughtException);
+
+            if (isContentModerationError)
+            {
+                logger.LogWarning(
+                    caughtException,
+                    "⚠️ Azure Content Moderation blocked the request. The prompt was filtered due to content policy.");
+
+                // Return a user-visible error message
+                yield return new ChatResponseUpdate
+                {
+                    Role = ChatRole.Assistant,
+                    Contents =
+                    {
+                        new TextContent(
+                            "I apologize, but I cannot process your request as it was filtered by Azure's content moderation policy. " +
+                            "This may be due to sensitive content in your message. Please rephrase your request and try again. " +
+                            "For more information, see: https://go.microsoft.com/fwlink/?linkid=2198766")
+                    }
+                };
+            }
+            else
+            {
+                logger.LogError(
+                    caughtException,
+                    "❌ Chat client streaming error: {ExceptionType} - {Message}",
+                    caughtException.GetType().Name,
+                    caughtException.Message);
+
+                // Return a generic error message for other exceptions
+                yield return new ChatResponseUpdate
+                {
+                    Role = ChatRole.Assistant,
+                    Contents =
+                    {
+                        new TextContent(
+                            $"I apologize, but an error occurred while processing your request: {caughtException.Message}")
+                    }
+                };
+            }
+        }
+    }
+
+    /// <summary>
+    /// Determines if an exception is an Azure Content Moderation error.
+    /// </summary>
+    private static bool IsContentModerationException(Exception ex)
+    {
+        // Check for System.ClientModel.ClientResultException with content_filter
+        string exceptionType = ex.GetType().FullName ?? string.Empty;
+        string message = ex.Message ?? string.Empty;
+
+        return (exceptionType.Contains("ClientResultException", StringComparison.OrdinalIgnoreCase) &&
+                message.Contains("content_filter", StringComparison.OrdinalIgnoreCase)) ||
+               message.Contains("content management policy", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("The response was filtered", StringComparison.OrdinalIgnoreCase);
     }
 }

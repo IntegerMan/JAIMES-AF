@@ -1,0 +1,42 @@
+@using MudBlazor
+
+<MudChat ChatPosition="ChatBubblePosition.Start"
+         Variant="Variant.Filled"
+         Color="Color.Error">
+    <MudChatHeader Name="System"/>
+    <MudChatBubble>
+        <MudStack Spacing="2">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Small"/>
+                <MudText Typo="Typo.body1">
+                    <strong>Error</strong>
+                </MudText>
+            </MudStack>
+            <MudText Typo="Typo.body2" Style="color: rgba(255, 255, 255, 0.9);">
+                @ErrorMessage
+            </MudText>
+        </MudStack>
+    </MudChatBubble>
+    @if (OnRetry.HasDelegate)
+    {
+        <MudChatFooter Class="feedback-footer">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Justify="Justify.FlexEnd">
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Inherit"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="@(() => OnRetry.InvokeAsync())">
+                    Retry
+                </MudButton>
+            </MudStack>
+        </MudChatFooter>
+    }
+</MudChat>
+
+@code {
+    [Parameter]
+    public string ErrorMessage { get; set; } = "An error occurred while processing your request. Please try again.";
+
+    [Parameter]
+    public EventCallback OnRetry { get; set; }
+}

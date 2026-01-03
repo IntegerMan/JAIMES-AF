@@ -167,7 +167,24 @@ public static class AgentRunMiddleware
                 agentName,
                 messageCount);
 
-            return innerAgent.RunStreamingAsync(messages, thread, options, cancellationToken);
+            return WrapStreamingWithErrorHandling(
+                innerAgent.RunStreamingAsync(messages, thread, options, cancellationToken),
+                cancellationToken);
         };
+    }
+
+    /// <summary>
+    /// Wraps a streaming agent run to let errors propagate to ChatClientMiddleware.
+    /// </summary>
+    private static async IAsyncEnumerable<AgentRunResponseUpdate> WrapStreamingWithErrorHandling(
+        IAsyncEnumerable<AgentRunResponseUpdate> stream,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        // Let exceptions propagate naturally - they'll be caught by ChatClientMiddleware
+        // which has the proper error handling logic
+        await foreach (var update in stream.WithCancellation(cancellationToken))
+        {
+            yield return update;
+        }
     }
 }

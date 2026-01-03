@@ -21,6 +21,7 @@ public partial class GameDetails : IAsyncDisposable
     private List<ChatMessage> _messages = [];
     private List<int?> _messageIds = []; // Parallel list to track message IDs
     private HashSet<int> _streamingMessageIndexes = new(); // Track which message indexes are currently streaming
+    private HashSet<int> _contentModerationMessageIndexes = new(); // Track which user message indexes triggered content moderation
     private Dictionary<int, MessageFeedbackResponse> _messageFeedback = new();
     private Dictionary<int, List<MessageToolCallResponse>> _messageToolCalls = new();
     private Dictionary<int, List<MessageEvaluationMetricResponse>> _messageMetrics = new();
@@ -37,6 +38,7 @@ public partial class GameDetails : IAsyncDisposable
     private bool _isLoading = true;
     private string? _errorMessage;
     private int? _failedMessageIndex;
+    private bool _isContentModerationError;
     private HubConnection? _hubConnection;
 
     // Title editing
@@ -69,6 +71,9 @@ public partial class GameDetails : IAsyncDisposable
     {
         _isLoading = true;
         _errorMessage = null;
+        _isContentModerationError = false;
+        _failedMessageIndex = null;
+        _contentModerationMessageIndexes.Clear();
         try
         {
             HttpClient httpClient = HttpClientFactory.CreateClient("Api");
@@ -244,8 +249,14 @@ public partial class GameDetails : IAsyncDisposable
         if (string.IsNullOrWhiteSpace(messageText) || _isSending) return;
 
         _isSending = true;
+
+        // Clear any previous errors immediately
         _errorMessage = null;
         _failedMessageIndex = null;
+        _isContentModerationError = false;
+
+        // Update UI to clear error messages before starting new request
+        await InvokeAsync(StateHasChanged);
         int currentMessageIndex = -1;
 
         try
@@ -261,6 +272,38 @@ public partial class GameDetails : IAsyncDisposable
                 StateHasChanged();
                 await ScrollToBottomAsync();
             });
+
+            // TEST_CONTENT_MODERATION: Simulate content moderation error without hitting the API
+            if (messageText.Trim().Equals("TEST_CONTENT_MODERATION", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger?.LogWarning("TEST_CONTENT_MODERATION trigger detected - simulating content moderation error");
+
+                // Simulate a brief delay as if we hit the API
+                await Task.Delay(500);
+
+                _isContentModerationError = true;
+                _failedMessageIndex = currentMessageIndex;
+                _contentModerationMessageIndexes.Add(currentMessageIndex);
+
+                // Exit early without actually sending to API, but trigger finally block for UI update
+                return;
+            }
+
+            // TEST_ERROR: Simulate a generic error without hitting the API
+            if (messageText.Trim().Equals("TEST_ERROR", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger?.LogWarning("TEST_ERROR trigger detected - simulating generic error");
+
+                // Simulate a brief delay as if we hit the API
+                await Task.Delay(500);
+
+                _isContentModerationError = false;
+                _failedMessageIndex = currentMessageIndex;
+                _errorMessage = "An unexpected error occurred while processing your request. Please try again.";
+
+                // Exit early without actually sending to API, but trigger finally block for UI update
+                return;
+            }
 
             // Send message to API using SSE
             HttpClient httpClient = HttpClientFactory.CreateClient("Api");
@@ -323,6 +366,27 @@ public partial class GameDetails : IAsyncDisposable
 
                         builder.Append(delta.TextDelta);
                         string accumulatedText = builder.ToString();
+
+                        // Check if this is a content moderation error message from the middleware
+                        if (accumulatedText.Contains("filtered by Azure's content moderation policy", StringComparison.OrdinalIgnoreCase))
+                        {
+                            _isContentModerationError = true;
+                            _errorMessage = "Content moderation error";
+                            _failedMessageIndex = currentMessageIndex;
+                            _contentModerationMessageIndexes.Add(currentMessageIndex);
+
+                            // CRITICAL FIX: Remove the partial assistant message from UI to prevent duplicate error display
+                            if (messageIndexes.TryGetValue(delta.MessageId, out int partialMsgIndex))
+                            {
+                                _messages.RemoveAt(partialMsgIndex);
+                                _messageIds.RemoveAt(partialMsgIndex);
+                                _streamingMessageIndexes.Remove(partialMsgIndex);
+                                messageIndexes.Remove(delta.MessageId);
+                            }
+
+                            // Don't add this as a regular assistant message - it will be shown as an error
+                            break;
+                        }
 
                         // Check if message already exists in UI
                         bool isExisting = messageIndexes.TryGetValue(delta.MessageId, out int msgIndex);
@@ -428,6 +492,18 @@ public partial class GameDetails : IAsyncDisposable
                             });
                         _errorMessage = $"Server error: {errorData?.Error ?? "Unknown error"}";
                         _failedMessageIndex = currentMessageIndex;
+
+                        // Check if this is a content moderation error
+                        string errorText = errorData?.Error?.ToLowerInvariant() ?? string.Empty;
+                        _isContentModerationError = errorText.Contains("content moderation") ||
+                                                     errorText.Contains("content_filter") ||
+                                                     errorText.Contains("content management policy");
+
+                        if (_isContentModerationError)
+                        {
+                            _contentModerationMessageIndexes.Add(currentMessageIndex);
+                        }
+
                         break;
                     }
                 }
@@ -471,8 +547,12 @@ public partial class GameDetails : IAsyncDisposable
         _messages.RemoveRange(messageIndex, countToRemove);
         _messageIds.RemoveRange(messageIndex, countToRemove);
 
+        // Clear content moderation tracking for removed messages
+        _contentModerationMessageIndexes.RemoveWhere(idx => idx >= messageIndex);
+
         _failedMessageIndex = null;
         _errorMessage = null;
+        _isContentModerationError = false;
 
         // Resend the message
         await SendMessagePrivateAsync(messageText);
