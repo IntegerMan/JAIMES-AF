@@ -313,20 +313,8 @@ public partial class GameDetails : IAsyncDisposable
 
                         if (delta == null) continue;
 
-                        // Get or create message builder
-                        if (!messageBuilders.TryGetValue(delta.MessageId, out var sb))
-                        {
-                            sb = new System.Text.StringBuilder();
-                            messageBuilders[delta.MessageId] = sb;
-                        }
-
-                        // Append delta
-                        if (!string.IsNullOrEmpty(delta.TextDelta))
-                        {
-                            sb.Append(delta.TextDelta);
-                        }
-
-                        string accumulatedText = sb.ToString();
+                        // Use the provided cumulative text directly
+                        string accumulatedText = delta.TextDelta;
 
                         // Check if message already exists in UI
                         bool isExisting = messageIndexes.TryGetValue(delta.MessageId, out int msgIndex);
@@ -395,14 +383,7 @@ public partial class GameDetails : IAsyncDisposable
                                 _messageIds[currentMessageIndex] = persistedData.UserMessageId.Value;
 
                                 // Add agent info for this user message
-                                _messageAgentInfo[persistedData.UserMessageId.Value] = new MessageAgentInfo
-                                {
-                                    AgentId = _defaultAgentId,
-                                    AgentName = _defaultAgentName,
-                                    InstructionVersionId = _defaultInstructionVersionId,
-                                    VersionNumber = _defaultVersionNumber,
-                                    IsScriptedMessage = false
-                                };
+                                _messageAgentInfo[persistedData.UserMessageId.Value] = GetCurrentAgentInfo();
                             }
 
                             // Set assistant message IDs
@@ -418,14 +399,7 @@ public partial class GameDetails : IAsyncDisposable
                                         _messageIds[messageIndex] = dbId;
 
                                         // Add agent info for assistant message
-                                        _messageAgentInfo[dbId] = new MessageAgentInfo
-                                        {
-                                            AgentId = _defaultAgentId,
-                                            AgentName = _defaultAgentName,
-                                            InstructionVersionId = _defaultInstructionVersionId,
-                                            VersionNumber = _defaultVersionNumber,
-                                            IsScriptedMessage = false
-                                        };
+                                        _messageAgentInfo[dbId] = GetCurrentAgentInfo();
                                     }
                                 }
                             }
@@ -915,6 +889,25 @@ public partial class GameDetails : IAsyncDisposable
 
             await _hubConnection.DisposeAsync();
         }
+    }
+
+    /// <summary>
+    /// Gets the agent info for the currently selected agent and version.
+    /// This is used for labeling newly sent/received messages correctly even after an agent switch.
+    /// </summary>
+    private MessageAgentInfo GetCurrentAgentInfo()
+    {
+        var agent = _availableAgents.FirstOrDefault(a => a.Id == _selectedAgentId);
+        var version = _availableVersions.FirstOrDefault(v => v.Id == _selectedVersionId);
+
+        return new MessageAgentInfo
+        {
+            AgentId = _selectedAgentId ?? _defaultAgentId,
+            AgentName = agent?.Name ?? _defaultAgentName,
+            InstructionVersionId = _selectedVersionId ?? _defaultInstructionVersionId,
+            VersionNumber = version?.VersionNumber ?? (_selectedVersionId == null ? "Latest" : _defaultVersionNumber),
+            IsScriptedMessage = false
+        };
     }
 }
 

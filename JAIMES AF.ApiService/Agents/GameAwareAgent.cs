@@ -1,12 +1,8 @@
 using System.Text.Json;
 using MattEland.Jaimes.Agents.Helpers;
-using MattEland.Jaimes.Repositories;
-using MattEland.Jaimes.Repositories.Entities;
-using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.Tools;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 
 namespace MattEland.Jaimes.ApiService.Agents;
@@ -70,10 +66,9 @@ public class GameAwareAgent(
 
                 if (assistantUpdatesByMessageId.TryGetValue(messageKey, out var existingUpdate))
                 {
-                    string combinedText = (existingUpdate.Text ?? "") + update.Text;
                     assistantUpdatesByMessageId[messageKey] = new AgentRunResponseUpdate
                     {
-                        Contents = {new TextContent(combinedText)},
+                        Contents = {new TextContent(update.Text)},
                         Role = update.Role,
                         MessageId = update.MessageId,
                         AuthorName = update.AuthorName ?? existingUpdate.AuthorName,
