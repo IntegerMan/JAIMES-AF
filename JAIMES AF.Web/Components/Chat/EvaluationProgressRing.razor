@@ -1,0 +1,168 @@
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Helpers
+@using MudBlazor
+
+@* Radial progress ring that shows evaluation metric progress with color-coded segments *@
+
+<div class="evaluation-progress-ring" style="width: @(Size)px; height: @(Size)px; position: relative;">
+    <svg viewBox="0 0 100 100" style="transform: rotate(-90deg);">
+        @* Background circle (gray track) *@
+        <circle
+            cx="50"
+            cy="50"
+            r="@Radius"
+            fill="none"
+            stroke="var(--mud-palette-grey-lighter)"
+            stroke-width="@StrokeWidth"/>
+        
+        @* Render each segment *@
+        @if (TotalSegments > 0)
+        {
+            @for (int i = 0; i < TotalSegments; i++)
+            {
+                var segment = GetSegment(i);
+                <circle
+                    cx="50"
+                    cy="50"
+                    r="@Radius"
+                    fill="none"
+                    stroke="@segment.Color"
+                    stroke-width="@StrokeWidth"
+                    stroke-dasharray="@segment.DashArray"
+                    stroke-dashoffset="@segment.DashOffset"
+                    class="@(segment.IsAnimating ? "segment-animating" : "")"/>
+            }
+        }
+    </svg>
+    
+    @* Center content - show completed/total count *@
+    <div class="progress-center" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+        @if (IsProcessing)
+        {
+            <span style="font-size: @(Size * 0.2)px; font-weight: bold; color: var(--mud-palette-text-primary);">
+                @CompletedCount/@TotalSegments
+            </span>
+        }
+        else if (HasError)
+        {
+            <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="MudBlazor.Size.Small"/>
+        }
+        else if (CompletedCount == TotalSegments && TotalSegments > 0)
+        {
+            <MudIcon Icon="@Icons.Material.Filled.Check" Color="Color.Success" Size="MudBlazor.Size.Small"/>
+        }
+    </div>
+</div>
+
+<style>
+    .evaluation-progress-ring {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .segment-animating {
+        transition: stroke-dashoffset 0.3s ease-in-out, stroke 0.3s ease-in-out;
+    }
+    
+    .progress-center {
+        font-family: var(--mud-typography-default-family);
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// The total number of expected metrics/segments.
+    /// </summary>
+    [Parameter]
+    public int TotalSegments { get; set; }
+
+    /// <summary>
+    /// The list of completed metrics with their scores.
+    /// </summary>
+    [Parameter]
+    public List<MessageEvaluationMetricResponse>? Metrics { get; set; }
+
+    /// <summary>
+    /// Dictionary of error states by metric name.
+    /// </summary>
+    [Parameter]
+    public Dictionary<string, string>? ErrorsByMetric { get; set; }
+
+    /// <summary>
+    /// Size of the ring in pixels.
+    /// </summary>
+    [Parameter]
+    public int Size { get; set; } = 32;
+
+    /// <summary>
+    /// Whether evaluation is currently in progress.
+    /// </summary>
+    [Parameter]
+    public bool IsProcessing { get; set; }
+
+    private const double StrokeWidth = 10;
+    private const double Radius = 40;
+    private double Circumference => 2 * Math.PI * Radius;
+    
+    private int CompletedCount => Metrics?.Count ?? 0;
+    private bool HasError => ErrorsByMetric?.Any() ?? false;
+
+    private record SegmentInfo(string Color, string DashArray, string DashOffset, bool IsAnimating);
+
+    private SegmentInfo GetSegment(int index)
+    {
+        // Calculate segment size
+        double segmentSize = Circumference / TotalSegments;
+        double gapSize = TotalSegments > 1 ? 2 : 0; // Small gap between segments
+        double actualSegmentSize = segmentSize - gapSize;
+        
+        // Calculate offset for this segment
+        double offset = index * segmentSize;
+        
+        // Determine segment state and color
+        string color;
+        bool isCompleted = false;
+        
+        if (Metrics != null && index < Metrics.Count)
+        {
+            var metric = Metrics[index];
+            
+            // Check if this metric has an error
+            if (ErrorsByMetric != null && ErrorsByMetric.ContainsKey(metric.MetricName))
+            {
+                color = GetMudColor(Color.Error);
+            }
+            else
+            {
+                // Use MetricColorHelper to get appropriate color based on score
+                var scoreColor = MetricColorHelper.GetScoreColor(metric.Score);
+                color = GetMudColor(scoreColor);
+            }
+            isCompleted = true;
+        }
+        else
+        {
+            // Pending segment - gray
+            color = "var(--mud-palette-grey-default)";
+        }
+        
+        // Create dash array: segment length, then rest of circumference
+        string dashArray = $"{actualSegmentSize.ToString(System.Globalization.CultureInfo.InvariantCulture)} {(Circumference - actualSegmentSize).ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+        
+        // Offset to position this segment correctly
+        string dashOffset = $"{(-offset).ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+        
+        return new SegmentInfo(color, dashArray, dashOffset, isCompleted);
+    }
+
+    private static string GetMudColor(Color color) => color switch
+    {
+        Color.Success => "var(--mud-palette-success)",
+        Color.Info => "var(--mud-palette-info)",
+        Color.Warning => "var(--mud-palette-warning)",
+        Color.Error => "var(--mud-palette-error)",
+        Color.Secondary => "var(--mud-palette-secondary)",
+        _ => "var(--mud-palette-grey-default)"
+    };
+}

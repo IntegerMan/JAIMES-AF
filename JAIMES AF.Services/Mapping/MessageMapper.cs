@@ -38,6 +38,7 @@ public static partial class MessageMapper
     [MapperIgnoreSource(nameof(Message.ModelId))]
     [MapperIgnoreSource(nameof(Message.ToolCalls))]
     [MapperIgnoreTarget(nameof(MessageDto.HasMissingEvaluators))]
+    [MapperIgnoreTarget(nameof(MessageDto.ExpectedMetricCount))]
     [MapProperty(nameof(Message.TestCase),
         nameof(MessageDto.IsTestCase),
         Use = nameof(MapIsTestCaseFromTestCase))]
@@ -137,6 +138,7 @@ public static partial class MessageMapper
         nameof(MessageContextDto.TestCaseId),
         Use = nameof(MapTestCaseIdFromTestCase))]
     [MapperIgnoreTarget(nameof(MessageContextDto.HasMissingEvaluators))]
+    [MapperIgnoreTarget(nameof(MessageContextDto.ExpectedMetricCount))]
     public static partial MessageContextDto ToContextDto(this Message message);
 
     private static MessageFeedbackResponse? MapFeedbackFromCollection(ICollection<MessageFeedback> feedbacks)

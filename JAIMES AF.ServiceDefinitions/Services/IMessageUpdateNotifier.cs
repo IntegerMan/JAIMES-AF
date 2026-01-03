@@ -30,6 +30,21 @@ public interface IMessageUpdateNotifier
         string messageText, bool hasMissingEvaluators, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Notifies the API that a single metric has been evaluated (streaming update).
+    /// </summary>
+    /// <param name="messageId">The message ID.</param>
+    /// <param name="gameId">The game ID.</param>
+    /// <param name="metric">The single evaluation metric.</param>
+    /// <param name="expectedMetricCount">Total number of expected metrics.</param>
+    /// <param name="completedMetricCount">Number of metrics completed so far.</param>
+    /// <param name="isError">Whether this metric resulted from an error.</param>
+    /// <param name="errorMessage">Error message if isError is true.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task NotifyMetricEvaluatedAsync(int messageId, Guid gameId, MessageEvaluationMetricResponse metric,
+        int expectedMetricCount, int completedMetricCount, bool isError = false, string? errorMessage = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Notifies clients that tool calls have been processed for a message.
     /// </summary>
     Task NotifyToolCallsProcessedAsync(

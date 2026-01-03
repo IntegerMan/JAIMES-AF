@@ -164,6 +164,10 @@ public class Program
         builder.Services.AddSignalR();
         builder.Services.AddSingleton<IMessageUpdateNotifier, SignalRMessageUpdateNotifier>();
 
+        // Register evaluator metric count service for expected metric calculations
+        // Use scoped since evaluators are registered as scoped
+        builder.Services.AddScoped<IEvaluatorMetricCountService, EvaluatorMetricCountService>();
+
         // Register pipeline status service for document processing monitoring
         builder.Services.AddSingleton<IPipelineStatusService, PipelineStatusService>();
 

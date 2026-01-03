@@ -43,4 +43,10 @@ public class MessageDto
     /// The ID of the test case if this message is a test case, null otherwise.
     /// </summary>
     public int? TestCaseId { get; init; }
+
+    /// <summary>
+    /// The expected number of evaluation metrics for this message.
+    /// Used for progressive UI updates during streaming evaluation.
+    /// </summary>
+    public int? ExpectedMetricCount { get; set; }
 }

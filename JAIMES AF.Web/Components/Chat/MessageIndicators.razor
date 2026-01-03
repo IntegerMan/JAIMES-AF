@@ -1,4 +1,5 @@
 @using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Helpers
 @using MattEland.Jaimes.Web.Components.Pages
 @using MudBlazor
 
@@ -11,35 +12,89 @@
     {
         <MudTooltip Placement="Placement.Top">
             <TooltipContent>
-                <div class="d-flex flex-column gap-1">
+                <div class="d-flex flex-column gap-2 pa-1">
                     @if (HasMissingEvaluators)
                     {
-                        <div class="d-flex align-items-center gap-2 mb-1">
+                        <div class="d-flex align-items-center gap-2">
                             <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Size="Size.Small"/>
                             <MudText Typo="Typo.caption" Color="Color.Warning">Missing some evaluators</MudText>
                         </div>
                     }
-                    @foreach (var metric in Metrics)
+                    @if (HasErrors)
                     {
-                        <div class="d-flex justify-space-between gap-4">
-                            <strong>@metric.MetricName</strong>
-                            <span>@metric.Score</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="Size.Small"/>
+                            <MudText Typo="Typo.caption" Color="Color.Error">Some evaluations failed</MudText>
                         </div>
                     }
+                    <div class="d-flex flex-wrap gap-1" style="max-width: 300px;">
+                        @foreach (var metric in Metrics)
+                        {
+                            var isError = ErrorsByMetric?.ContainsKey(metric.MetricName) ?? false;
+                            var errorMessage = isError && ErrorsByMetric != null ? ErrorsByMetric[metric.MetricName] : null;
+                            <MudTooltip Text="@(isError ? errorMessage : metric.Remarks)" Placement="Placement.Bottom" Delay="100">
+                                <MudChip T="string" 
+                                         Color="@(isError ? Color.Error : MetricColorHelper.GetScoreColor(metric.Score))" 
+                                         Size="MudBlazor.Size.Small"
+                                         Variant="Variant.Filled">
+                                    @if (isError)
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Filled.Error" Size="MudBlazor.Size.Small" Class="mr-1"/>
+                                        @metric.MetricName
+                                    }
+                                    else
+                                    {
+                                        <text>@metric.MetricName: @metric.Score.ToString("F1")</text>
+                                    }
+                                </MudChip>
+                            </MudTooltip>
+                        }
+                    </div>
                     @if (!ReadOnly)
                     {
-                        <MudText Typo="Typo.caption" Class="text-muted mt-1">Click icon to view details</MudText>
+                        <MudText Typo="Typo.caption" Class="text-muted mt-1">Click to view details</MudText>
                     }
                 </div>
             </TooltipContent>
             <ChildContent>
-                <MudIconButton Icon="@Icons.Material.Filled.PieChart"
-                               Color="@(HasMissingEvaluators ? Color.Warning : Color.Default)"
-                               Size="Size.Small"
-                               Variant="Variant.Text"
-                               Disabled="@(!ReadOnly && OnMetricsClick.HasDelegate == false)"
-                               OnClick="OnMetricsClicked"/>
+                @if (IsProcessing && ExpectedMetricCount.GetValueOrDefault() > 0)
+                {
+                    @* Show progress ring while evaluating *@
+                    <div style="cursor: pointer;" @onclick="OnMetricsClicked">
+                        <EvaluationProgressRing 
+                            TotalSegments="@ExpectedMetricCount.GetValueOrDefault()"
+                            Metrics="Metrics"
+                            ErrorsByMetric="ErrorsByMetric"
+                            IsProcessing="true"
+                            Size="32"/>
+                    </div>
+                }
+                else
+                {
+                    @* Show completed progress ring or pie chart icon *@
+                    <div style="cursor: pointer;" @onclick="OnMetricsClicked">
+                        <EvaluationProgressRing 
+                            TotalSegments="@(ExpectedMetricCount.GetValueOrDefault() > 0 ? ExpectedMetricCount.GetValueOrDefault() : Metrics.Count)"
+                            Metrics="Metrics"
+                            ErrorsByMetric="ErrorsByMetric"
+                            IsProcessing="false"
+                            Size="32"/>
+                    </div>
+                }
             </ChildContent>
+        </MudTooltip>
+    }
+    else if (IsProcessing && ExpectedMetricCount.GetValueOrDefault() > 0)
+    {
+        @* Show empty progress ring while waiting for first metric *@
+        <MudTooltip Text="Evaluating metrics..." Placement="Placement.Top">
+            <div style="cursor: default;">
+                <EvaluationProgressRing 
+                    TotalSegments="@ExpectedMetricCount.GetValueOrDefault()"
+                    Metrics="@(new List<MessageEvaluationMetricResponse>())"
+                    IsProcessing="true"
+                    Size="32"/>
+            </div>
         </MudTooltip>
     }
     else if (IsProcessing)
@@ -48,7 +103,7 @@
             <div class="d-flex align-center justify-center" style="width:32px; height:32px;">
                 <MudIcon Icon="@Icons.Material.Filled.HourglassBottom"
                          Color="Color.Default"
-                         Size="Size.Small"
+                         Size="MudBlazor.Size.Small"
                          Class="spin-icon"/>
             </div>
         </MudTooltip>
@@ -146,6 +201,23 @@
     /// </summary>
     [Parameter]
     public List<MessageEvaluationMetricResponse>? Metrics { get; set; }
+
+    /// <summary>
+    /// The expected number of evaluation metrics for progress display.
+    /// </summary>
+    [Parameter]
+    public int? ExpectedMetricCount { get; set; }
+
+    /// <summary>
+    /// Dictionary of error messages by metric name for failed evaluations.
+    /// </summary>
+    [Parameter]
+    public Dictionary<string, string>? ErrorsByMetric { get; set; }
+
+    /// <summary>
+    /// Whether any metrics have errors.
+    /// </summary>
+    private bool HasErrors => ErrorsByMetric?.Any() ?? false;
 
     /// <summary>
     /// The feedback for this message, if any.

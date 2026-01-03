@@ -45,4 +45,11 @@ public record MessageResponse
     /// The ID of the test case if this message is a test case, null otherwise.
     /// </summary>
     public int? TestCaseId { get; set; }
+
+    /// <summary>
+    /// The expected number of evaluation metrics for this message.
+    /// Used for progressive UI updates during streaming evaluation.
+    /// Calculated based on registered evaluators (RTC evaluator produces 3 metrics, others produce 1).
+    /// </summary>
+    public int? ExpectedMetricCount { get; set; }
 }
