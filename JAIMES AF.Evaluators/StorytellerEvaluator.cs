@@ -36,7 +36,7 @@ public class StorytellerEvaluator(IChatClient chatClient) : LlmBasedEvaluator(ch
         var (systemPrompt, conversationMessages) = ExtractMessages(messages);
 
         // Extract the last N exchanges (user + assistant pairs) for trend analysis
-        List<(ChatMessage User, ChatMessage Assistant)> recentExchanges = ExtractRecentExchanges(conversationMessages, TargetExchangeCount);
+        List<(ChatMessage User, ChatMessage Assistant)> recentExchanges = ExtractRecentExchanges(conversationMessages, modelResponse, TargetExchangeCount);
         int exchangeCount = recentExchanges.Count;
 
         // Build conversation history text showing the exchanges
@@ -78,17 +78,31 @@ public class StorytellerEvaluator(IChatClient chatClient) : LlmBasedEvaluator(ch
 
     private static List<(ChatMessage User, ChatMessage Assistant)> ExtractRecentExchanges(
         List<ChatMessage> conversationMessages,
+        ChatResponse modelResponse,
         int maxExchanges)
     {
         var exchanges = new List<(ChatMessage User, ChatMessage Assistant)>();
 
-        // Walk through messages and pair user messages with their following assistant responses
-        for (int i = 0; i < conversationMessages.Count - 1; i++)
+        // Find all User messages and pair them with the message that follows (if it's an Assistant)
+        // or the modelResponse (if it's the final User message)
+        for (int i = 0; i < conversationMessages.Count; i++)
         {
-            if (conversationMessages[i].Role == ChatRole.User &&
-                conversationMessages[i + 1].Role == ChatRole.Assistant)
+            if (conversationMessages[i].Role == ChatRole.User)
             {
-                exchanges.Add((conversationMessages[i], conversationMessages[i + 1]));
+                ChatMessage userMsg = conversationMessages[i];
+                
+                // If there's a following message in conversationMessages, and it's Assistant, use it
+                if (i + 1 < conversationMessages.Count && conversationMessages[i + 1].Role == ChatRole.Assistant)
+                {
+                    exchanges.Add((userMsg, conversationMessages[i + 1]));
+                }
+                // Otherwise, if it's the very last User message in the whole context, use the modelResponse
+                else if (i == conversationMessages.FindLastIndex(m => m.Role == ChatRole.User))
+                {
+                    ChatMessage assistantMsg = modelResponse.Messages.FirstOrDefault(m => m.Role == ChatRole.Assistant) 
+                                                ?? new ChatMessage(ChatRole.Assistant, modelResponse.Text ?? string.Empty);
+                    exchanges.Add((userMsg, assistantMsg));
+                }
             }
         }
 

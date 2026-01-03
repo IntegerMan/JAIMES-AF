@@ -43,12 +43,12 @@ public class StorytellerEvaluatorTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, responseText)));
 
-        var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "The ancient artifact glows with an otherworldly light as you approach."));
+        var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant,
+            "The ancient artifact glows with an otherworldly light as you approach."));
         var messages = new List<ChatMessage>
         {
             new(ChatRole.System, "You are a game master."),
-            new(ChatRole.User, "I approach the altar."),
-            new(ChatRole.Assistant, "The ancient artifact glows with an otherworldly light as you approach.")
+            new(ChatRole.User, "I approach the altar.")
         };
 
         // Act
@@ -65,6 +65,9 @@ public class StorytellerEvaluatorTests
         metric.Diagnostics.ShouldNotBeNull();
         metric.Diagnostics.ShouldContain(d => d.Message.Contains("Storyteller Score: 5 (Pass)"));
         metric.Diagnostics.ShouldContain(d => d.Message.Contains("ThoughtChain:"));
+
+        metric.Interpretation.ShouldNotBeNull();
+        metric.Interpretation.Rating.ShouldBe(EvaluationRating.Good);
     }
 
     [Fact]
@@ -85,8 +88,7 @@ public class StorytellerEvaluatorTests
         var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
         var messages = new List<ChatMessage>
         {
-            new(ChatRole.User, "Test"),
-            new(ChatRole.Assistant, "Test response.")
+            new(ChatRole.User, "Test")
         };
 
         // Act
@@ -132,8 +134,8 @@ public class StorytellerEvaluatorTests
             new(ChatRole.Assistant, "The cave is dark and foreboding."),
             new(ChatRole.User, "I light a torch."),
             new(ChatRole.Assistant, "The torch reveals ancient carvings on the walls."),
-            new(ChatRole.User, "I examine the carvings."),
-            new(ChatRole.Assistant, "The dragon roars in fury!")
+            new(ChatRole.User, "I examine the carvings.")
+            // Removed trailing assistant message - the GM response is modelResponse
         };
 
         // Act
@@ -147,6 +149,9 @@ public class StorytellerEvaluatorTests
 
         metric.Diagnostics.ShouldNotBeNull();
         metric.Diagnostics.ShouldContain(d => d.Message.Contains("Exchanges analyzed: 3"));
+
+        metric.Interpretation.ShouldNotBeNull();
+        metric.Interpretation.Rating.ShouldBe(EvaluationRating.Good);
     }
 
     [Fact]
@@ -167,8 +172,8 @@ public class StorytellerEvaluatorTests
         var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "You see a door."));
         var messages = new List<ChatMessage>
         {
-            new(ChatRole.User, "I look around."),
-            new(ChatRole.Assistant, "You see a door.")
+            new(ChatRole.User, "I look around.")
+            // Removed trailing assistant message
         };
 
         // Act
@@ -185,7 +190,7 @@ public class StorytellerEvaluatorTests
             d.Severity == EvaluationDiagnosticSeverity.Warning &&
             d.Message.Contains("Limited conversation context"));
         warningDiagnostic.ShouldNotBeNull();
-        warningDiagnostic.Message.ShouldContain("1 exchange(s)");
+        warningDiagnostic.Message.ShouldContain("1 exchange(s)"); // 1 User message = 1 exchange
     }
 
     [Fact]
@@ -222,7 +227,8 @@ public class StorytellerEvaluatorTests
             d.Severity == EvaluationDiagnosticSeverity.Warning &&
             d.Message.Contains("Limited conversation context"));
         warningDiagnostic.ShouldNotBeNull();
-        warningDiagnostic.Message.ShouldContain("0 exchange(s)");
+        warningDiagnostic.Message
+            .ShouldContain("0 exchange(s)"); // 0 User messages = 0 exchanges
     }
 
     [Fact]
@@ -246,8 +252,8 @@ public class StorytellerEvaluatorTests
         var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
         var messages = new List<ChatMessage>
         {
-            new(ChatRole.User, "Test"),
-            new(ChatRole.Assistant, "Test response.")
+            new(ChatRole.User, "Test")
+            // Removed trailing assistant message
         };
 
         // Act
@@ -283,8 +289,8 @@ public class StorytellerEvaluatorTests
         var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
         var messages = new List<ChatMessage>
         {
-            new(ChatRole.User, "Test"),
-            new(ChatRole.Assistant, "Test response.")
+            new(ChatRole.User, "Test")
+            // Removed trailing assistant message
         };
 
         // Act
@@ -319,8 +325,8 @@ public class StorytellerEvaluatorTests
         var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
         var messages = new List<ChatMessage>
         {
-            new(ChatRole.User, "Test"),
-            new(ChatRole.Assistant, "Test response.")
+            new(ChatRole.User, "Test")
+            // Removed trailing assistant message
         };
 
         // Act
@@ -358,8 +364,7 @@ public class StorytellerEvaluatorTests
         var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
         var messages = new List<ChatMessage>
         {
-            new(ChatRole.User, "Test"),
-            new(ChatRole.Assistant, "Test response.")
+            new(ChatRole.User, "Test")
         };
 
         // Act
@@ -390,8 +395,7 @@ public class StorytellerEvaluatorTests
         var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
         var messages = new List<ChatMessage>
         {
-            new(ChatRole.User, "Test"),
-            new(ChatRole.Assistant, "Test response.")
+            new(ChatRole.User, "Test")
         };
 
         // Act
@@ -419,11 +423,10 @@ public class StorytellerEvaluatorTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, responseText)));
 
-        var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
+        var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Pass response."));
         var messages = new List<ChatMessage>
         {
-            new(ChatRole.User, "Test"),
-            new(ChatRole.Assistant, "Test response.")
+            new(ChatRole.User, "Test")
         };
 
         // Act
@@ -455,11 +458,10 @@ public class StorytellerEvaluatorTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, responseText)));
 
-        var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
+        var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Fail response."));
         var messages = new List<ChatMessage>
         {
-            new(ChatRole.User, "Test"),
-            new(ChatRole.Assistant, "Test response.")
+            new(ChatRole.User, "Test")
         };
 
         // Act
@@ -474,6 +476,9 @@ public class StorytellerEvaluatorTests
         var failDiagnostic = metric.Diagnostics?.FirstOrDefault(d => d.Message.Contains("(Fail)"));
         failDiagnostic.ShouldNotBeNull();
         failDiagnostic.Message.ShouldContain("Storyteller Score: 3 (Fail)");
+
+        metric.Interpretation.ShouldNotBeNull();
+        metric.Interpretation.Rating.ShouldBe(EvaluationRating.Poor);
     }
 
     [Fact]
@@ -488,8 +493,7 @@ public class StorytellerEvaluatorTests
         var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
         var messages = new List<ChatMessage>
         {
-            new(ChatRole.User, "Test"),
-            new(ChatRole.Assistant, "Test response.")
+            new(ChatRole.User, "Test")
         };
 
         // Act
@@ -520,8 +524,7 @@ public class StorytellerEvaluatorTests
         var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
         var messages = new List<ChatMessage>
         {
-            new(ChatRole.User, "Test"),
-            new(ChatRole.Assistant, "Test response.")
+            new(ChatRole.User, "Test")
         };
 
         // Act
@@ -567,8 +570,7 @@ public class StorytellerEvaluatorTests
         var messages = new List<ChatMessage>
         {
             new(ChatRole.System, "You are a test game master."),
-            new(ChatRole.User, "Test"),
-            new(ChatRole.Assistant, "Test response.")
+            new(ChatRole.User, "Test")
         };
 
         // Act
@@ -608,8 +610,7 @@ public class StorytellerEvaluatorTests
             new(ChatRole.Assistant, "Exchange 3 assistant"),
             new(ChatRole.User, "Exchange 4 user"),
             new(ChatRole.Assistant, "Exchange 4 assistant"),
-            new(ChatRole.User, "Exchange 5 user"),
-            new(ChatRole.Assistant, "The final response.")
+            new(ChatRole.User, "Exchange 5 user")
         };
 
         // Act
@@ -623,7 +624,8 @@ public class StorytellerEvaluatorTests
 
         // Should have exchanges analyzed diagnostic
         metric.Diagnostics.ShouldNotBeNull();
-        metric.Diagnostics!.ShouldContain(d => d.Message.Contains("Exchanges analyzed: 5"));
+        metric.Diagnostics!.ShouldContain(d =>
+            d.Message.Contains("Exchanges analyzed: 5")); // Capped at TargetExchangeCount (5)
 
         // Should NOT have warning about limited context
         var warningDiagnostic = metric.Diagnostics.FirstOrDefault(d =>
@@ -654,8 +656,7 @@ public class StorytellerEvaluatorTests
             new(ChatRole.Assistant, "First response"),
             new(ChatRole.User, "Second message"),
             new(ChatRole.Assistant, "Second response"),
-            new(ChatRole.User, "Third message"),
-            new(ChatRole.Assistant, "Third response.")
+            new(ChatRole.User, "Third message")
         };
 
         // Act
@@ -718,8 +719,7 @@ public class StorytellerEvaluatorTests
             new(ChatRole.Assistant, "Exchange 6 response"),
             new(ChatRole.User, "Exchange 7"),
             new(ChatRole.Assistant, "Exchange 7 response"),
-            new(ChatRole.User, "Exchange 8"),
-            new(ChatRole.Assistant, "Exchange 8 response")
+            new(ChatRole.User, "Exchange 8")
         };
 
         // Act
@@ -731,6 +731,6 @@ public class StorytellerEvaluatorTests
         metric.ShouldNotBeNull();
         metric.Value.ShouldBe(4);
         metric.Diagnostics.ShouldNotBeNull();
-        metric.Diagnostics!.ShouldContain(d => d.Message.Contains("Exchanges analyzed: 5"));
+        metric.Diagnostics!.ShouldContain(d => d.Message.Contains("Exchanges analyzed: 5")); // Capped at 5
     }
 }

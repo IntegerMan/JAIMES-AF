@@ -172,7 +172,7 @@
                                         @foreach (var metricName in _metricNames)
                                         {
                                             <MudTh Class="metric-cell">
-                                                <MudTooltip Text="@metricName">
+                                                <MudTooltip Text="@metricName" Placement="Placement.Top">
                                                     <span class="metric-name">@metricName</span>
                                                 </MudTooltip>
                                             </MudTh>
@@ -208,7 +208,7 @@
                                                 <MudTd Class="metric-cell">
                                                     @if (metric != null)
                                                     {
-                                                        <MudTooltip Text="@GetMetricTooltip(metricName, metric.Score, metric.Remarks)">
+                                                        <MudTooltip Text="@GetMetricTooltip(metricName, metric.Score, metric.Remarks)" Placement="Placement.Top">
                                                             <MudChip T="string" Size="Size.Small" Color="@MetricColorHelper.GetScoreColor(metric.Score)">
                                                                 @metric.Score.ToString("F1")
                                                             </MudChip>
@@ -248,7 +248,7 @@
                                         @foreach (var metricName in _metricNames)
                                         {
                                             <MudTh Class="metric-cell">
-                                                <MudTooltip Text="@metricName">
+                                                <MudTooltip Text="@metricName" Placement="Placement.Top">
                                                     <span class="metric-name">@metricName</span>
                                                 </MudTooltip>
                                             </MudTh>
@@ -289,7 +289,7 @@
                                                     <MudTd Class="metric-cell">
                                                         @if (metric != null)
                                                         {
-                                                            <MudTooltip Text="@GetMetricTooltip(metricName, metric.Score, metric.Remarks)">
+                                                            <MudTooltip Text="@GetMetricTooltip(metricName, metric.Score, metric.Remarks)" Placement="Placement.Top">
                                                                 <MudChip T="string" Size="Size.Small" Color="@MetricColorHelper.GetScoreColor(metric.Score)">
                                                                     @metric.Score.ToString("F1")
                                                                 </MudChip>
@@ -518,12 +518,6 @@
             _loadingReport = false;
             StateHasChanged();
         }
-    }
-
-    private async Task DownloadCombinedReport()
-    {
-        var url = $"{Http.BaseAddress}test-case-runs/combined-report?executions={Uri.EscapeDataString(Executions ?? "")}";
-        NavigationManager.NavigateTo(url, forceLoad: true);
     }
 
     private record VersionResult
