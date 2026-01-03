@@ -52,11 +52,22 @@ public class ListRagCollectionsEndpoint(IDbContextFactory<JaimesDbContext> dbCon
         Dictionary<string, int> queryCountByIndex = queryCounts
             .ToDictionary(x => x.IndexName, x => x.Count, StringComparer.OrdinalIgnoreCase);
 
+        // Get search result counts grouped by document name (for sourcebooks)
+        var searchResultCounts = await dbContext.RagSearchResultChunks
+            .AsNoTracking()
+            .GroupBy(r => r.DocumentName)
+            .Select(g => new {DocumentName = g.Key, Count = g.Count()})
+            .ToListAsync(ct);
+
+        Dictionary<string, int> searchResultsByDocName = searchResultCounts
+            .ToDictionary(x => x.DocumentName, x => x.Count, StringComparer.OrdinalIgnoreCase);
+
         // Build document info list for sourcebooks
         List<RagCollectionDocumentInfo> documentInfos = documents
             .Select(doc =>
             {
                 chunksByDocument.TryGetValue(doc.Id, out (int Total, int Embedded) chunks);
+                searchResultsByDocName.TryGetValue(doc.FileName, out int searchResultCount);
                 return new RagCollectionDocumentInfo
                 {
                     DocumentId = doc.Id,
@@ -67,7 +78,8 @@ public class ListRagCollectionsEndpoint(IDbContextFactory<JaimesDbContext> dbCon
                     TotalChunks = chunks.Total,
                     EmbeddedChunks = chunks.Embedded,
                     IsFullyProcessed = doc.IsProcessed,
-                    CrackedAt = doc.CrackedAt
+                    CrackedAt = doc.CrackedAt,
+                    SearchResultCount = searchResultCount
                 };
             })
             .OrderBy(d => d.DocumentKind)
@@ -104,10 +116,12 @@ public class ListRagCollectionsEndpoint(IDbContextFactory<JaimesDbContext> dbCon
         foreach (var game in gameMessageStats)
         {
             embeddingsByGame.TryGetValue(game.GameId, out int embeddedCount);
+            string fileName = game.GameTitle ?? $"Game {game.GameId}";
+            searchResultsByDocName.TryGetValue(fileName, out int transcriptSearchResultCount);
             documentInfos.Add(new RagCollectionDocumentInfo
             {
                 DocumentId = 0, // Games use GUID, not int ID
-                FileName = game.GameTitle ?? $"Game {game.GameId}",
+                FileName = fileName,
                 RelativeDirectory = game.GameId.ToString(),
                 DocumentKind = DocumentKinds.Transcript,
                 RulesetId = "conversations",
@@ -115,7 +129,8 @@ public class ListRagCollectionsEndpoint(IDbContextFactory<JaimesDbContext> dbCon
                 EmbeddedChunks = embeddedCount,
                 IsFullyProcessed = embeddedCount >= game.TotalMessages,
                 CrackedAt = DateTime.UtcNow, // Transcripts don't have a crack date
-                GameId = game.GameId
+                GameId = game.GameId,
+                SearchResultCount = transcriptSearchResultCount
             });
         }
 
