@@ -1,5 +1,6 @@
 @page "/admin/rag-collections"
 @using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Shared
 @rendermode InteractiveServer
 
 <PageTitle>RAG Collections</PageTitle>
@@ -29,6 +30,8 @@
 				Test Conversation Search
 			</MudButton>
 		</MudStack>
+
+		<PipelineStatusPanel Class="mb-6" />
 
 		@if (_isLoading)
 		{

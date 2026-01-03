@@ -137,11 +137,44 @@ builder.Services.AddSingleton(activitySource);
 IConnectionFactory connectionFactory = RabbitMqConnectionFactory.CreateConnectionFactory(builder.Configuration);
 builder.Services.AddSingleton(connectionFactory);
 
+// Configure HTTP client for API service communication (pipeline status reporting)
+string? apiBaseUrl = builder.Configuration["Services:apiservice:http:0"]
+    ?? builder.Configuration["Services:apiservice:https:0"]
+    ?? builder.Configuration["ApiService:BaseUrl"];
+
+// Register pipeline status reporter if API service is configured
+if (!string.IsNullOrEmpty(apiBaseUrl))
+{
+    builder.Services.AddHttpClient("ApiService", client =>
+    {
+        client.BaseAddress = new Uri(apiBaseUrl);
+        client.Timeout = TimeSpan.FromSeconds(5);
+    });
+
+    builder.Services.AddSingleton<IPipelineStatusReporter>(sp =>
+    {
+        IHttpClientFactory httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+        HttpClient httpClient = httpClientFactory.CreateClient("ApiService");
+        ILogger<HttpPipelineStatusReporter> reporterLogger = sp.GetRequiredService<ILogger<HttpPipelineStatusReporter>>();
+        return new HttpPipelineStatusReporter(httpClient, reporterLogger, "DocumentChunkingWorker");
+    });
+}
+
 // Register consumer
 builder.Services.AddSingleton<IMessageConsumer<DocumentReadyForChunkingMessage>, DocumentReadyForChunkingConsumer>();
 
-// Register consumer service (background service)
-builder.Services.AddHostedService<MessageConsumerService<DocumentReadyForChunkingMessage>>();
+// Register consumer service (background service) with pipeline status reporting
+builder.Services.AddHostedService(sp =>
+{
+    IConnectionFactory connFactory = sp.GetRequiredService<IConnectionFactory>();
+    IMessageConsumer<DocumentReadyForChunkingMessage> consumer = sp.GetRequiredService<IMessageConsumer<DocumentReadyForChunkingMessage>>();
+    ILogger<MessageConsumerService<DocumentReadyForChunkingMessage>> consumerLogger = sp.GetRequiredService<ILogger<MessageConsumerService<DocumentReadyForChunkingMessage>>>();
+    ActivitySource? activity = sp.GetService<ActivitySource>();
+    IPipelineStatusReporter? statusReporter = sp.GetService<IPipelineStatusReporter>();
+    
+    return new MessageConsumerService<DocumentReadyForChunkingMessage>(
+        connFactory, consumer, consumerLogger, activity, statusReporter, "chunking");
+});
 
 // Build host
 using IHost host = builder.Build();

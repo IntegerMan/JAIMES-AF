@@ -1,4 +1,5 @@
 @page "/admin"
+@using MattEland.Jaimes.Web.Components.Shared
 @rendermode InteractiveServer
 
 <PageTitle>Admin</PageTitle>
@@ -16,6 +17,8 @@
 <MudText Typo="Typo.body1" Class="mb-6" Style="line-height: 1.75;">
 	Access administrative functions and testing tools for the JAIMES AF system.
 </MudText>
+
+<PipelineStatusPanel Class="mb-6" />
 
 <MudDivider Class="my-8"/>
 
