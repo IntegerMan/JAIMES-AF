@@ -32,24 +32,12 @@ public class GameMechanicsEvaluator(IChatClient chatClient, IRulesSearchService 
             .OfType<GameMechanicsEvaluationContext>()
             .FirstOrDefault();
 
-        if (mechanicsContext == null)
-        {
-            // No ruleset context provided, return a warning result
-            NumericMetric noContextMetric = new(MetricName)
-            {
-                Value = null,
-                Reason = "No GameMechanicsEvaluationContext provided. Cannot evaluate game mechanics without a ruleset."
-            };
-            noContextMetric.Diagnostics ??= [];
-            noContextMetric.Diagnostics.Add(new EvaluationDiagnostic(
-                EvaluationDiagnosticSeverity.Warning,
-                "GameMechanicsEvaluationContext is required but was not provided."));
-
-            return new EvaluationResult(noContextMetric);
-        }
-
-        string rulesetId = mechanicsContext.RulesetId;
+        string? rulesetId = mechanicsContext?.RulesetId;
+        string? rulesetName = mechanicsContext?.RulesetName ?? "All Rulesets";
         string responseText = modelResponse.Text ?? string.Empty;
+
+        // Track if we're running without context
+        bool runningWithoutContext = mechanicsContext == null;
 
         // Extract conversation context
         List<ChatMessage> messagesList = messages.ToList();
@@ -98,7 +86,7 @@ public class GameMechanicsEvaluator(IChatClient chatClient, IRulesSearchService 
             ? string.Join("\n\n", relevantRules.Select(r => $"[{r.DocumentName}] {r.Text}"))
             : "No specific rules found for this context.";
 
-        string prompt = BuildEvaluationPrompt(responseText, conversationHistory, systemPrompt, rulesContext, mechanicsContext.RulesetName);
+        string prompt = BuildEvaluationPrompt(responseText, conversationHistory, systemPrompt, rulesContext, rulesetName);
 
         ChatOptions chatOptions = new()
         {
@@ -208,9 +196,20 @@ public class GameMechanicsEvaluator(IChatClient chatClient, IRulesSearchService 
                 $"Failed to parse evaluation response. Raw response: {rawResponseText[..length]}"));
         }
 
-        // Add context about the ruleset used
+        // Add diagnostic if running without ruleset context
+        if (runningWithoutContext)
+        {
+            metric.Diagnostics.Add(new EvaluationDiagnostic(
+                EvaluationDiagnosticSeverity.Warning,
+                "No GameMechanicsEvaluationContext provided. Searching all rulesets for relevant rules."));
+        }
+
+        // Add context about the ruleset used (if provided)
         metric.Context ??= new Dictionary<string, EvaluationContext>();
-        metric.Context[GameMechanicsEvaluationContext.ContextName] = mechanicsContext;
+        if (mechanicsContext != null)
+        {
+            metric.Context[GameMechanicsEvaluationContext.ContextName] = mechanicsContext;
+        }
 
         return new EvaluationResult(metric);
     }

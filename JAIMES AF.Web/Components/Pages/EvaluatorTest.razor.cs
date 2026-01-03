@@ -72,6 +72,12 @@ public partial class EvaluatorTest
             _rulesets = rulesetsTask.Result?.Rulesets ?? [];
 
             await LoadAllVersionsAsync();
+
+            // Default to first ruleset if available
+            if (_rulesets.Length > 0)
+            {
+                _selectedRulesetId = _rulesets[0].Id;
+            }
         }
         catch (Exception ex)
         {
@@ -82,6 +88,28 @@ public partial class EvaluatorTest
         {
             _isLoading = false;
         }
+    }
+
+    private string GetVersionDisplayText(int versionId)
+    {
+        if (versionId == 0)
+        {
+            return string.Empty;
+        }
+
+        AgentVersionOption? option = _versionOptions.FirstOrDefault(v => v.VersionId == versionId);
+        return option?.Display ?? versionId.ToString();
+    }
+
+    private string GetRulesetDisplayText(string? rulesetId)
+    {
+        if (string.IsNullOrEmpty(rulesetId))
+        {
+            return string.Empty;
+        }
+
+        RulesetInfoResponse? ruleset = _rulesets.FirstOrDefault(r => r.Id == rulesetId);
+        return ruleset?.Name ?? rulesetId;
     }
 
     private int SelectedVersionId

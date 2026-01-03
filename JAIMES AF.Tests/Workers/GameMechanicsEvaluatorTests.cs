@@ -33,26 +33,36 @@ public class GameMechanicsEvaluatorTests
     }
 
     [Fact]
-    public async Task EvaluateAsync_WithoutContext_ShouldReturnWarning()
+    public async Task EvaluateAsync_WithoutContext_ShouldRunAndReturnWarningDiagnostic()
     {
         // Arrange
-        var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "Test response."));
-        var messages = new List<ChatMessage> { new(ChatRole.User, "Test") };
+        string topicsResponse = "damage calculation";
+        string evaluationResponse = """
+                              <S0>Evaluation without specific ruleset context.</S0>
+                              <S1>Response evaluated against all available rules.</S1>
+                              <S2>4</S2>
+                              """;
+
+        SetupMockChatClientSequence(topicsResponse, evaluationResponse);
+        SetupMockRulesSearchForAnyQuery(CreateSampleRuleResults());
+
+        var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "You deal 1d8+3 damage."));
+        var messages = new List<ChatMessage> { new(ChatRole.User, "I attack!") };
 
         // Act - No evaluation context provided
         var result = await _evaluator.EvaluateAsync(messages, modelResponse,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        // Assert
+        // Assert - Should still evaluate but with warning diagnostic
         var metric = result.Get<NumericMetric>(GameMechanicsEvaluator.MetricName);
         metric.ShouldNotBeNull();
-        metric.Value.ShouldBeNull();
-        metric.Reason.ShouldNotBeNull();
-        metric.Reason!.ShouldContain("No GameMechanicsEvaluationContext provided");
+        metric.Value.ShouldBe(4); // Evaluation should succeed
 
-        var warningDiagnostic = metric.Diagnostics?.FirstOrDefault(d => d.Severity == EvaluationDiagnosticSeverity.Warning);
+        // Should have warning diagnostic about missing context
+        var warningDiagnostic = metric.Diagnostics?.FirstOrDefault(d =>
+            d.Severity == EvaluationDiagnosticSeverity.Warning &&
+            d.Message.Contains("No GameMechanicsEvaluationContext provided"));
         warningDiagnostic.ShouldNotBeNull();
-        warningDiagnostic!.Message.ShouldContain("GameMechanicsEvaluationContext is required");
     }
 
     [Fact]
