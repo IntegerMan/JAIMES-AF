@@ -51,46 +51,17 @@ public partial class GameDetails : IAsyncDisposable
     private bool _isChangingAgent = false;
 
 
-    private readonly MessageResponse _userMessage = new()
-    {
-        Participant = ChatParticipant.Player,
-        ParticipantName = "Player Character",
-        PlayerId = null,
-        Text = string.Empty,
-        CreatedAt = DateTime.UtcNow
-    };
-
     private bool _isSending = false;
-    private bool _shouldScrollToBottom = false;
     private ILogger? _logger;
     private Guid _chatInputKey = Guid.NewGuid();
     private MudTextField<string>? _chatInput;
-
-    // Hover state tracking for feedback buttons
-    private int? _hoveredMessageId;
-    private int? _hoveredMessageIndex; // For messages without IDs yet
-
-    private bool IsHovering => _hoveredMessageId.HasValue || _hoveredMessageIndex.HasValue;
-
+    private string _userMessageText = string.Empty;
 
     protected override async Task OnParametersSetAsync()
     {
         await LoadGameAsync();
         _logger = LoggerFactory.CreateLogger("GameDetails");
-
-        // Connect to SignalR hub for real-time updates
         await ConnectToSignalRHubAsync();
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (_shouldScrollToBottom)
-        {
-            _shouldScrollToBottom = false;
-            // Use a small delay to ensure DOM is fully updated
-            await Task.Delay(50);
-            await ScrollToBottomAsync();
-        }
     }
 
     private async Task LoadGameAsync()
@@ -168,9 +139,14 @@ public partial class GameDetails : IAsyncDisposable
             await LoadAvailableAgentsAsync();
 
             _isLoading = false;
-            // Scroll to bottom after initial load
-            if (_messages.Count > 0) _shouldScrollToBottom = true;
             StateHasChanged();
+
+            // Scroll to bottom after initial load
+            if (_messages.Count > 0)
+            {
+                await Task.Delay(100); // Allow UI to render
+                await ScrollToBottomAsync();
+            }
         }
     }
 
@@ -246,18 +222,16 @@ public partial class GameDetails : IAsyncDisposable
 
     private async Task SendMessageAsync()
     {
-        string message = _userMessage.Text;
+        string message = _userMessageText;
 
-        // Clear input immediately so user sees it's been sent
-        _userMessage.Text = string.Empty;
+        // Clear input immediately
+        _userMessageText = string.Empty;
         _chatInputKey = Guid.NewGuid();
 
-        // Send the message (this will add user message and trigger scroll)
         await SendMessagePrivateAsync(message);
 
-        // Reset focus after sending
+        // Reset focus
         await Task.Yield();
-
         if (_chatInput != null)
         {
             await _chatInput.FocusAsync();
@@ -280,9 +254,7 @@ public partial class GameDetails : IAsyncDisposable
             _messageIds.Add(null); // Will be set when we receive the persisted event
             currentMessageIndex = _messages.Count - 1;
 
-            _logger?.LogInformation("Sending message {Text} from User", messageText);
-
-            // Scroll to bottom immediately after adding user message and showing typing indicator
+            // Scroll to bottom immediately after adding user message
             await InvokeAsync(async () =>
             {
                 StateHasChanged();
@@ -414,10 +386,6 @@ public partial class GameDetails : IAsyncDisposable
 
                         if (persistedData != null)
                         {
-                            _logger?.LogInformation("Received persisted IDs - User: {UserId}, Assistant: {AssistantIds}",
-                                persistedData.UserMessageId,
-                                string.Join(",", persistedData.AssistantMessageIds ?? new List<int>()));
-
                             // Set user message ID
                             if (persistedData.UserMessageId.HasValue && currentMessageIndex >= 0)
                             {
@@ -464,12 +432,9 @@ public partial class GameDetails : IAsyncDisposable
                     }
                     else if (eventType == "done")
                     {
-                        _logger?.LogInformation("Stream completed successfully");
-
-                        // Clear streaming status for all messages that were streaming
+                        // Clear streaming status
                         _streamingMessageIndexes.Clear();
                         await InvokeAsync(StateHasChanged);
-
                         break;
                     }
                     else if (eventType == "error")
@@ -484,8 +449,6 @@ public partial class GameDetails : IAsyncDisposable
                     }
                 }
             }
-
-            _logger?.LogInformation("Finished streaming loop");
         }
         catch (Exception ex)
         {
@@ -495,11 +458,7 @@ public partial class GameDetails : IAsyncDisposable
         }
         finally
         {
-            _logger?.LogInformation("Entering Finally block. IsSending: {IsSending}", _isSending);
             _isSending = false;
-
-            // Scroll after typing indicator disappears
-            _shouldScrollToBottom = true;
             await InvokeAsync(StateHasChanged);
         }
     }
@@ -508,12 +467,6 @@ public partial class GameDetails : IAsyncDisposable
     private record ChatStreamEvent(string MessageId, string TextDelta, string Role, string? AuthorName);
     private record MessagePersistedEvent(string Type, int? UserMessageId, List<int>? AssistantMessageIds);
     private record ErrorEvent(string Error, string Type);
-
-    private string updatedTextPreview(string text)
-    {
-        if (string.IsNullOrEmpty(text)) return string.Empty;
-        return text.Length > 20 ? text.Substring(0, 20) : text;
-    }
 
     private async Task RetryMessageAsync(int messageIndex)
     {
@@ -578,46 +531,10 @@ public partial class GameDetails : IAsyncDisposable
     }
 
     /// <summary>
-    /// Handles hover start for a message bubble.
-    /// </summary>
-    private void HoverStart(int? messageId, int? messageIndex = null)
-    {
-        if (messageId.HasValue)
-        {
-            _hoveredMessageId = messageId;
-            _hoveredMessageIndex = null; // Clear index when using ID
-        }
-        else if (messageIndex.HasValue)
-        {
-            _hoveredMessageIndex = messageIndex;
-            _hoveredMessageId = null; // Clear ID when using index
-        }
-
-        StateHasChanged();
-    }
-
-    /// <summary>
-    /// Handles hover stop for a message bubble.
-    /// </summary>
-    private void HoverStop(int? messageId, int? messageIndex = null)
-    {
-        if ((messageId.HasValue && _hoveredMessageId == messageId) ||
-            (messageIndex.HasValue && _hoveredMessageIndex == messageIndex))
-        {
-            _hoveredMessageId = null;
-            _hoveredMessageIndex = null;
-            StateHasChanged();
-        }
-    }
-
-    /// <summary>
     /// Shows the feedback dialog and submits feedback for a message.
     /// </summary>
     private async Task ShowFeedbackDialogAsync(int messageId, bool? isPositive = null)
     {
-        // Stop hovering when dialog opens
-        _hoveredMessageId = null;
-        StateHasChanged();
 
         // Check if feedback already exists
         if (_messageFeedback.ContainsKey(messageId))
@@ -744,23 +661,14 @@ public partial class GameDetails : IAsyncDisposable
                 _loadedMetricsMessageIds.UnionWith(messageIds);
 
                 foreach (var (msgId, fb) in metadata.Feedback)
-                {
                     _messageFeedback[msgId] = fb;
-                }
 
-                // 2. Process Tool Calls
                 foreach (var (msgId, items) in metadata.ToolCalls)
-                {
                     _messageToolCalls[msgId] = items;
-                }
 
-                // 3. Process Metrics
                 foreach (var (msgId, items) in metadata.Metrics)
-                {
                     _messageMetrics[msgId] = items;
-                }
 
-                // 4. Process Sentiment
                 foreach (var (msgId, sent) in metadata.Sentiment)
                 {
                     _messageSentiment[msgId] = new MessageSentimentInfo
@@ -773,11 +681,7 @@ public partial class GameDetails : IAsyncDisposable
                 }
 
                 foreach (var (msgId, hasMissing) in metadata.HasMissingEvaluators)
-                {
                     _messageHasMissingEvaluators[msgId] = hasMissing;
-                }
-
-                _logger?.LogInformation("Loaded metadata for {Count} messages", messageIds.Count);
             }
             else
             {
@@ -817,15 +721,9 @@ public partial class GameDetails : IAsyncDisposable
             _hubConnection.On<MessageUpdateNotification>("MessageUpdated",
                 async notification =>
                 {
-                    _logger?.LogDebug(
-                        "Received {UpdateType} update for message {MessageId}",
-                        notification.UpdateType,
-                        notification.MessageId);
-
                     await InvokeAsync(async () =>
                     {
                         // Update local state based on update type
-                        // Note: We no longer need content matching since IDs are received immediately via SSE
                         if (notification.UpdateType == MessageUpdateType.SentimentAnalyzed &&
                             notification.Sentiment.HasValue)
                         {
@@ -860,13 +758,9 @@ public partial class GameDetails : IAsyncDisposable
                     });
                 });
 
-            // Start connection
+            // Start connection and join game group
             await _hubConnection.StartAsync();
-            _logger?.LogDebug("Connected to SignalR hub");
-
-            // Join the game group to receive updates for this game
             await _hubConnection.InvokeAsync("JoinGame", GameId);
-            _logger?.LogDebug("Joined game group {GameId}", GameId);
         }
         catch (Exception ex)
         {
