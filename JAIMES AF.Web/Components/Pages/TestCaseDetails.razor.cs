@@ -18,6 +18,7 @@ public partial class TestCaseDetails
     // Comparison grid state
     private List<string> _metricNames = new();
     private IEnumerable<TestCaseRunResponse> _paginatedRuns => _runs?.OrderByDescending(r => r.ExecutedAt) ?? Enumerable.Empty<TestCaseRunResponse>();
+    private int _rowsPerPage = 15;
 
     protected override async Task OnParametersSetAsync()
     {
