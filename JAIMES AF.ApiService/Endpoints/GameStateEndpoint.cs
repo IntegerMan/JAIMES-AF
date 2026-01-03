@@ -4,6 +4,7 @@ public class GameStateEndpoint : EndpointWithoutRequest<GameStateResponse>
 {
     public required IGameService GameService { get; set; }
     public required IChatHistoryService ChatHistoryService { get; set; }
+    public required IEvaluatorMetricCountService EvaluatorMetricCountService { get; set; }
 
     public override void Configure()
     {
@@ -30,11 +31,26 @@ public class GameStateEndpoint : EndpointWithoutRequest<GameStateResponse>
         // Get thread JSON from chat history
         string? threadJson = await ChatHistoryService.GetMostRecentThreadJsonAsync(gameId, ct);
 
+        // Get expected metric count for progress UI
+        int expectedMetricCount = EvaluatorMetricCountService.GetTotalExpectedMetricCount();
+
+        // Map messages and set expected metric count for assistant messages
+        var messages = (gameDto.Messages ?? []).Select(m =>
+        {
+            var response = m.ToResponse();
+            // Only assistant messages (no PlayerId) get evaluated
+            if (string.IsNullOrEmpty(m.PlayerId))
+            {
+                response = response with { ExpectedMetricCount = expectedMetricCount };
+            }
+            return response;
+        }).ToArray();
+
         GameStateResponse gameState = new()
         {
             GameId = gameDto.GameId,
             Title = gameDto.Title,
-            Messages = (gameDto.Messages ?? []).Select(m => m.ToResponse()).ToArray(),
+            Messages = messages,
             RulesetId = gameDto.Ruleset.Id,
             RulesetName = gameDto.Ruleset.Name,
             ScenarioId = gameDto.Scenario.Id,

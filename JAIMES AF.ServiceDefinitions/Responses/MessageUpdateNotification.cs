@@ -56,6 +56,28 @@ public record MessageUpdateNotification
     /// Optional flag indicating if the message has tool calls.
     /// </summary>
     public bool? HasToolCalls { get; init; }
+
+    /// <summary>
+    /// The total number of expected metrics for this message.
+    /// Used for progressive UI updates during streaming evaluation.
+    /// </summary>
+    public int? ExpectedMetricCount { get; init; }
+
+    /// <summary>
+    /// The number of metrics that have been evaluated so far.
+    /// Used for progressive UI updates during streaming evaluation.
+    /// </summary>
+    public int? CompletedMetricCount { get; init; }
+
+    /// <summary>
+    /// Optional flag indicating if the metric evaluation resulted in an error.
+    /// </summary>
+    public bool? IsError { get; init; }
+
+    /// <summary>
+    /// Optional error message if the evaluation failed.
+    /// </summary>
+    public string? ErrorMessage { get; init; }
 }
 
 /// <summary>
@@ -70,8 +92,15 @@ public enum MessageUpdateType
 
     /// <summary>
     /// Evaluation metrics calculated for an assistant message.
+    /// This is the final notification sent when all evaluators have completed.
     /// </summary>
     MetricsEvaluated,
+
+    /// <summary>
+    /// A single metric has been evaluated (streaming update).
+    /// Sent as each evaluator completes, before the final MetricsEvaluated.
+    /// </summary>
+    MetricEvaluated,
 
     /// <summary>
     /// Tool calls processed for an assistant message.

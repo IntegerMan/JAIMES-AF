@@ -53,6 +53,25 @@ public class MessageUpdateNotifier : IMessageUpdateNotifier
         await SendNotificationAsync(notification, cancellationToken);
     }
 
+    public async Task NotifyMetricEvaluatedAsync(int messageId, Guid gameId,
+        MessageEvaluationMetricResponse metric, int expectedMetricCount, int completedMetricCount,
+        bool isError = false, string? errorMessage = null, CancellationToken cancellationToken = default)
+    {
+        MessageUpdateNotification notification = new()
+        {
+            MessageId = messageId,
+            GameId = gameId,
+            UpdateType = MessageUpdateType.MetricEvaluated,
+            Metrics = [metric],
+            ExpectedMetricCount = expectedMetricCount,
+            CompletedMetricCount = completedMetricCount,
+            IsError = isError,
+            ErrorMessage = errorMessage
+        };
+
+        await SendNotificationAsync(notification, cancellationToken);
+    }
+
     public async Task NotifyToolCallsProcessedAsync(int messageId, Guid gameId, bool hasToolCalls,
         string? messageText = null,
         CancellationToken cancellationToken = default)

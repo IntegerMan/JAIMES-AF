@@ -23,6 +23,7 @@ public static partial class MessageResponseMapper
     [MapProperty(nameof(MessageDto.VersionNumber), nameof(MessageResponse.VersionNumber))]
     [MapProperty(nameof(MessageDto.IsTestCase), nameof(MessageResponse.IsTestCase))]
     [MapProperty(nameof(MessageDto.TestCaseId), nameof(MessageResponse.TestCaseId))]
+    [MapProperty(nameof(MessageDto.ExpectedMetricCount), nameof(MessageResponse.ExpectedMetricCount))]
     [MapProperty(nameof(MessageDto.PlayerId),
         nameof(MessageResponse.Participant),
         Use = nameof(MapParticipantFromPlayerId))]

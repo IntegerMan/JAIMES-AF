@@ -29,6 +29,8 @@ public partial class GameDetails : IAsyncDisposable
     private Dictionary<int, bool> _messageHasMissingEvaluators = new();
     private Dictionary<int, int> _messageTestCases = new(); // Key: messageId, Value: testCaseId
     private Dictionary<int, MessageAgentInfo> _messageAgentInfo = new();
+    private Dictionary<int, int> _messageExpectedMetricCount = new(); // Key: messageId, Value: expected count
+    private Dictionary<int, Dictionary<string, string>> _messageMetricErrors = new(); // Key: messageId, Value: metric name -> error message
     private string? _defaultAgentId;
     private string? _defaultAgentName;
     private int? _defaultInstructionVersionId;
@@ -93,8 +95,16 @@ public partial class GameDetails : IAsyncDisposable
 
             // Track agent info per message
             _messageAgentInfo.Clear();
+            _messageExpectedMetricCount.Clear();
+            _messageMetricErrors.Clear();
             foreach (var message in orderedMessages)
             {
+                // Track expected metric count for assistant messages
+                if (message.Participant == ChatParticipant.GameMaster && message.ExpectedMetricCount.HasValue)
+                {
+                    _messageExpectedMetricCount[message.Id] = message.ExpectedMetricCount.Value;
+                }
+
                 if ((!string.IsNullOrEmpty(message.AgentId) || message.InstructionVersionId.HasValue) &&
                     message.Participant == ChatParticipant.GameMaster)
                 {
@@ -805,11 +815,88 @@ public partial class GameDetails : IAsyncDisposable
                                 SentimentSource = notification.SentimentSource
                             };
                         }
+                        else if (notification.UpdateType == MessageUpdateType.MetricEvaluated &&
+                                 notification.Metrics != null)
+                        {
+                            // Streaming update: single metric arrived
+                            if (!_messageMetrics.TryGetValue(notification.MessageId, out var existingMetrics))
+                            {
+                                existingMetrics = [];
+                                _messageMetrics[notification.MessageId] = existingMetrics;
+                            }
+
+                            // Add new metrics (typically just one at a time)
+                            foreach (var metric in notification.Metrics)
+                            {
+                                // Avoid duplicates by checking metric name
+                                if (!existingMetrics.Any(m => m.MetricName == metric.MetricName))
+                                {
+                                    existingMetrics.Add(metric);
+                                }
+                            }
+
+                            // Track expected count if provided
+                            if (notification.ExpectedMetricCount.HasValue)
+                            {
+                                _messageExpectedMetricCount[notification.MessageId] = notification.ExpectedMetricCount.Value;
+                            }
+
+                            // Track errors if this was an error notification
+                            if (notification.IsError == true && !string.IsNullOrEmpty(notification.ErrorMessage) &&
+                                notification.Metrics.Count > 0)
+                            {
+                                if (!_messageMetricErrors.TryGetValue(notification.MessageId, out var errorDict))
+                                {
+                                    errorDict = new Dictionary<string, string>();
+                                    _messageMetricErrors[notification.MessageId] = errorDict;
+                                }
+
+                                foreach (var metric in notification.Metrics)
+                                {
+                                    errorDict[metric.MetricName] = notification.ErrorMessage;
+                                }
+                            }
+
+                            // Check if all metrics have arrived
+                            if (notification.ExpectedMetricCount.HasValue &&
+                                existingMetrics.Count >= notification.ExpectedMetricCount.Value)
+                            {
+                                _loadedMetricsMessageIds.Add(notification.MessageId);
+                            }
+                        }
                         else if (notification.UpdateType == MessageUpdateType.MetricsEvaluated &&
                                  notification.Metrics != null)
                         {
+                            // Final update: all metrics complete (backward compatibility)
                             _messageMetrics[notification.MessageId] = notification.Metrics;
                             _loadedMetricsMessageIds.Add(notification.MessageId);
+
+                            // Rebuild error dictionary to preserve errors for metrics with score 0 and "failed" remarks
+                            // This ensures error styling persists in the UI for actually failed evaluations
+                            if (_messageMetricErrors.TryGetValue(notification.MessageId, out var errorDict))
+                            {
+                                // Create a new dictionary with only the metrics that are actually errors
+                                var updatedErrors = new Dictionary<string, string>();
+                                foreach (var metric in notification.Metrics)
+                                {
+                                    // Check if this metric was previously marked as an error and still appears to be one
+                                    if (errorDict.TryGetValue(metric.MetricName, out var errorMsg) &&
+                                        (metric.Score == 0 || metric.Remarks?.Contains("failed", StringComparison.OrdinalIgnoreCase) == true))
+                                    {
+                                        updatedErrors[metric.MetricName] = errorMsg;
+                                    }
+                                }
+                                
+                                // Update or remove the error dictionary
+                                if (updatedErrors.Count > 0)
+                                {
+                                    _messageMetricErrors[notification.MessageId] = updatedErrors;
+                                }
+                                else
+                                {
+                                    _messageMetricErrors.Remove(notification.MessageId);
+                                }
+                            }
 
                             if (notification.HasMissingEvaluators.HasValue)
                             {

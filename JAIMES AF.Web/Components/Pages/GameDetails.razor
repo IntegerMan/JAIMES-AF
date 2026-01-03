@@ -227,7 +227,9 @@
 									IsScriptedMessage="@isExempt"
 									HasMissingEvaluators="@(messageId.HasValue && _messageHasMissingEvaluators.TryGetValue(messageId.Value, out var hasM) && hasM)"
 									IsProcessing="@(!messageId.HasValue || !_loadedMetricsMessageIds.Contains(messageId.Value))"
-									IsStreaming="@isStreaming"/>
+									IsStreaming="@isStreaming"
+									ExpectedMetricCount="@(messageId.HasValue && _messageExpectedMetricCount.TryGetValue(messageId.Value, out var expCount) ? expCount : null)"
+									ErrorsByMetric="@(messageId.HasValue && _messageMetricErrors.TryGetValue(messageId.Value, out var errors) ? errors : null)"/>
 							}
 						}
 					}

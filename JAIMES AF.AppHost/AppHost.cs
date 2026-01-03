@@ -319,6 +319,11 @@ IResourceBuilder<ProjectResource> userMessageWorker = builder
     .WaitFor(postgresdb)
     .WithParentRelationship(workersGroup);
 
+// Configure assistant worker replicas for parallel message processing
+int assistantWorkerReplicaCount = int.TryParse(
+    builder.Configuration["Parameters:assistant-worker-replicas"] ?? "3",
+    out int replicas) ? replicas : 3;
+
 IResourceBuilder<ProjectResource> assistantMessageWorker = builder
     .AddProject<Projects.JAIMES_AF_Workers_AssistantMessageWorker>("assistant-message-worker")
     .WithIconName("SettingsChat")
@@ -331,6 +336,7 @@ IResourceBuilder<ProjectResource> assistantMessageWorker = builder
     .WaitFor(postgres)
     .WaitFor(postgresdb)
     .WithParentRelationship(workersGroup)
+    .WithReplicas(assistantWorkerReplicaCount)
     .WithEnvironment(context =>
     {
         void SetVar(string key, object value) => context.EnvironmentVariables[key] = value;

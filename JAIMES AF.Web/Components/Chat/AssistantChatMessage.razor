@@ -47,7 +47,9 @@
                         OnMetricsClick="OnMetricsClick"
                         HasMissingEvaluators="@HasMissingEvaluators"
                         ExemptFromProcessing="@ExemptFromProcessing"
-                        IsProcessing="@IsProcessing"/>
+                        IsProcessing="@IsProcessing"
+                        ExpectedMetricCount="@ExpectedMetricCount"
+                        ErrorsByMetric="@ErrorsByMetric"/>
                 </MudStack>
             </MudChatFooter>
         }
@@ -91,5 +93,7 @@
     [Parameter] public bool HasMissingEvaluators { get; set; }
     [Parameter] public bool IsProcessing { get; set; }
     [Parameter] public bool IsStreaming { get; set; }
+    [Parameter] public int? ExpectedMetricCount { get; set; }
+    [Parameter] public Dictionary<string, string>? ErrorsByMetric { get; set; }
 }
 
