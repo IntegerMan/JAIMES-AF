@@ -101,7 +101,7 @@ public class GameMechanicsEvaluatorTests
         metric.Reason.ShouldContain("follows game mechanics correctly");
 
         metric.Diagnostics.ShouldNotBeNull();
-        metric.Diagnostics.ShouldContain(d => d.Message.Contains("Game Mechanics Score: 5 (Pass)"));
+        metric.Diagnostics.ShouldContain(d => d.Message.Contains("GameMechanics Score: 5 (Pass)"));
         metric.Diagnostics.ShouldContain(d => d.Message.Contains("ThoughtChain:"));
     }
 
@@ -325,7 +325,7 @@ public class GameMechanicsEvaluatorTests
 
         var passDiagnostic = metric.Diagnostics?.FirstOrDefault(d => d.Message.Contains("(Pass)"));
         passDiagnostic.ShouldNotBeNull();
-        passDiagnostic!.Message.ShouldContain("Game Mechanics Score: 4 (Pass)");
+        passDiagnostic!.Message.ShouldContain("GameMechanics Score: 4 (Pass)");
     }
 
     [Fact]
@@ -358,7 +358,7 @@ public class GameMechanicsEvaluatorTests
 
         var failDiagnostic = metric.Diagnostics?.FirstOrDefault(d => d.Message.Contains("(Fail)"));
         failDiagnostic.ShouldNotBeNull();
-        failDiagnostic!.Message.ShouldContain("Game Mechanics Score: 3 (Fail)");
+        failDiagnostic!.Message.ShouldContain("GameMechanics Score: 3 (Fail)");
     }
 
     [Fact]

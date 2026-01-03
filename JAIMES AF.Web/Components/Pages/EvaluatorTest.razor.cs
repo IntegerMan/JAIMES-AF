@@ -21,13 +21,7 @@ public partial class EvaluatorTest
     private readonly Dictionary<int, AgentInstructionVersionResponse> _versionLookup = new();
     private readonly List<AgentVersionOption> _versionOptions = [];
     private RulesetInfoResponse[] _rulesets = [];
-    private readonly List<string> _availableEvaluators =
-    [
-        "BrevityEvaluator",
-        "PlayerAgencyEvaluator",
-        "GameMechanicsEvaluator",
-        "RelevanceTruthAndCompletenessEvaluator"
-    ];
+    private List<string> _availableEvaluators = [];
 
     // Form state
     private int _selectedVersionId;
@@ -62,14 +56,16 @@ public partial class EvaluatorTest
 
         try
         {
-            // Load agents and rulesets in parallel
+            // Load agents, rulesets, and available evaluators in parallel
             Task<AgentListResponse?> agentsTask = Http.GetFromJsonAsync<AgentListResponse>("/agents");
             Task<RulesetListResponse?> rulesetsTask = Http.GetFromJsonAsync<RulesetListResponse>("/rulesets");
+            Task<AvailableEvaluatorsResponse?> evaluatorsTask = Http.GetFromJsonAsync<AvailableEvaluatorsResponse>("/admin/evaluators/available");
 
-            await Task.WhenAll(agentsTask, rulesetsTask);
+            await Task.WhenAll(agentsTask, rulesetsTask, evaluatorsTask);
 
             _agents = agentsTask.Result?.Agents ?? [];
             _rulesets = rulesetsTask.Result?.Rulesets ?? [];
+            _availableEvaluators = evaluatorsTask.Result?.EvaluatorNames ?? [];
 
             await LoadAllVersionsAsync();
 

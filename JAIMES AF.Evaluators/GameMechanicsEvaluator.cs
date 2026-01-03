@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Text.RegularExpressions;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.Extensions.AI;
@@ -14,13 +13,19 @@ namespace MattEland.Jaimes.Evaluators;
 /// <param name="chatClient">The chat client to use for evaluation.</param>
 /// <param name="rulesSearchService">The rules search service to find relevant game rules.</param>
 [Description("Evaluates assistant responses for adherence to game mechanics and rules from the specified ruleset.")]
-public class GameMechanicsEvaluator(IChatClient chatClient, IRulesSearchService rulesSearchService) : IEvaluator
+public class GameMechanicsEvaluator(IChatClient chatClient, IRulesSearchService rulesSearchService)
+    : LlmBasedEvaluator(chatClient)
 {
+    /// <summary>
+    /// The name of the metric produced by this evaluator.
+    /// </summary>
     public const string MetricName = "GameMechanics";
 
-    public IReadOnlyCollection<string> EvaluationMetricNames => [MetricName];
+    /// <inheritdoc />
+    public override string EvaluatorMetricName => MetricName;
 
-    public async ValueTask<EvaluationResult> EvaluateAsync(
+    /// <inheritdoc />
+    public override async ValueTask<EvaluationResult> EvaluateAsync(
         IEnumerable<ChatMessage> messages,
         ChatResponse modelResponse,
         ChatConfiguration? chatConfiguration = null,
@@ -40,13 +45,8 @@ public class GameMechanicsEvaluator(IChatClient chatClient, IRulesSearchService 
         bool runningWithoutContext = mechanicsContext == null;
 
         // Extract conversation context
-        List<ChatMessage> messagesList = messages.ToList();
-        string? systemPrompt = messagesList.FirstOrDefault(m => m.Role == ChatRole.System)?.Text;
-        List<ChatMessage> conversationMessages = messagesList
-            .Where(m => m.Role != ChatRole.System)
-            .ToList();
-
-        string conversationHistory = string.Join("\n", conversationMessages.Select(m => $"{m.Role}: {m.Text}"));
+        var (systemPrompt, conversationMessages) = ExtractMessages(messages);
+        string conversationHistory = BuildSimpleConversationHistory(conversationMessages);
 
         // First, identify mechanics-related topics in the AI response
         List<string> mechanicsTopics = await IdentifyMechanicsTopicsAsync(responseText, conversationHistory, cancellationToken);
@@ -88,94 +88,18 @@ public class GameMechanicsEvaluator(IChatClient chatClient, IRulesSearchService 
 
         string prompt = BuildEvaluationPrompt(responseText, conversationHistory, systemPrompt, rulesContext, rulesetName);
 
-        ChatOptions chatOptions = new()
+        string evaluationResponseText = await GetEvaluationResponseAsync(prompt, cancellationToken);
+
+        // Parse the response
+        EvaluationParseResult parseResult = ParseEvaluationResponse(evaluationResponseText);
+
+        // Create metric with standard diagnostics
+        NumericMetric metric = CreateMetric(parseResult, evaluationResponseText);
+
+        // Add evaluator-specific diagnostics
+        if (parseResult.ParseSuccess)
         {
-            Tools = [] // Ensure no tools are used
-        };
-
-        var requestMessages = new List<ChatMessage>
-        {
-            new(ChatRole.User, prompt)
-        };
-
-        ChatResponse response = await chatClient.GetResponseAsync(requestMessages, chatOptions, cancellationToken);
-        string evaluationResponseText = response.Text;
-
-        // Parse the response for S0, S1, S2 tags
-        int score = 1;
-        string thoughtChain = string.Empty;
-        string explanation = "Failed to parse evaluation response.";
-        bool parseSuccess = false;
-
-        if (!string.IsNullOrWhiteSpace(evaluationResponseText))
-        {
-            const RegexOptions regexOptions = RegexOptions.Singleline | RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture;
-            TimeSpan regexTimeout = TimeSpan.FromSeconds(1);
-
-            try
-            {
-                // Extract S0 (ThoughtChain)
-                Match s0Match = Regex.Match(evaluationResponseText, @"<S0>(?<content>.*?)</S0>", regexOptions, regexTimeout);
-                if (s0Match.Success)
-                {
-                    thoughtChain = s0Match.Groups["content"].Value.Trim();
-                }
-
-                // Extract S1 (Explanation)
-                Match s1Match = Regex.Match(evaluationResponseText, @"<S1>(?<content>.*?)</S1>", regexOptions, regexTimeout);
-                if (s1Match.Success)
-                {
-                    explanation = s1Match.Groups["content"].Value.Trim();
-                }
-
-                // Extract S2 (Score)
-                Match s2Match = Regex.Match(evaluationResponseText, @"<S2>(?<content>.*?)</S2>", regexOptions, regexTimeout);
-                if (s2Match.Success)
-                {
-                    string scoreText = s2Match.Groups["content"].Value.Trim();
-                    if (int.TryParse(scoreText, out int parsedScore))
-                    {
-                        score = parsedScore;
-                        parseSuccess = true;
-                    }
-                }
-            }
-            catch (RegexMatchTimeoutException)
-            {
-                explanation = "Regex parsing timed out. Response may be malformed.";
-            }
-        }
-
-        // Ensure score is within range
-        score = Math.Clamp(score, 1, 5);
-
-        // Determine pass/fail (fail on 3 or below, pass on 4 or 5)
-        bool passed = score >= 4;
-        string passFailStatus = passed ? "Pass" : "Fail";
-
-        NumericMetric metric = new(MetricName)
-        {
-            Value = score,
-            Reason = explanation
-        };
-
-        // Add comprehensive diagnostics
-        metric.Diagnostics ??= [];
-
-        if (parseSuccess)
-        {
-            metric.Diagnostics.Add(new EvaluationDiagnostic(
-                EvaluationDiagnosticSeverity.Informational,
-                $"Game Mechanics Score: {score} ({passFailStatus})"));
-
-            if (!string.IsNullOrWhiteSpace(thoughtChain))
-            {
-                metric.Diagnostics.Add(new EvaluationDiagnostic(
-                    EvaluationDiagnosticSeverity.Informational,
-                    $"ThoughtChain: {thoughtChain}"));
-            }
-
-            metric.Diagnostics.Add(new EvaluationDiagnostic(
+            metric.Diagnostics!.Add(new EvaluationDiagnostic(
                 EvaluationDiagnosticSeverity.Informational,
                 $"Rules searched: {relevantRules.Count} rules found for {mechanicsTopics.Count} topics"));
 
@@ -186,20 +110,11 @@ public class GameMechanicsEvaluator(IChatClient chatClient, IRulesSearchService 
                     $"Mechanics topics identified: {string.Join(", ", mechanicsTopics)}"));
             }
         }
-        else
-        {
-            string rawResponseText = string.IsNullOrWhiteSpace(evaluationResponseText) ? "{Empty}" : evaluationResponseText;
-            int length = Math.Min(200, rawResponseText.Length);
-
-            metric.Diagnostics.Add(new EvaluationDiagnostic(
-                EvaluationDiagnosticSeverity.Warning,
-                $"Failed to parse evaluation response. Raw response: {rawResponseText[..length]}"));
-        }
 
         // Add diagnostic if running without ruleset context
         if (runningWithoutContext)
         {
-            metric.Diagnostics.Add(new EvaluationDiagnostic(
+            metric.Diagnostics!.Add(new EvaluationDiagnostic(
                 EvaluationDiagnosticSeverity.Warning,
                 "No GameMechanicsEvaluationContext provided. Searching all rulesets for relevant rules."));
         }
@@ -249,11 +164,7 @@ public class GameMechanicsEvaluator(IChatClient chatClient, IRulesSearchService 
             stealth checks
             """;
 
-        ChatOptions chatOptions = new() { Tools = [] };
-        var requestMessages = new List<ChatMessage> { new(ChatRole.User, topicPrompt) };
-
-        ChatResponse response = await chatClient.GetResponseAsync(requestMessages, chatOptions, cancellationToken);
-        string topicsText = response.Text ?? string.Empty;
+        string topicsText = await GetEvaluationResponseAsync(topicPrompt, cancellationToken);
 
         if (string.IsNullOrWhiteSpace(topicsText) || topicsText.Trim().Equals("NONE", StringComparison.OrdinalIgnoreCase))
         {
