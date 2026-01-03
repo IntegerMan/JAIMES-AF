@@ -376,11 +376,11 @@ public partial class GameDetails : IAsyncDisposable
                             _contentModerationMessageIndexes.Add(currentMessageIndex);
 
                             // CRITICAL FIX: Remove the partial assistant message from UI to prevent duplicate error display
-                            if (messageIndexes.TryGetValue(delta.MessageId, out int msgIndex))
+                            if (messageIndexes.TryGetValue(delta.MessageId, out int partialMsgIndex))
                             {
-                                _messages.RemoveAt(msgIndex);
-                                _messageIds.RemoveAt(msgIndex);
-                                _streamingMessageIndexes.Remove(msgIndex);
+                                _messages.RemoveAt(partialMsgIndex);
+                                _messageIds.RemoveAt(partialMsgIndex);
+                                _streamingMessageIndexes.Remove(partialMsgIndex);
                                 messageIndexes.Remove(delta.MessageId);
                             }
 
