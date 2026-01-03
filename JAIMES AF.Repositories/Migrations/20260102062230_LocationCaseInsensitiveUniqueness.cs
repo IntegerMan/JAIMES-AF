@@ -20,12 +20,13 @@ namespace MattEland.Jaimes.Repositories.Migrations
                 type: "character varying(200)",
                 maxLength: 200,
                 nullable: false,
-                computedColumnSql: "LOWER(\"Name\")");
+                computedColumnSql: "LOWER(\"Name\")",
+                stored: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Locations_GameId_NameLower",
                 table: "Locations",
-                columns: new[] { "GameId", "NameLower" },
+                columns: new[] {"GameId", "NameLower"},
                 unique: true);
         }
 
@@ -43,7 +44,7 @@ namespace MattEland.Jaimes.Repositories.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_Locations_GameId_Name",
                 table: "Locations",
-                columns: new[] { "GameId", "Name" },
+                columns: new[] {"GameId", "Name"},
                 unique: true);
         }
     }

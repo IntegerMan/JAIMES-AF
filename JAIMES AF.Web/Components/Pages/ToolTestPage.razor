@@ -1,0 +1,138 @@
+@page "/admin/tool-test"
+@using MattEland.Jaimes.ServiceDefinitions.Requests
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MudBlazor
+@rendermode InteractiveServer
+
+<PageTitle>Tool Testing</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+	</MudStack>
+	<MudPaper Class="pa-8" Elevation="2">
+		<MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">Tool Testing</MudText>
+		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">
+			Test AI agent tools with custom parameters
+		</MudText>
+
+		<MudText Typo="Typo.body1" Class="mb-6" Style="line-height: 1.75;">
+			Select a tool to test, provide the required parameters, and execute it to see the raw output.
+			Tool executions from this page are not logged for diagnostics.
+		</MudText>
+
+		<MudDivider Class="my-6"/>
+
+		<MudPaper Class="pa-4" Elevation="1">
+			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-4">Tool Selection</MudText>
+
+			<MudForm>
+				<MudSelect @bind-Value="_selectedToolName"
+				           @bind-Value:after="OnToolSelectedAsync"
+				           T="string"
+				           Label="Tool"
+				           Variant="Variant.Outlined"
+				           Class="mb-4"
+				           FullWidth="true"
+				           HelperText="Select a tool to test">
+					<MudSelectItem Value="@((string?)null)">Select a tool...</MudSelectItem>
+					@foreach (var tool in _tools)
+					{
+						<MudSelectItem Value="@tool.Name">@tool.Name (@tool.Category)</MudSelectItem>
+					}
+				</MudSelect>
+
+				@if (_selectedTool != null)
+				{
+					<MudAlert Severity="Severity.Info" Class="mb-4">
+						<strong>@_selectedTool.Name</strong><br/>
+						@_selectedTool.Description
+					</MudAlert>
+
+					@if (_selectedTool.RequiresGameContext)
+					{
+						<MudSelect @bind-Value="_selectedGameId"
+						           T="Guid?"
+						           Label="Game Context (Required)"
+						           Variant="Variant.Outlined"
+						           Class="mb-4"
+						           FullWidth="true"
+						           HelperText="This tool requires a game context to execute">
+							<MudSelectItem Value="@((Guid?)null)">Select a game...</MudSelectItem>
+							@foreach (var game in _games)
+							{
+								<MudSelectItem Value="@((Guid?)game.GameId)">@FormatGameDisplay(game)</MudSelectItem>
+							}
+						</MudSelect>
+					}
+
+					@if (_selectedTool.Parameters.Length > 0)
+					{
+						<MudText Typo="Typo.subtitle2" GutterBottom="true" Class="mb-3 mt-4">Parameters</MudText>
+
+						@foreach (var param in _selectedTool.Parameters)
+						{
+							<MudTextField @bind-Value="_parameterValues[param.Name]"
+							              Label="@FormatParameterLabel(param)"
+							              Variant="Variant.Outlined"
+							              Class="mb-3"
+							              FullWidth="true"
+							              HelperText="@FormatParameterHelperText(param)"
+							              Placeholder="@GetParameterPlaceholder(param)"/>
+						}
+					}
+					else
+					{
+						<MudText Typo="Typo.body2" Class="mb-4 text-muted">This tool has no parameters.</MudText>
+					}
+
+					<MudButton Variant="Variant.Filled"
+					           Color="Color.Primary"
+					           OnClick="ExecuteToolAsync"
+					           Disabled="@(_isExecuting || !CanExecute())"
+					           Class="mt-4">
+						@if (_isExecuting)
+						{
+							<MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2"/>
+						}
+						Execute Tool
+					</MudButton>
+				}
+			</MudForm>
+		</MudPaper>
+
+		@if (!string.IsNullOrEmpty(_errorMessage))
+		{
+			<MudAlert Severity="Severity.Error" Class="mt-4">@_errorMessage</MudAlert>
+		}
+
+		@if (_executionResult != null)
+		{
+			<MudDivider Class="my-6"/>
+
+			<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+				<MudText Typo="Typo.h5" GutterBottom="true">Execution Result</MudText>
+				<MudChip T="string" Color="@(_executionResult.Success ? Color.Success : Color.Error)" Size="Size.Small">
+					@(_executionResult.Success ? "Success" : "Failed") - @_executionResult.ExecutionTimeMs ms
+				</MudChip>
+			</MudStack>
+
+			@if (!_executionResult.Success && !string.IsNullOrEmpty(_executionResult.ErrorMessage))
+			{
+				<MudAlert Severity="Severity.Error" Class="mb-4">@_executionResult.ErrorMessage</MudAlert>
+			}
+
+			@if (!string.IsNullOrEmpty(_executionResult.Result))
+			{
+				<MudText Typo="Typo.body2" Class="mb-2 text-muted">Raw output from the tool:</MudText>
+				<MudPaper Class="pa-4" Elevation="1" Style="background-color: var(--mud-palette-background-grey);">
+					<MudText Typo="Typo.body1" Style="white-space: pre-wrap; font-family: 'Consolas', 'Courier New', monospace; font-size: 0.9rem;">@_executionResult.Result</MudText>
+				</MudPaper>
+			}
+			else if (_executionResult.Success)
+			{
+				<MudAlert Severity="Severity.Info" Class="mb-4">The tool executed successfully but returned no output.</MudAlert>
+			}
+		}
+	</MudPaper>
+</MudContainer>

@@ -402,7 +402,7 @@ namespace MattEland.Jaimes.Repositories.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
-                        .HasComputedColumnSql("LOWER(\"Name\")");
+                        .HasComputedColumnSql("LOWER(\"Name\")", true);
 
                     b.Property<string>("StorytellerNotes")
                         .HasColumnType("text");
