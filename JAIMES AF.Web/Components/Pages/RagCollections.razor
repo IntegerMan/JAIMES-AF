@@ -91,14 +91,7 @@
 					<PropertyColumn Property="x => x.RulesetId" Title="Ruleset"/>
 					<TemplateColumn Title="Name">
 						<CellTemplate>
-							@if (context.Item.GameId.HasValue)
-							{
-								<MudLink Href="@($"/games/{context.Item.GameId}")">@context.Item.FileName</MudLink>
-							}
-							else
-							{
-								@context.Item.FileName
-							}
+							<MudLink Href="@GetChunksLink(context.Item)">@context.Item.FileName</MudLink>
 						</CellTemplate>
 					</TemplateColumn>
 					<TemplateColumn Title="Chunks">

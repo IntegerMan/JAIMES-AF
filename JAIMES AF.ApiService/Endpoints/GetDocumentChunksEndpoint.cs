@@ -24,7 +24,9 @@ public class GetDocumentChunksEndpoint(IDbContextFactory<JaimesDbContext> dbCont
 
         Logger.LogInformation(
             "Fetching chunks for document {DocumentId}, page {Page}, pageSize {PageSize}",
-            documentId, page, pageSize);
+            documentId,
+            page,
+            pageSize);
 
         await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(ct);
 
@@ -39,10 +41,14 @@ public class GetDocumentChunksEndpoint(IDbContextFactory<JaimesDbContext> dbCont
             return;
         }
 
-        // Get total count
+        // Get total count and embedded count
         int totalCount = await dbContext.DocumentChunks
             .AsNoTracking()
             .CountAsync(c => c.DocumentId == documentId, ct);
+
+        int embeddedCount = await dbContext.DocumentChunks
+            .AsNoTracking()
+            .CountAsync(c => c.DocumentId == documentId && c.QdrantPointId != null, ct);
 
         // Get paginated chunks
         List<DocumentChunk> chunks = await dbContext.DocumentChunks
@@ -55,30 +61,35 @@ public class GetDocumentChunksEndpoint(IDbContextFactory<JaimesDbContext> dbCont
 
         // Map to response
         DocumentChunkInfo[] chunkInfos = chunks.Select(c => new DocumentChunkInfo
-        {
-            ChunkId = c.ChunkId,
-            ChunkIndex = c.ChunkIndex,
-            ChunkTextPreview = c.ChunkText.Length > 200 
-                ? c.ChunkText[..200] + "..." 
-                : c.ChunkText,
-            HasEmbedding = c.QdrantPointId != null,
-            CreatedAt = c.CreatedAt
-        }).ToArray();
+            {
+                ChunkId = c.ChunkId,
+                ChunkIndex = c.ChunkIndex,
+                ChunkTextPreview = c.ChunkText.Length > 200
+                    ? c.ChunkText[..200] + "..."
+                    : c.ChunkText,
+                HasEmbedding = c.QdrantPointId != null,
+                CreatedAt = c.CreatedAt
+            })
+            .ToArray();
 
         Logger.LogInformation(
             "Returning {ChunkCount} chunks out of {TotalCount} for document {DocumentId}",
-            chunkInfos.Length, totalCount, documentId);
+            chunkInfos.Length,
+            totalCount,
+            documentId);
 
         await Send.OkAsync(new DocumentChunksResponse
-        {
-            DocumentId = documentId,
-            DocumentName = document.FileName,
-            DocumentKind = document.DocumentKind,
-            RulesetId = document.RulesetId,
-            Chunks = chunkInfos,
-            TotalCount = totalCount,
-            Page = page,
-            PageSize = pageSize
-        }, ct);
+            {
+                DocumentId = documentId,
+                DocumentName = document.FileName,
+                DocumentKind = document.DocumentKind,
+                RulesetId = document.RulesetId,
+                Chunks = chunkInfos,
+                TotalCount = totalCount,
+                EmbeddedCount = embeddedCount,
+                Page = page,
+                PageSize = pageSize
+            },
+            ct);
     }
 }

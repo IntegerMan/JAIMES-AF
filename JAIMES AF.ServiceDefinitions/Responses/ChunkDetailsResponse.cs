@@ -62,6 +62,11 @@ public class ChunkDetailsResponse
     public float[]? EmbeddingPreview { get; set; }
 
     /// <summary>
+    /// Gets or sets the full embedding vector (for demonstration purposes).
+    /// </summary>
+    public float[]? FullEmbedding { get; set; }
+
+    /// <summary>
     /// Gets or sets the total embedding dimensions.
     /// </summary>
     public int EmbeddingDimensions { get; set; }
@@ -133,6 +138,11 @@ public class TranscriptMessageDetailsResponse
     /// Gets or sets a preview of the embedding vector.
     /// </summary>
     public float[]? EmbeddingPreview { get; set; }
+
+    /// <summary>
+    /// Gets or sets the full embedding vector (for demonstration purposes).
+    /// </summary>
+    public float[]? FullEmbedding { get; set; }
 
     /// <summary>
     /// Gets or sets the total embedding dimensions.

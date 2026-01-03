@@ -91,6 +91,7 @@ public class GetGameTranscriptChunksEndpoint(IDbContextFactory<JaimesDbContext> 
                 GameTitle = game.Title,
                 Chunks = chunkInfos,
                 TotalCount = totalCount,
+                EmbeddedCount = embeddedMessageIds.Count,
                 Page = page,
                 PageSize = pageSize
             },

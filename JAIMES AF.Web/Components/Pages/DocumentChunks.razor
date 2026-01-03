@@ -37,6 +37,15 @@
 				<MudChip T="string" Color="Color.Secondary" Size="Size.Small">@_response.RulesetId</MudChip>
 			</MudStack>
 
+			@if (_response.EmbeddedCount < _response.TotalCount)
+			{
+				<MudAlert Severity="Severity.Warning" Class="mb-4">
+					<MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Class="me-2"/>
+					<strong>@(_response.TotalCount - _response.EmbeddedCount)</strong> of @_response.TotalCount chunks are missing embeddings.
+					Embedding processing may still be in progress.
+				</MudAlert>
+			}
+
 			@if (_response.Chunks.Length == 0)
 			{
 				<MudAlert Severity="Severity.Info" Class="mb-4">
@@ -48,7 +57,7 @@
 				<MudDataGrid T="DocumentChunkInfo" Items="@_response.Chunks" Dense="true" Striped="true" Hover="true"
 				             RowsPerPage="@_response.PageSize">
 					<Columns>
-						<PropertyColumn Property="x => x.ChunkIndex" Title="Index" />
+						<PropertyColumn Property="x => x.ChunkIndex" Title="Index"/>
 						<TemplateColumn Title="Text Preview">
 							<CellTemplate>
 								<MudLink Href="@GetChunkDetailsLink(context.Item.ChunkId)">

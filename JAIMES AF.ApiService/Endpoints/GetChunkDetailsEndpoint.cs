@@ -61,35 +61,40 @@ public class GetChunkDetailsEndpoint(IDbContextFactory<JaimesDbContext> dbContex
             .OrderByDescending(q => q.QueryDate)
             .ToArray();
 
-        // Build embedding preview
+        // Build embedding preview and full embedding
         float[]? embeddingPreview = null;
+        float[]? fullEmbedding = null;
         int embeddingDimensions = 0;
         if (chunk.Embedding != null)
         {
             ReadOnlyMemory<float> memory = chunk.Embedding.ToArray();
             embeddingDimensions = memory.Length;
             embeddingPreview = memory.Span[..Math.Min(10, memory.Length)].ToArray();
+            fullEmbedding = memory.ToArray();
         }
 
         Logger.LogInformation(
             "Returning details for chunk {ChunkId} with {QueryCount} query appearances",
-            chunkId, queryAppearances.Length);
+            chunkId,
+            queryAppearances.Length);
 
         await Send.OkAsync(new ChunkDetailsResponse
-        {
-            ChunkId = chunk.ChunkId,
-            ChunkIndex = chunk.ChunkIndex,
-            ChunkText = chunk.ChunkText,
-            HasEmbedding = chunk.QdrantPointId != null,
-            QdrantPointId = chunk.QdrantPointId,
-            EmbeddingPreview = embeddingPreview,
-            EmbeddingDimensions = embeddingDimensions,
-            CreatedAt = chunk.CreatedAt,
-            DocumentId = chunk.DocumentId,
-            DocumentName = chunk.CrackedDocument?.FileName ?? "Unknown",
-            DocumentKind = chunk.CrackedDocument?.DocumentKind ?? "Unknown",
-            RulesetId = chunk.CrackedDocument?.RulesetId ?? "Unknown",
-            QueryAppearances = queryAppearances
-        }, ct);
+            {
+                ChunkId = chunk.ChunkId,
+                ChunkIndex = chunk.ChunkIndex,
+                ChunkText = chunk.ChunkText,
+                HasEmbedding = chunk.QdrantPointId != null,
+                QdrantPointId = chunk.QdrantPointId,
+                EmbeddingPreview = embeddingPreview,
+                FullEmbedding = fullEmbedding,
+                EmbeddingDimensions = embeddingDimensions,
+                CreatedAt = chunk.CreatedAt,
+                DocumentId = chunk.DocumentId,
+                DocumentName = chunk.CrackedDocument?.FileName ?? "Unknown",
+                DocumentKind = chunk.CrackedDocument?.DocumentKind ?? "Unknown",
+                RulesetId = chunk.CrackedDocument?.RulesetId ?? "Unknown",
+                QueryAppearances = queryAppearances
+            },
+            ct);
     }
 }

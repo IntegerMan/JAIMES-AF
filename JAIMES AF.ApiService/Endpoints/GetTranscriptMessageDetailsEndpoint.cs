@@ -41,14 +41,16 @@ public class GetTranscriptMessageDetailsEndpoint(IDbContextFactory<JaimesDbConte
             .AsNoTracking()
             .FirstOrDefaultAsync(e => e.MessageId == messageId, ct);
 
-        // Build embedding preview
+        // Build embedding preview and full embedding
         float[]? embeddingPreview = null;
+        float[]? fullEmbedding = null;
         int embeddingDimensions = 0;
         if (embedding?.Embedding != null)
         {
             ReadOnlyMemory<float> memory = embedding.Embedding.ToArray();
             embeddingDimensions = memory.Length;
             embeddingPreview = memory.Span[..Math.Min(10, memory.Length)].ToArray();
+            fullEmbedding = memory.ToArray();
         }
 
         // Get queries that returned this message
@@ -85,6 +87,7 @@ public class GetTranscriptMessageDetailsEndpoint(IDbContextFactory<JaimesDbConte
                 HasEmbedding = embedding != null,
                 QdrantPointId = embedding?.QdrantPointId,
                 EmbeddingPreview = embeddingPreview,
+                FullEmbedding = fullEmbedding,
                 EmbeddingDimensions = embeddingDimensions,
                 CreatedAt = message.CreatedAt,
                 GameId = message.GameId,

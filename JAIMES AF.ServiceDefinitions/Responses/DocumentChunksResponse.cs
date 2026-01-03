@@ -103,6 +103,11 @@ public class DocumentChunksResponse
     public int TotalCount { get; set; }
 
     /// <summary>
+    /// Gets or sets the number of chunks that have embeddings.
+    /// </summary>
+    public int EmbeddedCount { get; set; }
+
+    /// <summary>
     /// Gets or sets the current page number.
     /// </summary>
     public int Page { get; set; }
@@ -137,6 +142,11 @@ public class TranscriptChunksResponse
     /// Gets or sets the total count of messages.
     /// </summary>
     public int TotalCount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the number of messages that have embeddings.
+    /// </summary>
+    public int EmbeddedCount { get; set; }
 
     /// <summary>
     /// Gets or sets the current page number.

@@ -36,6 +36,15 @@
 				<MudChip T="string" Color="Color.Info" Size="Size.Small">Transcript</MudChip>
 			</MudStack>
 
+			@if (_response.EmbeddedCount < _response.TotalCount)
+			{
+				<MudAlert Severity="Severity.Warning" Class="mb-4">
+					<MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Class="me-2"/>
+					<strong>@(_response.TotalCount - _response.EmbeddedCount)</strong> of @_response.TotalCount messages are missing embeddings.
+					Embedding processing may still be in progress.
+				</MudAlert>
+			}
+
 			@if (_response.Chunks.Length == 0)
 			{
 				<MudAlert Severity="Severity.Info" Class="mb-4">
@@ -50,8 +59,8 @@
 						<PropertyColumn Property="x => x.MessageIndex" Title="Index"/>
 						<TemplateColumn Title="Role">
 							<CellTemplate>
-								<MudChip T="string" 
-								         Color="@(context.Item.Role == "user" ? Color.Primary : Color.Secondary)" 
+								<MudChip T="string"
+								         Color="@(context.Item.Role == "user" ? Color.Primary : Color.Secondary)"
 								         Size="Size.Small">
 									@context.Item.Role
 								</MudChip>

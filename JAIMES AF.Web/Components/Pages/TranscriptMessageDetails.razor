@@ -27,8 +27,8 @@
 				<MudPaper Class="pa-6" Elevation="2">
 					<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
 						<MudText Typo="Typo.h5">Message Content</MudText>
-						<MudChip T="string" 
-						         Color="@(_response.Role == "user" ? Color.Primary : Color.Secondary)" 
+						<MudChip T="string"
+						         Color="@(_response.Role == "user" ? Color.Primary : Color.Secondary)"
 						         Size="Size.Small">
 							@_response.Role
 						</MudChip>
@@ -91,6 +91,16 @@
 											[@string.Join(", ", _response.EmbeddingPreview.Select(v => v.ToString("F4")))]
 										</MudText>
 									</MudExpansionPanel>
+									@if (_response.FullEmbedding != null && _response.FullEmbedding.Length > 10)
+									{
+										<MudExpansionPanel Text="@($"Full Vector ({_response.EmbeddingDimensions} dimensions)")">
+											<MudPaper Class="pa-2" Elevation="0" Style="background: var(--mud-palette-background-grey); max-height: 300px; overflow-y: auto;">
+												<MudText Typo="Typo.caption" Style="font-family: 'Roboto Mono', monospace; word-break: break-all;">
+													[@string.Join(", ", _response.FullEmbedding.Select(v => v.ToString("F6")))]
+												</MudText>
+											</MudPaper>
+										</MudExpansionPanel>
+									}
 								</MudExpansionPanels>
 							}
 						</MudStack>
@@ -122,29 +132,29 @@
 						</MudText>
 						<MudSimpleTable Dense="true" Striped="true" Bordered="true">
 							<thead>
-								<tr>
-									<th>Query</th>
-									<th>Relevancy</th>
-									<th>Date</th>
-								</tr>
+							<tr>
+								<th>Query</th>
+								<th>Relevancy</th>
+								<th>Date</th>
+							</tr>
 							</thead>
 							<tbody>
-								@foreach (var query in _response.QueryAppearances)
-								{
-									<tr>
-										<td style="max-width: 400px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-											<MudLink Href="@GetQueryLink()">@query.QueryText</MudLink>
-										</td>
-										<td>
-											<MudChip T="string"
-											         Color="@(query.Relevancy >= 0.8 ? Color.Success : query.Relevancy >= 0.5 ? Color.Warning : Color.Error)"
-											         Size="Size.Small">
-												@query.Relevancy.ToString("P1")
-											</MudChip>
-										</td>
-										<td>@query.QueryDate.ToString("g")</td>
-									</tr>
-								}
+							@foreach (var query in _response.QueryAppearances)
+							{
+								<tr>
+									<td style="max-width: 400px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+										<MudLink Href="@GetQueryLink()">@query.QueryText</MudLink>
+									</td>
+									<td>
+										<MudChip T="string"
+										         Color="@(query.Relevancy >= 0.8 ? Color.Success : query.Relevancy >= 0.5 ? Color.Warning : Color.Error)"
+										         Size="Size.Small">
+											@query.Relevancy.ToString("P1")
+										</MudChip>
+									</td>
+									<td>@query.QueryDate.ToString("g")</td>
+								</tr>
+							}
 							</tbody>
 						</MudSimpleTable>
 					}
