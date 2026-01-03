@@ -24,6 +24,7 @@ JAIMES AF is a .NET Aspire solution that coordinates FastEndpoints APIs, Blazor 
 ## Solution Topology
 
 The Aspire AppHost wires together the API, background workers, and dependencies (PostgreSQL, Redis Stack, Azure OpenAI).
+The diagram below shows the high-level structure.
 
 ```mermaid
 flowchart LR
