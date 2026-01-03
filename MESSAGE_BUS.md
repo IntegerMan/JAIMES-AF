@@ -4,7 +4,7 @@ This document details the LavinMQ message bus architecture, background workers, 
 
 ## Overview
 
-JAIMES AF uses **LavinMQ** (RabbitMQ-compatible) for asynchronous message processing. This decouple intensive tasks from the user-facing API. When chat messages are persisted, events are published to the bus, triggering parallel background workers.
+JAIMES AF uses **LavinMQ** (RabbitMQ-compatible) for asynchronous message processing. This decouples intensive tasks from the user-facing API. When chat messages are persisted, events are published to the bus, triggering parallel background workers.
 
 ## Architecture
 
