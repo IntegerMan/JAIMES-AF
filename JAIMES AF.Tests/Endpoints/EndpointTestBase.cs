@@ -137,6 +137,8 @@ public abstract class EndpointTestBase : IAsyncLifetime
                     Mock<IChatHistoryService> mockChatHistoryService = new();
                     services.AddSingleton(mockChatHistoryService.Object);
 
+                    ConfigureTestServices(services);
+
                     // Remove ALL hosted services to avoid scoped resolution issues in tests
                     // Hosted services are background workers that aren't needed for endpoint testing
                     // Remove all IHostedService registrations (including factory-based ones)
@@ -221,6 +223,10 @@ public abstract class EndpointTestBase : IAsyncLifetime
             InstructionVersionId = 1
         });
         await context.SaveChangesAsync(cancellationToken);
+    }
+
+    protected virtual void ConfigureTestServices(IServiceCollection services)
+    {
     }
 
     public virtual async ValueTask DisposeAsync()

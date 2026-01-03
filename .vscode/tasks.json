@@ -2,45 +2,6 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "stop-running-apps",
-            "type": "shell",
-            "command": "echo",
-            "args": [
-                "No running apps to stop on Linux/macOS"
-            ],
-            "windows": {
-                "command": "powershell",
-                "args": [
-                    "-NoProfile",
-                    "-ExecutionPolicy",
-                    "Bypass",
-                    "-File",
-                    "${workspaceFolder}/.vscode/stop-apps.ps1",
-                    "${workspaceFolder}"
-                ]
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "disconnect-debuggers",
-            "type": "shell",
-            "command": "echo",
-            "args": [
-                "Note: To disconnect debuggers, use the Debug panel in VS Code and click the Stop button, or use the command palette (Ctrl+Shift+P) and run 'Debug: Stop Debugging'"
-            ],
-            "windows": {
-                "command": "powershell",
-                "args": [
-                    "-NoProfile",
-                    "-ExecutionPolicy",
-                    "Bypass",
-                    "-Command",
-                    "Write-Host 'Note: To disconnect debuggers, use the Debug panel in VS Code and click the Stop button, or use the command palette (Ctrl+Shift+P) and run \"Debug: Stop Debugging\"'"
-                ]
-            },
-            "problemMatcher": []
-        },
-        {
             "label": "build",
             "command": "dotnet",
             "type": "process",
@@ -50,7 +11,6 @@
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary;ForceNoAlign"
             ],
-            "dependsOn": "stop-running-apps",
             "problemMatcher": "$msCompile"
         },
         {

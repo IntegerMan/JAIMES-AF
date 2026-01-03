@@ -1,3 +1,4 @@
+using MattEland.Jaimes.Agents.Services;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceDefaults;
@@ -38,6 +39,25 @@ builder.Services.AddJaimesServices();
 
 // Configure chat client for evaluation
 builder.Services.AddChatClient(builder.Configuration, "TextGenerationModel");
+
+// Register embedding generator for rules search (required by GameMechanicsEvaluator)
+// Configuration is provided by AppHost via environment variables
+builder.Services.AddEmbeddingGenerator(
+    builder.Configuration,
+    "EmbeddingModel");
+
+// Configure Qdrant client for rules storage (required by RulesSearchService)
+builder.Services.AddQdrantClient(builder.Configuration,
+    new QdrantExtensions.QdrantConfigurationOptions
+    {
+        SectionPrefix = "DocumentChunking",
+        ConnectionStringName = "qdrant-embeddings",
+        RequireConfiguration = false, // Allow fallback to localhost:6334
+        DefaultApiKey = "qdrant"
+    });
+
+// Register Agents services (required by evaluators)
+builder.Services.AddScoped<IRulesSearchService, RulesSearchService>();
 
 // Configure evaluators
 // Note: Individual evaluators are already registered as IEvaluator by AddJaimesServices()
@@ -107,13 +127,6 @@ using IHost host = builder.Build();
 ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 
 await host.WaitForMigrationsAsync();
-
-// Log registered evaluators for debugging
-var registeredEvaluators = host.Services.GetServices<IEvaluator>().ToList();
-logger.LogInformation(
-    "Registered {Count} evaluators: {EvaluatorNames}",
-    registeredEvaluators.Count,
-    string.Join(", ", registeredEvaluators.Select(e => e.GetType().Name)));
 
 logger.LogInformation("Starting Assistant Message Worker");
 

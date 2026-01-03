@@ -23,6 +23,8 @@ public static class ServiceCollectionExtensions
             .AsSelfWithInterfaces()
             .WithScopedLifetime());
 
+        // Register evaluators as scoped (not singleton) to allow them to consume scoped services
+        // like IRulesSearchService which depends on IQdrantRulesStore
         services.Scan(scan => scan
             .FromAssemblies([
                 typeof(EvaluatorRegistrar).Assembly,
@@ -30,10 +32,10 @@ public static class ServiceCollectionExtensions
             ])
             .AddClasses(classes => classes.AssignableTo<Microsoft.Extensions.AI.Evaluation.IEvaluator>())
             .AsImplementedInterfaces()
-            .WithSingletonLifetime());
+            .WithScopedLifetime());
 
         services
-            .AddSingleton<Microsoft.Extensions.AI.Evaluation.IEvaluator,
+            .AddScoped<Microsoft.Extensions.AI.Evaluation.IEvaluator,
                 Microsoft.Extensions.AI.Evaluation.Quality.RelevanceTruthAndCompletenessEvaluator>();
 
 
