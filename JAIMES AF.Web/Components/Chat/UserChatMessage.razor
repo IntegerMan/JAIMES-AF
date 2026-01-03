@@ -110,6 +110,16 @@
                     </MudTooltip>
                 }
             }
+            else if (!ReadOnly)
+            {
+                @* Show spinner when message hasn't been persisted yet (MessageId is null) and not in read-only mode *@
+                <MudTooltip Text="Analyzing Sentiment..." Placement="Placement.Top">
+                    <MudIcon Icon="@Icons.Material.Filled.HourglassBottom"
+                             Color="Color.Default"
+                             Size="Size.Small"
+                             Class="spin-icon" />
+                </MudTooltip>
+            }
         </MudChatFooter>
     }
 </MudChat>
