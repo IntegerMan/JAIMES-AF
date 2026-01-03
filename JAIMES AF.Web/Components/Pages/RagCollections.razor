@@ -77,11 +77,12 @@
 			<MudDivider Class="my-6"/>
 
 			<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Document Details</MudText>
-			<MudDataGrid Items="@_statistics.Documents" Dense="true" Striped="true" Hover="true">
+			<MudDataGrid T="RagCollectionDocumentInfo" Items="@_statistics.Documents" Dense="true" Striped="true" Hover="true"
+			             RowsPerPage="25">
 				<Columns>
 					<PropertyColumn Property="x => x.DocumentKind" Title="Type"/>
 					<PropertyColumn Property="x => x.RulesetId" Title="Ruleset"/>
-					<PropertyColumn Property="x => x.FileName" Title="File Name"/>
+					<PropertyColumn Property="x => x.FileName" Title="Name"/>
 					<PropertyColumn Property="x => x.TotalChunks" Title="Chunks"/>
 					<TemplateColumn Title="Embeddings">
 						<CellTemplate>
@@ -113,6 +114,9 @@
 					</TemplateColumn>
 					<PropertyColumn Property="x => x.CrackedAt" Title="Processed" Format="g"/>
 				</Columns>
+				<PagerContent>
+					<MudDataGridPager T="RagCollectionDocumentInfo"/>
+				</PagerContent>
 			</MudDataGrid>
 		}
 	</MudPaper>

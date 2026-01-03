@@ -46,13 +46,13 @@ public class ListRagCollectionsEndpoint(IDbContextFactory<JaimesDbContext> dbCon
         var queryCounts = await dbContext.RagSearchQueries
             .AsNoTracking()
             .GroupBy(q => q.IndexName)
-            .Select(g => new { IndexName = g.Key, Count = g.Count() })
+            .Select(g => new {IndexName = g.Key, Count = g.Count()})
             .ToListAsync(ct);
 
         Dictionary<string, int> queryCountByIndex = queryCounts
             .ToDictionary(x => x.IndexName, x => x.Count, StringComparer.OrdinalIgnoreCase);
 
-        // Build document info list
+        // Build document info list for sourcebooks
         List<RagCollectionDocumentInfo> documentInfos = documents
             .Select(doc =>
             {
@@ -75,8 +75,58 @@ public class ListRagCollectionsEndpoint(IDbContextFactory<JaimesDbContext> dbCon
             .ThenBy(d => d.FileName)
             .ToList();
 
+        // Get conversation/transcript statistics from MessageEmbeddings
+        // Group by game to show each game as a "document" in the transcript collection
+        var gameMessageStats = await dbContext.Messages
+            .AsNoTracking()
+            .Include(m => m.Game)
+            .GroupBy(m => new {m.GameId, GameTitle = m.Game!.Title})
+            .Select(g => new
+            {
+                g.Key.GameId,
+                g.Key.GameTitle,
+                TotalMessages = g.Count()
+            })
+            .ToListAsync(ct);
+
+        // Get embedding counts per game
+        var embeddingCounts = await dbContext.MessageEmbeddings
+            .AsNoTracking()
+            .Include(e => e.Message)
+            .GroupBy(e => e.Message!.GameId)
+            .Select(g => new {GameId = g.Key, EmbeddedCount = g.Count()})
+            .ToListAsync(ct);
+
+        Dictionary<Guid, int> embeddingsByGame = embeddingCounts
+            .ToDictionary(x => x.GameId, x => x.EmbeddedCount);
+
+        // Add game transcripts as documents
+        foreach (var game in gameMessageStats)
+        {
+            embeddingsByGame.TryGetValue(game.GameId, out int embeddedCount);
+            documentInfos.Add(new RagCollectionDocumentInfo
+            {
+                DocumentId = 0, // Games use GUID, not int ID
+                FileName = game.GameTitle ?? $"Game {game.GameId}",
+                RelativeDirectory = game.GameId.ToString(),
+                DocumentKind = DocumentKinds.Transcript,
+                RulesetId = "conversations",
+                TotalChunks = game.TotalMessages,
+                EmbeddedChunks = embeddedCount,
+                IsFullyProcessed = embeddedCount >= game.TotalMessages,
+                CrackedAt = DateTime.UtcNow // Transcripts don't have a crack date
+            });
+        }
+
+        // Re-sort after adding transcripts
+        documentInfos = documentInfos
+            .OrderBy(d => d.DocumentKind)
+            .ThenBy(d => d.RulesetId)
+            .ThenBy(d => d.FileName)
+            .ToList();
+
         // Build summaries by collection type
-        var summaryGroups = documentInfos
+        List<RagCollectionSummary> summaries = documentInfos
             .GroupBy(d => d.DocumentKind)
             .Select(g =>
             {
@@ -100,17 +150,18 @@ public class ListRagCollectionsEndpoint(IDbContextFactory<JaimesDbContext> dbCon
                 };
             })
             .OrderBy(s => s.CollectionType)
-            .ToArray();
+            .ToList();
 
         Logger.LogInformation(
             "Returning statistics for {DocumentCount} documents across {CollectionCount} collections",
             documentInfos.Count,
-            summaryGroups.Length);
+            summaries.Count);
 
         await Send.OkAsync(new RagCollectionStatisticsResponse
-        {
-            Summaries = summaryGroups,
-            Documents = documentInfos.ToArray()
-        }, ct);
+            {
+                Summaries = summaries.ToArray(),
+                Documents = documentInfos.ToArray()
+            },
+            ct);
     }
 }
