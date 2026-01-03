@@ -1,0 +1,111 @@
+@page "/admin/games/{GameId:guid}/transcript-chunks"
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@rendermode InteractiveServer
+
+<PageTitle>@(_response?.GameTitle ?? "Transcript Chunks")</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+	</MudStack>
+	<MudPaper Class="pa-8" Elevation="2">
+		<MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">
+			@(_response?.GameTitle ?? "Transcript Chunks")
+		</MudText>
+		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">
+			View messages from this game transcript
+		</MudText>
+
+		@if (!string.IsNullOrEmpty(_errorMessage))
+		{
+			<MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+		}
+
+		@if (_isLoading)
+		{
+			<MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4"/>
+		}
+
+		@if (_response != null)
+		{
+			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4" Class="mb-4">
+				<MudText Typo="Typo.body1">
+					<MudIcon Icon="@Icons.Material.Filled.Chat" Size="Size.Small" Class="me-1"/>
+					<strong>@_response.TotalCount</strong> messages
+				</MudText>
+				<MudChip T="string" Color="Color.Info" Size="Size.Small">Transcript</MudChip>
+			</MudStack>
+
+			@if (_response.EmbeddedCount < _response.TotalCount)
+			{
+				<MudAlert Severity="Severity.Warning" Class="mb-4">
+					<strong>@(_response.TotalCount - _response.EmbeddedCount)</strong> of @_response.TotalCount messages are missing embeddings.
+					Embedding processing may still be in progress.
+				</MudAlert>
+			}
+
+			@if (_response.Chunks.Length == 0)
+			{
+				<MudAlert Severity="Severity.Info" Class="mb-4">
+					No messages found for this game yet.
+				</MudAlert>
+			}
+			else
+			{
+				<MudDataGrid T="TranscriptChunkInfo" Items="@_response.Chunks" Dense="true" Striped="true" Hover="true"
+				             RowsPerPage="@_response.PageSize">
+					<Columns>
+						<PropertyColumn Property="x => x.MessageIndex" Title="Index"/>
+						<TemplateColumn Title="Role">
+							<CellTemplate>
+								<MudChip T="string"
+								         Color="@(context.Item.Role == "user" ? Color.Primary : Color.Secondary)"
+								         Size="Size.Small">
+									@context.Item.Role
+								</MudChip>
+							</CellTemplate>
+						</TemplateColumn>
+						<TemplateColumn Title="Message Preview">
+							<CellTemplate>
+								<MudLink Href="@GetMessageDetailsLink(context.Item.MessageId)">
+									<MudText Typo="Typo.body2" Style="max-width: 400px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+										@context.Item.MessageTextPreview
+									</MudText>
+								</MudLink>
+							</CellTemplate>
+						</TemplateColumn>
+						<TemplateColumn Title="Embedding">
+							<CellTemplate>
+								@if (context.Item.HasEmbedding)
+								{
+									<MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small"/>
+								}
+								else
+								{
+									<MudIcon Icon="@Icons.Material.Filled.HourglassEmpty" Color="Color.Warning" Size="Size.Small"/>
+								}
+							</CellTemplate>
+						</TemplateColumn>
+						<PropertyColumn Property="x => x.CreatedAt" Title="Created" Format="g"/>
+						<TemplateColumn Title="">
+							<CellTemplate>
+								<MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+								           Href="@GetMessageDetailsLink(context.Item.MessageId)"
+								           StartIcon="@Icons.Material.Filled.Visibility">
+									View
+								</MudButton>
+							</CellTemplate>
+						</TemplateColumn>
+					</Columns>
+				</MudDataGrid>
+
+				@if (_response.TotalCount > _response.PageSize)
+				{
+					<MudStack Row="true" Justify="Justify.Center" Class="mt-4">
+						<MudPagination Count="@TotalPages" Selected="@_currentPage" SelectedChanged="OnPageChanged" Color="Color.Primary"/>
+					</MudStack>
+				}
+			}
+		}
+	</MudPaper>
+</MudContainer>

@@ -78,4 +78,15 @@ public partial class RagCollections
         return
             $"/admin/rag-collections/{Uri.EscapeDataString(indexName)}/queries?documentName={Uri.EscapeDataString(documentName)}";
     }
+
+    private static string GetChunksLink(RagCollectionDocumentInfo doc)
+    {
+        // For sourcebooks, link to document chunks page
+        // For transcripts, link to game transcript chunks page
+        return doc.DocumentKind.ToLowerInvariant() switch
+        {
+            "transcript" when doc.GameId.HasValue => $"/admin/games/{doc.GameId}/transcript-chunks",
+            _ => $"/admin/documents/{doc.DocumentId}/chunks"
+        };
+    }
 }

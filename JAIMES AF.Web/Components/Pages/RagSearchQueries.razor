@@ -111,29 +111,33 @@
 											<MudText Typo="Typo.subtitle2" Class="mb-2">Results (@context.Item.Results.Length)</MudText>
 											<MudSimpleTable Dense="true" Striped="true" Bordered="true">
 												<thead>
-													<tr>
-														<th>Document</th>
-														<th>Chunk ID</th>
-														<th>Relevancy</th>
-													</tr>
+												<tr>
+													<th>Document</th>
+													<th>Chunk ID</th>
+													<th>Relevancy</th>
+												</tr>
 												</thead>
 												<tbody>
-													@foreach (var result in context.Item.Results)
-													{
-														<tr style="@(string.Equals(result.DocumentName, DocumentName, StringComparison.OrdinalIgnoreCase) ? "background-color: var(--mud-palette-primary-hover); font-weight: bold;" : "")">
-															<td>
-																@result.DocumentName
-															</td>
-															<td><code>@result.ChunkId</code></td>
-															<td>
-																<MudChip T="string" 
-																         Color="@(result.Relevancy >= 0.8 ? Color.Success : result.Relevancy >= 0.5 ? Color.Warning : Color.Error)" 
-																         Size="Size.Small">
-																	@result.Relevancy.ToString("P1")
-																</MudChip>
-															</td>
-														</tr>
-													}
+												@foreach (var result in context.Item.Results)
+												{
+													<tr style="@(string.Equals(result.DocumentName, DocumentName, StringComparison.OrdinalIgnoreCase) ? "background-color: var(--mud-palette-primary-hover); font-weight: bold;" : "")">
+														<td>
+															@result.DocumentName
+														</td>
+														<td>
+															<MudLink Href="@GetChunkDetailsLink(result.ChunkId)">
+																<code>@result.ChunkId</code>
+															</MudLink>
+														</td>
+														<td>
+															<MudChip T="string"
+															         Color="@(result.Relevancy >= 0.8 ? Color.Success : result.Relevancy >= 0.5 ? Color.Warning : Color.Error)"
+															         Size="Size.Small">
+																@result.Relevancy.ToString("P1")
+															</MudChip>
+														</td>
+													</tr>
+												}
 												</tbody>
 											</MudSimpleTable>
 										}
