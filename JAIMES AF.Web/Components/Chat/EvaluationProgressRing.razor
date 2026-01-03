@@ -5,7 +5,13 @@
 @* Pie chart that shows evaluation metric progress with color-coded wedges *@
 
 <svg class="evaluation-pie" width="@Size" height="@Size" viewBox="0 0 100 100" style="display: inline-block; vertical-align: middle; margin-top: 4px;">
-    @if (TotalSegments > 0)
+    @if (TotalSegments == 1)
+    {
+        @* Single segment - render as a full circle since SVG arcs can't render 360 degrees *@
+        var singleWedge = GetWedge(0, 0, 360);
+        <circle cx="50" cy="50" r="48" fill="@singleWedge.Color" class="@(singleWedge.IsCompleted ? "wedge-completed" : "")"/>
+    }
+    else if (TotalSegments > 1)
     {
         @* Render pie wedges *@
         double startAngle = 0;
@@ -19,10 +25,7 @@
         }
         
         @* Optional center dot for visual balance *@
-        @if (TotalSegments > 1)
-        {
-            <circle cx="50" cy="50" r="8" fill="var(--mud-palette-background)"/>
-        }
+        <circle cx="50" cy="50" r="8" fill="var(--mud-palette-background)"/>
     }
     else
     {

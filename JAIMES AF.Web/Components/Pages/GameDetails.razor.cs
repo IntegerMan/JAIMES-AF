@@ -91,6 +91,7 @@ public partial class GameDetails : IAsyncDisposable
             // Track agent info per message
             _messageAgentInfo.Clear();
             _messageExpectedMetricCount.Clear();
+            _messageMetricErrors.Clear();
             foreach (var message in orderedMessages)
             {
                 // Track expected metric count for assistant messages

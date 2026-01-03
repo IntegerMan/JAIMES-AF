@@ -265,26 +265,37 @@ public class MessageEvaluationService(
                 logger.LogError(ex, "Evaluator {EvaluatorName} failed for message {MessageId}",
                     evaluatorName, message.Id);
 
-                // Create error metric response
+                // Create error metric responses - one for each expected metric from this evaluator
+                // This ensures the count matches what completedMetricCount increments by
+                int expectedForThisEvaluator = GetExpectedMetricCount(evaluator);
                 DateTime errorTime = DateTime.UtcNow;
-                var errorMetricResponse = new MessageEvaluationMetricResponse
+                
+                // Track all error metrics for final notification
+                var errorMetrics = new List<MessageEvaluationMetricResponse>();
+                for (int i = 0; i < expectedForThisEvaluator; i++)
                 {
-                    MessageId = message.Id,
-                    MetricName = evaluatorName,
-                    Score = 0,
-                    Remarks = $"Evaluation failed: {ex.Message}",
-                    EvaluatedAt = errorTime,
-                    EvaluatorName = evaluatorName
-                };
+                    string metricName = expectedForThisEvaluator > 1 
+                        ? $"{evaluatorName}_{i + 1}" 
+                        : evaluatorName;
+                    
+                    var errorMetricResponse = new MessageEvaluationMetricResponse
+                    {
+                        MessageId = message.Id,
+                        MetricName = metricName,
+                        Score = 0,
+                        Remarks = $"Evaluation failed: {ex.Message}",
+                        EvaluatedAt = errorTime,
+                        EvaluatorName = evaluatorName
+                    };
+                    errorMetrics.Add(errorMetricResponse);
+                }
 
-                // Track for final notification
                 lock (metricsLock)
                 {
-                    allMetricResponses.Add(errorMetricResponse);
+                    allMetricResponses.AddRange(errorMetrics);
                 }
 
                 // Increment completed count (even for errors, we're "done" with this evaluator)
-                int expectedForThisEvaluator = GetExpectedMetricCount(evaluator);
                 int currentCompleted;
                 lock (countLock)
                 {
@@ -292,11 +303,11 @@ public class MessageEvaluationService(
                     currentCompleted = completedMetricCount;
                 }
 
-                // Send error notification
+                // Send error notification for the first error metric (represents the failed evaluator)
                 await messageUpdateNotifier.NotifyMetricEvaluatedAsync(
                     message.Id,
                     message.GameId,
-                    errorMetricResponse,
+                    errorMetrics[0],
                     totalExpectedMetrics,
                     currentCompleted,
                     isError: true,
