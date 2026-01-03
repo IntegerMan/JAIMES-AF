@@ -10,12 +10,12 @@ public static class EvaluatorMetricCountHelper
 {
     /// <summary>
     /// Calculates the expected number of metrics for an evaluator.
-    /// RulesTextConsistencyEvaluator produces 3 metrics, all others produce 1.
+    /// RelevanceTruthAndCompletenessEvaluator produces 3 metrics (Relevance, Truth, Completeness), all others produce 1.
     /// </summary>
     public static int GetExpectedMetricCount(IEvaluator evaluator)
     {
-        // RulesTextConsistencyEvaluator is a special case that produces 3 metrics
-        return evaluator.GetType().Name == "RulesTextConsistencyEvaluator" ? 3 : 1;
+        // RelevanceTruthAndCompletenessEvaluator is a special case that produces 3 metrics
+        return evaluator.GetType().Name == "RelevanceTruthAndCompletenessEvaluator" ? 3 : 1;
     }
 
     /// <summary>

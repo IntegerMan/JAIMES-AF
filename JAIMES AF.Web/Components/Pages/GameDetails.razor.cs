@@ -791,8 +791,32 @@ public partial class GameDetails : IAsyncDisposable
                             _messageMetrics[notification.MessageId] = notification.Metrics;
                             _loadedMetricsMessageIds.Add(notification.MessageId);
 
-                            // Clear any stale error state from previous evaluations
-                            _messageMetricErrors.Remove(notification.MessageId);
+                            // Rebuild error dictionary to preserve errors for metrics with score 0 and "failed" remarks
+                            // This ensures error styling persists in the UI for actually failed evaluations
+                            if (_messageMetricErrors.TryGetValue(notification.MessageId, out var errorDict))
+                            {
+                                // Create a new dictionary with only the metrics that are actually errors
+                                var updatedErrors = new Dictionary<string, string>();
+                                foreach (var metric in notification.Metrics)
+                                {
+                                    // Check if this metric was previously marked as an error and still appears to be one
+                                    if (errorDict.TryGetValue(metric.MetricName, out var errorMsg) &&
+                                        (metric.Score == 0 || metric.Remarks?.Contains("failed", StringComparison.OrdinalIgnoreCase) == true))
+                                    {
+                                        updatedErrors[metric.MetricName] = errorMsg;
+                                    }
+                                }
+                                
+                                // Update or remove the error dictionary
+                                if (updatedErrors.Count > 0)
+                                {
+                                    _messageMetricErrors[notification.MessageId] = updatedErrors;
+                                }
+                                else
+                                {
+                                    _messageMetricErrors.Remove(notification.MessageId);
+                                }
+                            }
 
                             if (notification.HasMissingEvaluators.HasValue)
                             {
