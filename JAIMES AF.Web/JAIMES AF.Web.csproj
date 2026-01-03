@@ -8,17 +8,16 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Markdig"/>
+        <PackageReference Include="Markdig" />
         <PackageReference Include="Microsoft.Agents.AI" />
         <PackageReference Include="Microsoft.Agents.AI.Abstractions" />
-        <PackageReference Include="Microsoft.Agents.AI.AGUI" />
         <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
-        <PackageReference Include="MudBlazor"/>
+        <PackageReference Include="MudBlazor" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\JAIMES AF.ServiceDefaults\JAIMES AF.ServiceDefaults.csproj"/>
-        <ProjectReference Include="..\JAIMES AF.ServiceDefinitions\JAIMES AF.ServiceDefinitions.csproj"/>
+        <ProjectReference Include="..\JAIMES AF.ServiceDefaults\JAIMES AF.ServiceDefaults.csproj" />
+        <ProjectReference Include="..\JAIMES AF.ServiceDefinitions\JAIMES AF.ServiceDefinitions.csproj" />
     </ItemGroup>
 
 </Project>

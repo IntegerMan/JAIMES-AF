@@ -20,6 +20,7 @@ public partial class GameDetails : IAsyncDisposable
 
     private List<ChatMessage> _messages = [];
     private List<int?> _messageIds = []; // Parallel list to track message IDs
+    private HashSet<int> _streamingMessageIndexes = new(); // Track which message indexes are currently streaming
     private Dictionary<int, MessageFeedbackResponse> _messageFeedback = new();
     private Dictionary<int, List<MessageToolCallResponse>> _messageToolCalls = new();
     private Dictionary<int, List<MessageEvaluationMetricResponse>> _messageMetrics = new();
@@ -246,21 +247,21 @@ public partial class GameDetails : IAsyncDisposable
     private async Task SendMessageAsync()
     {
         string message = _userMessage.Text;
+
+        // Clear input immediately so user sees it's been sent
         _userMessage.Text = string.Empty;
-
-        // Approach 7: Rotate the key to force Blazor to recreate the component, clearing its DOM state
         _chatInputKey = Guid.NewGuid();
-        StateHasChanged();
 
-        // Ensure the new component is rendered before attempting to focus it
+        // Send the message (this will add user message and trigger scroll)
+        await SendMessagePrivateAsync(message);
+
+        // Reset focus after sending
         await Task.Yield();
 
         if (_chatInput != null)
         {
             await _chatInput.FocusAsync();
         }
-
-        await SendMessagePrivateAsync(message);
     }
 
     private async Task SendMessagePrivateAsync(string messageText)
@@ -281,9 +282,12 @@ public partial class GameDetails : IAsyncDisposable
 
             _logger?.LogInformation("Sending message {Text} from User", messageText);
 
-            // Scroll to bottom after adding user message and showing typing indicator
-            _shouldScrollToBottom = true;
-            await InvokeAsync(StateHasChanged);
+            // Scroll to bottom immediately after adding user message and showing typing indicator
+            await InvokeAsync(async () =>
+            {
+                StateHasChanged();
+                await ScrollToBottomAsync();
+            });
 
             // Send message to API using SSE
             HttpClient httpClient = HttpClientFactory.CreateClient("Api");
@@ -378,6 +382,9 @@ public partial class GameDetails : IAsyncDisposable
                             _messageIds.Add(null); // Will be set in persisted event
                             msgIndex = _messages.Count - 1;
                             messageIndexes[delta.MessageId] = msgIndex;
+
+                            // Mark this message as streaming
+                            _streamingMessageIndexes.Add(msgIndex);
                         }
                         else
                         {
@@ -389,9 +396,13 @@ public partial class GameDetails : IAsyncDisposable
                             };
                         }
 
-                        // Update UI
-                        _shouldScrollToBottom = true;
-                        await InvokeAsync(StateHasChanged);
+                        // Update UI and scroll immediately during streaming
+                        await InvokeAsync(async () =>
+                        {
+                            StateHasChanged();
+                            // Scroll immediately without waiting for AfterRender
+                            await ScrollToBottomAsync();
+                        });
                     }
                     else if (eventType == "persisted")
                     {
@@ -454,6 +465,11 @@ public partial class GameDetails : IAsyncDisposable
                     else if (eventType == "done")
                     {
                         _logger?.LogInformation("Stream completed successfully");
+
+                        // Clear streaming status for all messages that were streaming
+                        _streamingMessageIndexes.Clear();
+                        await InvokeAsync(StateHasChanged);
+
                         break;
                     }
                     else if (eventType == "error")

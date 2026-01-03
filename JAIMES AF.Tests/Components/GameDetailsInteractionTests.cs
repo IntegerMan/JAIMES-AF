@@ -5,7 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.AI;
 using Microsoft.Agents.AI;
-using Microsoft.Agents.AI.AGUI;
 using Moq;
 using MudBlazor.Services;
 using Shouldly;

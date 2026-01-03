@@ -118,12 +118,14 @@
 					bool isVersionSwitch = false;
 					bool isExempt = false;
 					int? messageId = GetMessageId(msgIndex);
+					bool isStreaming = _streamingMessageIndexes.Contains(msgIndex);
 
 					MessageAgentInfo? agentInfo = null;
 					if (messageId.HasValue)
 						_messageAgentInfo.TryGetValue(messageId.Value, out agentInfo);
 
-					if (m.Role == ChatRole.Assistant && agentInfo != null)
+					// Only show agent info for completed (non-streaming) messages
+					if (m.Role == ChatRole.Assistant && agentInfo != null && !isStreaming)
 					{
 						agentId = agentInfo.AgentId;
 						agentName = agentInfo.AgentName;

@@ -48,10 +48,32 @@ After streaming completes, sends a final `ChatRole.System` message with:
 }
 ```
 
-### 3. **Disabled MapAGUI**
+### 3. **Fixed Route Values for FastEndpoints**
+**File**: `JAIMES AF.ApiService/Endpoints/StreamingChatEndpoint.cs`
+
+**Critical fix**: FastEndpoints doesn't automatically populate `HttpContext.Request.RouteValues["gameId"]` from the route template, but `GameAwareAgent` depends on it to extract the gameId.
+
+Added explicit route value population at the start of `HandleAsync`:
+```csharp
+// CRITICAL: Set the gameId in route values so GameAwareAgent can extract it from HttpContext
+// FastEndpoints may not populate this automatically, so we set it explicitly
+HttpContext.Request.RouteValues["gameId"] = req.GameId.ToString();
+```
+
+This ensures `GameAwareAgent.GetOrCreateGameAgentAsync` can successfully extract the gameId from the HttpContext.
+
+### 4. **Disabled AGUI Middleware**
 **File**: `JAIMES AF.ApiService/Program.cs`
 
-Commented out the `MapAGUI` call (can be removed after testing).
+**Critical**: Commented out BOTH `AddAGUI()` (line 35) and `MapAGUI` (line 188).
+
+The `AddAGUI()` call was the hidden culprit - it registers AGUI middleware that **automatically creates routes** for any `AIAgent` registered in dependency injection. Since `GameAwareAgent` is registered as a singleton, AGUI was intercepting the `/games/{gameId:guid}/chat` route BEFORE FastEndpoints could handle it, bypassing our custom `StreamingChatEndpoint` entirely.
+
+```csharp
+// DISABLED: AddAGUI() was causing AGUI middleware to intercept our custom streaming endpoint
+// AGUI automatically creates routes for any AIAgent in DI, bypassing FastEndpoints
+// builder.Services.AddAGUI();
+```
 
 ## SSE Event Format
 
@@ -160,19 +182,86 @@ Both server and client changes are complete and building successfully. To test:
    - **Client**: Look for "Received persisted IDs - User: X, Assistant: Y"
    - **Browser Console**: Should show text deltas appearing incrementally
 
-## Cleanup Tasks (After Testing)
+## Troubleshooting Journey
 
-1. Remove `MapAGUI` line from `Program.cs` completely
-2. Remove AGUI dependencies from `JAIMES AF.ApiService.csproj` and `JAIMES AF.Web.csproj`
-3. Remove AGUI-related code from client:
-   - `AGUIChatClient` references
-   - Complex ID matching logic
-   - `_pendingMessageAgentInfo` dictionary
-4. Remove the `AddAGUI()` call from `Program.cs`
+### Issue 1: Client Not Receiving Response Headers
+**Symptom**: Client hung waiting for response headers, never received them
 
-## Next Steps
+**Diagnosis**: The SSE endpoint wasn't starting the HTTP response before the streaming loop
 
-Would you like me to:
-1. **Update the client code** to consume the new SSE endpoint?
-2. **Test the streaming** to verify it works?
-3. **Clean up AGUI dependencies** after testing?
+**Fix**: Added explicit response start with flush in `StreamingChatEndpoint.cs`:
+```csharp
+HttpContext.Response.StatusCode = 200;
+await HttpContext.Response.Body.FlushAsync(ct);
+```
+
+### Issue 2: Stream Closes Immediately After Headers (24ms)
+**Symptom**:
+- Client receives headers in 23ms but stream ends after 24ms
+- No streaming content sent to client
+- Server logs show Ollama request initiated but no "Ollama Stream opened" logs
+
+**Diagnosis**:
+The `GameAwareAgent.GetOrCreateGameAgentAsync` requires `HttpContext.Request.RouteValues["gameId"]` to extract the gameId (line 236-240). However, FastEndpoints doesn't automatically populate route values from the route template like standard ASP.NET Core routing does.
+
+When the route value is missing, this code throws an `ArgumentException`:
+```csharp
+string? gameIdStr = context.Request.RouteValues["gameId"]?.ToString();
+if (!Guid.TryParse(gameIdStr, out Guid gameId))
+{
+    _logger.LogError("Invalid game ID in route: {GameIdStr}", gameIdStr);
+    throw new ArgumentException("Invalid game ID in route");
+}
+```
+
+The exception causes the async enumerable to exit immediately, closing the stream.
+
+**Fix**: Explicitly populate route values at the start of `StreamingChatEndpoint.HandleAsync`:
+```csharp
+// CRITICAL: Set the gameId in route values so GameAwareAgent can extract it from HttpContext
+// FastEndpoints may not populate this automatically, so we set it explicitly
+HttpContext.Request.RouteValues["gameId"] = req.GameId.ToString();
+```
+
+### Issue 3: AGUI Middleware Intercepting Custom Endpoint
+**Symptom**:
+- Custom `StreamingChatEndpoint` logging never appears in server logs
+- Server logs show `GameAwareAgent` being called directly
+- No "StreamingChatEndpoint: Starting chat" or "StreamingChatEndpoint: About to call" messages
+- Stream still closes after 26ms
+
+**Diagnosis**:
+The `AddAGUI()` call in `Program.cs` (line 33) registers AGUI middleware that automatically discovers and creates routes for any `AIAgent` registered in dependency injection. Since `GameAwareAgent` is registered as a singleton, AGUI was automatically creating a `/games/{gameId:guid}/chat` route and handling all requests to it, completely bypassing the custom FastEndpoints `StreamingChatEndpoint`.
+
+AGUI middleware runs early in the pipeline and intercepts matching routes before FastEndpoints gets a chance to process them.
+
+**Fix**: Comment out the `AddAGUI()` call in `Program.cs`:
+```csharp
+// DISABLED: AddAGUI() was causing AGUI middleware to intercept our custom streaming endpoint
+// AGUI automatically creates routes for any AIAgent in DI, bypassing FastEndpoints
+// builder.Services.AddAGUI();
+```
+
+## AGUI Cleanup Completed ✅
+
+All AGUI dependencies and code have been completely removed:
+
+**Packages Removed**:
+- ❌ `Microsoft.Agents.AI.Hosting.AGUI.AspNetCore` from ApiService
+- ❌ `Microsoft.Agents.AI.AGUI` from Web project
+- ✅ Kept `Microsoft.Agents.AI` (core Agent Framework)
+
+**Code Removed**:
+- Removed `using Microsoft.Agents.AI.Hosting.AGUI.AspNetCore;` from `GlobalUsings.cs`
+- Removed `using Microsoft.Agents.AI.AGUI;` from Web `Program.cs` and test file
+- Removed AGUI HttpClient registration from Web `Program.cs`
+- Removed `AddAGUI()` and `MapAGUI()` calls from ApiService `Program.cs`
+- Updated comments to reference `StreamingChatEndpoint` instead of MapAGUI
+
+## Status
+
+✅ **Server-side changes complete** - Custom SSE endpoint with route value fix and AGUI removed
+✅ **Client-side changes complete** - SSE parsing and ID handling
+✅ **AGUI cleanup complete** - All AGUI packages and code removed
+✅ **Build successful** - All projects compile without errors (ApiService, Web, Tests, AppHost)
+🧪 **Ready for testing** - All critical fixes applied

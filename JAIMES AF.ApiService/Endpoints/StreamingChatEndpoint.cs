@@ -17,8 +17,10 @@ public class StreamingChatEndpoint : Endpoint<ChatRequest, EmptyResponse>
 
     public override void Configure()
     {
+        Console.WriteLine("!!! StreamingChatEndpoint.Configure() called - endpoint is being registered !!!");
         Post("/games/{gameId:guid}/chat");
         AllowAnonymous();
+        Options(x => x.RequireHost("*")); // Accept from any host
         Description(b => b
             .Produces<EmptyResponse>(StatusCodes.Status200OK, "text/event-stream")
             .Produces(StatusCodes.Status400BadRequest)
@@ -28,26 +30,47 @@ public class StreamingChatEndpoint : Endpoint<ChatRequest, EmptyResponse>
 
     public override async Task HandleAsync(ChatRequest req, CancellationToken ct)
     {
+        Console.WriteLine($"!!! StreamingChatEndpoint.HandleAsync() called for game {req.GameId} !!!");
+        Logger.LogInformation("!!! StreamingChatEndpoint.HandleAsync() called for game {GameId} !!!", req.GameId);
+
+        // CRITICAL: Set the gameId in route values so GameAwareAgent can extract it from HttpContext
+        // FastEndpoints may not populate this automatically, so we set it explicitly
+        HttpContext.Request.RouteValues["gameId"] = req.GameId.ToString();
+
         // Set response headers for SSE
         HttpContext.Response.Headers.Append("Content-Type", "text/event-stream");
         HttpContext.Response.Headers.Append("Cache-Control", "no-cache");
         HttpContext.Response.Headers.Append("Connection", "keep-alive");
         HttpContext.Response.Headers.Append("X-Accel-Buffering", "no"); // Disable nginx buffering
 
+        // CRITICAL: Start the response immediately so client knows we're streaming
+        // Without this, the client waits forever for headers
+        HttpContext.Response.StatusCode = 200;
+        await HttpContext.Response.Body.FlushAsync(ct);
+
         // Get the stream for writing SSE events
         Stream responseStream = HttpContext.Response.Body;
 
         try
         {
+            Logger.LogInformation("StreamingChatEndpoint: Starting chat for game {GameId}", req.GameId);
+
             // Convert the user's message to ChatMessage format
             List<ChatMessage> messagesToSend = new()
             {
                 new ChatMessage(ChatRole.User, req.Message)
             };
 
+            Logger.LogInformation("StreamingChatEndpoint: About to call GameAwareAgent.RunStreamingAsync");
+
             // Stream the agent's response
+            int updateCount = 0;
             await foreach (var update in GameAwareAgent.RunStreamingAsync(messagesToSend, thread: null, options: null, ct))
             {
+                updateCount++;
+                Logger.LogInformation("StreamingChatEndpoint: Received update #{Count}, Role: {Role}, MessageId: {MessageId}",
+                    updateCount, update.Role, update.MessageId);
+
                 if (ct.IsCancellationRequested) break;
 
                 // Skip user messages in the response stream

@@ -16,7 +16,6 @@ global using MattEland.Jaimes.ServiceDefinitions.Responses;
 global using MattEland.Jaimes.ServiceDefinitions.Services;
 global using MattEland.Jaimes.ServiceLayer.Mapping;
 global using Microsoft.Agents.AI;
-global using Microsoft.Agents.AI.Hosting.AGUI.AspNetCore;
 global using Microsoft.EntityFrameworkCore;
 global using Microsoft.Extensions.DependencyInjection.Extensions;
 global using RabbitMQ.Client;
