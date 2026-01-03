@@ -237,11 +237,11 @@
 					{
 						@if (_isContentModerationError)
 						{
-							<ContentModerationErrorMessage />
+							<ContentModerationErrorMessage OnRetry="@(() => RetryMessageAsync(capturedIndex))" />
 						}
 						else if (!string.IsNullOrEmpty(_errorMessage))
 						{
-							<GenericErrorMessage ErrorMessage="@_errorMessage" />
+							<GenericErrorMessage ErrorMessage="@_errorMessage" OnRetry="@(() => RetryMessageAsync(capturedIndex))" />
 						}
 					}
 				}

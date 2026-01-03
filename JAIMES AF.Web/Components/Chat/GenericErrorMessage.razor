@@ -17,9 +17,26 @@
             </MudText>
         </MudStack>
     </MudChatBubble>
+    @if (OnRetry.HasDelegate)
+    {
+        <MudChatFooter Class="feedback-footer">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" JustifyContent="Justify.FlexEnd">
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Inherit"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="@(() => OnRetry.InvokeAsync())">
+                    Retry
+                </MudButton>
+            </MudStack>
+        </MudChatFooter>
+    }
 </MudChat>
 
 @code {
     [Parameter]
     public string ErrorMessage { get; set; } = "An error occurred while processing your request. Please try again.";
+
+    [Parameter]
+    public EventCallback OnRetry { get; set; }
 }

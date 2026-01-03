@@ -19,7 +19,7 @@
         </MudStack>
     </MudChatBubble>
     <MudChatFooter Class="feedback-footer">
-        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" JustifyContent="Justify.SpaceBetween" Style="width: 100%;">
             <MudTooltip Text="Learn More" Placement="Placement.Top">
                 <MudIconButton Icon="@Icons.Material.Filled.Link"
                                Size="Size.Small"
@@ -27,10 +27,21 @@
                                Href="https://go.microsoft.com/fwlink/?linkid=2198766"
                                Target="_blank"/>
             </MudTooltip>
+            @if (OnRetry.HasDelegate)
+            {
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Inherit"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="@(() => OnRetry.InvokeAsync())">
+                    Retry
+                </MudButton>
+            }
         </MudStack>
     </MudChatFooter>
 </MudChat>
 
 @code {
-    // No parameters needed - this is a static error message component
+    [Parameter]
+    public EventCallback OnRetry { get; set; }
 }
