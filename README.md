@@ -8,22 +8,22 @@ JAIMES AF is a .NET Aspire solution that coordinates FastEndpoints APIs, Blazor 
 
 > [!TIP]
 > **New to the project?**
-> Check out **[GETTING_STARTED.md](GETTING_STARTED.md)** for setup instructions, prerequisites, and rapid start commands.
+> Check out **[Getting Started](GETTING_STARTED.md)** for setup instructions, prerequisites, and rapid start commands.
 
 ## Documentation Index
 
-- **[GETTING_STARTED.md](GETTING_STARTED.md)** - Setup, configuration, and development guidelines.
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - High-level system architecture, design patterns, and data flow.
-- **[AGENT_FRAMEWORK.md](AGENT_FRAMEWORK.md)** - Concepts behind the AI agent integration, tools, and conversation threads.
-- **[CHAT_STREAMING.md](CHAT_STREAMING.md)** - Architecture of the real-time chat streaming system (Server-Sent Events).
-- **[MESSAGE_BUS.md](MESSAGE_BUS.md)** - Overview of the message bus and background worker roles.
-- **[VECTOR_SEARCH.md](VECTOR_SEARCH.md)** - Explanation of the RAG pipeline and vector search implementation.
-- **[SCHEMA.md](SCHEMA.md)** - Database schema and entity relationships.
-- **[TECHNICAL_DETAILS.md](TECHNICAL_DETAILS.md)** - Comprehensive index of technical topics.
+- **[Getting Started](GETTING_STARTED.md)** - Setup, configuration, and development guidelines.
+- **[Architecture Overview](ARCHITECTURE.md)** - High-level system architecture, design patterns, and data flow.
+- **[Agent Framework](AGENT_FRAMEWORK.md)** - Concepts behind the AI agent integration, tools, and conversation threads.
+- **[Chat Streaming](CHAT_STREAMING.md)** - Architecture of the real-time chat streaming system (Server-Sent Events).
+- **[Message Bus & Workers](MESSAGE_BUS.md)** - Overview of the message bus and background worker roles.
+- **[Vector Search & RAG](VECTOR_SEARCH.md)** - Explanation of the RAG pipeline and vector search implementation.
+- **[Database Schema](SCHEMA.md)** - Database schema and entity relationships.
+- **[Technical Topics](TECHNICAL_DETAILS.md)** - Comprehensive index of technical topics.
 
 ## Solution Topology
 
-The Aspire AppHost wires together the API, background workers, and dependencies (PostgreSQL, Redis Stack, Azure OpenAI).
+The Aspire AppHost wires together the API, background workers, and dependencies (PostgreSQL, Qdrant, Azure OpenAI).
 
 ```mermaid
 flowchart LR
@@ -38,17 +38,17 @@ flowchart LR
     end
     subgraph Data & Intelligence
         PostgreSQL[(PostgreSQL)]
-        Redis[(Redis Stack\nKernel Memory)]
-        AOAI[(Azure OpenAI\nEmbeddings + Chat)]
+        Qdrant[(Qdrant Vector DB)]
+        AOAI[(Azure OpenAI / Ollama)]
     end
 
     Blazor -->|REST/gRPC| ApiService
     ApiService --> Services
     Services --> Repos
     Repos --> PostgreSQL
-    Services --> Redis
+    Services --> Qdrant
     Services --> AOAI
-    Workers --> Redis
+    Workers --> Qdrant
     Workers --> Repos
     Workers --> AOAI
 ```
@@ -62,15 +62,16 @@ sequenceDiagram
     participant API as FastEndpoints API
     participant BLL as Services & Mappers
     participant DB as EF Core / PostgreSQL
-    participant Vector as Redis + Kernel Memory
+    participant Vector as Qdrant Vector DB
     participant AOAI as Azure OpenAI
 
     Player->>Web: Create Scenario / Send Message
     Web->>API: HTTP request with DTO payload
     API->>BLL: Validate + map to command
     BLL->>DB: Persist games, players, chat
-    BLL->>Vector: Queue content for embeddings
-    Vector-->>Workers: Change detection events
+    BLL->>Vector: Search rules / history
+    BLL->>AOAI: Generate response
+    AOAI-->>BLL: AI Completion
     Workers->>AOAI: Generate embeddings / responses
     Workers->>DB: Store chunk + trace metadata
     API-->>Web: Return updated DTO

@@ -28,7 +28,7 @@ graph TD
     Qdrant --> Results[Relevant Context]
 ```
 
-## Data Organizations (Collections)
+## Search Domains (Collections)
 
 ### 1. Rulesets
 Stores chunks of rulebook content.

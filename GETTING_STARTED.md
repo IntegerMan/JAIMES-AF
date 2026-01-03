@@ -5,7 +5,7 @@ This guide covers everything you need to get up and running with JAIMES AF, incl
 ## Prerequisites
 
 - **.NET 10 SDK** (or latest .NET Core version as specified in `global.json`)
-- **Docker Desktop** (or equivalent container runtime). Required by Aspire to provision PostgreSQL, Redis Stack, MongoDB, and other dependencies.
+- **Docker Desktop** (or equivalent container runtime). Required by Aspire to provision PostgreSQL, Qdrant, LavinMQ, and other dependencies.
 - **Azure OpenAI Resource** (or a local Ollama instance) for chat and embeddings.
 
 ## Rapid Start
@@ -44,10 +44,9 @@ This guide covers everything you need to get up and running with JAIMES AF, incl
   - Local Dev (Standalone): See `appsettings.Development.json` (defaults to `localhost:5432`).
   - Production: Use environment variables or Key Vault.
 
-### Vector Storage (Redis & Qdrant)
+### Vector Storage (Qdrant)
 
-- **Redis Stack**: Provisioned by Aspire. Persistent data is stored in `%LocalAppData%/Aspire/jaimes-redis-data` (Windows).
-- **Qdrant**: Used for vector search. Accessible via Aspire dashboard.
+- **Qdrant**: Used for vector search (Rulesets and Conversations). Provisioned by Aspire. Persistent data is stored in Docker volumes. Accessible via the Aspire dashboard.
 
 ### AI Providers (Chat & Embeddings)
 
