@@ -88,110 +88,126 @@
 			</MudStack>
 		}
 
-		@* Test Case Details and Context - Compact Layout *@
-		<MudGrid Spacing="3" Class="mb-4">
+		@* Two-column layout: Test Runs (66%) | Details & Context (33%) *@
+		<MudGrid Spacing="3">
+			@* Test Runs Grid - Left Side (66%) *@
+			<MudItem xs="12" md="8">
+				@if (_runs is not null && _runs.Count > 0)
+				{
+					<MudPaper Class="pa-3" Elevation="2" Style="height: calc(100vh - 280px); display: flex; flex-direction: column;">
+						<MudText Typo="Typo.h6" Class="mb-2">Test Runs</MudText>
+						<div style="flex: 1; overflow: auto;">
+							<MudTable Items="@_paginatedRuns" Dense="true" Hover="true" Striped="true" Style="white-space: nowrap;">
+								<HeaderContent>
+									<MudTh Style="min-width: 140px;">Version</MudTh>
+									<MudTh Style="min-width: 130px;">Executed</MudTh>
+									<MudTh Style="min-width: 90px;">Avg Score</MudTh>
+									@foreach (var metricName in _metricNames)
+									{
+										<MudTh Style="min-width: 80px;">
+											<MudTooltip Text="@metricName">
+												<span style="cursor: help;">@GetMetricShortName(metricName)</span>
+											</MudTooltip>
+										</MudTh>
+									}
+									<MudTh Style="min-width: 90px;">Duration</MudTh>
+								</HeaderContent>
+								<RowTemplate>
+									<MudTd>
+										<MattEland.Jaimes.Web.Components.Shared.AgentVersionDisplay
+											AgentId="@(context.AgentId ?? "")"
+											AgentName="@(context.AgentName ?? "Unknown")"
+											VersionId="@context.InstructionVersionId"
+											VersionNumber="@(context.VersionNumber ?? "Unknown")" />
+									</MudTd>
+									<MudTd>
+										<MudText Typo="Typo.caption">@context.ExecutedAt.ToLocalTime().ToString("g")</MudText>
+									</MudTd>
+									<MudTd>
+										@if (context.Metrics?.Any() == true)
+										{
+											var avgScore = context.Metrics.Average(m => m.Score);
+											<MudChip T="string" Size="Size.Small" Color="@MetricColorHelper.GetScoreColor(avgScore)">
+												@avgScore.ToString("F2")
+											</MudChip>
+										}
+										else
+										{
+											<MudText Class="text-muted">-</MudText>
+										}
+									</MudTd>
+									@foreach (var metricName in _metricNames)
+									{
+										var metric = context.Metrics?.FirstOrDefault(m => m.MetricName == metricName);
+										<MudTd>
+											@if (metric != null)
+											{
+												<MudTooltip Text="@GetMetricTooltip(metricName, metric.Score, metric.Remarks)">
+													<MudChip T="string" Size="Size.Small" Color="@MetricColorHelper.GetScoreColor(metric.Score)">
+														@metric.Score.ToString("F1")
+													</MudChip>
+												</MudTooltip>
+											}
+											else
+											{
+												<span class="text-muted">-</span>
+											}
+										</MudTd>
+									}
+									<MudTd>
+										<MudText Typo="Typo.caption">@(context.DurationMs?.ToString("N0") ?? "-") ms</MudText>
+									</MudTd>
+								</RowTemplate>
+							</MudTable>
+						</div>
+					</MudPaper>
+				}
+				else
+				{
+					<MudPaper Class="pa-3" Elevation="2">
+						<MudText Typo="Typo.h6" Class="mb-2">Test Runs</MudText>
+						<MudAlert Severity="Severity.Info">No test runs found for this test case.</MudAlert>
+					</MudPaper>
+				}
+			</MudItem>
+
+			@* Details & Context - Right Side (33%) *@
 			<MudItem xs="12" md="4">
-				<MudPaper Class="pa-3" Elevation="2">
-					<MudText Typo="Typo.h6" Class="mb-2">Test Case Details</MudText>
-					<MudStack Spacing="1">
-						<MudStack Row="true" Spacing="1">
-							<MudText Typo="Typo.body2"><strong>Agent:</strong></MudText>
-							<MattEland.Jaimes.Web.Components.Shared.AgentLink AgentId="@_testCase.AgentId" AgentName="@(_testCase.AgentName ?? "Unknown")" />
-						</MudStack>
-						<MudStack Row="true" Spacing="1">
-							<MudText Typo="Typo.body2"><strong>Game:</strong></MudText>
-							<MudLink Href="@($"/games/{_testCase.GameId}")">@(_testCase.GameTitle ?? "Unknown")</MudLink>
-						</MudStack>
-						<MudStack Row="true" Spacing="1">
-							<MudText Typo="Typo.body2"><strong>Created:</strong></MudText>
-							<MudText Typo="Typo.body2">@_testCase.CreatedAt.ToLocalTime().ToString("g")</MudText>
-						</MudStack>
-						<MudStack Row="true" Spacing="1">
-							<MudText Typo="Typo.body2"><strong>Test Runs:</strong></MudText>
-							<MudChip T="string" Size="Size.Small" Color="Color.Info">@_testCase.RunCount</MudChip>
-						</MudStack>
+				<MudPaper Class="pa-3" Elevation="2" Style="height: calc(100vh - 280px); display: flex; flex-direction: column;">
+					<MudStack Spacing="3" Style="flex: 1; overflow-y: auto;">
+						@* Test Case Details *@
+						<div>
+							<MudText Typo="Typo.h6" Class="mb-2">Test Case Details</MudText>
+							<MudStack Spacing="1">
+								<MudStack Row="true" Spacing="1">
+									<MudText Typo="Typo.body2"><strong>Agent:</strong></MudText>
+									<MattEland.Jaimes.Web.Components.Shared.AgentLink AgentId="@_testCase.AgentId" AgentName="@(_testCase.AgentName ?? "Unknown")" />
+								</MudStack>
+								<MudStack Row="true" Spacing="1">
+									<MudText Typo="Typo.body2"><strong>Game:</strong></MudText>
+									<MudLink Href="@($"/games/{_testCase.GameId}")">@(_testCase.GameTitle ?? "Unknown")</MudLink>
+								</MudStack>
+								<MudStack Row="true" Spacing="1">
+									<MudText Typo="Typo.body2"><strong>Created:</strong></MudText>
+									<MudText Typo="Typo.body2">@_testCase.CreatedAt.ToLocalTime().ToString("g")</MudText>
+								</MudStack>
+								<MudStack Row="true" Spacing="1">
+									<MudText Typo="Typo.body2"><strong>Test Runs:</strong></MudText>
+									<MudChip T="string" Size="Size.Small" Color="Color.Info">@_testCase.RunCount</MudChip>
+								</MudStack>
+							</MudStack>
+						</div>
+
+						<MudDivider />
+
+						@* Conversation Context *@
+						<div style="flex: 1; min-height: 0;">
+							<MudText Typo="Typo.h6" Class="mb-2">Conversation Context</MudText>
+							<ReadOnlyConversation MessageId="@_testCase.MessageId" ContextCount="5" />
+						</div>
 					</MudStack>
 				</MudPaper>
 			</MudItem>
-
-			<MudItem xs="12" md="8">
-				<MudPaper Class="pa-3" Elevation="2">
-					<MudText Typo="Typo.h6" Class="mb-2">Conversation Context</MudText>
-					<ReadOnlyConversation MessageId="@_testCase.MessageId" ContextCount="5" />
-				</MudPaper>
-			</MudItem>
 		</MudGrid>
-
-		@* Model Version Comparison Grid - Full Width *@
-		@if (_runs is not null && _runs.Count > 0)
-		{
-			<MudPaper Class="pa-3" Elevation="2">
-				<MudText Typo="Typo.h6" Class="mb-3">Model Version Performance Comparison</MudText>
-				<MudTable Items="@_paginatedRuns" Dense="true" Hover="true" Striped="true" FixedHeader="true" Height="600px">
-					<HeaderContent>
-						<MudTh Style="min-width: 140px;">Version</MudTh>
-						<MudTh Style="min-width: 130px;">Executed</MudTh>
-						<MudTh Style="min-width: 90px;">Avg Score</MudTh>
-						@foreach (var metricName in _metricNames)
-						{
-							<MudTh Style="min-width: 80px;">
-								<MudTooltip Text="@metricName">
-									<span style="cursor: help;">@GetMetricShortName(metricName)</span>
-								</MudTooltip>
-							</MudTh>
-						}
-						<MudTh Style="min-width: 90px;">Duration</MudTh>
-					</HeaderContent>
-					<RowTemplate>
-						<MudTd>
-							<MudStack Spacing="0">
-								<MudText Typo="Typo.body2"><strong>@context.VersionNumber</strong></MudText>
-								<MudText Typo="Typo.caption" Class="text-muted">@context.AgentName</MudText>
-							</MudStack>
-						</MudTd>
-						<MudTd>
-							<MudText Typo="Typo.caption">@context.ExecutedAt.ToLocalTime().ToString("g")</MudText>
-						</MudTd>
-						<MudTd>
-							@if (context.Metrics?.Any() == true)
-							{
-								var avgScore = context.Metrics.Average(m => m.Score);
-								<MudChip T="string" Size="Size.Small" Color="@MetricColorHelper.GetScoreColor(avgScore)">
-									@avgScore.ToString("F2")
-								</MudChip>
-							}
-							else
-							{
-								<MudText Class="text-muted">-</MudText>
-							}
-						</MudTd>
-						@foreach (var metricName in _metricNames)
-						{
-							var metric = context.Metrics?.FirstOrDefault(m => m.MetricName == metricName);
-							<MudTd>
-								@if (metric != null)
-								{
-									<MudTooltip Text="@GetMetricTooltip(metricName, metric.Score, metric.Remarks)">
-										<MudChip T="string" Size="Size.Small" Color="@MetricColorHelper.GetScoreColor(metric.Score)">
-											@metric.Score.ToString("F1")
-										</MudChip>
-									</MudTooltip>
-								}
-								else
-								{
-									<span class="text-muted">-</span>
-								}
-							</MudTd>
-						}
-						<MudTd>
-							<MudText Typo="Typo.caption">@(context.DurationMs?.ToString("N0") ?? "-") ms</MudText>
-						</MudTd>
-					</RowTemplate>
-					<PagerContent>
-						<MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
-					</PagerContent>
-				</MudTable>
-			</MudPaper>
-		}
 	}
 </MudPaper>
