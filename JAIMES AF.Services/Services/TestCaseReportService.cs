@@ -73,6 +73,15 @@ public class TestCaseReportService(
     }
 
     /// <inheritdoc/>
+    public async Task<string?> GetReportContentByIdAsync(int id, CancellationToken ct = default)
+    {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(ct);
+
+        var file = await context.StoredFiles.FindAsync([id], ct);
+        return file?.Content;
+    }
+
+    /// <inheritdoc/>
     public async Task<string> GenerateCombinedReportAsync(List<string> executionNames, CancellationToken ct = default)
     {
         if (executionNames.Count == 0)
@@ -80,26 +89,43 @@ public class TestCaseReportService(
             throw new ArgumentException("At least one execution name is required", nameof(executionNames));
         }
 
-        // Collect all results from the evaluation store for the given execution names
         var allResults = new List<ScenarioRunResult>();
+        var errors = new List<string>();
 
         foreach (var execName in executionNames)
         {
             // The AgentTestRunner uses: $"TestRun_{executionName}" for the ReportingConfiguration executionName
             string storeExecutionName = $"TestRun_{execName}";
 
-            await foreach (var result in resultStore.ReadResultsAsync(
-                               executionName: storeExecutionName,
-                               cancellationToken: ct))
+            try
             {
-                allResults.Add(result);
+                int resultCount = 0;
+                await foreach (var result in resultStore.ReadResultsAsync(
+                                   executionName: storeExecutionName,
+                                   cancellationToken: ct))
+                {
+                    allResults.Add(result);
+                    resultCount++;
+                }
+
+                if (resultCount == 0)
+                {
+                    errors.Add(
+                        $"No evaluation results found for execution '{execName}' (looking for '{storeExecutionName}')");
+                }
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"Failed to read results for '{execName}': {ex.Message}");
             }
         }
 
         if (allResults.Count == 0)
         {
-            throw new ArgumentException("No evaluation results found for the provided execution names",
-                nameof(executionNames));
+            string errorDetails = string.Join("; ", errors);
+            throw new InvalidOperationException(
+                $"No evaluation results available to generate report. Errors: {errorDetails}. " +
+                "Ensure tests have been run with evaluation enabled.");
         }
 
         // Generate HTML report using HtmlReportWriter

@@ -47,4 +47,14 @@ public interface ITestCaseService
     /// Gets test case runs for a specific test case.
     /// </summary>
     Task<List<TestCaseRunResponse>> GetRunsByTestCaseAsync(int testCaseId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets all test case runs.
+    /// </summary>
+    Task<List<TestCaseRunResponse>> GetAllRunsAsync(int limit = 500, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets stored test reports.
+    /// </summary>
+    Task<List<StoredReportResponse>> GetStoredReportsAsync(int limit = 100, CancellationToken ct = default);
 }

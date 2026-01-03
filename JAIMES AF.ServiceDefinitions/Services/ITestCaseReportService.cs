@@ -28,4 +28,9 @@ public interface ITestCaseReportService
     /// <param name="ct">Cancellation token</param>
     /// <returns>The generated HTML report as a string</returns>
     Task<string> GenerateCombinedReportAsync(List<string> executionNames, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets a stored report's content by ID.
+    /// </summary>
+    Task<string?> GetReportContentByIdAsync(int id, CancellationToken ct = default);
 }

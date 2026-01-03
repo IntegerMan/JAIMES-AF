@@ -49,5 +49,11 @@ public class GetCombinedReportEndpoint : EndpointWithoutRequest
         {
             await Send.NotFoundAsync(ct);
         }
+        catch (InvalidOperationException ex)
+        {
+            // Return the error message so the client can display it
+            AddError(ex.Message);
+            await Send.ErrorsAsync(400, ct);
+        }
     }
 }

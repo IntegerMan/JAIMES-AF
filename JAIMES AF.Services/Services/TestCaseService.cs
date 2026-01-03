@@ -210,6 +210,67 @@ public class TestCaseService(IDbContextFactory<JaimesDbContext> contextFactory) 
         return runs.Select(MapRunToResponse).ToList();
     }
 
+    /// <inheritdoc/>
+    public async Task<List<TestCaseRunResponse>> GetAllRunsAsync(int limit = 500, CancellationToken ct = default)
+    {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(ct);
+
+        List<TestCaseRun> runs = await context.TestCaseRuns
+            .Include(tcr => tcr.TestCase)
+            .Include(tcr => tcr.Agent)
+            .Include(tcr => tcr.InstructionVersion)
+            .Include(tcr => tcr.Metrics)
+            .ThenInclude(m => m.Evaluator)
+            .AsNoTracking()
+            .OrderByDescending(tcr => tcr.ExecutedAt)
+            .Take(limit)
+            .ToListAsync(ct);
+
+        return runs.Select(MapRunToResponse).ToList();
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<StoredReportResponse>> GetStoredReportsAsync(int limit = 100, CancellationToken ct = default)
+    {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(ct);
+
+        // Query runs that have stored reports, grouped by execution name
+        var runsWithReports = await context.TestCaseRuns
+            .Include(tcr => tcr.ReportFile)
+            .Include(tcr => tcr.Agent)
+            .Include(tcr => tcr.InstructionVersion)
+            .AsNoTracking()
+            .Where(tcr => tcr.ReportFileId != null)
+            .OrderByDescending(tcr => tcr.ReportFile!.CreatedAt)
+            .ToListAsync(ct);
+
+        // Group by execution name and report file to get unique reports
+        var reports = runsWithReports
+            .Where(r => r.ReportFile != null && r.ExecutionName != null)
+            .GroupBy(r => r.ReportFileId)
+            .Select(g =>
+            {
+                var firstRun = g.First();
+                return new StoredReportResponse
+                {
+                    ReportId = firstRun.ReportFile!.Id,
+                    FileName = firstRun.ReportFile.FileName,
+                    CreatedAt = firstRun.ReportFile.CreatedAt,
+                    SizeBytes = firstRun.ReportFile.SizeBytes,
+                    ExecutionName = firstRun.ExecutionName!,
+                    AgentId = firstRun.AgentId,
+                    AgentName = firstRun.Agent?.Name ?? firstRun.AgentId,
+                    InstructionVersionId = firstRun.InstructionVersionId,
+                    VersionNumber = firstRun.InstructionVersion?.VersionNumber ?? "?",
+                    TestCaseCount = g.Count()
+                };
+            })
+            .Take(limit)
+            .ToList();
+
+        return reports;
+    }
+
     private static TestCaseResponse MapToResponse(TestCase testCase) => new()
     {
         Id = testCase.Id,

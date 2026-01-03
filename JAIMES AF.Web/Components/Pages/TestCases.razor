@@ -19,13 +19,20 @@
 
 	@if (_testCases is not null && _testCases.Count > 0)
 	{
-		<MudButton Variant="Variant.Filled" 
-		           Color="Color.Success" 
-		           StartIcon="@Icons.Material.Filled.PlayArrow"
-		           Href="/admin/run-tests"
-		           Class="mb-4">
-			Run Tests
-		</MudButton>
+		<MudStack Row="true" Spacing="2" Class="mb-4">
+			<MudButton Variant="Variant.Filled" 
+			           Color="Color.Success" 
+			           StartIcon="@Icons.Material.Filled.PlayArrow"
+			           Href="/admin/run-tests">
+				Run Tests
+			</MudButton>
+			<MudButton Variant="Variant.Outlined"
+			           Color="Color.Primary"
+			           StartIcon="@Icons.Material.Filled.Description"
+			           Href="/admin/test-reports">
+				View Reports
+			</MudButton>
+		</MudStack>
 	}
 
 	<div style="position: relative; min-height: 200px;">

@@ -1,0 +1,226 @@
+@page "/admin/test-reports"
+@rendermode InteractiveServer
+
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+
+<PageTitle>Test Reports</PageTitle>
+
+<MudPaper Class="pa-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+    </MudStack>
+
+    <MudText Typo="Typo.h4" GutterBottom="true">Test Reports</MudText>
+    <MudText Typo="Typo.body2" Class="text-muted mb-4">
+        Browse stored test execution reports.
+    </MudText>
+
+    @if (_isLoading)
+    {
+        <MudProgressCircular Indeterminate="true"/>
+    }
+    else if (_reports.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Class="mb-4">
+            No stored reports found. Run tests to generate reports.
+        </MudAlert>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Success"
+                   StartIcon="@Icons.Material.Filled.PlayArrow"
+                   Href="/admin/test-cases">
+            Go to Test Cases
+        </MudButton>
+    }
+    else
+    {
+        <MudTable Items="_pagedReports" Hover="true" Dense="true" Elevation="2">
+            <HeaderContent>
+                <MudTh>Report</MudTh>
+                <MudTh>Agent</MudTh>
+                <MudTh>Version</MudTh>
+                <MudTh>Tests</MudTh>
+                <MudTh>Created</MudTh>
+                <MudTh>Size</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Report">
+                    <MudLink Href="@($"/admin/test-runs/compare?executions={Uri.EscapeDataString(context.ExecutionName)}")">
+                        @context.FileName
+                    </MudLink>
+                </MudTd>
+                <MudTd DataLabel="Agent">
+                    <MudLink Href="@($"/admin/agents/{context.AgentId}")">
+                        @context.AgentName
+                    </MudLink>
+                </MudTd>
+                <MudTd DataLabel="Version">
+                    <MudLink Href="@($"/admin/agents/{context.AgentId}/versions/{context.InstructionVersionId}")">
+                        @context.VersionNumber
+                    </MudLink>
+                </MudTd>
+                <MudTd DataLabel="Tests">@context.TestCaseCount</MudTd>
+                <MudTd DataLabel="Created">@context.CreatedAt.ToString("yyyy-MM-dd HH:mm")</MudTd>
+                <MudTd DataLabel="Size">@FormatSize(context.SizeBytes)</MudTd>
+                <MudTd>
+                    <MudStack Row="true" Spacing="1">
+                        <MudTooltip Text="View Report">
+                            <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                           Size="Size.Small"
+                                           OnClick="@(() => ViewReport(context.ReportId))"/>
+                        </MudTooltip>
+                        <MudTooltip Text="Download Report">
+                            <MudIconButton Icon="@Icons.Material.Filled.Download"
+                                           Size="Size.Small"
+                                           OnClick="@(() => DownloadReport(context.ReportId, context.FileName))"/>
+                        </MudTooltip>
+                    </MudStack>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+
+        <MudStack Row="true" Justify="Justify.Center" Class="mt-4">
+            <MudPagination Count="_totalPages"
+                           Selected="_currentPage"
+                           SelectedChanged="OnPageChanged"
+                           Color="Color.Primary"/>
+        </MudStack>
+    }
+</MudPaper>
+
+@* Report Dialog *@
+<MudDialog @bind-Visible="_showReportDialog" Options="_reportDialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Test Report</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_loadingReport)
+        {
+            <MudProgressCircular Indeterminate="true"/>
+        }
+        else if (!string.IsNullOrEmpty(_reportError))
+        {
+            <MudAlert Severity="Severity.Error">@_reportError</MudAlert>
+        }
+        else if (!string.IsNullOrEmpty(_reportHtml))
+        {
+            <iframe srcdoc="@_reportHtml" style="width: 100%; height: 70vh; border: none;"></iframe>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Default" OnClick="@(() => _showReportDialog = false)">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool _isLoading = true;
+    private List<StoredReportResponse> _reports = [];
+    private List<StoredReportResponse> _pagedReports = [];
+    private int _currentPage = 1;
+    private int _pageSize = 20;
+    private int _totalPages = 1;
+
+    private bool _showReportDialog;
+    private bool _loadingReport;
+    private string? _reportHtml;
+    private string? _reportError;
+
+    private DialogOptions _reportDialogOptions = new()
+    {
+        MaxWidth = MaxWidth.ExtraExtraLarge,
+        FullWidth = true
+    };
+
+    private List<BreadcrumbItem> _breadcrumbs = new()
+    {
+        new BreadcrumbItem("Home", href: "/"),
+        new BreadcrumbItem("Admin", href: "/admin"),
+        new BreadcrumbItem("Test Reports", href: null, disabled: true)
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadReportsAsync();
+    }
+
+    private async Task LoadReportsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _reports = await Http.GetFromJsonAsync<List<StoredReportResponse>>("test-reports") ?? [];
+            _totalPages = Math.Max(1, (int)Math.Ceiling((double)_reports.Count / _pageSize));
+            UpdatePagedData();
+        }
+        catch (Exception)
+        {
+            // Silent fail - will show empty state
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnPageChanged(int page)
+    {
+        _currentPage = page;
+        UpdatePagedData();
+    }
+
+    private void UpdatePagedData()
+    {
+        _pagedReports = _reports
+            .Skip((_currentPage - 1) * _pageSize)
+            .Take(_pageSize)
+            .ToList();
+    }
+
+    private async Task ViewReport(int reportId)
+    {
+        _showReportDialog = true;
+        _loadingReport = true;
+        _reportHtml = null;
+        _reportError = null;
+        StateHasChanged();
+
+        try
+        {
+            var response = await Http.GetAsync($"test-reports/{reportId}/content");
+            if (response.IsSuccessStatusCode)
+            {
+                _reportHtml = await response.Content.ReadAsStringAsync();
+            }
+            else
+            {
+                _reportError = $"Failed to load report: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _reportError = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _loadingReport = false;
+            StateHasChanged();
+        }
+    }
+
+    private void DownloadReport(int reportId, string fileName)
+    {
+        var url = $"{Http.BaseAddress}test-reports/{reportId}/download";
+        NavigationManager.NavigateTo(url, forceLoad: true);
+    }
+
+    private static string FormatSize(long? bytes)
+    {
+        if (!bytes.HasValue) return "-";
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes / (1024.0 * 1024.0):F1} MB";
+    }
+}

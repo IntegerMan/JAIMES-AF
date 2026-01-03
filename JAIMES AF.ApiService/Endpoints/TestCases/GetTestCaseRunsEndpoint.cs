@@ -30,8 +30,8 @@ public class GetTestCaseRunsEndpoint : Ep.NoReq.Res<List<TestCaseRunResponse>>
         }
         else
         {
-            // Return empty if no filter provided
-            runs = [];
+            // Return all runs if no filter provided
+            runs = await TestCaseService.GetAllRunsAsync(ct: ct);
         }
 
         await Send.OkAsync(runs, ct);
