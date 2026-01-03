@@ -303,16 +303,19 @@ public class MessageEvaluationService(
                     currentCompleted = completedMetricCount;
                 }
 
-                // Send error notification for the first error metric (represents the failed evaluator)
-                await messageUpdateNotifier.NotifyMetricEvaluatedAsync(
-                    message.Id,
-                    message.GameId,
-                    errorMetrics[0],
-                    totalExpectedMetrics,
-                    currentCompleted,
-                    isError: true,
-                    errorMessage: ex.Message,
-                    cancellationToken);
+                // Send error notifications for all error metrics so they all get proper error styling
+                foreach (var errorMetric in errorMetrics)
+                {
+                    await messageUpdateNotifier.NotifyMetricEvaluatedAsync(
+                        message.Id,
+                        message.GameId,
+                        errorMetric,
+                        totalExpectedMetrics,
+                        currentCompleted,
+                        isError: true,
+                        errorMessage: ex.Message,
+                        cancellationToken);
+                }
             }
         });
 
