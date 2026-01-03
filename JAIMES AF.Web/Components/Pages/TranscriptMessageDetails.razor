@@ -83,24 +83,16 @@
 								<MudText Typo="Typo.caption" Color="Color.Secondary">Dimensions</MudText>
 								<MudText Typo="Typo.body2">@_response.EmbeddingDimensions</MudText>
 							</div>
-							@if (_response.EmbeddingPreview != null && _response.EmbeddingPreview.Length > 0)
+							@if (_response.FullEmbedding != null && _response.FullEmbedding.Length > 0)
 							{
 								<MudExpansionPanels Elevation="0">
-									<MudExpansionPanel Text="Vector Preview (first 10 dimensions)">
-										<MudText Typo="Typo.caption" Style="font-family: 'Roboto Mono', monospace;">
-											[@string.Join(", ", _response.EmbeddingPreview.Select(v => v.ToString("F4")))]
-										</MudText>
+									<MudExpansionPanel Text="@($"Vector ({_response.EmbeddingDimensions} dimensions)")">
+										<MudPaper Class="pa-2" Elevation="0" Style="background: var(--mud-palette-background-grey); max-height: 300px; overflow-y: auto;">
+											<MudText Typo="Typo.caption" Style="font-family: 'Roboto Mono', monospace; word-break: break-all;">
+												[@string.Join(", ", _response.FullEmbedding.Select(v => v.ToString("F6")))]
+											</MudText>
+										</MudPaper>
 									</MudExpansionPanel>
-									@if (_response.FullEmbedding != null && _response.FullEmbedding.Length > 10)
-									{
-										<MudExpansionPanel Text="@($"Full Vector ({_response.EmbeddingDimensions} dimensions)")">
-											<MudPaper Class="pa-2" Elevation="0" Style="background: var(--mud-palette-background-grey); max-height: 300px; overflow-y: auto;">
-												<MudText Typo="Typo.caption" Style="font-family: 'Roboto Mono', monospace; word-break: break-all;">
-													[@string.Join(", ", _response.FullEmbedding.Select(v => v.ToString("F6")))]
-												</MudText>
-											</MudPaper>
-										</MudExpansionPanel>
-									}
 								</MudExpansionPanels>
 							}
 						</MudStack>
