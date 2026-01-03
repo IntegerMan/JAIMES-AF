@@ -372,6 +372,16 @@ public partial class GameDetails : IAsyncDisposable
                             _errorMessage = "Content moderation error";
                             _failedMessageIndex = currentMessageIndex;
                             _contentModerationMessageIndexes.Add(currentMessageIndex);
+
+                            // CRITICAL FIX: Remove the partial assistant message from UI to prevent duplicate error display
+                            if (messageIndexes.TryGetValue(delta.MessageId, out int msgIndex))
+                            {
+                                _messages.RemoveAt(msgIndex);
+                                _messageIds.RemoveAt(msgIndex);
+                                _streamingMessageIndexes.Remove(msgIndex);
+                                messageIndexes.Remove(delta.MessageId);
+                            }
+
                             // Don't add this as a regular assistant message - it will be shown as an error
                             break;
                         }
