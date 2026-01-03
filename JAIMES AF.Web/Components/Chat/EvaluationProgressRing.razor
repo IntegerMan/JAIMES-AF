@@ -2,71 +2,42 @@
 @using MattEland.Jaimes.Web.Components.Helpers
 @using MudBlazor
 
-@* Radial progress ring that shows evaluation metric progress with color-coded segments *@
+@* Pie chart that shows evaluation metric progress with color-coded wedges *@
 
-<div class="evaluation-progress-ring" style="width: @(Size)px; height: @(Size)px; position: relative;">
-    <svg viewBox="0 0 100 100" style="transform: rotate(-90deg);">
-        @* Background circle (gray track) *@
-        <circle
-            cx="50"
-            cy="50"
-            r="@Radius"
-            fill="none"
-            stroke="var(--mud-palette-grey-lighter)"
-            stroke-width="@StrokeWidth"/>
+<svg class="evaluation-pie" width="@Size" height="@Size" viewBox="0 0 100 100" style="display: inline-block; vertical-align: middle; margin-top: 4px;">
+    @if (TotalSegments > 0)
+    {
+        @* Render pie wedges *@
+        double startAngle = 0;
+        double anglePerSegment = 360.0 / TotalSegments;
         
-        @* Render each segment *@
-        @if (TotalSegments > 0)
+        @for (int i = 0; i < TotalSegments; i++)
         {
-            @for (int i = 0; i < TotalSegments; i++)
-            {
-                var segment = GetSegment(i);
-                <circle
-                    cx="50"
-                    cy="50"
-                    r="@Radius"
-                    fill="none"
-                    stroke="@segment.Color"
-                    stroke-width="@StrokeWidth"
-                    stroke-dasharray="@segment.DashArray"
-                    stroke-dashoffset="@segment.DashOffset"
-                    class="@(segment.IsAnimating ? "segment-animating" : "")"/>
-            }
+            var wedge = GetWedge(i, startAngle, anglePerSegment);
+            <path d="@wedge.Path" fill="@wedge.Color" class="@(wedge.IsCompleted ? "wedge-completed" : "")"/>
+            startAngle += anglePerSegment;
         }
-    </svg>
-    
-    @* Center content - show completed/total count *@
-    <div class="progress-center" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
-        @if (IsProcessing)
+        
+        @* Optional center dot for visual balance *@
+        @if (TotalSegments > 1)
         {
-            <span style="font-size: @(Size * 0.2)px; font-weight: bold; color: var(--mud-palette-text-primary);">
-                @CompletedCount/@TotalSegments
-            </span>
+            <circle cx="50" cy="50" r="8" fill="var(--mud-palette-background)"/>
         }
-        else if (HasError)
-        {
-            <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="MudBlazor.Size.Small"/>
-        }
-        else if (CompletedCount == TotalSegments && TotalSegments > 0)
-        {
-            <MudIcon Icon="@Icons.Material.Filled.Check" Color="Color.Success" Size="MudBlazor.Size.Small"/>
-        }
-    </div>
-</div>
+    }
+    else
+    {
+        @* Empty state - gray circle *@
+        <circle cx="50" cy="50" r="48" fill="var(--mud-palette-grey-lighter)"/>
+    }
+</svg>
 
 <style>
-    .evaluation-progress-ring {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
+    .evaluation-pie {
+        display: inline-block;
     }
     
-    .segment-animating {
-        transition: stroke-dashoffset 0.3s ease-in-out, stroke 0.3s ease-in-out;
-    }
-    
-    .progress-center {
-        font-family: var(--mud-typography-default-family);
+    .wedge-completed {
+        transition: fill 0.3s ease-in-out;
     }
 </style>
 
@@ -90,10 +61,10 @@
     public Dictionary<string, string>? ErrorsByMetric { get; set; }
 
     /// <summary>
-    /// Size of the ring in pixels.
+    /// Size of the pie chart in pixels.
     /// </summary>
     [Parameter]
-    public int Size { get; set; } = 32;
+    public int Size { get; set; } = 20;
 
     /// <summary>
     /// Whether evaluation is currently in progress.
@@ -101,26 +72,14 @@
     [Parameter]
     public bool IsProcessing { get; set; }
 
-    private const double StrokeWidth = 10;
-    private const double Radius = 40;
-    private double Circumference => 2 * Math.PI * Radius;
-    
     private int CompletedCount => Metrics?.Count ?? 0;
     private bool HasError => ErrorsByMetric?.Any() ?? false;
 
-    private record SegmentInfo(string Color, string DashArray, string DashOffset, bool IsAnimating);
+    private record WedgeInfo(string Path, string Color, bool IsCompleted);
 
-    private SegmentInfo GetSegment(int index)
+    private WedgeInfo GetWedge(int index, double startAngle, double angleSize)
     {
-        // Calculate segment size
-        double segmentSize = Circumference / TotalSegments;
-        double gapSize = TotalSegments > 1 ? 2 : 0; // Small gap between segments
-        double actualSegmentSize = segmentSize - gapSize;
-        
-        // Calculate offset for this segment
-        double offset = index * segmentSize;
-        
-        // Determine segment state and color
+        // Determine color based on metric state
         string color;
         bool isCompleted = false;
         
@@ -128,14 +87,12 @@
         {
             var metric = Metrics[index];
             
-            // Check if this metric has an error
             if (ErrorsByMetric != null && ErrorsByMetric.ContainsKey(metric.MetricName))
             {
                 color = GetMudColor(Color.Error);
             }
             else
             {
-                // Use MetricColorHelper to get appropriate color based on score
                 var scoreColor = MetricColorHelper.GetScoreColor(metric.Score);
                 color = GetMudColor(scoreColor);
             }
@@ -143,17 +100,35 @@
         }
         else
         {
-            // Pending segment - gray
-            color = "var(--mud-palette-grey-default)";
+            // Pending - light gray
+            color = "var(--mud-palette-grey-lighter)";
         }
         
-        // Create dash array: segment length, then rest of circumference
-        string dashArray = $"{actualSegmentSize.ToString(System.Globalization.CultureInfo.InvariantCulture)} {(Circumference - actualSegmentSize).ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+        // Generate SVG arc path
+        string path = CreatePieSlicePath(50, 50, 48, startAngle, angleSize);
         
-        // Offset to position this segment correctly
-        string dashOffset = $"{(-offset).ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+        return new WedgeInfo(path, color, isCompleted);
+    }
+
+    private static string CreatePieSlicePath(double cx, double cy, double r, double startAngle, double angleSize)
+    {
+        // Convert angles to radians
+        double startRad = (startAngle - 90) * Math.PI / 180; // -90 to start at top
+        double endRad = (startAngle + angleSize - 90) * Math.PI / 180;
         
-        return new SegmentInfo(color, dashArray, dashOffset, isCompleted);
+        // Calculate start and end points
+        double x1 = cx + r * Math.Cos(startRad);
+        double y1 = cy + r * Math.Sin(startRad);
+        double x2 = cx + r * Math.Cos(endRad);
+        double y2 = cy + r * Math.Sin(endRad);
+        
+        // Large arc flag
+        int largeArc = angleSize > 180 ? 1 : 0;
+        
+        // Format with invariant culture for SVG
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        
+        return $"M {cx.ToString(inv)} {cy.ToString(inv)} L {x1.ToString(inv)} {y1.ToString(inv)} A {r.ToString(inv)} {r.ToString(inv)} 0 {largeArc} 1 {x2.ToString(inv)} {y2.ToString(inv)} Z";
     }
 
     private static string GetMudColor(Color color) => color switch

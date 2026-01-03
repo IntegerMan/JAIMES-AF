@@ -13,6 +13,15 @@
         <MudTooltip Placement="Placement.Top">
             <TooltipContent>
                 <div class="d-flex flex-column gap-2 pa-1">
+                    <MudText Typo="Typo.subtitle2" Class="mb-1">Evaluation Results</MudText>
+                    @if (IsProcessing && ExpectedMetricCount.GetValueOrDefault() > 0)
+                    {
+                        var pending = ExpectedMetricCount.GetValueOrDefault() - (Metrics?.Count ?? 0);
+                        <div class="d-flex align-items-center gap-2">
+                            <MudProgressCircular Size="MudBlazor.Size.Small" Indeterminate="true" Color="Color.Info" Style="width: 16px; height: 16px;"/>
+                            <MudText Typo="Typo.caption" Color="Color.Info">@pending metric@(pending != 1 ? "s" : "") pending...</MudText>
+                        </div>
+                    }
                     @if (HasMissingEvaluators)
                     {
                         <div class="d-flex align-items-center gap-2">
@@ -28,7 +37,7 @@
                         </div>
                     }
                     <div class="d-flex flex-wrap gap-1" style="max-width: 300px;">
-                        @foreach (var metric in Metrics)
+                        @foreach (var metric in Metrics ?? [])
                         {
                             var isError = ErrorsByMetric?.ContainsKey(metric.MetricName) ?? false;
                             var errorMessage = isError && ErrorsByMetric != null ? ErrorsByMetric[metric.MetricName] : null;
@@ -66,7 +75,7 @@
                             Metrics="Metrics"
                             ErrorsByMetric="ErrorsByMetric"
                             IsProcessing="true"
-                            Size="32"/>
+                            Size="20"/>
                     </div>
                 }
                 else
@@ -78,7 +87,7 @@
                             Metrics="Metrics"
                             ErrorsByMetric="ErrorsByMetric"
                             IsProcessing="false"
-                            Size="32"/>
+                            Size="20"/>
                     </div>
                 }
             </ChildContent>
@@ -87,14 +96,25 @@
     else if (IsProcessing && ExpectedMetricCount.GetValueOrDefault() > 0)
     {
         @* Show empty progress ring while waiting for first metric *@
-        <MudTooltip Text="Evaluating metrics..." Placement="Placement.Top">
-            <div style="cursor: default;">
-                <EvaluationProgressRing 
-                    TotalSegments="@ExpectedMetricCount.GetValueOrDefault()"
-                    Metrics="@(new List<MessageEvaluationMetricResponse>())"
-                    IsProcessing="true"
-                    Size="32"/>
-            </div>
+        <MudTooltip Placement="Placement.Top">
+            <TooltipContent>
+                <div class="d-flex flex-column gap-1 pa-1">
+                    <MudText Typo="Typo.subtitle2">Evaluation Results</MudText>
+                    <div class="d-flex align-items-center gap-2">
+                        <MudProgressCircular Size="MudBlazor.Size.Small" Indeterminate="true" Color="Color.Info" Style="width: 16px; height: 16px;"/>
+                        <MudText Typo="Typo.caption" Color="Color.Info">@ExpectedMetricCount.GetValueOrDefault() metrics pending...</MudText>
+                    </div>
+                </div>
+            </TooltipContent>
+            <ChildContent>
+                <div style="cursor: default;">
+                    <EvaluationProgressRing 
+                        TotalSegments="@ExpectedMetricCount.GetValueOrDefault()"
+                        Metrics="@(new List<MessageEvaluationMetricResponse>())"
+                        IsProcessing="true"
+                        Size="20"/>
+                </div>
+            </ChildContent>
         </MudTooltip>
     }
     else if (IsProcessing)
