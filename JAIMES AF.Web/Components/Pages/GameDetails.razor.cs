@@ -246,6 +246,8 @@ public partial class GameDetails : IAsyncDisposable
     {
         if (string.IsNullOrWhiteSpace(messageText) || _isSending) return;
 
+        _isSending = true;
+
         // Clear any previous errors immediately
         _errorMessage = null;
         _failedMessageIndex = null;
@@ -253,8 +255,6 @@ public partial class GameDetails : IAsyncDisposable
 
         // Update UI to clear error messages before starting new request
         await InvokeAsync(StateHasChanged);
-
-        _isSending = true;
         int currentMessageIndex = -1;
 
         try
