@@ -1,0 +1,160 @@
+@page "/admin/rag-collections/{IndexName}/queries"
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@rendermode InteractiveServer
+
+<PageTitle>@(_statistics?.CollectionDisplayName ?? "RAG Search Queries")</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+	</MudStack>
+	<MudPaper Class="pa-8" Elevation="2">
+		<MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">
+			@(_statistics?.CollectionDisplayName ?? "RAG Search Queries")
+		</MudText>
+		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">
+			View search queries that returned results from this collection
+		</MudText>
+
+		@if (!string.IsNullOrEmpty(_errorMessage))
+		{
+			<MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+		}
+
+		@if (_isLoading)
+		{
+			<MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4"/>
+		}
+
+		@if (_statistics != null)
+		{
+			<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Spacing="4">
+				<MudText Typo="Typo.body1">
+					<MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" Class="me-1"/>
+					<strong>@_statistics.TotalCount</strong> total queries
+				</MudText>
+
+				@if (!string.IsNullOrWhiteSpace(DocumentName))
+				{
+					<MudChip T="string" Color="Color.Primary" OnClose="ClearDocumentFilter" Icon="@Icons.Material.Filled.FilterAlt">
+						Filtering by: @DocumentName
+					</MudChip>
+				}
+			</MudStack>
+
+			@if (_statistics.Queries.Length == 0)
+			{
+				<MudAlert Severity="Severity.Info" Class="mb-4">
+					No search queries found for this collection. Queries will appear here after users search against these documents.
+				</MudAlert>
+			}
+			else
+			{
+				<MudDataGrid T="RagSearchQueryInfo" Items="@_statistics.Queries" Dense="true" Striped="true" Hover="true"
+				             RowsPerPage="@_statistics.PageSize">
+					<Columns>
+						<TemplateColumn Title="Query">
+							<CellTemplate>
+								<MudText Typo="Typo.body2" Style="max-width: 400px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+									@context.Item.Query
+								</MudText>
+							</CellTemplate>
+						</TemplateColumn>
+						<PropertyColumn Property="x => x.CreatedAt" Title="Date" Format="g"/>
+						<TemplateColumn Title="Results">
+							<CellTemplate>
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+									<MudText Typo="Typo.body2">@context.Item.ResultCount</MudText>
+									@if (!string.IsNullOrWhiteSpace(DocumentName) && context.Item.Results.Any(r => string.Equals(r.DocumentName, DocumentName, StringComparison.OrdinalIgnoreCase)))
+									{
+										<MudTooltip Text="@($"Contains results from {DocumentName}")">
+											<MudIcon Icon="@Icons.Material.Filled.Bookmark" Size="Size.Small" Color="Color.Primary"/>
+										</MudTooltip>
+									}
+								</MudStack>
+							</CellTemplate>
+						</TemplateColumn>
+						<TemplateColumn Title="Ruleset">
+							<CellTemplate>
+								@if (!string.IsNullOrEmpty(context.Item.RulesetId))
+								{
+									<MudChip T="string" Color="Color.Info" Size="Size.Small">@context.Item.RulesetId</MudChip>
+								}
+								else
+								{
+									<MudText Typo="Typo.caption" Color="Color.Secondary">All</MudText>
+								}
+							</CellTemplate>
+						</TemplateColumn>
+						<TemplateColumn Title="">
+							<CellTemplate>
+								<MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+								           OnClick="@(() => ToggleExpanded(context.Item.Id))"
+								           StartIcon="@(IsExpanded(context.Item.Id) ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)">
+									@(IsExpanded(context.Item.Id) ? "Hide Results" : "Show Results")
+								</MudButton>
+							</CellTemplate>
+						</TemplateColumn>
+					</Columns>
+					<ChildRowContent>
+						@if (IsExpanded(context.Item.Id))
+						{
+							<MudTr>
+								<td colspan="5">
+									<MudPaper Class="pa-4 ma-2" Elevation="0" Style="background: var(--mud-palette-background-grey);">
+										<MudText Typo="Typo.subtitle2" Class="mb-2">Query Details</MudText>
+										<MudText Typo="Typo.body2" Class="mb-3" Style="font-style: italic;">
+											"@context.Item.Query"
+										</MudText>
+										@if (context.Item.Results.Length > 0)
+										{
+											<MudText Typo="Typo.subtitle2" Class="mb-2">Results (@context.Item.Results.Length)</MudText>
+											<MudSimpleTable Dense="true" Striped="true" Bordered="true">
+												<thead>
+													<tr>
+														<th>Document</th>
+														<th>Chunk ID</th>
+														<th>Relevancy</th>
+													</tr>
+												</thead>
+												<tbody>
+													@foreach (var result in context.Item.Results)
+													{
+														<tr style="@(string.Equals(result.DocumentName, DocumentName, StringComparison.OrdinalIgnoreCase) ? "background-color: var(--mud-palette-primary-hover); font-weight: bold;" : "")">
+															<td>
+																@result.DocumentName
+															</td>
+															<td><code>@result.ChunkId</code></td>
+															<td>
+																<MudChip T="string" 
+																         Color="@(result.Relevancy >= 0.8 ? Color.Success : result.Relevancy >= 0.5 ? Color.Warning : Color.Error)" 
+																         Size="Size.Small">
+																	@result.Relevancy.ToString("P1")
+																</MudChip>
+															</td>
+														</tr>
+													}
+												</tbody>
+											</MudSimpleTable>
+										}
+										else
+										{
+											<MudText Typo="Typo.body2" Color="Color.Secondary">No results stored for this query.</MudText>
+										}
+									</MudPaper>
+								</td>
+							</MudTr>
+						}
+					</ChildRowContent>
+				</MudDataGrid>
+
+				@if (_statistics.TotalCount > _statistics.PageSize)
+				{
+					<MudStack Row="true" Justify="Justify.Center" Class="mt-4">
+						<MudPagination Count="@TotalPages" Selected="@_currentPage" SelectedChanged="OnPageChanged" Color="Color.Primary"/>
+					</MudStack>
+				}
+			}
+		}
+	</MudPaper>
+</MudContainer>

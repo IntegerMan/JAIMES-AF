@@ -42,21 +42,48 @@ public class ListRagCollectionsEndpoint(IDbContextFactory<JaimesDbContext> dbCon
         Dictionary<int, (int Total, int Embedded)> chunksByDocument = chunkStats
             .ToDictionary(x => x.DocumentId, x => (x.TotalChunks, x.EmbeddedChunks));
 
-        // Get query counts by index name (which corresponds to collection type)
+        // Get query counts by index name (which corresponds to collection type/storage name)
         var queryCounts = await dbContext.RagSearchQueries
             .AsNoTracking()
             .GroupBy(q => q.IndexName)
-            .Select(g => new {IndexName = g.Key, Count = g.Count()})
+            .Select(g => new { IndexName = g.Key, Count = g.Count() })
             .ToListAsync(ct);
 
-        Dictionary<string, int> queryCountByIndex = queryCounts
-            .ToDictionary(x => x.IndexName, x => x.Count, StringComparer.OrdinalIgnoreCase);
+        // Map storage names back to our categorized index names for the summary
+        Dictionary<string, int> queryCountByCategory = new(StringComparer.OrdinalIgnoreCase);
+        foreach (var qc in queryCounts)
+        {
+            string category = qc.IndexName.ToLower() switch
+            {
+                "document-embeddings" => "rules",
+                "rulesets" => "rules",
+                "conversations" => "conversations",
+                _ => qc.IndexName.ToLower()
+            };
+            if (!queryCountByCategory.TryAdd(category, qc.Count))
+                queryCountByCategory[category] += qc.Count;
+        }
+
+        // Get search result counts grouped by document name (for sourcebooks)
+        var searchResultCounts = await dbContext.RagSearchResultChunks
+            .AsNoTracking()
+            .GroupBy(r => r.DocumentName)
+            .Select(g => new { DocumentName = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+
+        Dictionary<string, int> searchResultsByDocName = new(StringComparer.OrdinalIgnoreCase);
+        foreach (var src in searchResultCounts)
+        {
+            if (!searchResultsByDocName.TryAdd(src.DocumentName, src.Count))
+                searchResultsByDocName[src.DocumentName] += src.Count;
+        }
 
         // Build document info list for sourcebooks
         List<RagCollectionDocumentInfo> documentInfos = documents
             .Select(doc =>
             {
                 chunksByDocument.TryGetValue(doc.Id, out (int Total, int Embedded) chunks);
+                searchResultsByDocName.TryGetValue(doc.FileName, out int searchResultCount);
                 return new RagCollectionDocumentInfo
                 {
                     DocumentId = doc.Id,
@@ -67,7 +94,8 @@ public class ListRagCollectionsEndpoint(IDbContextFactory<JaimesDbContext> dbCon
                     TotalChunks = chunks.Total,
                     EmbeddedChunks = chunks.Embedded,
                     IsFullyProcessed = doc.IsProcessed,
-                    CrackedAt = doc.CrackedAt
+                    CrackedAt = doc.CrackedAt,
+                    SearchResultCount = searchResultCount
                 };
             })
             .OrderBy(d => d.DocumentKind)
@@ -80,7 +108,7 @@ public class ListRagCollectionsEndpoint(IDbContextFactory<JaimesDbContext> dbCon
         var gameMessageStats = await dbContext.Messages
             .AsNoTracking()
             .Include(m => m.Game)
-            .GroupBy(m => new {m.GameId, GameTitle = m.Game!.Title})
+            .GroupBy(m => new { m.GameId, GameTitle = m.Game!.Title })
             .Select(g => new
             {
                 g.Key.GameId,
@@ -94,7 +122,7 @@ public class ListRagCollectionsEndpoint(IDbContextFactory<JaimesDbContext> dbCon
             .AsNoTracking()
             .Include(e => e.Message)
             .GroupBy(e => e.Message!.GameId)
-            .Select(g => new {GameId = g.Key, EmbeddedCount = g.Count()})
+            .Select(g => new { GameId = g.Key, EmbeddedCount = g.Count() })
             .ToListAsync(ct);
 
         Dictionary<Guid, int> embeddingsByGame = embeddingCounts
@@ -104,10 +132,12 @@ public class ListRagCollectionsEndpoint(IDbContextFactory<JaimesDbContext> dbCon
         foreach (var game in gameMessageStats)
         {
             embeddingsByGame.TryGetValue(game.GameId, out int embeddedCount);
+            string fileName = game.GameTitle ?? $"Game {game.GameId}";
+            searchResultsByDocName.TryGetValue(fileName, out int transcriptSearchResultCount);
             documentInfos.Add(new RagCollectionDocumentInfo
             {
                 DocumentId = 0, // Games use GUID, not int ID
-                FileName = game.GameTitle ?? $"Game {game.GameId}",
+                FileName = fileName,
                 RelativeDirectory = game.GameId.ToString(),
                 DocumentKind = DocumentKinds.Transcript,
                 RulesetId = "conversations",
@@ -115,7 +145,8 @@ public class ListRagCollectionsEndpoint(IDbContextFactory<JaimesDbContext> dbCon
                 EmbeddedChunks = embeddedCount,
                 IsFullyProcessed = embeddedCount >= game.TotalMessages,
                 CrackedAt = DateTime.UtcNow, // Transcripts don't have a crack date
-                GameId = game.GameId
+                GameId = game.GameId,
+                SearchResultCount = transcriptSearchResultCount
             });
         }
 
@@ -139,7 +170,7 @@ public class ListRagCollectionsEndpoint(IDbContextFactory<JaimesDbContext> dbCon
                     _ => g.Key.ToLowerInvariant()
                 };
 
-                queryCountByIndex.TryGetValue(indexName, out int queryCount);
+                queryCountByCategory.TryGetValue(indexName, out int queryCount);
 
                 return new RagCollectionSummary
                 {

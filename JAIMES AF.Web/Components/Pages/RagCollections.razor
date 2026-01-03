@@ -69,7 +69,7 @@
 								</MudText>
 								<MudText Typo="Typo.body2">
 									<MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" Class="me-1"/>
-									@summary.QueryCount queries
+									<MudLink Href="@GetQueryLink(summary.CollectionType)">@summary.QueryCount queries</MudLink>
 								</MudText>
 							</MudStack>
 						</MudPaper>
@@ -131,6 +131,13 @@
 							{
 								<MudIcon Icon="@Icons.Material.Filled.HourglassEmpty" Color="Color.Warning" Size="Size.Small"/>
 							}
+						</CellTemplate>
+					</TemplateColumn>
+					<TemplateColumn Title="Search Results">
+						<CellTemplate>
+							<MudLink Href="@GetDocumentQueryLink(context.Item.DocumentKind, context.Item.FileName)">
+								@context.Item.SearchResultCount
+							</MudLink>
 						</CellTemplate>
 					</TemplateColumn>
 					<PropertyColumn Property="x => x.CrackedAt" Title="Processed" Format="g"/>

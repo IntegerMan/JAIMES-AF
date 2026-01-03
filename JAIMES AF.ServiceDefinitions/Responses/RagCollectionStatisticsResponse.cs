@@ -54,6 +54,11 @@ public class RagCollectionDocumentInfo
     /// Gets or sets the game ID for transcript documents (null for sourcebooks).
     /// </summary>
     public Guid? GameId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the number of times this document appeared in search results.
+    /// </summary>
+    public int SearchResultCount { get; set; }
 }
 
 /// <summary>

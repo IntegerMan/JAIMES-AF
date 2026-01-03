@@ -55,4 +55,27 @@ public partial class RagCollections
     {
         _filterType = filterType;
     }
+
+    private static string GetQueryLink(string collectionType)
+    {
+        string indexName = collectionType.ToLowerInvariant() switch
+        {
+            "sourcebook" => "rules",
+            "transcript" => "conversations",
+            _ => collectionType.ToLowerInvariant()
+        };
+        return $"/admin/rag-collections/{Uri.EscapeDataString(indexName)}/queries";
+    }
+
+    private static string GetDocumentQueryLink(string collectionType, string documentName)
+    {
+        string indexName = collectionType.ToLowerInvariant() switch
+        {
+            "sourcebook" => "rules",
+            "transcript" => "conversations",
+            _ => collectionType.ToLowerInvariant()
+        };
+        return
+            $"/admin/rag-collections/{Uri.EscapeDataString(indexName)}/queries?documentName={Uri.EscapeDataString(documentName)}";
+    }
 }

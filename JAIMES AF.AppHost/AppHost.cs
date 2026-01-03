@@ -76,26 +76,14 @@ IResourceBuilder<ProjectResource> webApp = builder.AddProject<Projects.JAIMES_AF
     .WithUrlForEndpoint("http",
         static _ => new ResourceUrlAnnotation
         {
-            Url = "/games",
-            DisplayText = "🎮 Games"
-        })
-    .WithUrlForEndpoint("http",
-        static _ => new ResourceUrlAnnotation
-        {
             Url = "/admin",
             DisplayText = "⚙️ Admin"
         })
     .WithUrlForEndpoint("http",
         static _ => new ResourceUrlAnnotation
         {
-            Url = "/scenarios",
-            DisplayText = "📖 Scenarios"
-        })
-    .WithUrlForEndpoint("http",
-        static _ => new ResourceUrlAnnotation
-        {
-            Url = "/players",
-            DisplayText = "👤 Players"
+            Url = "/games",
+            DisplayText = "🎮 Games"
         });
 
 // ========================================
@@ -176,7 +164,7 @@ IResourceBuilder<PostgresServerResource> pgAdmin = postgres.WithPgAdmin(admin =>
     admin.WithUrls(u =>
     {
         u.Urls.Clear();
-        u.Urls.Add(new ResourceUrlAnnotation {Url = "http://localhost:5858", DisplayText = "📋 pgAdmin"});
+        u.Urls.Add(new ResourceUrlAnnotation { Url = "http://localhost:5858", DisplayText = "📋 pgAdmin" });
     });
 });
 
@@ -202,10 +190,10 @@ IResourceBuilder<LavinMQContainerResource> lavinmq = builder.AddLavinMQ("LavinMQ
     .WithUrls(u =>
     {
         u.Urls.Clear();
-        u.Urls.Add(new ResourceUrlAnnotation {Url = "http://localhost:15672", DisplayText = "📋 Management"});
-        u.Urls.Add(new ResourceUrlAnnotation {Url = "http://localhost:15672/queues", DisplayText = "📬 Queues"});
+        u.Urls.Add(new ResourceUrlAnnotation { Url = "http://localhost:15672", DisplayText = "📋 Management" });
+        u.Urls.Add(new ResourceUrlAnnotation { Url = "http://localhost:15672/queues", DisplayText = "📬 Queues" });
         u.Urls.Add(new ResourceUrlAnnotation
-            {Url = "http://localhost:15672/consumers", DisplayText = "👥 Consumers"});
+            { Url = "http://localhost:15672/consumers", DisplayText = "👥 Consumers" });
     })
     .WithParentRelationship(dataGroup);
 
