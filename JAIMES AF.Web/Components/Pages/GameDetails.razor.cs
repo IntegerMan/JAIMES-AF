@@ -435,9 +435,6 @@ public partial class GameDetails : IAsyncDisposable
                     }
                     else if (eventType == "done")
                     {
-                        // Clear streaming status
-                        _streamingMessageIndexes.Clear();
-                        await InvokeAsync(StateHasChanged);
                         break;
                     }
                     else if (eventType == "error")
@@ -463,7 +460,13 @@ public partial class GameDetails : IAsyncDisposable
         finally
         {
             _isSending = false;
-            await InvokeAsync(StateHasChanged);
+            _streamingMessageIndexes.Clear();
+            await InvokeAsync(async () =>
+            {
+                StateHasChanged();
+                await Task.Delay(50); // Small delay to allow footer to render and expand scroll height
+                await ScrollToBottomAsync();
+            });
         }
     }
 
