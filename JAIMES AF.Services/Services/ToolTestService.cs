@@ -201,7 +201,7 @@ public class ToolTestService(
                 // Get value from request
                 if (request.Parameters.TryGetValue(param.Name ?? "", out string? stringValue) && stringValue != null)
                 {
-                    parameterValues[i] = ConvertParameter(stringValue, param.ParameterType);
+                    parameterValues[i] = ConvertParameter(stringValue, param);
                 }
                 else if (param.HasDefaultValue)
                 {
@@ -327,12 +327,13 @@ public class ToolTestService(
         return constructor.Invoke(ctorArgs);
     }
 
-    private static object? ConvertParameter(string value, Type targetType)
+    private static object? ConvertParameter(string value, ParameterInfo param)
     {
+        Type targetType = param.ParameterType;
         // Handle nullable types
         Type underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
 
-        if (string.IsNullOrEmpty(value) && IsNullable(targetType))
+        if (string.IsNullOrEmpty(value) && IsNullable(param))
         {
             return null;
         }
