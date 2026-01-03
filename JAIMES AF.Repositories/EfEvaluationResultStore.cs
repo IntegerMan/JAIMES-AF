@@ -10,7 +10,12 @@ namespace MattEland.Jaimes.Repositories;
 /// </summary>
 public class EfEvaluationResultStore(IDbContextFactory<JaimesDbContext> dbContextFactory) : IEvaluationResultStore
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        // Allow $type metadata to appear anywhere in the JSON, not just first
+        AllowOutOfOrderMetadataProperties = true
+    };
+
     private readonly SemaphoreSlim _lock = new(1, 1);
 
     /// <inheritdoc/>
