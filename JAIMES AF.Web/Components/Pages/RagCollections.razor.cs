@@ -10,6 +10,14 @@ public partial class RagCollections
     private string? _errorMessage;
     private RagCollectionStatisticsResponse? _statistics;
     private List<BreadcrumbItem> _breadcrumbs = new();
+    private string _filterType = "All";
+
+    private RagCollectionDocumentInfo[] FilteredDocuments =>
+        _statistics?.Documents
+            .Where(d => _filterType == "All" ||
+                        (_filterType == "Sourcebook" && d.DocumentKind == "Sourcebook") ||
+                        (_filterType == "Transcript" && d.DocumentKind == "Transcript"))
+            .ToArray() ?? [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -41,5 +49,10 @@ public partial class RagCollections
         {
             _isLoading = false;
         }
+    }
+
+    private void SetFilter(string filterType)
+    {
+        _filterType = filterType;
     }
 }

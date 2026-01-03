@@ -49,6 +49,11 @@ public class RagCollectionDocumentInfo
     /// Gets or sets when the document was cracked.
     /// </summary>
     public DateTime CrackedAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the game ID for transcript documents (null for sourcebooks).
+    /// </summary>
+    public Guid? GameId { get; set; }
 }
 
 /// <summary>

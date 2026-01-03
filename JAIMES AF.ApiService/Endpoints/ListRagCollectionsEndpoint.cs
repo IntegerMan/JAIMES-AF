@@ -114,7 +114,8 @@ public class ListRagCollectionsEndpoint(IDbContextFactory<JaimesDbContext> dbCon
                 TotalChunks = game.TotalMessages,
                 EmbeddedChunks = embeddedCount,
                 IsFullyProcessed = embeddedCount >= game.TotalMessages,
-                CrackedAt = DateTime.UtcNow // Transcripts don't have a crack date
+                CrackedAt = DateTime.UtcNow, // Transcripts don't have a crack date
+                GameId = game.GameId
             });
         }
 

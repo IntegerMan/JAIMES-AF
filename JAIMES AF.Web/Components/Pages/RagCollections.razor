@@ -76,13 +76,31 @@
 
 			<MudDivider Class="my-6"/>
 
-			<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Document Details</MudText>
-			<MudDataGrid T="RagCollectionDocumentInfo" Items="@_statistics.Documents" Dense="true" Striped="true" Hover="true"
+			<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+				<MudText Typo="Typo.h5" GutterBottom="false">Document Details</MudText>
+				<MudToggleGroup T="string" Value="_filterType" ValueChanged="SetFilter" Color="Color.Primary">
+					<MudToggleItem Value="@("All")" Text="All"/>
+					<MudToggleItem Value="@("Sourcebook")" Text="Sourcebooks"/>
+					<MudToggleItem Value="@("Transcript")" Text="Transcripts"/>
+				</MudToggleGroup>
+			</MudStack>
+			<MudDataGrid T="RagCollectionDocumentInfo" Items="@FilteredDocuments" Dense="true" Striped="true" Hover="true"
 			             RowsPerPage="25">
 				<Columns>
 					<PropertyColumn Property="x => x.DocumentKind" Title="Type"/>
 					<PropertyColumn Property="x => x.RulesetId" Title="Ruleset"/>
-					<PropertyColumn Property="x => x.FileName" Title="Name"/>
+					<TemplateColumn Title="Name">
+						<CellTemplate>
+							@if (context.Item.GameId.HasValue)
+							{
+								<MudLink Href="@($"/games/{context.Item.GameId}")">@context.Item.FileName</MudLink>
+							}
+							else
+							{
+								@context.Item.FileName
+							}
+						</CellTemplate>
+					</TemplateColumn>
 					<PropertyColumn Property="x => x.TotalChunks" Title="Chunks"/>
 					<TemplateColumn Title="Embeddings">
 						<CellTemplate>
@@ -121,3 +139,4 @@
 		}
 	</MudPaper>
 </MudContainer>
+
