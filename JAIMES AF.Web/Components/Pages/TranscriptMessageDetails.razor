@@ -1,0 +1,155 @@
+@page "/admin/transcript-messages/{MessageId:int}"
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@rendermode InteractiveServer
+
+<PageTitle>Message Details</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+	</MudStack>
+
+	@if (!string.IsNullOrEmpty(_errorMessage))
+	{
+		<MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+	}
+
+	@if (_isLoading)
+	{
+		<MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4"/>
+	}
+
+	@if (_response != null)
+	{
+		<MudGrid Spacing="3">
+			<!-- Message Content -->
+			<MudItem xs="12" md="8">
+				<MudPaper Class="pa-6" Elevation="2">
+					<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+						<MudText Typo="Typo.h5">Message Content</MudText>
+						<MudChip T="string" 
+						         Color="@(_response.Role == "user" ? Color.Primary : Color.Secondary)" 
+						         Size="Size.Small">
+							@_response.Role
+						</MudChip>
+					</MudStack>
+					<MudPaper Class="pa-4" Elevation="0" Style="background: var(--mud-palette-background-grey); max-height: 400px; overflow-y: auto;">
+						<MudText Typo="Typo.body2" Style="white-space: pre-wrap;">@_response.MessageText</MudText>
+					</MudPaper>
+				</MudPaper>
+			</MudItem>
+
+			<!-- Game Info & Embedding -->
+			<MudItem xs="12" md="4">
+				<!-- Game Context -->
+				<MudPaper Class="pa-6 mb-4" Elevation="2">
+					<MudText Typo="Typo.h6" Class="mb-3">Game Information</MudText>
+					<MudStack Spacing="2">
+						<div>
+							<MudText Typo="Typo.caption" Color="Color.Secondary">Game</MudText>
+							<MudLink Href="@GetGameLink()">@_response.GameTitle</MudLink>
+						</div>
+						<div>
+							<MudText Typo="Typo.caption" Color="Color.Secondary">Message ID</MudText>
+							<MudText Typo="Typo.body2">@_response.MessageId</MudText>
+						</div>
+						<div>
+							<MudText Typo="Typo.caption" Color="Color.Secondary">Created</MudText>
+							<MudText Typo="Typo.body2">@_response.CreatedAt.ToString("g")</MudText>
+						</div>
+					</MudStack>
+				</MudPaper>
+
+				<!-- Embedding Status -->
+				<MudPaper Class="pa-6" Elevation="2">
+					<MudText Typo="Typo.h6" Class="mb-3">Embedding Status</MudText>
+					@if (_response.HasEmbedding)
+					{
+						<MudStack Spacing="2">
+							<MudStack Row="true" AlignItems="AlignItems.Center">
+								<MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success"/>
+								<MudText Typo="Typo.body1" Color="Color.Success">Embedded</MudText>
+							</MudStack>
+							@if (!string.IsNullOrEmpty(_response.QdrantPointId))
+							{
+								<div>
+									<MudText Typo="Typo.caption" Color="Color.Secondary">Qdrant Point ID</MudText>
+									<MudText Typo="Typo.body2" Style="font-family: 'Roboto Mono', monospace; font-size: 0.75rem; word-break: break-all;">
+										@_response.QdrantPointId
+									</MudText>
+								</div>
+							}
+							<div>
+								<MudText Typo="Typo.caption" Color="Color.Secondary">Dimensions</MudText>
+								<MudText Typo="Typo.body2">@_response.EmbeddingDimensions</MudText>
+							</div>
+							@if (_response.EmbeddingPreview != null && _response.EmbeddingPreview.Length > 0)
+							{
+								<MudExpansionPanels Elevation="0">
+									<MudExpansionPanel Text="Vector Preview (first 10 dimensions)">
+										<MudText Typo="Typo.caption" Style="font-family: 'Roboto Mono', monospace;">
+											[@string.Join(", ", _response.EmbeddingPreview.Select(v => v.ToString("F4")))]
+										</MudText>
+									</MudExpansionPanel>
+								</MudExpansionPanels>
+							}
+						</MudStack>
+					}
+					else
+					{
+						<MudStack Row="true" AlignItems="AlignItems.Center">
+							<MudIcon Icon="@Icons.Material.Filled.HourglassEmpty" Color="Color.Warning"/>
+							<MudText Typo="Typo.body1" Color="Color.Warning">Not Yet Embedded</MudText>
+						</MudStack>
+					}
+				</MudPaper>
+			</MudItem>
+
+			<!-- Query Appearances -->
+			<MudItem xs="12">
+				<MudPaper Class="pa-6" Elevation="2">
+					<MudText Typo="Typo.h5" Class="mb-4">Query Appearances</MudText>
+					@if (_response.QueryAppearances.Length == 0)
+					{
+						<MudAlert Severity="Severity.Info">
+							This message has not appeared in any search queries yet.
+						</MudAlert>
+					}
+					else
+					{
+						<MudText Typo="Typo.body2" Class="mb-3">
+							This message has appeared in <strong>@_response.QueryAppearances.Length</strong> search queries.
+						</MudText>
+						<MudSimpleTable Dense="true" Striped="true" Bordered="true">
+							<thead>
+								<tr>
+									<th>Query</th>
+									<th>Relevancy</th>
+									<th>Date</th>
+								</tr>
+							</thead>
+							<tbody>
+								@foreach (var query in _response.QueryAppearances)
+								{
+									<tr>
+										<td style="max-width: 400px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+											<MudLink Href="@GetQueryLink()">@query.QueryText</MudLink>
+										</td>
+										<td>
+											<MudChip T="string"
+											         Color="@(query.Relevancy >= 0.8 ? Color.Success : query.Relevancy >= 0.5 ? Color.Warning : Color.Error)"
+											         Size="Size.Small">
+												@query.Relevancy.ToString("P1")
+											</MudChip>
+										</td>
+										<td>@query.QueryDate.ToString("g")</td>
+									</tr>
+								}
+							</tbody>
+						</MudSimpleTable>
+					}
+				</MudPaper>
+			</MudItem>
+		</MudGrid>
+	}
+</MudContainer>

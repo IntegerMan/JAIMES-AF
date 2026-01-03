@@ -20,7 +20,7 @@ public partial class RagSearchQueries
 
     private int TotalPages => _statistics == null
         ? 1
-        : (int)Math.Ceiling((double)_statistics.TotalCount / _statistics.PageSize);
+        : (int) Math.Ceiling((double) _statistics.TotalCount / _statistics.PageSize);
 
     protected override void OnInitialized()
     {
@@ -95,5 +95,18 @@ public partial class RagSearchQueries
     private void ClearDocumentFilter()
     {
         NavigationManager.NavigateTo($"/admin/rag-collections/{IndexName}/queries");
+    }
+
+    private string GetChunkDetailsLink(string chunkId)
+    {
+        // For conversations index, chunk IDs are message IDs (integers)
+        // For rules index, chunk IDs are GUIDs
+        string normalizedIndex = IndexName.ToLowerInvariant();
+        return normalizedIndex switch
+        {
+            "conversations" when int.TryParse(chunkId, out int messageId)
+                => $"/admin/transcript-messages/{messageId}",
+            _ => $"/admin/chunks/{Uri.EscapeDataString(chunkId)}"
+        };
     }
 }

@@ -101,7 +101,11 @@
 							}
 						</CellTemplate>
 					</TemplateColumn>
-					<PropertyColumn Property="x => x.TotalChunks" Title="Chunks"/>
+					<TemplateColumn Title="Chunks">
+						<CellTemplate>
+							<MudLink Href="@GetChunksLink(context.Item)">@context.Item.TotalChunks</MudLink>
+						</CellTemplate>
+					</TemplateColumn>
 					<TemplateColumn Title="Embeddings">
 						<CellTemplate>
 							@if (context.Item.EmbeddedChunks < context.Item.TotalChunks)
