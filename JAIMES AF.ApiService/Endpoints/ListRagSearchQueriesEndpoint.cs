@@ -1,14 +1,16 @@
+using MattEland.Jaimes.ServiceDefinitions.Requests;
+
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
 /// <summary>
 /// Endpoint to list RAG search queries for a specific collection.
 /// </summary>
 public class ListRagSearchQueriesEndpoint(IDbContextFactory<JaimesDbContext> dbContextFactory)
-    : Ep.NoReq.Res<RagSearchQueriesResponse>
+    : Endpoint<RagSearchQueriesRequest, RagSearchQueriesResponse>
 {
     public override void Configure()
     {
-        Get("/admin/rag-collections/{indexName}/queries");
+        Get("/admin/rag-collections/{IndexName}/queries");
         AllowAnonymous();
         Description(b => b
             .Produces<RagSearchQueriesResponse>()
@@ -16,31 +18,35 @@ public class ListRagSearchQueriesEndpoint(IDbContextFactory<JaimesDbContext> dbC
             .WithSummary("List RAG search queries for a specific collection index"));
     }
 
-    public override async Task HandleAsync(CancellationToken ct)
+    public override async Task HandleAsync(RagSearchQueriesRequest req, CancellationToken ct)
     {
-        string indexName = Route<string>("indexName") ?? string.Empty;
-        int page = Query<int?>("page") ?? 1;
-        if (page < 1) page = 1;
-        int pageSize = Query<int?>("pageSize") ?? 25;
-        if (pageSize < 1) pageSize = 1;
-        if (pageSize > 100) pageSize = 100;
-        string? documentName = Query<string?>("documentName");
-
-        if (string.IsNullOrWhiteSpace(indexName))
+        if (string.IsNullOrWhiteSpace(req.IndexName))
         {
             await Send.NotFoundAsync(ct);
             return;
         }
 
-        // Normalize index name for comparison
-        string normalizedIndex = indexName.ToLowerInvariant();
+        // Normalize index name for comparison and handle mapping to storage names
+        string normalizedIndex = req.IndexName.ToLowerInvariant();
+        List<string> targetIndices = normalizedIndex switch
+        {
+            "rules" => ["rules", "document-embeddings", "rulesets"],
+            "conversations" => ["conversations"],
+            _ => [normalizedIndex]
+        };
+
+        // Fix pagination values
+        if (req.Page < 1) req.Page = 1;
+        if (req.PageSize < 1) req.PageSize = 1;
+        if (req.PageSize > 100) req.PageSize = 100;
 
         Logger.LogInformation(
-            "Fetching RAG search queries for index {IndexName}, page {Page}, pageSize {PageSize}, documentName {DocumentName}",
+            "Fetching RAG search queries for index {IndexName} (Targeting: {TargetIndices}), page {Page}, pageSize {PageSize}, documentName {DocumentName}",
             normalizedIndex,
-            page,
-            pageSize,
-            documentName ?? "(all)");
+            string.Join(", ", targetIndices),
+            req.Page,
+            req.PageSize,
+            req.DocumentName ?? "(all)");
 
         await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(ct);
 
@@ -48,12 +54,12 @@ public class ListRagSearchQueriesEndpoint(IDbContextFactory<JaimesDbContext> dbC
         IQueryable<RagSearchQuery> baseQuery = dbContext.RagSearchQueries
             .AsNoTracking()
             .Include(q => q.ResultChunks)
-            .Where(q => q.IndexName.ToLower() == normalizedIndex);
+            .Where(q => targetIndices.Contains(q.IndexName.ToLower()));
 
         // If filtering by document, only include queries that have results from that document
-        if (!string.IsNullOrWhiteSpace(documentName))
+        if (!string.IsNullOrWhiteSpace(req.DocumentName))
         {
-            string normalizedDoc = documentName.ToLower();
+            string normalizedDoc = req.DocumentName.ToLower();
             baseQuery = baseQuery.Where(q => q.ResultChunks.Any(r => r.DocumentName.ToLower() == normalizedDoc));
         }
 
@@ -63,8 +69,8 @@ public class ListRagSearchQueriesEndpoint(IDbContextFactory<JaimesDbContext> dbC
         // Get paginated queries with their results
         List<RagSearchQuery> queries = await baseQuery
             .OrderByDescending(q => q.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
+            .Skip((req.Page - 1) * req.PageSize)
+            .Take(req.PageSize)
             .ToListAsync(ct);
 
         // Map to response DTOs
@@ -94,7 +100,7 @@ public class ListRagSearchQueriesEndpoint(IDbContextFactory<JaimesDbContext> dbC
         {
             "rules" => "Sourcebook Collection",
             "conversations" => "Transcript Collection",
-            _ => $"{indexName} Collection"
+            _ => $"{req.IndexName} Collection"
         };
 
         Logger.LogInformation("Returning {QueryCount} queries out of {TotalCount} total for index {IndexName}",
@@ -107,8 +113,8 @@ public class ListRagSearchQueriesEndpoint(IDbContextFactory<JaimesDbContext> dbC
                 IndexName = normalizedIndex,
                 CollectionDisplayName = displayName,
                 TotalCount = totalCount,
-                Page = page,
-                PageSize = pageSize,
+                Page = req.Page,
+                PageSize = req.PageSize,
                 Queries = queryInfos
             },
             ct);

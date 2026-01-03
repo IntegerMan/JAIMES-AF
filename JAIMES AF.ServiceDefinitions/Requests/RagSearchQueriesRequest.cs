@@ -19,4 +19,9 @@ public class RagSearchQueriesRequest
     /// Gets or sets the number of items per page.
     /// </summary>
     public int PageSize { get; set; } = 25;
+
+    /// <summary>
+    /// Gets or sets the document name to filter by.
+    /// </summary>
+    public string? DocumentName { get; set; }
 }
