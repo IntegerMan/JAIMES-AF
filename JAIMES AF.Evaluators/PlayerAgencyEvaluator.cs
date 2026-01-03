@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Text.RegularExpressions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
 
@@ -10,13 +9,18 @@ namespace MattEland.Jaimes.Evaluators;
 /// </summary>
 /// <param name="chatClient">The chat client to use for evaluation.</param>
 [Description("Evaluates assistant responses for how well they preserve player agency by avoiding making decisions on the player's behalf or presenting restrictive choice lists.")]
-public class PlayerAgencyEvaluator(IChatClient chatClient) : IEvaluator
+public class PlayerAgencyEvaluator(IChatClient chatClient) : LlmBasedEvaluator(chatClient)
 {
+    /// <summary>
+    /// The name of the metric produced by this evaluator.
+    /// </summary>
     public const string MetricName = "PlayerAgency";
 
-    public IReadOnlyCollection<string> EvaluationMetricNames => [MetricName];
+    /// <inheritdoc />
+    public override string EvaluatorMetricName => MetricName;
 
-    public async ValueTask<EvaluationResult> EvaluateAsync(
+    /// <inheritdoc />
+    public override async ValueTask<EvaluationResult> EvaluateAsync(
         IEnumerable<ChatMessage> messages,
         ChatResponse modelResponse,
         ChatConfiguration? chatConfiguration = null,
@@ -24,14 +28,10 @@ public class PlayerAgencyEvaluator(IChatClient chatClient) : IEvaluator
         CancellationToken cancellationToken = default)
     {
         // Extract system prompt and conversation messages
-        List<ChatMessage> messagesList = messages.ToList();
-        string? systemPrompt = messagesList.FirstOrDefault(m => m.Role == ChatRole.System)?.Text;
-        List<ChatMessage> conversationMessages = messagesList
-            .Where(m => m.Role != ChatRole.System)
-            .ToList();
+        var (systemPrompt, conversationMessages) = ExtractMessages(messages);
 
         // Build conversation history text
-        string conversationHistory = string.Join("\n", conversationMessages.Select(m => $"{m.Role}: {m.Text}"));
+        string conversationHistory = BuildSimpleConversationHistory(conversationMessages);
 
         // Build the Fluency-style prompt
         string prompt = $"""
@@ -109,102 +109,13 @@ public class PlayerAgencyEvaluator(IChatClient chatClient) : IEvaluator
                          Output
                          """;
 
-        ChatOptions chatOptions = new()
-        {
-            Tools = [] // Ensure no tools are used
-        };
+        string responseText = await GetEvaluationResponseAsync(prompt, cancellationToken);
 
-        var requestMessages = new List<ChatMessage>
-        {
-            new(ChatRole.User, prompt)
-        };
+        // Parse the response
+        EvaluationParseResult parseResult = ParseEvaluationResponse(responseText);
 
-        ChatResponse response = await chatClient.GetResponseAsync(requestMessages, chatOptions, cancellationToken);
-        string responseText = response.Text;
-
-        // Parse the response for S0, S1, S2 tags
-        int score = 1;
-        string thoughtChain = string.Empty;
-        string explanation = "Failed to parse evaluation response.";
-        bool parseSuccess = false;
-
-        if (!string.IsNullOrWhiteSpace(responseText))
-        {
-            const RegexOptions regexOptions = RegexOptions.Singleline | RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture;
-            TimeSpan regexTimeout = TimeSpan.FromSeconds(1);
-
-            try
-            {
-                // Extract S0 (ThoughtChain)
-                Match s0Match = Regex.Match(responseText, @"<S0>(?<content>.*?)</S0>", regexOptions, regexTimeout);
-                if (s0Match.Success)
-                {
-                    thoughtChain = s0Match.Groups["content"].Value.Trim();
-                }
-
-                // Extract S1 (Explanation)
-                Match s1Match = Regex.Match(responseText, @"<S1>(?<content>.*?)</S1>", regexOptions, regexTimeout);
-                if (s1Match.Success)
-                {
-                    explanation = s1Match.Groups["content"].Value.Trim();
-                }
-
-                // Extract S2 (Score)
-                Match s2Match = Regex.Match(responseText, @"<S2>(?<content>.*?)</S2>", regexOptions, regexTimeout);
-                if (s2Match.Success)
-                {
-                    string scoreText = s2Match.Groups["content"].Value.Trim();
-                    if (int.TryParse(scoreText, out int parsedScore))
-                    {
-                        score = parsedScore;
-                        parseSuccess = true;
-                    }
-                }
-            }
-            catch (RegexMatchTimeoutException)
-            {
-                explanation = "Regex parsing timed out. Response may be malformed.";
-            }
-        }
-
-        // Ensure score is within range
-        score = Math.Clamp(score, 1, 5);
-
-        // Determine pass/fail (fail on 3 or below, pass on 4 or 5)
-        bool passed = score >= 4;
-        string passFailStatus = passed ? "Pass" : "Fail";
-
-        NumericMetric metric = new(MetricName)
-        {
-            Value = score,
-            Reason = explanation
-        };
-
-        // Add comprehensive diagnostics
-        metric.Diagnostics ??= [];
-        
-        if (parseSuccess)
-        {
-            metric.Diagnostics.Add(new EvaluationDiagnostic(
-                EvaluationDiagnosticSeverity.Informational,
-                $"Player Agency Score: {score} ({passFailStatus})"));
-            
-            if (!string.IsNullOrWhiteSpace(thoughtChain))
-            {
-                metric.Diagnostics.Add(new EvaluationDiagnostic(
-                    EvaluationDiagnosticSeverity.Informational,
-                    $"ThoughtChain: {thoughtChain}"));
-            }
-        }
-        else
-        {
-            string rawResponseText = string.IsNullOrWhiteSpace(responseText) ? "{Empty}" : responseText;
-            int length = Math.Min(200, rawResponseText.Length);
-            
-            metric.Diagnostics.Add(new EvaluationDiagnostic(
-                EvaluationDiagnosticSeverity.Warning,
-                $"Failed to parse evaluation response. Raw response: {rawResponseText.Substring(0, length)}"));
-        }
+        // Create metric with standard diagnostics
+        NumericMetric metric = CreateMetric(parseResult, responseText);
 
         return new EvaluationResult(metric);
     }

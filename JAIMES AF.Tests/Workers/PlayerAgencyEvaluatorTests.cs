@@ -62,7 +62,7 @@ public class PlayerAgencyEvaluatorTests
         metric.Reason.ShouldContain("respects player agency");
 
         metric.Diagnostics.ShouldNotBeNull();
-        metric.Diagnostics.ShouldContain(d => d.Message.Contains("Player Agency Score: 5 (Pass)"));
+        metric.Diagnostics.ShouldContain(d => d.Message.Contains("PlayerAgency Score: 5 (Pass)"));
         metric.Diagnostics.ShouldContain(d => d.Message.Contains("ThoughtChain:"));
     }
 
@@ -285,7 +285,7 @@ public class PlayerAgencyEvaluatorTests
 
         var passDiagnostic = metric.Diagnostics?.FirstOrDefault(d => d.Message.Contains("(Pass)"));
         passDiagnostic.ShouldNotBeNull();
-        passDiagnostic.Message.ShouldContain("Player Agency Score: 4 (Pass)");
+        passDiagnostic.Message.ShouldContain("PlayerAgency Score: 4 (Pass)");
     }
 
     [Fact]
@@ -317,7 +317,7 @@ public class PlayerAgencyEvaluatorTests
 
         var failDiagnostic = metric.Diagnostics?.FirstOrDefault(d => d.Message.Contains("(Fail)"));
         failDiagnostic.ShouldNotBeNull();
-        failDiagnostic.Message.ShouldContain("Player Agency Score: 3 (Fail)");
+        failDiagnostic.Message.ShouldContain("PlayerAgency Score: 3 (Fail)");
     }
 
     [Fact]
