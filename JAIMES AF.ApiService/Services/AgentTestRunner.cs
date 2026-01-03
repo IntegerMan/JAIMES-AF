@@ -265,10 +265,11 @@ public class AgentTestRunner(
                 executionName: $"TestRun_{run.ExecutionName}",
                 chatConfiguration: chatConfiguration);
 
-            // Create scenario run - scenario is the agent version, iteration is the test case
+            // Create scenario run - scenario is the test case, iteration is the agent version
+            // This allows comparing different agent versions against the same test case
             await using ScenarioRun scenarioRun = await reportConfig.CreateScenarioRunAsync(
-                scenarioName: $"{agent.Name}_{version.VersionNumber}",
-                iterationName: $"TC{testCase.Id}_{testCase.Name}",
+                scenarioName: $"TC{testCase.Id}: {testCase.Name}",
+                iterationName: $"{agent.Name} {version.VersionNumber} [Agent:{agent.Id}|Version:{version.Id}]",
                 cancellationToken: ct);
 
             // Perform evaluation
