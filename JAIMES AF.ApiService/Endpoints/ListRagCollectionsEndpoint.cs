@@ -71,8 +71,12 @@ public class ListRagCollectionsEndpoint(IDbContextFactory<JaimesDbContext> dbCon
             .Select(g => new { DocumentName = g.Key, Count = g.Count() })
             .ToListAsync(ct);
 
-        Dictionary<string, int> searchResultsByDocName = searchResultCounts
-            .ToDictionary(x => x.DocumentName, x => x.Count, StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, int> searchResultsByDocName = new(StringComparer.OrdinalIgnoreCase);
+        foreach (var src in searchResultCounts)
+        {
+            if (!searchResultsByDocName.TryAdd(src.DocumentName, src.Count))
+                searchResultsByDocName[src.DocumentName] += src.Count;
+        }
 
         // Build document info list for sourcebooks
         List<RagCollectionDocumentInfo> documentInfos = documents
