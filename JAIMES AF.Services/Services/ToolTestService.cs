@@ -72,7 +72,7 @@ public class ToolTestService(
                 parameters.Add(new ToolParameterInfo
                 {
                     Name = param.Name ?? "unknown",
-                    TypeName = GetFriendlyTypeName(param.ParameterType),
+                    TypeName = GetFriendlyTypeName(param),
                     IsRequired = !param.IsOptional && !IsNullable(param),
                     Description = paramDesc?.Description,
                     DefaultValue = param.HasDefaultValue ? param.DefaultValue?.ToString() : null
@@ -385,15 +385,11 @@ public class ToolTestService(
         return new NullabilityInfoContext().Create(param).WriteState == NullabilityState.Nullable;
     }
 
-    private static bool IsNullable(Type type)
+    private static string GetFriendlyTypeName(ParameterInfo param)
     {
-        return Nullable.GetUnderlyingType(type) != null;
-    }
-
-    private static string GetFriendlyTypeName(Type type)
-    {
+        Type type = param.ParameterType;
         Type? underlyingType = Nullable.GetUnderlyingType(type);
-        bool isNullable = underlyingType != null;
+        bool isNullable = IsNullable(param);
         Type actualType = underlyingType ?? type;
 
         string name = actualType.Name switch
