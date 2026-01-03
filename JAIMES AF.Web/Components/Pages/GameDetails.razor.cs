@@ -274,7 +274,8 @@ public partial class GameDetails : IAsyncDisposable
                 Content = JsonContent.Create(request)
             };
 
-            HttpResponseMessage response = await httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead);
+            HttpResponseMessage response =
+                await httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead);
             response.EnsureSuccessStatusCode();
 
             // Track accumulated text per message ID
@@ -304,10 +305,11 @@ public partial class GameDetails : IAsyncDisposable
                     if (eventType == "delta")
                     {
                         // Parse streaming delta
-                        var delta = JsonSerializer.Deserialize<ChatStreamEvent>(jsonData, new JsonSerializerOptions
-                        {
-                            PropertyNameCaseInsensitive = true
-                        });
+                        var delta = JsonSerializer.Deserialize<ChatStreamEvent>(jsonData,
+                            new JsonSerializerOptions
+                            {
+                                PropertyNameCaseInsensitive = true
+                            });
 
                         if (delta == null) continue;
 
@@ -379,10 +381,11 @@ public partial class GameDetails : IAsyncDisposable
                     else if (eventType == "persisted")
                     {
                         // Parse persisted message IDs
-                        var persistedData = JsonSerializer.Deserialize<MessagePersistedEvent>(jsonData, new JsonSerializerOptions
-                        {
-                            PropertyNameCaseInsensitive = true
-                        });
+                        var persistedData = JsonSerializer.Deserialize<MessagePersistedEvent>(jsonData,
+                            new JsonSerializerOptions
+                            {
+                                PropertyNameCaseInsensitive = true
+                            });
 
                         if (persistedData != null)
                         {
@@ -439,10 +442,11 @@ public partial class GameDetails : IAsyncDisposable
                     }
                     else if (eventType == "error")
                     {
-                        var errorData = JsonSerializer.Deserialize<ErrorEvent>(jsonData, new JsonSerializerOptions
-                        {
-                            PropertyNameCaseInsensitive = true
-                        });
+                        var errorData = JsonSerializer.Deserialize<ErrorEvent>(jsonData,
+                            new JsonSerializerOptions
+                            {
+                                PropertyNameCaseInsensitive = true
+                            });
                         _errorMessage = $"Server error: {errorData?.Error ?? "Unknown error"}";
                         _failedMessageIndex = currentMessageIndex;
                         break;
@@ -465,7 +469,9 @@ public partial class GameDetails : IAsyncDisposable
 
     // SSE event models
     private record ChatStreamEvent(string MessageId, string TextDelta, string Role, string? AuthorName);
+
     private record MessagePersistedEvent(string Type, int? UserMessageId, List<int>? AssistantMessageIds);
+
     private record ErrorEvent(string Error, string Type);
 
     private async Task RetryMessageAsync(int messageIndex)
@@ -535,7 +541,6 @@ public partial class GameDetails : IAsyncDisposable
     /// </summary>
     private async Task ShowFeedbackDialogAsync(int messageId, bool? isPositive = null)
     {
-
         // Check if feedback already exists
         if (_messageFeedback.ContainsKey(messageId))
         {
@@ -874,12 +879,6 @@ public partial class GameDetails : IAsyncDisposable
                     // Note: GameStateResponse doesn't have AgentId/VersionId yet, but the API will return them if we update it
                     // For now, we trust the local selection and the API successfully saved it.
                     // The next message sent will use the new agent because of GameAwareAgentFactory changes.
-
-                    // Re-initialize the agent to pick up new instructions
-                    HttpClient aguiHttpClient = HttpClientFactory.CreateClient("AGUI");
-                    string serverUrl = $"{aguiHttpClient.BaseAddress}games/{GameId}/chat";
-                    AGUIChatClient chatClient = new(aguiHttpClient, serverUrl);
-                    _agent = chatClient.CreateAIAgent(name: $"game-{GameId}", description: "Game Chat Agent");
                 }
             }
             else
