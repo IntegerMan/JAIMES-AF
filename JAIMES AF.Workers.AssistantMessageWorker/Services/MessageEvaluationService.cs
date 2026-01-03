@@ -5,6 +5,7 @@ using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
@@ -26,24 +27,6 @@ public class MessageEvaluationService(
     ILogger<MessageEvaluationService> logger,
     IMessageUpdateNotifier messageUpdateNotifier) : IMessageEvaluationService
 {
-    /// <summary>
-    /// Calculates the expected number of metrics for an evaluator.
-    /// RulesTextConsistencyEvaluator produces 3 metrics, all others produce 1.
-    /// </summary>
-    private static int GetExpectedMetricCount(IEvaluator evaluator)
-    {
-        // RulesTextConsistencyEvaluator is a special case that produces 3 metrics
-        return evaluator.GetType().Name == "RulesTextConsistencyEvaluator" ? 3 : 1;
-    }
-
-    /// <summary>
-    /// Calculates the total expected metrics for a collection of evaluators.
-    /// </summary>
-    public static int CalculateTotalExpectedMetrics(IEnumerable<IEvaluator> evaluatorList)
-    {
-        return evaluatorList.Sum(GetExpectedMetricCount);
-    }
-
     public async Task EvaluateMessageAsync(
         Message message,
         string systemPrompt,
@@ -114,7 +97,7 @@ public class MessageEvaluationService(
             activeEvaluators.Count);
 
         // Calculate total expected metrics (RTC = 3, others = 1)
-        int totalExpectedMetrics = CalculateTotalExpectedMetrics(activeEvaluators);
+        int totalExpectedMetrics = EvaluatorMetricCountHelper.CalculateTotalExpectedMetrics(activeEvaluators);
         int completedMetricCount = 0;
         Lock countLock = new();
 
@@ -267,7 +250,7 @@ public class MessageEvaluationService(
 
                 // Create error metric responses - one for each expected metric from this evaluator
                 // This ensures the count matches what completedMetricCount increments by
-                int expectedForThisEvaluator = GetExpectedMetricCount(evaluator);
+                int expectedForThisEvaluator = EvaluatorMetricCountHelper.GetExpectedMetricCount(evaluator);
                 DateTime errorTime = DateTime.UtcNow;
                 
                 // Track all error metrics for final notification

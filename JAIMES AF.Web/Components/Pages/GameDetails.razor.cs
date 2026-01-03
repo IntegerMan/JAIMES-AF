@@ -791,6 +791,9 @@ public partial class GameDetails : IAsyncDisposable
                             _messageMetrics[notification.MessageId] = notification.Metrics;
                             _loadedMetricsMessageIds.Add(notification.MessageId);
 
+                            // Clear any stale error state from previous evaluations
+                            _messageMetricErrors.Remove(notification.MessageId);
+
                             if (notification.HasMissingEvaluators.HasValue)
                             {
                                 _messageHasMissingEvaluators[notification.MessageId] =
