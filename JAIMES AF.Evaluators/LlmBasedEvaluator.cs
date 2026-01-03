@@ -143,7 +143,8 @@ public abstract class LlmBasedEvaluator(IChatClient chatClient) : IEvaluator
         NumericMetric metric = new(EvaluatorMetricName)
         {
             Value = parseResult.Score,
-            Reason = parseResult.Explanation
+            Reason = parseResult.Explanation,
+            Interpretation = new EvaluationMetricInterpretation(passed ? EvaluationRating.Good : EvaluationRating.Poor)
         };
 
         // Add comprehensive diagnostics

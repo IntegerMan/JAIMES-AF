@@ -38,10 +38,10 @@ public class GameMechanicsEvaluatorTests
         // Arrange
         string topicsResponse = "damage calculation";
         string evaluationResponse = """
-                              <S0>Evaluation without specific ruleset context.</S0>
-                              <S1>Response evaluated against all available rules.</S1>
-                              <S2>4</S2>
-                              """;
+                                    <S0>Evaluation without specific ruleset context.</S0>
+                                    <S1>Response evaluated against all available rules.</S1>
+                                    <S2>4</S2>
+                                    """;
 
         SetupMockChatClientSequence(topicsResponse, evaluationResponse);
         SetupMockRulesSearchForAnyQuery(CreateSampleRuleResults());
@@ -71,15 +71,16 @@ public class GameMechanicsEvaluatorTests
         // Arrange
         string topicsResponse = "damage calculation";
         string evaluationResponse = """
-                              <S0>Let's think step by step: The response correctly applies damage calculation rules. The attack roll was made before damage, and the damage dice used are correct for a longsword.</S0>
-                              <S1>The response follows game mechanics correctly with proper attack and damage procedures.</S1>
-                              <S2>5</S2>
-                              """;
+                                    <S0>Let's think step by step: The response correctly applies damage calculation rules. The attack roll was made before damage, and the damage dice used are correct for a longsword.</S0>
+                                    <S1>The response follows game mechanics correctly with proper attack and damage procedures.</S1>
+                                    <S2>5</S2>
+                                    """;
 
         SetupMockChatClientSequence(topicsResponse, evaluationResponse);
         SetupMockRulesSearchForAnyQuery(CreateSampleRuleResults());
 
-        var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "You swing your longsword, rolling a 15 to hit against the goblin's AC of 12. The attack connects, dealing 1d8+3 slashing damage."));
+        var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant,
+            "You swing your longsword, rolling a 15 to hit against the goblin's AC of 12. The attack connects, dealing 1d8+3 slashing damage."));
         var messages = new List<ChatMessage>
         {
             new(ChatRole.System, "You are a game master."),
@@ -101,8 +102,11 @@ public class GameMechanicsEvaluatorTests
         metric.Reason.ShouldContain("follows game mechanics correctly");
 
         metric.Diagnostics.ShouldNotBeNull();
-        metric.Diagnostics.ShouldContain(d => d.Message.Contains("GameMechanics Score: 5 (Pass)"));
-        metric.Diagnostics.ShouldContain(d => d.Message.Contains("ThoughtChain:"));
+        metric.Diagnostics!.ShouldContain(d => d.Message.Contains("GameMechanics Score: 5 (Pass)"));
+        metric.Diagnostics!.ShouldContain(d => d.Message.Contains("ThoughtChain:"));
+
+        metric.Interpretation.ShouldNotBeNull();
+        metric.Interpretation.Rating.ShouldBe(EvaluationRating.Good);
     }
 
     [Fact]
@@ -111,10 +115,10 @@ public class GameMechanicsEvaluatorTests
         // Arrange
         string topicsResponse = "spell casting";
         string evaluationResponse = """
-                              <s0>Let's think step by step: Analysis here.</s0>
-                              <s1>Explanation here.</s1>
-                              <s2>4</s2>
-                              """;
+                                    <s0>Let's think step by step: Analysis here.</s0>
+                                    <s1>Explanation here.</s1>
+                                    <s2>4</s2>
+                                    """;
 
         SetupMockChatClientSequence(topicsResponse, evaluationResponse);
         SetupMockRulesSearchForAnyQuery(CreateSampleRuleResults());
@@ -141,13 +145,13 @@ public class GameMechanicsEvaluatorTests
         // Arrange
         string topicsResponse = "movement";
         string evaluationResponse = """
-                              <S0>Let's think step by step:
-                              First, I analyze the combat mechanics in the response.
-                              Then, I check for rule adherence.
-                              Finally, I assign a score.</S0>
-                              <S1>This is a multi-line explanation that should be parsed correctly.</S1>
-                              <S2>3</S2>
-                              """;
+                                    <S0>Let's think step by step:
+                                    First, I analyze the combat mechanics in the response.
+                                    Then, I check for rule adherence.
+                                    Finally, I assign a score.</S0>
+                                    <S1>This is a multi-line explanation that should be parsed correctly.</S1>
+                                    <S2>3</S2>
+                                    """;
 
         SetupMockChatClientSequence(topicsResponse, evaluationResponse);
         SetupMockRulesSearchForAnyQuery(CreateSampleRuleResults());
@@ -179,9 +183,9 @@ public class GameMechanicsEvaluatorTests
         // Arrange
         string topicsResponse = "NONE";
         string evaluationResponse = """
-                              <S1>Explanation without ThoughtChain.</S1>
-                              <S2>2</S2>
-                              """;
+                                    <S1>Explanation without ThoughtChain.</S1>
+                                    <S2>2</S2>
+                                    """;
 
         SetupMockChatClientSequence(topicsResponse, evaluationResponse);
 
@@ -211,9 +215,9 @@ public class GameMechanicsEvaluatorTests
         // Arrange
         string topicsResponse = "combat";
         string evaluationResponse = """
-                              <S0>Let's think step by step: Analysis here.</S0>
-                              <S1>Explanation here.</S1>
-                              """;
+                                    <S0>Let's think step by step: Analysis here.</S0>
+                                    <S1>Explanation here.</S1>
+                                    """;
 
         SetupMockChatClientSequence(topicsResponse, evaluationResponse);
         SetupMockRulesSearchForAnyQuery(CreateSampleRuleResults());
@@ -234,7 +238,8 @@ public class GameMechanicsEvaluatorTests
         metric.Reason.ShouldBe("Explanation here.");
 
         // Should have warning about parsing failure
-        var warningDiagnostic = metric.Diagnostics?.FirstOrDefault(d => d.Severity == EvaluationDiagnosticSeverity.Warning);
+        var warningDiagnostic =
+            metric.Diagnostics?.FirstOrDefault(d => d.Severity == EvaluationDiagnosticSeverity.Warning);
         warningDiagnostic.ShouldNotBeNull();
         warningDiagnostic!.Message.ShouldContain("Failed to parse evaluation response");
     }
@@ -245,10 +250,10 @@ public class GameMechanicsEvaluatorTests
         // Arrange
         string topicsResponse = "NONE";
         string evaluationResponse = """
-                              <S0>Let's think step by step: Analysis.</S0>
-                              <S1>Explanation.</S1>
-                              <S2>10</S2>
-                              """;
+                                    <S0>Let's think step by step: Analysis.</S0>
+                                    <S1>Explanation.</S1>
+                                    <S2>10</S2>
+                                    """;
 
         SetupMockChatClientSequence(topicsResponse, evaluationResponse);
 
@@ -273,10 +278,10 @@ public class GameMechanicsEvaluatorTests
         // Arrange
         string topicsResponse = "NONE";
         string evaluationResponse = """
-                              <S0>Let's think step by step: Analysis.</S0>
-                              <S1>Explanation.</S1>
-                              <S2>-5</S2>
-                              """;
+                                    <S0>Let's think step by step: Analysis.</S0>
+                                    <S1>Explanation.</S1>
+                                    <S2>-5</S2>
+                                    """;
 
         SetupMockChatClientSequence(topicsResponse, evaluationResponse);
 
@@ -301,10 +306,10 @@ public class GameMechanicsEvaluatorTests
         // Arrange
         string topicsResponse = "skill check";
         string evaluationResponse = """
-                              <S0>Let's think step by step: Analysis.</S0>
-                              <S1>Explanation.</S1>
-                              <S2>4</S2>
-                              """;
+                                    <S0>Let's think step by step: Analysis.</S0>
+                                    <S1>Explanation.</S1>
+                                    <S2>4</S2>
+                                    """;
 
         SetupMockChatClientSequence(topicsResponse, evaluationResponse);
         SetupMockRulesSearchForAnyQuery(CreateSampleRuleResults());
@@ -334,10 +339,10 @@ public class GameMechanicsEvaluatorTests
         // Arrange
         string topicsResponse = "saving throw";
         string evaluationResponse = """
-                              <S0>Let's think step by step: Analysis.</S0>
-                              <S1>Explanation.</S1>
-                              <S2>3</S2>
-                              """;
+                                    <S0>Let's think step by step: Analysis.</S0>
+                                    <S1>Explanation.</S1>
+                                    <S2>3</S2>
+                                    """;
 
         SetupMockChatClientSequence(topicsResponse, evaluationResponse);
         SetupMockRulesSearchForAnyQuery(CreateSampleRuleResults());
@@ -359,6 +364,9 @@ public class GameMechanicsEvaluatorTests
         var failDiagnostic = metric.Diagnostics?.FirstOrDefault(d => d.Message.Contains("(Fail)"));
         failDiagnostic.ShouldNotBeNull();
         failDiagnostic!.Message.ShouldContain("GameMechanics Score: 3 (Fail)");
+
+        metric.Interpretation.ShouldNotBeNull();
+        metric.Interpretation.Rating.ShouldBe(EvaluationRating.Poor);
     }
 
     [Fact]
@@ -385,7 +393,8 @@ public class GameMechanicsEvaluatorTests
         metric.Value.ShouldBe(1); // Default score
         metric.Reason.ShouldBe("Failed to parse evaluation response.");
 
-        var warningDiagnostic = metric.Diagnostics?.FirstOrDefault(d => d.Severity == EvaluationDiagnosticSeverity.Warning);
+        var warningDiagnostic =
+            metric.Diagnostics?.FirstOrDefault(d => d.Severity == EvaluationDiagnosticSeverity.Warning);
         warningDiagnostic.ShouldNotBeNull();
     }
 
@@ -395,10 +404,10 @@ public class GameMechanicsEvaluatorTests
         // Arrange
         string topicsResponse = "NONE";
         string evaluationResponse = """
-                              <S0>Let's think step by step: Analysis.</S0>
-                              <S1>Explanation.</S1>
-                              <S2>invalid</S2>
-                              """;
+                                    <S0>Let's think step by step: Analysis.</S0>
+                                    <S1>Explanation.</S1>
+                                    <S2>invalid</S2>
+                                    """;
 
         SetupMockChatClientSequence(topicsResponse, evaluationResponse);
 
@@ -423,10 +432,10 @@ public class GameMechanicsEvaluatorTests
         // Arrange
         string topicsResponse = "NONE";
         string evaluationResponse = """
-                              <S0>   Let's think step by step: Analysis with spaces.   </S0>
-                              <S1>   Explanation with spaces.   </S1>
-                              <S2>   5   </S2>
-                              """;
+                                    <S0>   Let's think step by step: Analysis with spaces.   </S0>
+                                    <S1>   Explanation with spaces.   </S1>
+                                    <S2>   5   </S2>
+                                    """;
 
         SetupMockChatClientSequence(topicsResponse, evaluationResponse);
 
@@ -457,10 +466,10 @@ public class GameMechanicsEvaluatorTests
         // Arrange
         string topicsResponse = "damage calculation\nattack rolls";
         string evaluationResponse = """
-                              <S0>Let's think step by step: Analysis.</S0>
-                              <S1>Explanation.</S1>
-                              <S2>5</S2>
-                              """;
+                                    <S0>Let's think step by step: Analysis.</S0>
+                                    <S1>Explanation.</S1>
+                                    <S2>5</S2>
+                                    """;
 
         SetupMockChatClientSequence(topicsResponse, evaluationResponse);
         SetupMockRulesSearchForAnyQuery(CreateSampleRuleResults());
@@ -494,14 +503,15 @@ public class GameMechanicsEvaluatorTests
         // Arrange
         string topicsResponse = "NONE";
         string evaluationResponse = """
-                              <S0>Let's think step by step: The response is purely narrative with no mechanical claims.</S0>
-                              <S1>No game mechanics are referenced, so there are no rules to violate.</S1>
-                              <S2>5</S2>
-                              """;
+                                    <S0>Let's think step by step: The response is purely narrative with no mechanical claims.</S0>
+                                    <S1>No game mechanics are referenced, so there are no rules to violate.</S1>
+                                    <S2>5</S2>
+                                    """;
 
         SetupMockChatClientSequence(topicsResponse, evaluationResponse);
 
-        var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "The tavern is dimly lit, with flickering candles casting long shadows across the worn wooden tables."));
+        var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant,
+            "The tavern is dimly lit, with flickering candles casting long shadows across the worn wooden tables."));
         var messages = new List<ChatMessage> { new(ChatRole.User, "What does the tavern look like?") };
         var context = new GameMechanicsEvaluationContext("test-ruleset");
 
@@ -513,7 +523,8 @@ public class GameMechanicsEvaluatorTests
         // Assert
         // No rules should be searched when there are no mechanics topics
         _mockRulesSearchService.Verify(
-            x => x.SearchRulesDetailedAsync(It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()),
+            x => x.SearchRulesDetailedAsync(It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<bool>(),
+                It.IsAny<CancellationToken>()),
             Times.Never);
 
         var metric = result.Get<NumericMetric>(GameMechanicsEvaluator.MetricName);
@@ -527,10 +538,10 @@ public class GameMechanicsEvaluatorTests
         // Arrange
         string topicsResponse = "NONE";
         string evaluationResponse = """
-                              <S0>Let's think step by step: Analysis.</S0>
-                              <S1>Explanation.</S1>
-                              <S2>5</S2>
-                              """;
+                                    <S0>Let's think step by step: Analysis.</S0>
+                                    <S1>Explanation.</S1>
+                                    <S2>5</S2>
+                                    """;
 
         SetupMockChatClientSequence(topicsResponse, evaluationResponse);
 
@@ -549,7 +560,8 @@ public class GameMechanicsEvaluatorTests
         metric.Context.ShouldNotBeNull();
         metric.Context.ShouldContainKey(GameMechanicsEvaluationContext.ContextName);
 
-        var includedContext = metric.Context[GameMechanicsEvaluationContext.ContextName] as GameMechanicsEvaluationContext;
+        var includedContext =
+            metric.Context[GameMechanicsEvaluationContext.ContextName] as GameMechanicsEvaluationContext;
         includedContext.ShouldNotBeNull();
         includedContext!.RulesetId.ShouldBe("my-ruleset-id");
         includedContext.RulesetName.ShouldBe("My Custom Ruleset");
@@ -561,15 +573,16 @@ public class GameMechanicsEvaluatorTests
         // Arrange
         string topicsResponse = "combat";
         string evaluationResponse = """
-                              <S0>Let's think step by step: Unable to find specific rules, but response seems reasonable.</S0>
-                              <S1>No specific rules found for this context.</S1>
-                              <S2>4</S2>
-                              """;
+                                    <S0>Let's think step by step: Unable to find specific rules, but response seems reasonable.</S0>
+                                    <S1>No specific rules found for this context.</S1>
+                                    <S2>4</S2>
+                                    """;
 
         SetupMockChatClientSequence(topicsResponse, evaluationResponse);
-        
+
         _mockRulesSearchService
-            .Setup(x => x.SearchRulesDetailedAsync(It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.SearchRulesDetailedAsync(It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<bool>(),
+                It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("Search service unavailable"));
 
         var modelResponse = new ChatResponse(new ChatMessage(ChatRole.Assistant, "You attack the enemy."));
@@ -608,7 +621,7 @@ public class GameMechanicsEvaluatorTests
         // Assert
         context.Contents.ShouldNotBeNull();
         context.Contents.ShouldNotBeEmpty();
-        
+
         var textContent = context.Contents.OfType<TextContent>().FirstOrDefault();
         textContent.ShouldNotBeNull();
         textContent.Text.ShouldContain("Test Ruleset");
@@ -623,7 +636,7 @@ public class GameMechanicsEvaluatorTests
 
         // Assert
         context.Contents.ShouldNotBeNull();
-        
+
         var textContent = context.Contents.OfType<TextContent>().FirstOrDefault();
         textContent.ShouldNotBeNull();
         textContent.Text.ShouldContain("only-id-provided");
@@ -673,11 +686,12 @@ public class GameMechanicsEvaluatorTests
             .Setup(x => x.SearchRulesDetailedAsync(It.IsAny<string?>(), query, false, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new SearchRulesResponse { Results = results });
     }
-    
+
     private void SetupMockRulesSearchForAnyQuery(SearchRuleResult[] results)
     {
         _mockRulesSearchService
-            .Setup(x => x.SearchRulesDetailedAsync(It.IsAny<string?>(), It.IsAny<string>(), false, It.IsAny<CancellationToken>()))
+            .Setup(x => x.SearchRulesDetailedAsync(It.IsAny<string?>(), It.IsAny<string>(), false,
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(new SearchRulesResponse { Results = results });
     }
 

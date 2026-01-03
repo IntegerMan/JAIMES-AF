@@ -27,7 +27,7 @@ public class AgentTestRunner(
     IEvaluationResultStore resultStore,
     ILogger<AgentTestRunner> logger) : IAgentTestRunner
 {
-    private const int MaxContextMessages = 5;
+    private const int MaxContextMessages = 10;
 
     /// <inheritdoc/>
     public async Task<TestRunResultResponse> RunTestCasesAsync(
