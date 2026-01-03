@@ -233,13 +233,13 @@
 					}
 
 					@* Show error message immediately after the message that triggered it *@
-					@if (_failedMessageIndex == msgIndex && !string.IsNullOrEmpty(_errorMessage))
+					@if (_failedMessageIndex == msgIndex)
 					{
 						@if (_isContentModerationError)
 						{
 							<ContentModerationErrorMessage />
 						}
-						else
+						else if (!string.IsNullOrEmpty(_errorMessage))
 						{
 							<GenericErrorMessage ErrorMessage="@_errorMessage" />
 						}

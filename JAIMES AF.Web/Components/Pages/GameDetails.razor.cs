@@ -297,6 +297,7 @@ public partial class GameDetails : IAsyncDisposable
 
                 _isContentModerationError = false;
                 _failedMessageIndex = currentMessageIndex;
+                _errorMessage = "An unexpected error occurred while processing your request. Please try again.";
 
                 // Exit early without actually sending to API, but trigger finally block for UI update
                 return;
