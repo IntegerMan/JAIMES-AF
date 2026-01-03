@@ -94,6 +94,6 @@ public partial class RagSearchQueries
 
     private void ClearDocumentFilter()
     {
-        NavigationManager.NavigateTo($"/admin/rag-collections/{IndexName}/queries");
+        NavigationManager.NavigateTo($"/admin/rag-collections/{Uri.EscapeDataString(IndexName)}/queries");
     }
 }

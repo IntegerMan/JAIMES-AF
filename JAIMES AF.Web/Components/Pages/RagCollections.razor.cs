@@ -64,7 +64,7 @@ public partial class RagCollections
             "transcript" => "conversations",
             _ => collectionType.ToLowerInvariant()
         };
-        return $"/admin/rag-collections/{indexName}/queries";
+        return $"/admin/rag-collections/{Uri.EscapeDataString(indexName)}/queries";
     }
 
     private static string GetDocumentQueryLink(string collectionType, string documentName)
@@ -75,6 +75,7 @@ public partial class RagCollections
             "transcript" => "conversations",
             _ => collectionType.ToLowerInvariant()
         };
-        return $"/admin/rag-collections/{indexName}/queries?documentName={Uri.EscapeDataString(documentName)}";
+        return
+            $"/admin/rag-collections/{Uri.EscapeDataString(indexName)}/queries?documentName={Uri.EscapeDataString(documentName)}";
     }
 }
