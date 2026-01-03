@@ -13,8 +13,6 @@ public partial class RunTests
     private HashSet<int> _selectedVersions = [];
     private bool _isLoading = true;
     private bool _isRunning = false;
-    private int _runProgress = 0;
-    private int _totalRuns = 0;
 
     private List<BreadcrumbItem> _breadcrumbs = new()
     {
@@ -116,58 +114,57 @@ public partial class RunTests
         if (!CanRun) return;
 
         _isRunning = true;
-        _totalRuns = _selectedVersions.Count;
-        _runProgress = 0;
         StateHasChanged();
 
         string executionName = $"multi-test-{DateTime.UtcNow:yyyyMMddHHmmss}";
-        List<string> executionNames = [];
 
         try
         {
-            // Run tests against each selected version
+            // Build the list of versions to test
+            var versionsToTest = new List<object>();
             foreach (var versionId in _selectedVersions)
             {
-                var version = _agents?
-                    .SelectMany(a => a.Versions)
-                    .FirstOrDefault(v => v.Id == versionId);
-
                 string? agentId = _agents?
                     .FirstOrDefault(a => a.Versions.Any(v => v.Id == versionId))?.Id;
 
-                if (string.IsNullOrEmpty(agentId)) continue;
-
-                var versionExecutionName = $"{executionName}-v{versionId}";
-
-                var request = new
+                if (!string.IsNullOrEmpty(agentId))
                 {
-                    ExecutionName = versionExecutionName,
-                    TestCaseIds = _selectedTestCases.ToList()
-                };
-
-                var response = await Http.PostAsJsonAsync(
-                    $"/agents/{agentId}/versions/{versionId}/test-run", request);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    executionNames.Add(versionExecutionName);
+                    versionsToTest.Add(new
+                    {
+                        AgentId = agentId,
+                        InstructionVersionId = versionId
+                    });
                 }
-
-                _runProgress++;
-                StateHasChanged();
             }
 
-            if (executionNames.Count > 0)
+            if (versionsToTest.Count == 0)
             {
-                Snackbar.Add($"Completed {executionNames.Count} test run(s)", Severity.Success);
+                Snackbar.Add("No valid versions selected", Severity.Warning);
+                return;
+            }
 
-                // Navigate to comparison page with all execution names
-                var execParam = string.Join(",", executionNames);
-                NavigationManager.NavigateTo($"/admin/test-runs/compare?executions={Uri.EscapeDataString(execParam)}");
+            // Single API call to run all versions
+            var request = new
+            {
+                Versions = versionsToTest,
+                TestCaseIds = _selectedTestCases.ToList(),
+                ExecutionName = executionName
+            };
+
+            var response = await Http.PostAsJsonAsync("/test-runs/multi-version", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add($"Completed test runs for {versionsToTest.Count} version(s)", Severity.Success);
+
+                // Navigate to comparison page with the execution name
+                NavigationManager.NavigateTo(
+                    $"/admin/test-runs/compare?executions={Uri.EscapeDataString(executionName)}");
             }
             else
             {
-                Snackbar.Add("No test runs completed", Severity.Warning);
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Test run failed: {error}", Severity.Error);
             }
         }
         catch (Exception ex)

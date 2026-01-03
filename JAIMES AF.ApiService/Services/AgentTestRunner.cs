@@ -1,14 +1,17 @@
 using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 using MattEland.Jaimes.Agents.Helpers;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
+using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
 using Microsoft.Extensions.AI.Evaluation.Reporting;
+using Microsoft.Extensions.AI.Evaluation.Reporting.Formats.Html;
 using Microsoft.Extensions.Logging;
 
 namespace MattEland.Jaimes.ApiService.Services;
@@ -175,7 +178,7 @@ public class AgentTestRunner(
         await context.SaveChangesAsync(ct);
 
         // Evaluate the response
-        await EvaluateTestRunAsync(context, run, testCase, chatMessages, generatedResponse, version, ct);
+        await EvaluateTestRunAsync(context, run, testCase, chatMessages, generatedResponse, agent, version, ct);
 
         return new TestCaseRunResponse
         {
@@ -235,6 +238,7 @@ public class AgentTestRunner(
         TestCase testCase,
         List<ChatMessage> contextMessages,
         string generatedResponse,
+        Agent agent,
         AgentInstructionVersion version,
         CancellationToken ct)
     {
@@ -261,10 +265,10 @@ public class AgentTestRunner(
                 executionName: $"TestRun_{run.ExecutionName}",
                 chatConfiguration: chatConfiguration);
 
-            // Create scenario run
+            // Create scenario run - scenario is the agent version, iteration is the test case
             await using ScenarioRun scenarioRun = await reportConfig.CreateScenarioRunAsync(
-                scenarioName: $"TestCase_{testCase.Id}",
-                iterationName: $"Version_{version.Id}",
+                scenarioName: $"{agent.Name}_{version.VersionNumber}",
+                iterationName: $"TC{testCase.Id}_{testCase.Name}",
                 cancellationToken: ct);
 
             // Perform evaluation
@@ -330,6 +334,168 @@ public class AgentTestRunner(
         catch (Exception ex)
         {
             logger.LogError(ex, "Evaluation failed for run {RunId}", run.Id);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<MultiVersionTestRunResponse> RunMultiVersionTestsAsync(
+        IEnumerable<VersionToTest> versions,
+        IEnumerable<int>? testCaseIds = null,
+        string? executionName = null,
+        IEnumerable<string>? evaluatorNames = null,
+        CancellationToken ct = default)
+    {
+        DateTime startedAt = DateTime.UtcNow;
+        executionName ??= $"multi-test-{startedAt:yyyyMMddHHmmss}";
+        List<VersionToTest> versionList = versions.ToList();
+
+        logger.LogInformation(
+            "Starting multi-version test run {ExecutionName} for {VersionCount} versions",
+            executionName, versionList.Count);
+
+        if (versionList.Count == 0)
+        {
+            throw new ArgumentException("At least one version is required", nameof(versions));
+        }
+
+        List<TestRunResultResponse> versionResults = [];
+        int totalRuns = 0;
+        int completedRuns = 0;
+        int failedRuns = 0;
+
+        // Run tests for each version, all under the same execution name
+        foreach (VersionToTest versionToTest in versionList)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            try
+            {
+                TestRunResultResponse result = await RunTestCasesAsync(
+                    versionToTest.AgentId,
+                    versionToTest.InstructionVersionId,
+                    testCaseIds,
+                    executionName,
+                    ct);
+
+                versionResults.Add(result);
+                totalRuns += result.TotalTestCases;
+                completedRuns += result.CompletedTestCases;
+                failedRuns += result.FailedTestCases;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "Failed to run tests for agent {AgentId} version {VersionId}",
+                    versionToTest.AgentId, versionToTest.InstructionVersionId);
+                failedRuns++;
+            }
+        }
+
+        // Calculate overall average score
+        double? averageScore = null;
+        List<double> allScores = versionResults
+            .SelectMany(vr => vr.Runs)
+            .SelectMany(r => r.Metrics)
+            .Select(m => m.Score)
+            .ToList();
+        if (allScores.Count > 0)
+        {
+            averageScore = allScores.Average();
+        }
+
+        // Generate and store the combined report
+        int? reportFileId = await GenerateAndStoreReportAsync(executionName, ct);
+
+        return new MultiVersionTestRunResponse
+        {
+            ExecutionName = executionName,
+            StartedAt = startedAt,
+            CompletedAt = DateTime.UtcNow,
+            TotalRuns = totalRuns,
+            CompletedRuns = completedRuns,
+            FailedRuns = failedRuns,
+            AverageScore = averageScore,
+            VersionResults = versionResults,
+            ReportFileId = reportFileId
+        };
+    }
+
+    private async Task<int?> GenerateAndStoreReportAsync(string executionName, CancellationToken ct)
+    {
+        try
+        {
+            await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(ct);
+
+            // Read results from evaluation store
+            string storeExecutionName = $"TestRun_{executionName}";
+            var results = new List<ScenarioRunResult>();
+
+            await foreach (var result in resultStore.ReadResultsAsync(
+                               executionName: storeExecutionName,
+                               cancellationToken: ct))
+            {
+                results.Add(result);
+            }
+
+            if (results.Count == 0)
+            {
+                logger.LogWarning("No evaluation results found for {ExecutionName}", executionName);
+                return null;
+            }
+
+            // Generate HTML report using HtmlReportWriter
+            string tempPath = Path.Combine(Path.GetTempPath(), $"report_{Guid.NewGuid()}.html");
+            string html;
+
+            try
+            {
+                var writer = new HtmlReportWriter(tempPath);
+                await writer.WriteReportAsync(results, ct);
+                html = await File.ReadAllTextAsync(tempPath, ct);
+            }
+            finally
+            {
+                if (File.Exists(tempPath))
+                {
+                    File.Delete(tempPath);
+                }
+            }
+
+            // Store the report
+            var storedFile = new StoredFile
+            {
+                ItemKind = "TestReport",
+                FileName = $"{executionName}-report.html",
+                ContentType = "text/html",
+                Content = html,
+                CreatedAt = DateTime.UtcNow,
+                SizeBytes = Encoding.UTF8.GetByteCount(html)
+            };
+
+            context.StoredFiles.Add(storedFile);
+            await context.SaveChangesAsync(ct);
+
+            // Link the report to all runs in this execution
+            var runs = await context.TestCaseRuns
+                .Where(tcr => tcr.ExecutionName == executionName)
+                .ToListAsync(ct);
+
+            foreach (var run in runs)
+            {
+                run.ReportFileId = storedFile.Id;
+            }
+
+            await context.SaveChangesAsync(ct);
+
+            logger.LogInformation("Generated and stored report {FileId} for {ExecutionName}",
+                storedFile.Id, executionName);
+
+            return storedFile.Id;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to generate report for {ExecutionName}", executionName);
+            return null;
         }
     }
 }

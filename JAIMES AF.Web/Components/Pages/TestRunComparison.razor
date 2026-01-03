@@ -17,8 +17,8 @@
         border-spacing: 0;
         table-layout: auto;
         width: auto !important;
-        min-width: 100%;
         border: 1px solid var(--mud-palette-divider) !important;
+        background-color: var(--mud-palette-surface);
     }
     .sticky-column {
         position: sticky;
@@ -26,11 +26,11 @@
         z-index: 5;
         background-color: var(--mud-palette-surface) !important;
         border-right: 2px solid var(--mud-palette-divider) !important;
-        min-width: 180px;
-        max-width: 350px;
+        min-width: 200px;
+        max-width: 400px;
         white-space: normal;
         overflow-wrap: break-word;
-        padding: 4px 12px !important;
+        padding: 8px 16px !important;
     }
     th.sticky-column {
         background-color: var(--mud-palette-background-grey) !important;
@@ -39,33 +39,39 @@
     }
     .metric-cell {
         text-align: center;
-        width: 80px;
-        min-width: 80px;
+        width: 120px;
+        min-width: 100px;
         border-right: 1px solid var(--mud-palette-divider) !important;
-        padding: 2px 4px !important;
+        padding: 8px 12px !important;
+    }
+    .metric-name {
+        font-size: 0.8rem;
+        line-height: 1.1;
+        display: block;
+        max-width: 100px;
+        margin: 0 auto;
     }
     .avg-cell {
         font-weight: bold;
         text-align: center;
-        width: 65px;
-        min-width: 65px;
+        width: 80px;
+        min-width: 80px;
         border-right: 1px solid var(--mud-palette-divider) !important;
-        padding: 2px 4px !important;
+        padding: 8px 12px !important;
         background-color: var(--mud-palette-background-grey) !important;
     }
     .time-cell {
         text-align: right;
-        width: 85px;
-        min-width: 85px;
-        padding: 4px 8px !important;
+        width: 100px;
+        min-width: 100px;
+        padding: 8px 16px !important;
     }
     .mud-table-cell {
         border-bottom: 1px solid var(--mud-palette-divider) !important;
     }
-    /* Ensure MudChip is compact in the grid */
+    /* Compact chips */
     .comparison-grid .mud-chip {
         margin: 0 !important;
-        height: 24px !important;
     }
 </style>
 
@@ -165,7 +171,9 @@
                                         @foreach (var metricName in _metricNames)
                                         {
                                             <MudTh Class="metric-cell">
-                                                <MudTooltip Text="@metricName">@TruncateMetricName(metricName)</MudTooltip>
+                                                <MudTooltip Text="@metricName">
+                                                    <span class="metric-name">@metricName</span>
+                                                </MudTooltip>
                                             </MudTh>
                                         }
                                         <MudTh Class="time-cell">Time</MudTh>
@@ -239,7 +247,9 @@
                                         @foreach (var metricName in _metricNames)
                                         {
                                             <MudTh Class="metric-cell">
-                                                <MudTooltip Text="@metricName">@TruncateMetricName(metricName)</MudTooltip>
+                                                <MudTooltip Text="@metricName">
+                                                    <span class="metric-name">@metricName</span>
+                                                </MudTooltip>
                                             </MudTh>
                                         }
                                         <MudTh Class="time-cell">Time</MudTh>
@@ -382,7 +392,9 @@
         }
 
         var executionNames = Executions.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var allRuns = new List<TestCaseRunResponse>();
 
+        // Collect all runs from all execution names
         foreach (var execName in executionNames)
         {
             try
@@ -392,38 +404,49 @@
 
                 if (runs != null && runs.Count > 0)
                 {
-                    var firstRun = runs[0];
-                    _versionResults.Add(new VersionResult
-                    {
-                        ExecutionName = execName,
-                        AgentId = firstRun.AgentId ?? "",
-                        AgentName = firstRun.AgentName ?? "Unknown",
-                        InstructionVersionId = firstRun.InstructionVersionId,
-                        VersionNumber = firstRun.VersionNumber ?? "Unknown",
-                        Runs = runs,
-                        AvgDuration = runs.Where(r => r.DurationMs.HasValue).Select(r => r.DurationMs!.Value).DefaultIfEmpty(0).Average(),
-                        AvgScore = runs.SelectMany(r => r.Metrics ?? []).Select(m => m.Score).DefaultIfEmpty().Average()
-                    });
-
-                    foreach (var run in runs)
-                    {
-                        if (run.Metrics != null)
-                        {
-                            foreach (var metric in run.Metrics)
-                            {
-                                if (!_metricNames.Contains(metric.MetricName))
-                                {
-                                    _metricNames.Add(metric.MetricName);
-                                }
-                            }
-                        }
-                    }
+                    allRuns.AddRange(runs);
                 }
             }
             catch (Exception ex)
             {
                 var logger = LoggerFactory.CreateLogger<TestRunComparison>();
                 logger.LogError(ex, "Failed to load runs for execution {ExecutionName}", execName);
+            }
+        }
+
+        // Group runs by (AgentId, InstructionVersionId) to properly separate different versions
+        var grouped = allRuns
+            .GroupBy(r => (r.AgentId ?? "", r.InstructionVersionId))
+            .ToList();
+
+        foreach (var group in grouped)
+        {
+            var runs = group.ToList();
+            var firstRun = runs[0];
+            _versionResults.Add(new VersionResult
+            {
+                ExecutionName = firstRun.ExecutionName ?? "",
+                AgentId = firstRun.AgentId ?? "",
+                AgentName = firstRun.AgentName ?? "Unknown",
+                InstructionVersionId = firstRun.InstructionVersionId,
+                VersionNumber = firstRun.VersionNumber ?? "Unknown",
+                Runs = runs,
+                AvgDuration = runs.Where(r => r.DurationMs.HasValue).Select(r => r.DurationMs!.Value).DefaultIfEmpty(0).Average(),
+                AvgScore = runs.SelectMany(r => r.Metrics ?? []).Select(m => m.Score).DefaultIfEmpty().Average()
+            });
+
+            foreach (var run in runs)
+            {
+                if (run.Metrics != null)
+                {
+                    foreach (var metric in run.Metrics)
+                    {
+                        if (!_metricNames.Contains(metric.MetricName))
+                        {
+                            _metricNames.Add(metric.MetricName);
+                        }
+                    }
+                }
             }
         }
 
@@ -439,11 +462,6 @@
         return run?.TestCaseName ?? $"Test Case {testCaseId}";
     }
 
-    private static string TruncateMetricName(string name)
-    {
-        // Only truncate if extremely long, otherwise let it wrap
-        return name.Length > 20 ? name.Substring(0, 17) + "..." : name;
-    }
 
     private async Task ViewCombinedReport()
     {

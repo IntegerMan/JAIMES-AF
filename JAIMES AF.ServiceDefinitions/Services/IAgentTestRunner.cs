@@ -22,4 +22,21 @@ public interface IAgentTestRunner
         IEnumerable<int>? testCaseIds = null,
         string? executionName = null,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Runs test cases against multiple agent versions in a single unified report.
+    /// </summary>
+    /// <param name="versions">The agent versions to test.</param>
+    /// <param name="testCaseIds">Test case IDs to run. If null or empty, runs all active test cases.</param>
+    /// <param name="executionName">Optional execution name for grouping. Auto-generated if not provided.</param>
+    /// <param name="evaluatorNames">Optional evaluator names to filter. If null or empty, uses all configured evaluators.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Multi-version test run results with generated report.</returns>
+    Task<MultiVersionTestRunResponse> RunMultiVersionTestsAsync(
+        IEnumerable<VersionToTest> versions,
+        IEnumerable<int>? testCaseIds = null,
+        string? executionName = null,
+        IEnumerable<string>? evaluatorNames = null,
+        CancellationToken ct = default);
 }
+
