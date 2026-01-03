@@ -120,10 +120,11 @@
                 <MudItem xs="12" sm="6" md="4" lg="3">
                     <MudPaper Class="pa-4" Elevation="2">
                         <MudStack Spacing="2">
-                            <MudLink Href="@($"/admin/agents/{vr.AgentId}/versions/{vr.InstructionVersionId}")">
-                                <MudText Typo="Typo.subtitle1"><strong>@vr.AgentName</strong></MudText>
-                            </MudLink>
-                            <MudText Typo="Typo.body2" Class="text-muted">@vr.VersionNumber</MudText>
+                            <MattEland.Jaimes.Web.Components.Shared.AgentVersionDisplay 
+                                AgentId="@vr.AgentId" 
+                                AgentName="@vr.AgentName" 
+                                VersionId="@vr.InstructionVersionId"
+                                VersionNumber="@vr.VersionNumber" />
                             <MudDivider/>
                             <MudText Typo="Typo.body2">Avg Duration: @vr.AvgDuration.ToString("F0") ms</MudText>
                             @if (vr.AvgScore.HasValue)
@@ -158,11 +159,11 @@
                     @foreach (var vr in _versionResults)
                     {
                         <div class="mb-6">
-                            <MudText Typo="Typo.subtitle1" Class="mb-2 mt-3 font-weight-bold">
-                                <MudLink Href="@($"/admin/agents/{vr.AgentId}/versions/{vr.InstructionVersionId}")">
-                                    @vr.AgentName - @vr.VersionNumber
-                                </MudLink>
-                            </MudText>
+                            <MattEland.Jaimes.Web.Components.Shared.AgentVersionDisplay 
+                                AgentId="@vr.AgentId" 
+                                AgentName="@vr.AgentName" 
+                                VersionId="@vr.InstructionVersionId"
+                                VersionNumber="@vr.VersionNumber" />
                             <MudSimpleTable Bordered="true" Striped="true" Hover="true" Dense="true" Class="comparison-grid">
                                 <thead>
                                     <tr>
@@ -264,9 +265,11 @@
                                             var avgScore = run.Metrics?.Any() == true ? run.Metrics.Average(m => m.Score) : (double?)null;
                                             <tr>
                                                 <MudTd Class="sticky-column">
-                                                    <MudLink Href="@($"/admin/agents/{vr.AgentId}/versions/{vr.InstructionVersionId}")">
-                                                        @vr.AgentName - @vr.VersionNumber
-                                                    </MudLink>
+                                                    <MattEland.Jaimes.Web.Components.Shared.AgentVersionDisplay 
+                                                        AgentId="@vr.AgentId" 
+                                                        AgentName="@vr.AgentName" 
+                                                        VersionId="@vr.InstructionVersionId"
+                                                        VersionNumber="@vr.VersionNumber" />
                                                 </MudTd>
                                                 <MudTd Class="avg-cell">
                                                     @if (avgScore.HasValue)
@@ -307,9 +310,11 @@
                                         {
                                             <tr>
                                                 <MudTd Class="sticky-column">
-                                                    <MudLink Href="@($"/admin/agents/{vr.AgentId}/versions/{vr.InstructionVersionId}")">
-                                                        @vr.AgentName - @vr.VersionNumber
-                                                    </MudLink>
+                                                    <MattEland.Jaimes.Web.Components.Shared.AgentVersionDisplay 
+                                                        AgentId="@vr.AgentId" 
+                                                        AgentName="@vr.AgentName" 
+                                                        VersionId="@vr.InstructionVersionId"
+                                                        VersionNumber="@vr.VersionNumber" />
                                                 </MudTd>
                                                 <MudTd colspan="@(_metricNames.Count + 2)" Style="text-align: center;">
                                                     <span class="text-muted">No run</span>

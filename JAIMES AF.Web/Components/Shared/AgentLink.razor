@@ -1,0 +1,28 @@
+@* 
+    AgentLink.razor - Reusable component for displaying agent name with link to agent details.
+    Displays as a chip with a bot icon for consistent styling throughout the Admin UI.
+*@
+
+<MudChip T="string"
+         Size="Size.Small"
+         Color="Color.Primary"
+         Variant="Variant.Text"
+         Icon="@Icons.Material.Filled.SmartToy"
+         Href="@($"/agents/{AgentId}")"
+         Label="true">
+    @AgentName
+</MudChip>
+
+@code {
+    /// <summary>
+    /// The agent's unique identifier.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string AgentId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Display name for the agent.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string AgentName { get; set; } = string.Empty;
+}

@@ -70,7 +70,16 @@
 					<MudTd>
 						<MudLink Href="@($"/admin/test-cases/{context.Id}")">@context.Name</MudLink>
 					</MudTd>
-					<MudTd>@(context.AgentName ?? "Unknown")</MudTd>
+					<MudTd>
+						@if (!string.IsNullOrEmpty(context.AgentId))
+						{
+							<MattEland.Jaimes.Web.Components.Shared.AgentLink AgentId="@context.AgentId" AgentName="@(context.AgentName ?? "Unknown")" />
+						}
+						else
+						{
+							<MudText Typo="Typo.body2" Class="text-muted">Unknown</MudText>
+						}
+					</MudTd>
 					<MudTd Style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
 						<MudTooltip Text="@context.MessageText">
 							@TruncateText(context.MessageText, 50)

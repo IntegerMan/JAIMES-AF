@@ -1,0 +1,49 @@
+@* 
+    AgentVersionDisplay.razor - Combined component showing agent name and version number.
+    Both elements display as chips and link to their respective detail pages.
+*@
+
+<MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Style="display: inline-flex;">
+    <AgentLink AgentId="@AgentId" AgentName="@AgentName" />
+    @if (!string.IsNullOrEmpty(VersionNumber) && VersionId.HasValue)
+    {
+        <AgentVersionLink AgentId="@AgentId" VersionId="@VersionId.Value" VersionNumber="@VersionNumber" />
+    }
+    else if (!string.IsNullOrEmpty(VersionNumber))
+    {
+        <MudChip T="string"
+                 Size="Size.Small"
+                 Color="Color.Default"
+                 Variant="Variant.Text"
+                 Icon="@Icons.Material.Filled.Update"
+                 Label="true">
+            @VersionNumber
+        </MudChip>
+    }
+</MudStack>
+
+@code {
+    /// <summary>
+    /// The agent's unique identifier.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string AgentId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Display name for the agent.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string AgentName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The instruction version ID. If null, version chip won't be clickable.
+    /// </summary>
+    [Parameter]
+    public int? VersionId { get; set; }
+
+    /// <summary>
+    /// Display version number (e.g., "v1.0", "v2.3").
+    /// </summary>
+    [Parameter]
+    public string? VersionNumber { get; set; }
+}

@@ -44,6 +44,12 @@
                                Href="@($"/agents/{AgentId}/improve")">
                         Improve
                     </MudButton>
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Success"
+                               StartIcon="@Icons.Material.Filled.Science"
+                               Href="@($"/admin/run-tests?agentId={AgentId}")">
+                        Test
+                    </MudButton>
                 </MudStack>
             </MudStack>
 
@@ -73,7 +79,10 @@
                     </HeaderContent>
                     <RowTemplate>
                         <MudTd>
-                            <MudLink Href="@($"/agents/{AgentId}/versions/{context.Id}")">@context.VersionNumber</MudLink>
+                            <MattEland.Jaimes.Web.Components.Shared.AgentVersionLink 
+                                AgentId="@AgentId" 
+                                VersionId="@context.Id" 
+                                VersionNumber="@context.VersionNumber" />
                         </MudTd>
                         <MudTd>@context.CreatedAt.ToString("yyyy-MM-dd")</MudTd>
                         <MudTd>

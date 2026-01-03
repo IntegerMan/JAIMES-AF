@@ -38,37 +38,45 @@
     {
         <MudTable Items="_pagedReports" Hover="true" Dense="true" Elevation="2">
             <HeaderContent>
-                <MudTh>Report</MudTh>
-                <MudTh>Agent</MudTh>
-                <MudTh>Version</MudTh>
+                <MudTh>Execution</MudTh>
                 <MudTh>Tests</MudTh>
                 <MudTh>Created</MudTh>
                 <MudTh>Size</MudTh>
-                <MudTh>Actions</MudTh>
+                <MudTh Style="text-align: right;">Actions</MudTh>
             </HeaderContent>
             <RowTemplate>
-                <MudTd DataLabel="Report">
-                    <MudLink Href="@($"/admin/test-runs/compare?executions={Uri.EscapeDataString(context.ExecutionName)}")">
-                        @context.FileName
-                    </MudLink>
+                <MudTd DataLabel="Execution">
+                    <MudStack>
+                        <MudLink Href="@($"/admin/test-runs/compare?executions={Uri.EscapeDataString(context.ExecutionName)}")">
+                            @context.ExecutionName
+                        </MudLink>
+                        <MudText Typo="Typo.caption" Class="text-muted">
+                            <MattEland.Jaimes.Web.Components.Shared.AgentVersionDisplay
+                                AgentId="@context.AgentId"
+                                AgentName="@(context.AgentName ?? "Unknown")"
+                                VersionId="@context.InstructionVersionId"
+                                VersionNumber="@context.VersionNumber"/>
+                        </MudText>
+                    </MudStack>
                 </MudTd>
-                <MudTd DataLabel="Agent">
-                    <MudLink Href="@($"/admin/agents/{context.AgentId}")">
-                        @context.AgentName
-                    </MudLink>
+                <MudTd DataLabel="Tests">
+                    <MudChip T="string" Size="Size.Small" Color="Color.Primary">@context.TestCaseCount tests</MudChip>
                 </MudTd>
-                <MudTd DataLabel="Version">
-                    <MudLink Href="@($"/admin/agents/{context.AgentId}/versions/{context.InstructionVersionId}")">
-                        @context.VersionNumber
-                    </MudLink>
-                </MudTd>
-                <MudTd DataLabel="Tests">@context.TestCaseCount</MudTd>
                 <MudTd DataLabel="Created">@context.CreatedAt.ToString("yyyy-MM-dd HH:mm")</MudTd>
                 <MudTd DataLabel="Size">@FormatSize(context.SizeBytes)</MudTd>
-                <MudTd>
-                    <MudStack Row="true" Spacing="1">
-                        <MudTooltip Text="View Report">
-                            <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                <MudTd Style="text-align: right;">
+                    <MudStack Row="true" Spacing="1" Justify="Justify.FlexEnd">
+                        <MudTooltip Text="View Comparison">
+                            <MudButton Variant="Variant.Outlined"
+                                       Size="Size.Small"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Compare"
+                                       Href="@($"/admin/test-runs/compare?executions={Uri.EscapeDataString(context.ExecutionName)}")">
+                                Compare
+                            </MudButton>
+                        </MudTooltip>
+                        <MudTooltip Text="View Raw Report">
+                            <MudIconButton Icon="@Icons.Material.Filled.Article"
                                            Size="Size.Small"
                                            OnClick="@(() => ViewReport(context.ReportId))"/>
                         </MudTooltip>
@@ -218,4 +226,5 @@
         if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
         return $"{bytes / (1024.0 * 1024.0):F1} MB";
     }
+
 }

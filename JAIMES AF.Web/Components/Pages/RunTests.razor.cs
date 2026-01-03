@@ -6,11 +6,14 @@ namespace MattEland.Jaimes.Web.Components.Pages;
 public partial class RunTests
 {
     [SupplyParameterFromQuery] [Parameter] public int? TestCaseId { get; set; }
+    [SupplyParameterFromQuery] [Parameter] public string? AgentId { get; set; }
 
     private List<TestCaseResponse>? _testCases;
     private List<AgentWithVersions>? _agents;
+    private List<EvaluatorItemDto>? _evaluators;
     private HashSet<int> _selectedTestCases = [];
     private HashSet<int> _selectedVersions = [];
+    private HashSet<string> _selectedEvaluators = [];
     private bool _isLoading = true;
     private bool _isRunning = false;
 
@@ -37,6 +40,16 @@ public partial class RunTests
             // Load test cases
             _testCases = await Http.GetFromJsonAsync<List<TestCaseResponse>>("/test-cases");
 
+            // Load evaluators
+            var evaluatorResp = await Http.GetFromJsonAsync<EvaluatorListResponse>("/admin/evaluators");
+            _evaluators = evaluatorResp?.Items ?? [];
+
+            // Select all evaluators by default
+            foreach (var e in _evaluators)
+            {
+                _selectedEvaluators.Add(e.Name);
+            }
+
             // Load agents with versions
             var agentsResponse = await Http.GetFromJsonAsync<AgentListResponse>("/agents");
             _agents = [];
@@ -62,6 +75,20 @@ public partial class RunTests
             {
                 _selectedTestCases.Add(TestCaseId.Value);
             }
+
+            // Pre-select agent versions if AgentId provided via query param
+            if (!string.IsNullOrEmpty(AgentId))
+            {
+                var agent = _agents?.FirstOrDefault(a => a.Id == AgentId);
+                if (agent != null)
+                {
+                    // Select up to 5 most recent versions
+                    foreach (var v in agent.Versions.OrderByDescending(v => v.CreatedAt).Take(5))
+                    {
+                        _selectedVersions.Add(v.Id);
+                    }
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -86,6 +113,12 @@ public partial class RunTests
         else _selectedVersions.Remove(id);
     }
 
+    private void ToggleEvaluator(string name, bool selected)
+    {
+        if (selected) _selectedEvaluators.Add(name);
+        else _selectedEvaluators.Remove(name);
+    }
+
     private void SelectAllTestCases()
     {
         if (_testCases != null)
@@ -108,6 +141,17 @@ public partial class RunTests
     }
 
     private void SelectNoVersions() => _selectedVersions.Clear();
+
+    private void SelectAllEvaluators()
+    {
+        if (_evaluators != null)
+        {
+            foreach (var e in _evaluators)
+                _selectedEvaluators.Add(e.Name);
+        }
+    }
+
+    private void SelectNoEvaluators() => _selectedEvaluators.Clear();
 
     private async Task RunTestsAsync()
     {
@@ -148,7 +192,8 @@ public partial class RunTests
             {
                 Versions = versionsToTest,
                 TestCaseIds = _selectedTestCases.ToList(),
-                ExecutionName = executionName
+                ExecutionName = executionName,
+                EvaluatorNames = _selectedEvaluators.Count > 0 ? _selectedEvaluators.ToList() : null
             };
 
             var response = await Http.PostAsJsonAsync("/test-runs/multi-version", request);

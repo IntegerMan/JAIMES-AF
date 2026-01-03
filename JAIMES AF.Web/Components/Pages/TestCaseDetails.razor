@@ -97,7 +97,7 @@
 						<MudStack Spacing="2">
 							<MudStack Row="true">
 								<MudText><strong>Agent:</strong></MudText>
-								<MudLink Href="@($"/agents/{_testCase.AgentId}")">@(_testCase.AgentName ?? "Unknown")</MudLink>
+								<MattEland.Jaimes.Web.Components.Shared.AgentLink AgentId="@_testCase.AgentId" AgentName="@(_testCase.AgentName ?? "Unknown")" />
 							</MudStack>
 							<MudStack Row="true">
 								<MudText><strong>Game:</strong></MudText>

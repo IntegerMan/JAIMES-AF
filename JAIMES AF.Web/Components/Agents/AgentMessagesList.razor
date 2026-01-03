@@ -32,12 +32,10 @@
         {
             <TemplateColumn Title="Version" Sortable="true">
                 <CellTemplate>
-                    @{
-                        string versionDisplay = context.Item.InstructionVersionNumber ?? ("v" + context.Item.InstructionVersionId.ToString());
-                    }
-                    <MudLink Href="@($"/agents/{AgentId}/versions/{context.Item.InstructionVersionId}")">
-                        @versionDisplay
-                    </MudLink>
+                    <MattEland.Jaimes.Web.Components.Shared.AgentVersionLink 
+                        AgentId="@AgentId" 
+                        VersionId="@context.Item.InstructionVersionId" 
+                        VersionNumber="@(context.Item.InstructionVersionNumber ?? $"v{context.Item.InstructionVersionId}")" />
                 </CellTemplate>
             </TemplateColumn>
         }

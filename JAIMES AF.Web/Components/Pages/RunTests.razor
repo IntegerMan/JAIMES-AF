@@ -10,7 +10,7 @@
 
 <PageTitle>Run Tests</PageTitle>
 
-<MudPaper Class="pa-4">
+<MudPaper Class="pa-4" Style="min-height: calc(100vh - 120px); display: flex; flex-direction: column;">
     <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
         <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
     </MudStack>
@@ -18,7 +18,7 @@
     <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
         <MudStack>
             <MudText Typo="Typo.h4">Run Tests</MudText>
-            <MudText Class="text-muted">Select test cases and agent versions to run tests against.</MudText>
+            <MudText Class="text-muted">Select test cases, agent versions, and evaluators to run tests.</MudText>
         </MudStack>
         @if (!_isLoading && !_isRunning)
         {
@@ -47,16 +47,17 @@
                 <MudText Typo="Typo.h6">Running Tests...</MudText>
                 <MudText Class="text-muted">
                     Running @_selectedTestCases.Count test case(s) against @_selectedVersions.Count version(s)
+                    with @_selectedEvaluators.Count evaluator(s)
                 </MudText>
             </MudStack>
         </MudPaper>
     }
     else
     {
-        <MudGrid Spacing="4">
+        <MudGrid Spacing="3" Style="display: flex; flex: 1;">
             @* Test Case Selection *@
-            <MudItem xs="12" md="6">
-                <MudPaper Class="pa-4" Elevation="2">
+            <MudItem xs="12" md="4" Style="display: flex;">
+                <MudPaper Class="pa-4" Elevation="2" Style="flex: 1; display: flex; flex-direction: column;">
                     <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
                         <MudText Typo="Typo.h6">Test Cases</MudText>
                         <MudStack Row="true" Spacing="1">
@@ -71,7 +72,7 @@
                     }
                     else
                     {
-                        <div style="max-height: 400px; overflow-y: auto;">
+                        <div style="flex: 1; overflow-y: auto; min-height: 0;">
                             <MudList T="int" Dense="true">
                                 @foreach (var tc in _testCases)
                                 {
@@ -93,8 +94,8 @@
             </MudItem>
 
             @* Agent/Version Selection *@
-            <MudItem xs="12" md="6">
-                <MudPaper Class="pa-4" Elevation="2">
+            <MudItem xs="12" md="4" Style="display: flex;">
+                <MudPaper Class="pa-4" Elevation="2" Style="flex: 1; display: flex; flex-direction: column;">
                     <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
                         <MudText Typo="Typo.h6">Agent Versions</MudText>
                         <MudStack Row="true" Spacing="1">
@@ -109,11 +110,12 @@
                     }
                     else
                     {
-                        <div style="max-height: 400px; overflow-y: auto;">
+                        <div style="flex: 1; overflow-y: auto; min-height: 0;">
                             <MudExpansionPanels MultiExpansion="true">
                                 @foreach (var agent in _agents)
                                 {
-                                    <MudExpansionPanel Text="@agent.Name" Expanded="true">
+                                    bool hasSelectedVersions = agent.Versions.Any(v => _selectedVersions.Contains(v.Id));
+                                    <MudExpansionPanel Text="@agent.Name" Expanded="@(hasSelectedVersions || agent.Id == AgentId)">
                                         @if (agent.Versions.Count == 0)
                                         {
                                             <MudText Class="text-muted">No versions</MudText>
@@ -121,7 +123,7 @@
                                         else
                                         {
                                             <MudList T="int" Dense="true">
-                                                @foreach (var version in agent.Versions)
+                                                @foreach (var version in agent.Versions.OrderByDescending(v => v.CreatedAt))
                                                 {
                                                     <MudListItem>
                                                         <MudCheckBox T="bool"
@@ -148,6 +150,55 @@
                         </div>
                         <MudText Typo="Typo.caption" Class="text-muted mt-2">
                             @_selectedVersions.Count version(s) selected
+                        </MudText>
+                    }
+                </MudPaper>
+            </MudItem>
+
+            @* Evaluators Selection *@
+            <MudItem xs="12" md="4" Style="display: flex;">
+                <MudPaper Class="pa-4" Elevation="2" Style="flex: 1; display: flex; flex-direction: column;">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                        <MudText Typo="Typo.h6">Evaluators</MudText>
+                        <MudStack Row="true" Spacing="1">
+                            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="SelectAllEvaluators">All</MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="SelectNoEvaluators">None</MudButton>
+                        </MudStack>
+                    </MudStack>
+
+                    @if (_evaluators is null || _evaluators.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info">No evaluators registered.</MudAlert>
+                    }
+                    else
+                    {
+                        <div style="flex: 1; overflow-y: auto; min-height: 0;">
+                            <MudList T="string" Dense="true">
+                                @foreach (var evaluator in _evaluators)
+                                {
+                                    <MudListItem>
+                                        <MudCheckBox T="bool"
+                                                     Value="@_selectedEvaluators.Contains(evaluator.Name)"
+                                                     ValueChanged="@((bool v) => ToggleEvaluator(evaluator.Name, v))"
+                                                     Dense="true">
+                                            <ChildContent>
+                                                <MudStack>
+                                                    <MudText>@evaluator.Name</MudText>
+                                                    @if (!string.IsNullOrEmpty(evaluator.Description))
+                                                    {
+                                                        <MudText Typo="Typo.caption" Class="text-muted">
+                                                            @evaluator.Description
+                                                        </MudText>
+                                                    }
+                                                </MudStack>
+                                            </ChildContent>
+                                        </MudCheckBox>
+                                    </MudListItem>
+                                }
+                            </MudList>
+                        </div>
+                        <MudText Typo="Typo.caption" Class="text-muted mt-2">
+                            @_selectedEvaluators.Count of @_evaluators.Count evaluator(s) enabled
                         </MudText>
                     }
                 </MudPaper>

@@ -60,14 +60,11 @@
 						{
 							@foreach (var agentInfo in GetScenarioAgentsDisplay(context.Id))
 							{
-								<MudStack Row="true" Spacing="1" Class="me-3 d-inline-flex" AlignItems="AlignItems.Center">
-									<MudLink Href="@($"/agents/{agentInfo.AgentId}")">@agentInfo.AgentName</MudLink>
-									<MudText Typo="Typo.body2">(</MudText>
-									<MudLink Href="@($"/agents/{agentInfo.AgentId}/versions/{agentInfo.VersionId}")" Typo="Typo.body2">
-										@agentInfo.VersionNumber
-									</MudLink>
-									<MudText Typo="Typo.body2">)</MudText>
-								</MudStack>
+								<MattEland.Jaimes.Web.Components.Shared.AgentVersionDisplay 
+									AgentId="@agentInfo.AgentId" 
+									AgentName="@agentInfo.AgentName" 
+									VersionId="@agentInfo.VersionId"
+									VersionNumber="@agentInfo.VersionNumber" />
 							}
 						}
 						else

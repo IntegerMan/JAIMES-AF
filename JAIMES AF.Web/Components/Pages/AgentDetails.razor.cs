@@ -98,16 +98,10 @@ public partial class AgentDetails
         var dialog = await DialogService.ShowAsync<RunTestsDialog>("Run Test Cases", parameters, options);
         var result = await dialog.Result;
 
-        if (result is
-            {
-                Canceled: false, Data: MattEland.Jaimes.ServiceDefinitions.Responses.TestRunResultResponse testResult
-            })
+        if (result is { Canceled: false, Data: string executionName } && !string.IsNullOrEmpty(executionName))
         {
-            // Navigate to test results page
-            if (!string.IsNullOrEmpty(testResult.ExecutionName))
-            {
-                NavigationManager.NavigateTo($"/admin/test-runs/{Uri.EscapeDataString(testResult.ExecutionName)}");
-            }
+            // Navigate to comparison page with the execution name
+            NavigationManager.NavigateTo($"/admin/test-runs/compare?executions={Uri.EscapeDataString(executionName)}");
         }
     }
 }

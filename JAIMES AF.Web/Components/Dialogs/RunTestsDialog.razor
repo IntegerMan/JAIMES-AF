@@ -89,7 +89,7 @@
     [Parameter] public required string AgentId { get; set; }
     [Parameter] public required int VersionId { get; set; }
     [Parameter] public string? AgentName { get; set; }
-    [Parameter] public int? VersionNumber { get; set; }
+    [Parameter] public string? VersionNumber { get; set; }
 
     private List<TestCaseResponse>? _testCases;
     private HashSet<int> _selectedTestCases = [];
@@ -161,14 +161,24 @@
 
         try
         {
-            var request = new { testCaseIds = _selectedTestCases.ToList() };
-            var response = await Http.PostAsJsonAsync($"/agents/{AgentId}/versions/{VersionId}/test-run", request);
+            string executionName = $"test-{AgentId}-v{VersionId}-{DateTime.UtcNow:yyyyMMddHHmmss}";
+            
+            var request = new 
+            { 
+                Versions = new[] { new { AgentId = AgentId, InstructionVersionId = VersionId } },
+                TestCaseIds = _selectedTestCases.ToList(),
+                ExecutionName = executionName
+            };
+            
+            var response = await Http.PostAsJsonAsync("/test-runs/multi-version", request);
 
             if (response.IsSuccessStatusCode)
             {
-                var result = await response.Content.ReadFromJsonAsync<TestRunResultResponse>();
-                Snackbar.Add($"Test run completed: {result?.CompletedTestCases ?? 0} test(s) executed", Severity.Success);
-                MudDialog?.Close(DialogResult.Ok(result));
+                var result = await response.Content.ReadFromJsonAsync<MultiVersionTestRunResponse>();
+                Snackbar.Add($"Test run completed: {result?.CompletedRuns ?? 0} test(s) executed", Severity.Success);
+                
+                // Return the execution name for navigation
+                MudDialog?.Close(DialogResult.Ok(result?.ExecutionName ?? executionName));
             }
             else
             {

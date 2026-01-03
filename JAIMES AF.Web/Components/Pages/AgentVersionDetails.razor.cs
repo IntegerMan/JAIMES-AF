@@ -159,4 +159,35 @@ public partial class AgentVersionDetails
             StateHasChanged();
         }
     }
+
+    private async Task RunTestsAsync()
+    {
+        if (string.IsNullOrEmpty(AgentId) || _version == null) return;
+
+        var parameters = new DialogParameters
+        {
+            { "AgentId", AgentId },
+            { "VersionId", VersionId },
+            { "AgentName", _agentName },
+            { "VersionNumber", _version.VersionNumber }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseOnEscapeKey = true
+        };
+
+        var dialog =
+            await DialogService.ShowAsync<MattEland.Jaimes.Web.Components.Dialogs.RunTestsDialog>("Run Test Cases",
+                parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: string executionName } && !string.IsNullOrEmpty(executionName))
+        {
+            // Navigate to comparison page with the execution name
+            NavigationManager.NavigateTo($"/admin/test-runs/compare?executions={Uri.EscapeDataString(executionName)}");
+        }
+    }
 }

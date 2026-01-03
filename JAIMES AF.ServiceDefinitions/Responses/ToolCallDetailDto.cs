@@ -36,6 +36,16 @@ public class ToolCallDetailDto
     public string? GameName { get; init; }
 
     /// <summary>
+    /// The agent ID that made this call.
+    /// </summary>
+    public string? AgentId { get; init; }
+
+    /// <summary>
+    /// The instruction version ID used for this call.
+    /// </summary>
+    public int? InstructionVersionId { get; init; }
+
+    /// <summary>
     /// The name of the agent that made this call.
     /// </summary>
     public string? AgentName { get; init; }
