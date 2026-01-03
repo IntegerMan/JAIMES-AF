@@ -277,18 +277,12 @@ public static class TextGenerationServiceExtensions
             HttpResponseMessage? response = null;
             try
             {
-                // Bypass the DI-configured HttpClient and its handlers to rule out middleware issues
-                using HttpClient simpleClient = new HttpClient();
-                simpleClient.Timeout = TimeSpan.FromMinutes(5);
-
-                Console.WriteLine($"[DEBUG] Initiating Ollama request to {requestUrl}");
                 logger.LogInformation("Initiating Ollama request to {Url}", requestUrl);
 
-                response = await simpleClient.SendAsync(httpRequest,
+                response = await httpClient.SendAsync(httpRequest,
                     HttpCompletionOption.ResponseHeadersRead,
                     cancellationToken);
 
-                Console.WriteLine($"[DEBUG] Ollama response received: {response.StatusCode}");
                 logger.LogInformation("Ollama SendAsync completed with status {StatusCode}", response.StatusCode);
 
                 if (!response.IsSuccessStatusCode)
@@ -302,7 +296,6 @@ public static class TextGenerationServiceExtensions
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[DEBUG] Ollama error: {ex.Message}");
                 logger.LogError(ex, "Exception occurred during Ollama request initiation");
                 response?.Dispose();
                 throw;
