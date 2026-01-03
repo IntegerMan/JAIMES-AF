@@ -1,0 +1,281 @@
+@page "/admin/evaluators/test"
+@rendermode InteractiveServer
+
+<PageTitle>Test Evaluators</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+    </MudStack>
+    <MudPaper Class="pa-8" Elevation="2">
+        <MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">Test Evaluators</MudText>
+        <MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">
+            Test AI response evaluators against sample data
+        </MudText>
+
+        <MudText Typo="Typo.body1" Class="mb-6" Style="line-height: 1.75;">
+            Use this tool to test how evaluators score AI assistant responses. Select an agent instruction version
+            to provide the system prompt context, optionally select a ruleset for game mechanics evaluation,
+            and enter the conversation to evaluate.
+        </MudText>
+
+        <MudDivider Class="my-6" />
+
+        @* Configuration Section *@
+        <MudPaper Class="pa-4 mb-4" Elevation="1">
+            <MudText Typo="Typo.h6" GutterBottom="true" Class="mb-4">Configuration</MudText>
+
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudSelect @bind-Value="_selectedVersionId"
+                               Label="Agent & Instruction Version"
+                               Variant="Variant.Outlined"
+                               FullWidth="true"
+                               HelperText="Select an agent version to supply the system prompt"
+                               Disabled="_isLoading || !_versionOptions.Any()">
+                        @foreach (AgentResponse agent in _agents)
+                        {
+                            if (_agentVersions.TryGetValue(agent.Id, out AgentInstructionVersionResponse[]? versions) && versions.Length > 0)
+                            {
+                                <MudSelectItem Disabled="true" Value="0">@($"{agent.Name} ({agent.Id})")</MudSelectItem>
+                                foreach (AgentInstructionVersionResponse version in versions)
+                                {
+                                    <MudSelectItem Value="@version.Id">
+                                        @($"{agent.Name} - {version.VersionNumber}{(version.IsActive ? " (Active)" : string.Empty)}")
+                                    </MudSelectItem>
+                                }
+                            }
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudSelect @bind-Value="_selectedRulesetId"
+                               Label="Ruleset (for Game Mechanics)"
+                               Variant="Variant.Outlined"
+                               FullWidth="true"
+                               HelperText="Required for GameMechanicsEvaluator"
+                               Disabled="_isLoading"
+                               Clearable="true">
+                        @foreach (RulesetInfoResponse ruleset in _rulesets)
+                        {
+                            <MudSelectItem Value="@ruleset.Id">@ruleset.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+
+            <MudGrid Class="mt-4">
+                <MudItem xs="12" md="6">
+                    <MudSelect @bind-SelectedValues="_selectedEvaluators"
+                               Label="Evaluators to Run"
+                               Variant="Variant.Outlined"
+                               FullWidth="true"
+                               HelperText="Leave empty to run all evaluators"
+                               MultiSelection="true"
+                               Disabled="_isLoading">
+                        @foreach (string evaluatorName in _availableEvaluators)
+                        {
+                            <MudSelectItem Value="@evaluatorName">@evaluatorName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+
+            @if (_selectedVersionId > 0 && _selectedVersion != null)
+            {
+                <MudDivider Class="my-4" />
+                <MudText Typo="Typo.body2" Class="mb-2"><strong>System Prompt Preview:</strong></MudText>
+                <MudPaper Class="pa-3" Elevation="0" Style="background-color: var(--mud-palette-background-grey); max-height: 200px; overflow-y: auto;">
+                    <MudText Typo="Typo.body2" Style="white-space: pre-wrap; font-family: monospace; font-size: 0.85rem;">
+                        @(_selectedVersion.Instructions.Length > 500
+                            ? _selectedVersion.Instructions.Substring(0, 500) + "..."
+                            : _selectedVersion.Instructions)
+                    </MudText>
+                </MudPaper>
+            }
+        </MudPaper>
+
+        @* Conversation Context Section *@
+        <MudPaper Class="pa-4 mb-4" Elevation="1">
+            <MudText Typo="Typo.h6" GutterBottom="true" Class="mb-4">Conversation Context</MudText>
+            <MudText Typo="Typo.body2" Class="mb-4 text-muted">
+                Add prior messages that led up to the AI response being evaluated.
+            </MudText>
+
+            @for (int i = 0; i < _conversationMessages.Count; i++)
+            {
+                int index = i;
+                <MudPaper Class="pa-3 mb-3" Elevation="0" Style="background-color: var(--mud-palette-background-grey);">
+                    <MudGrid>
+                        <MudItem xs="2" md="1">
+                            <MudSelect @bind-Value="_conversationMessages[index].Role"
+                                       Variant="Variant.Outlined">
+                                <MudSelectItem Value="@("user")">User</MudSelectItem>
+                                <MudSelectItem Value="@("assistant")">Assistant</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="9" md="10">
+                            <MudTextField @bind-Value="_conversationMessages[index].Text"
+                                          Variant="Variant.Outlined"
+                                          Placeholder="Enter message text..."
+                                          Lines="2" />
+                        </MudItem>
+                        <MudItem xs="1">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Color="Color.Error"
+                                           Size="Size.Small"
+                                           OnClick="@(() => RemoveMessage(index))" />
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            }
+
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="AddUserMessage"
+                       Class="me-2">
+                Add User Message
+            </MudButton>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="AddAssistantMessage">
+                Add Assistant Message
+            </MudButton>
+        </MudPaper>
+
+        @* Response to Evaluate Section *@
+        <MudPaper Class="pa-4 mb-4" Elevation="1">
+            <MudText Typo="Typo.h6" GutterBottom="true" Class="mb-4">AI Response to Evaluate</MudText>
+            <MudTextField @bind-Value="_assistantResponse"
+                          Label="Assistant Response"
+                          Variant="Variant.Outlined"
+                          FullWidth="true"
+                          Lines="5"
+                          Placeholder="Enter the AI assistant's response to evaluate..."
+                          HelperText="This is the response that will be scored by the evaluators" />
+        </MudPaper>
+
+        @* Run Button *@
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Size="Size.Large"
+                   OnClick="RunEvaluationAsync"
+                   Disabled="@(!CanRunEvaluation())"
+                   Class="mb-4">
+            @if (_isEvaluating)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+                <span>Evaluating...</span>
+            }
+            else
+            {
+                <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Class="me-2" />
+                <span>Run Evaluation</span>
+            }
+        </MudButton>
+
+        @* Error Display *@
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+        }
+
+        @* Results Section *@
+        @if (_evaluationResult != null)
+        {
+            <MudDivider Class="my-6" />
+
+            <MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">
+                Evaluation Results
+                <MudChip T="string" Size="Size.Small" Color="Color.Info" Class="ms-2">
+                    @(_evaluationResult.ExecutionTimeMs)ms
+                </MudChip>
+            </MudText>
+
+            @if (_evaluationResult.Errors.Count > 0)
+            {
+                <MudAlert Severity="Severity.Warning" Class="mb-4">
+                    @foreach (string error in _evaluationResult.Errors)
+                    {
+                        <MudText>@error</MudText>
+                    }
+                </MudAlert>
+            }
+
+            @if (_evaluationResult.Metrics.Count > 0)
+            {
+                <MudDataGrid Items="@_evaluationResult.Metrics" Dense="true" Hover="true" Class="mb-4">
+                    <Columns>
+                        <PropertyColumn Property="x => x.Name" Title="Metric" />
+                        <PropertyColumn Property="x => x.EvaluatorName" Title="Evaluator" />
+                        <TemplateColumn Title="Score">
+                            <CellTemplate>
+                                @if (context.Item.Score.HasValue)
+                                {
+                                    <MudChip T="string"
+                                             Size="Size.Small"
+                                             Color="@GetScoreColor(context.Item.Score.Value)">
+                                        @context.Item.Score.Value.ToString("F1")
+                                    </MudChip>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Default">N/A</MudText>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Status">
+                            <CellTemplate>
+                                @if (context.Item.Passed.HasValue)
+                                {
+                                    <MudIcon Icon="@(context.Item.Passed.Value ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                                             Color="@(context.Item.Passed.Value ? Color.Success : Color.Error)"
+                                             Size="Size.Small" />
+                                }
+                                else
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.HelpOutline"
+                                             Color="Color.Default"
+                                             Size="Size.Small" />
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <PropertyColumn Property="x => x.Reason" Title="Reason" />
+                    </Columns>
+                </MudDataGrid>
+
+                @* Detailed diagnostics for each metric *@
+                @foreach (TestEvaluatorMetricResult metric in _evaluationResult.Metrics.Where(m => m.Diagnostics.Count > 0))
+                {
+                    <MudExpansionPanels Class="mb-2">
+                        <MudExpansionPanel Text="@($"{metric.Name} Diagnostics ({metric.Diagnostics.Count})")">
+                            @foreach (TestEvaluatorDiagnostic diag in metric.Diagnostics)
+                            {
+                                <MudAlert Severity="@GetDiagnosticSeverity(diag.Severity)" Dense="true" Class="mb-2">
+                                    @diag.Message
+                                </MudAlert>
+                            }
+                        </MudExpansionPanel>
+                    </MudExpansionPanels>
+                }
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info">No metrics were returned from the evaluation.</MudAlert>
+            }
+
+            @if (!string.IsNullOrEmpty(_evaluationResult.SystemPromptUsed))
+            {
+                <MudExpansionPanels Class="mt-4">
+                    <MudExpansionPanel Text="System Prompt Used">
+                        <MudText Typo="Typo.body2" Style="white-space: pre-wrap; font-family: monospace;">
+                            @_evaluationResult.SystemPromptUsed
+                        </MudText>
+                    </MudExpansionPanel>
+                </MudExpansionPanels>
+            }
+        }
+    </MudPaper>
+</MudContainer>
