@@ -120,6 +120,8 @@ public class PipelineStatusService : IPipelineStatusService
         }
 
         // Get ready count from database (documents that are fully processed)
+        int totalChunks = 0;
+        int totalEmbeddings = 0;
         try
         {
             await using JaimesDbContext dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -128,6 +130,16 @@ public class PipelineStatusService : IPipelineStatusService
             readyCount = await dbContext.CrackedDocuments
                 .AsNoTracking()
                 .Where(d => d.IsProcessed && d.TotalChunks > 0)
+                .CountAsync(cancellationToken);
+
+            // Get total chunks and embeddings
+            totalChunks = await dbContext.DocumentChunks
+                .AsNoTracking()
+                .CountAsync(cancellationToken);
+
+            totalEmbeddings = await dbContext.DocumentChunks
+                .AsNoTracking()
+                .Where(c => c.QdrantPointId != null)
                 .CountAsync(cancellationToken);
         }
         catch (Exception ex)
@@ -141,6 +153,8 @@ public class PipelineStatusService : IPipelineStatusService
             ChunkingQueueSize = chunkingQueueSize,
             EmbeddingQueueSize = embeddingQueueSize,
             ReadyCount = readyCount,
+            TotalChunks = totalChunks,
+            TotalEmbeddings = totalEmbeddings,
             Timestamp = DateTimeOffset.UtcNow
         };
     }

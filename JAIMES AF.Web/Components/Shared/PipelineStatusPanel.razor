@@ -77,14 +77,29 @@
             <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Large" Class="text-muted" />
 
             @* Ready Stage *@
-            <MudPaper Class="pa-3" Elevation="1" Style="min-width: 120px; text-align: center;">
+            <MudPaper Class="pa-3" Elevation="1" Style="min-width: 280px; text-align: center;">
                 <MudStack AlignItems="AlignItems.Center" Spacing="1">
                     <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Color="Color.Success" />
                     <MudText Typo="Typo.subtitle2">Ready</MudText>
-                    <MudText Typo="Typo.h5" Color="Color.Success">
-                        @_status.ReadyCount
-                    </MudText>
-                    <MudText Typo="Typo.caption" Class="text-muted">documents</MudText>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.Center" Spacing="0">
+                        @* Documents *@
+                        <MudStack AlignItems="AlignItems.Center" Spacing="0" Class="px-3">
+                            <MudText Typo="Typo.h5" Color="Color.Success">@_status.ReadyCount</MudText>
+                            <MudText Typo="Typo.caption" Class="text-muted">documents</MudText>
+                        </MudStack>
+                        <MudDivider Vertical="true" FlexItem="true" Class="mx-2" Style="height: 40px;" />
+                        @* Chunks *@
+                        <MudStack AlignItems="AlignItems.Center" Spacing="0" Class="px-3">
+                            <MudText Typo="Typo.h5" Color="Color.Info">@_status.TotalChunks.ToString("N0")</MudText>
+                            <MudText Typo="Typo.caption" Class="text-muted">chunks</MudText>
+                        </MudStack>
+                        <MudDivider Vertical="true" FlexItem="true" Class="mx-2" Style="height: 40px;" />
+                        @* Embeddings *@
+                        <MudStack AlignItems="AlignItems.Center" Spacing="0" Class="px-3">
+                            <MudText Typo="Typo.h5" Color="@(_status.TotalEmbeddings == _status.TotalChunks ? Color.Success : Color.Warning)">@_status.TotalEmbeddings.ToString("N0")</MudText>
+                            <MudText Typo="Typo.caption" Class="text-muted">embeddings</MudText>
+                        </MudStack>
+                    </MudStack>
                 </MudStack>
             </MudPaper>
         </MudStack>

@@ -27,6 +27,16 @@ public record PipelineStatusNotification
     public int ReadyCount { get; init; }
 
     /// <summary>
+    /// Total number of chunks across all documents.
+    /// </summary>
+    public int TotalChunks { get; init; }
+
+    /// <summary>
+    /// Total number of embeddings (chunks with QdrantPointId).
+    /// </summary>
+    public int TotalEmbeddings { get; init; }
+
+    /// <summary>
     /// Timestamp when this status was captured.
     /// </summary>
     public DateTimeOffset Timestamp { get; init; } = DateTimeOffset.UtcNow;
