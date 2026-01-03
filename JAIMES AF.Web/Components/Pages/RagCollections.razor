@@ -1,0 +1,119 @@
+@page "/admin/rag-collections"
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@rendermode InteractiveServer
+
+<PageTitle>RAG Collections</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+	</MudStack>
+	<MudPaper Class="pa-8" Elevation="2">
+		<MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">RAG Collections</MudText>
+		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">
+			View indexed documents, chunks, embeddings, and query statistics
+		</MudText>
+
+		<MudText Typo="Typo.body1" Class="mb-6" Style="line-height: 1.75;">
+			This page displays statistics for RAG (Retrieval-Augmented Generation) collections used by AI agents.
+			Use this to identify potential issues with missing embeddings, chunks, or searches.
+		</MudText>
+
+		<MudStack Row="true" Spacing="2" Class="mb-6">
+			<MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/tools/rules-search"
+			           StartIcon="@Icons.Material.Filled.Search">
+				Test Rules Search
+			</MudButton>
+			<MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/tools/conversation-search"
+			           StartIcon="@Icons.Material.Filled.Chat">
+				Test Conversation Search
+			</MudButton>
+		</MudStack>
+
+		@if (_isLoading)
+		{
+			<MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4"/>
+		}
+
+		@if (!string.IsNullOrEmpty(_errorMessage))
+		{
+			<MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+		}
+
+		@if (_statistics != null)
+		{
+			<MudDivider Class="my-6"/>
+
+			<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Collection Summaries</MudText>
+			<MudGrid Spacing="3" Class="mb-6">
+				@foreach (RagCollectionSummary summary in _statistics.Summaries)
+				{
+					<MudItem xs="12" sm="6" md="4">
+						<MudPaper Class="pa-4" Elevation="1">
+							<MudText Typo="Typo.h6" Class="mb-2">@summary.CollectionType</MudText>
+							<MudStack Spacing="1">
+								<MudText Typo="Typo.body2">
+									<MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" Class="me-1"/>
+									@summary.DocumentCount documents
+								</MudText>
+								<MudText Typo="Typo.body2">
+									<MudIcon Icon="@Icons.Material.Filled.ViewModule" Size="Size.Small" Class="me-1"/>
+									@summary.TotalChunks chunks
+								</MudText>
+								<MudText Typo="Typo.body2" Color="@(summary.EmbeddedChunks < summary.TotalChunks ? Color.Warning : Color.Success)">
+									<MudIcon Icon="@Icons.Material.Filled.Memory" Size="Size.Small" Class="me-1"/>
+									@summary.EmbeddedChunks / @summary.TotalChunks embedded
+								</MudText>
+								<MudText Typo="Typo.body2">
+									<MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" Class="me-1"/>
+									@summary.QueryCount queries
+								</MudText>
+							</MudStack>
+						</MudPaper>
+					</MudItem>
+				}
+			</MudGrid>
+
+			<MudDivider Class="my-6"/>
+
+			<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Document Details</MudText>
+			<MudDataGrid Items="@_statistics.Documents" Dense="true" Striped="true" Hover="true">
+				<Columns>
+					<PropertyColumn Property="x => x.DocumentKind" Title="Type"/>
+					<PropertyColumn Property="x => x.RulesetId" Title="Ruleset"/>
+					<PropertyColumn Property="x => x.FileName" Title="File Name"/>
+					<PropertyColumn Property="x => x.TotalChunks" Title="Chunks"/>
+					<TemplateColumn Title="Embeddings">
+						<CellTemplate>
+							@if (context.Item.EmbeddedChunks < context.Item.TotalChunks)
+							{
+								<MudChip T="string" Color="Color.Warning" Size="Size.Small">
+									@context.Item.EmbeddedChunks / @context.Item.TotalChunks
+								</MudChip>
+							}
+							else
+							{
+								<MudChip T="string" Color="Color.Success" Size="Size.Small">
+									@context.Item.EmbeddedChunks
+								</MudChip>
+							}
+						</CellTemplate>
+					</TemplateColumn>
+					<TemplateColumn Title="Status">
+						<CellTemplate>
+							@if (context.Item.IsFullyProcessed)
+							{
+								<MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small"/>
+							}
+							else
+							{
+								<MudIcon Icon="@Icons.Material.Filled.HourglassEmpty" Color="Color.Warning" Size="Size.Small"/>
+							}
+						</CellTemplate>
+					</TemplateColumn>
+					<PropertyColumn Property="x => x.CrackedAt" Title="Processed" Format="g"/>
+				</Columns>
+			</MudDataGrid>
+		}
+	</MudPaper>
+</MudContainer>
