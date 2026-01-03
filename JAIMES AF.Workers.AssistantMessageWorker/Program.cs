@@ -128,13 +128,6 @@ ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
 
 await host.WaitForMigrationsAsync();
 
-// Log registered evaluators for debugging
-var registeredEvaluators = host.Services.GetServices<IEvaluator>().ToList();
-logger.LogInformation(
-    "Registered {Count} evaluators: {EvaluatorNames}",
-    registeredEvaluators.Count,
-    string.Join(", ", registeredEvaluators.Select(e => e.GetType().Name)));
-
 logger.LogInformation("Starting Assistant Message Worker");
 
 await host.RunAsync();

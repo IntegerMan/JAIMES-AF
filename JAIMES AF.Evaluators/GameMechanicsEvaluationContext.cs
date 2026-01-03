@@ -20,7 +20,7 @@ public class GameMechanicsEvaluationContext : EvaluationContext
     /// <param name="rulesetId">The ID of the ruleset to evaluate against.</param>
     /// <param name="rulesetName">The optional display name of the ruleset.</param>
     public GameMechanicsEvaluationContext(string rulesetId, string? rulesetName = null)
-        : base(ContextName, CreateContents(rulesetId, rulesetName))
+        : base(ContextName, CreateContents(rulesetId ?? throw new ArgumentNullException(nameof(rulesetId)), rulesetName))
     {
         RulesetId = rulesetId ?? throw new ArgumentNullException(nameof(rulesetId));
         RulesetName = rulesetName;
