@@ -59,7 +59,8 @@ public class ChatService(
             }
 
             // Add conversation search tool if the service is available
-            IConversationSearchService? conversationSearchService = scope.ServiceProvider.GetService<IConversationSearchService>();
+            IConversationSearchService? conversationSearchService =
+                scope.ServiceProvider.GetService<IConversationSearchService>();
             if (conversationSearchService != null)
             {
                 ConversationSearchTool conversationSearchTool = new(game, _serviceProvider);
@@ -83,6 +84,52 @@ public class ChatService(
                     "GetPlayerSentiment",
                     "Retrieves the last 5 most recent sentiment analysis results for the player in the current game. This helps understand the player's frustration level and emotional state. Use this tool when you need to gauge how the player is feeling about the game or recent interactions.");
                 toolList.Add(playerSentimentFunction);
+            }
+
+            // Add location tracking tools if the location service is available
+            ILocationService? locationService = scope.ServiceProvider.GetService<ILocationService>();
+            if (locationService != null)
+            {
+                // Location lookup tool
+                GameLocationTool gameLocationTool = new(game, _serviceProvider);
+
+                AIFunction getLocationFunction = AIFunctionFactory.Create(
+                    (string locationName) => gameLocationTool.GetLocationByNameAsync(locationName),
+                    "GetLocationByName",
+                    "Retrieves detailed information about a location by name, including its description/appearance, significant events that have occurred there, and nearby locations. Use this tool whenever you need to describe a location the player visits or references, or when you need to recall what has happened at a specific place. The search is case-insensitive.");
+                toolList.Add(getLocationFunction);
+
+                AIFunction getAllLocationsFunction = AIFunctionFactory.Create(
+                    () => gameLocationTool.GetAllLocationsAsync(),
+                    "GetAllLocations",
+                    "Gets a list of all known locations in the current game with their names and brief descriptions. Use this tool when you need to see what locations have been established in the game world, or when the player asks about places they can go.");
+                toolList.Add(getAllLocationsFunction);
+
+                // Location management tool
+                LocationManagementTool locationManagementTool = new(game, _serviceProvider);
+
+                AIFunction createUpdateLocationFunction = AIFunctionFactory.Create(
+                    (string name, string description, string? storytellerNotes) =>
+                        locationManagementTool.CreateOrUpdateLocationAsync(name, description, storytellerNotes),
+                    "CreateOrUpdateLocation",
+                    "Creates a new location or updates an existing one. Use this tool to establish new places in the game world as they become relevant to the story. Every location must have a name and description / appearance. You can also add private storyteller notes that are hidden from the player to help you plan story elements.");
+                toolList.Add(createUpdateLocationFunction);
+
+                AIFunction addLocationEventFunction = AIFunctionFactory.Create(
+                    (string locationName, string eventName, string eventDescription) =>
+                        locationManagementTool.AddLocationEventAsync(locationName, eventName, eventDescription),
+                    "AddLocationEvent",
+                    "Adds a significant event to a location's history. Use this tool to record important happenings at locations - battles, discoveries, meetings, or any event worth remembering. This helps maintain narrative consistency throughout the game.");
+                toolList.Add(addLocationEventFunction);
+
+                AIFunction addNearbyLocationFunction = AIFunctionFactory.Create(
+                    (string locationName, string nearbyLocationName, string? distance, string? travelNotes,
+                            string? storytellerNotes) =>
+                        locationManagementTool.AddNearbyLocationAsync(locationName, nearbyLocationName, distance,
+                            travelNotes, storytellerNotes),
+                    "AddNearbyLocation",
+                    "Links two locations as being nearby to each other. Use this tool to establish geographic relationships between places. You can include travel information and private storyteller notes about dangers or secrets along the route that are hidden from the player.");
+                toolList.Add(addNearbyLocationFunction);
             }
 
             tools = toolList;
@@ -121,7 +168,8 @@ public class ChatService(
         // Per Microsoft docs, use WithOpenTelemetry on the agent (not UseOpenTelemetry on builder)
         // Per Microsoft docs: https://learn.microsoft.com/en-us/agent-framework/user-guide/agents/agent-middleware?pivots=programming-language-csharp
         // Register agent run middleware on the agent builder
-        AIAgent agent = instrumentedChatClient.CreateJaimesAgent(_logger, $"JaimesAgent-{game!.GameId}", systemPrompt, tools);
+        AIAgent agent =
+            instrumentedChatClient.CreateJaimesAgent(_logger, $"JaimesAgent-{game!.GameId}", systemPrompt, tools);
 
         _logger.LogInformation(
             "Agent created with OpenTelemetry, agent run middleware, and tool invocation middleware");
@@ -174,11 +222,14 @@ public class ChatService(
         GameConversationMemoryProvider memoryProvider;
         using (IServiceScope factoryScope = _serviceProvider.CreateScope())
         {
-            GameConversationMemoryProviderFactory memoryProviderFactory = factoryScope.ServiceProvider.GetRequiredService<GameConversationMemoryProviderFactory>();
+            GameConversationMemoryProviderFactory memoryProviderFactory =
+                factoryScope.ServiceProvider.GetRequiredService<GameConversationMemoryProviderFactory>();
             memoryProvider = memoryProviderFactory.CreateForGame(request.GameId, _serviceProvider);
         }
+
         memoryProvider.SetThread(thread);
-        _logger.LogInformation("Created memory provider for initial message generation for game {GameId}", request.GameId);
+        _logger.LogInformation("Created memory provider for initial message generation for game {GameId}",
+            request.GameId);
 
         // Build the initial prompt with initial greeting
         // Player character info is now available via GetPlayerInfo tool call, so it's not included in the prompt
@@ -188,6 +239,7 @@ public class ChatService(
             promptBuilder.AppendLine(request.InitialGreeting);
             promptBuilder.AppendLine();
         }
+
         promptBuilder.AppendLine(
             "Please begin the adventure with an opening message that introduces the scenario and sets the scene for the player.");
 

@@ -73,11 +73,15 @@
                     <MudStack Row="true" Spacing="1">
                         @foreach (var agent in context.Item.EnabledAgents.Take(3))
                         {
-                            <MudChip Color="Color.Secondary" Size="Size.Small">@agent</MudChip>
+                            <MudLink Href="@($"/agents/{Uri.EscapeDataString(agent)}")" Typo="Typo.body2">@agent</MudLink>
+                            @if (agent != context.Item.EnabledAgents.Take(3).Last())
+                            {
+                                <MudText Typo="Typo.body2">,</MudText>
+                            }
                         }
                         @if (context.Item.EnabledAgents.Count > 3)
                         {
-                            <MudChip Color="Color.Default" Size="Size.Small">+@(context.Item.EnabledAgents.Count - 3) more</MudChip>
+                            <MudText Typo="Typo.body2">(+@(context.Item.EnabledAgents.Count - 3) more)</MudText>
                         }
                     </MudStack>
                 }
