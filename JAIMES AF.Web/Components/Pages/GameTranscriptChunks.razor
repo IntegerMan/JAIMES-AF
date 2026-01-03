@@ -39,7 +39,6 @@
 			@if (_response.EmbeddedCount < _response.TotalCount)
 			{
 				<MudAlert Severity="Severity.Warning" Class="mb-4">
-					=
 					<strong>@(_response.TotalCount - _response.EmbeddedCount)</strong> of @_response.TotalCount messages are missing embeddings.
 					Embedding processing may still be in progress.
 				</MudAlert>
