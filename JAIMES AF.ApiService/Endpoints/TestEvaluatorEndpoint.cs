@@ -154,15 +154,29 @@ public class TestEvaluatorEndpoint : Endpoint<TestEvaluatorRequest, TestEvaluato
                     ? name
                     : "Unknown";
 
+                double? score = metric is NumericMetric numericMetric ? numericMetric.Value : null;
+
+                bool? passed = null;
+                EvaluationRating? rating = metric.Interpretation?.Rating;
+
+                if (rating.HasValue)
+                {
+                    passed = rating.Value == EvaluationRating.Inconclusive
+                        ? null
+                        : rating.Value >= EvaluationRating.Good;
+                }
+                else if (score.HasValue)
+                {
+                    // Fall back to numeric score when interpretation metadata is unavailable.
+                    passed = score.Value >= 4.0;
+                }
+
                 TestEvaluatorMetricResult metricResult = new()
                 {
                     Name = metricName,
                     EvaluatorName = evaluatorName,
-                    Score = metric is NumericMetric numericMetric ? numericMetric.Value : null,
-                    Passed = metric.Interpretation?.Rating != EvaluationRating.Inconclusive
-                             && metric.Interpretation?.Rating != EvaluationRating.Exceptional
-                        ? metric.Interpretation?.Rating >= EvaluationRating.Good
-                        : null,
+                    Score = score,
+                    Passed = passed,
                     Reason = metric.Reason,
                     Diagnostics = metric.Diagnostics?
                         .Select(d => new TestEvaluatorDiagnostic
