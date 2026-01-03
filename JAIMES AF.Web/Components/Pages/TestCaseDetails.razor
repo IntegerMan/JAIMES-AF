@@ -113,73 +113,6 @@
 							</MudStack>
 						</MudStack>
 					</MudPaper>
-
-					@* Test Runs Card *@
-					@if (_runs is not null && _runs.Count > 0)
-					{
-						<MudPaper Class="pa-4" Elevation="2">
-							<MudText Typo="Typo.h6" Class="mb-3">Test Runs (@_runs.Count)</MudText>
-							<div style="max-height: 400px; overflow-y: auto;">
-								<MudTable Items="_runs" Dense="true" Hover="true">
-									<HeaderContent>
-										<MudTh>Version</MudTh>
-										<MudTh>Avg Score</MudTh>
-										<MudTh>Metrics</MudTh>
-										<MudTh>Actions</MudTh>
-									</HeaderContent>
-									<RowTemplate>
-										<MudTd>
-											<MudStack Spacing="0">
-												<MudText Typo="Typo.body2"><strong>@context.VersionNumber</strong></MudText>
-												<MudText Typo="Typo.caption" Class="text-muted">@context.ExecutedAt.ToLocalTime().ToString("g")</MudText>
-											</MudStack>
-										</MudTd>
-										<MudTd>
-											@if (context.Metrics?.Any() == true)
-											{
-												var avgScore = context.Metrics.Average(m => m.Score);
-												<MudChip T="string" Size="Size.Medium" Color="@MetricColorHelper.GetScoreColor(avgScore)">
-													@avgScore.ToString("F2")
-												</MudChip>
-											}
-											else
-											{
-												<MudText Class="text-muted">-</MudText>
-											}
-										</MudTd>
-										<MudTd>
-											@if (context.Metrics?.Any() == true)
-											{
-												<MudStack Row="true" Spacing="1" Style="flex-wrap: wrap;">
-													@foreach (var metric in context.Metrics)
-													{
-														<MudTooltip Text="@(metric.EvaluatorName ?? metric.MetricName)">
-															<MudChip T="string" Size="Size.Small" Color="@MetricColorHelper.GetScoreColor(metric.Score)">
-																@metric.MetricName.Substring(0, 1).ToUpper()@(metric.Score.ToString("F1"))
-															</MudChip>
-														</MudTooltip>
-													}
-												</MudStack>
-												<MudText Typo="Typo.caption" Class="text-muted mt-1">@context.DurationMs ms</MudText>
-											}
-											else
-											{
-												<MudText Class="text-muted">No metrics</MudText>
-											}
-										</MudTd>
-										<MudTd>
-											@if (!string.IsNullOrEmpty(GetComparisonLink(context.ExecutionName)))
-											{
-												<MudLink Href="@GetComparisonLink(context.ExecutionName)" Typo="Typo.caption">
-													Comparison
-												</MudLink>
-											}
-										</MudTd>
-									</RowTemplate>
-								</MudTable>
-							</div>
-						</MudPaper>
-					}
 				</MudStack>
 			</MudItem>
 
@@ -190,5 +123,77 @@
 				</MudPaper>
 			</MudItem>
 		</MudGrid>
+
+		@* Model Version Comparison Grid *@
+		@if (_runs is not null && _runs.Count > 0)
+		{
+			<MudPaper Class="pa-4 mt-4" Elevation="2">
+				<MudText Typo="Typo.h6" Class="mb-3">Model Version Performance Comparison</MudText>
+				<MudTable Items="@_paginatedRuns" Dense="true" Hover="true" Striped="true">
+					<HeaderContent>
+						<MudTh>Version</MudTh>
+						<MudTh>Executed</MudTh>
+						<MudTh>Avg Score</MudTh>
+						@foreach (var metricName in _metricNames)
+						{
+							<MudTh>
+								<MudTooltip Text="@metricName">
+									<span style="cursor: help;">@GetMetricShortName(metricName)</span>
+								</MudTooltip>
+							</MudTh>
+						}
+						<MudTh>Duration</MudTh>
+					</HeaderContent>
+					<RowTemplate>
+						<MudTd>
+							<MudStack Spacing="0">
+								<MudText Typo="Typo.body2"><strong>@context.VersionNumber</strong></MudText>
+								<MudText Typo="Typo.caption" Class="text-muted">@context.AgentName</MudText>
+							</MudStack>
+						</MudTd>
+						<MudTd>
+							<MudText Typo="Typo.caption">@context.ExecutedAt.ToLocalTime().ToString("g")</MudText>
+						</MudTd>
+						<MudTd>
+							@if (context.Metrics?.Any() == true)
+							{
+								var avgScore = context.Metrics.Average(m => m.Score);
+								<MudChip T="string" Size="Size.Small" Color="@MetricColorHelper.GetScoreColor(avgScore)">
+									@avgScore.ToString("F2")
+								</MudChip>
+							}
+							else
+							{
+								<MudText Class="text-muted">-</MudText>
+							}
+						</MudTd>
+						@foreach (var metricName in _metricNames)
+						{
+							var metric = context.Metrics?.FirstOrDefault(m => m.MetricName == metricName);
+							<MudTd>
+								@if (metric != null)
+								{
+									<MudTooltip Text="@GetMetricTooltip(metricName, metric.Score, metric.Remarks)">
+										<MudChip T="string" Size="Size.Small" Color="@MetricColorHelper.GetScoreColor(metric.Score)">
+											@metric.Score.ToString("F1")
+										</MudChip>
+									</MudTooltip>
+								}
+								else
+								{
+									<span class="text-muted">-</span>
+								}
+							</MudTd>
+						}
+						<MudTd>
+							<MudText Typo="Typo.caption">@(context.DurationMs?.ToString("N0") ?? "-") ms</MudText>
+						</MudTd>
+					</RowTemplate>
+					<PagerContent>
+						<MudTablePager PageSizeOptions="new int[] { 5, 10, 25, 50 }" />
+					</PagerContent>
+				</MudTable>
+			</MudPaper>
+		}
 	}
 </MudPaper>
