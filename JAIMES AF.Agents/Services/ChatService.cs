@@ -123,10 +123,16 @@ public class ChatService(
                 toolList.Add(addLocationEventFunction);
 
                 AIFunction addNearbyLocationFunction = AIFunctionFactory.Create(
-                    (string locationName, string nearbyLocationName, string? distance, string? travelNotes,
+                    (string locationName,
+                            string nearbyLocationName,
+                            string? distance,
+                            string? travelNotes,
                             string? storytellerNotes) =>
-                        locationManagementTool.AddNearbyLocationAsync(locationName, nearbyLocationName, distance,
-                            travelNotes, storytellerNotes),
+                        locationManagementTool.AddNearbyLocationAsync(locationName,
+                            nearbyLocationName,
+                            distance,
+                            travelNotes,
+                            storytellerNotes),
                     "AddNearbyLocation",
                     "Links two locations as being nearby to each other. Use this tool to establish geographic relationships between places. You can include travel information and private storyteller notes about dangers or secrets along the route that are hidden from the player.");
                 toolList.Add(addNearbyLocationFunction);
@@ -145,7 +151,7 @@ public class ChatService(
 
                 // Log the full tool object for debugging
                 _logger.LogDebug("Full tool details: {ToolDetails}",
-                    JsonSerializer.Serialize(tool, new JsonSerializerOptions { WriteIndented = true }));
+                    JsonSerializer.Serialize(tool, new JsonSerializerOptions {WriteIndented = true}));
             }
 
             _logger.LogInformation(
@@ -261,7 +267,7 @@ public class ChatService(
         _logger.LogInformation("Saved initial thread state for game {GameId} via memory provider", request.GameId);
 
         // Get the first message from the response
-        string? messageText = response.Messages.FirstOrDefault()?.Text;
+        string? messageText = response.Messages?.FirstOrDefault()?.Text;
         string firstMessage = string.IsNullOrWhiteSpace(messageText) ? "Welcome to the adventure!" : messageText;
 
         return new InitialMessageResponse

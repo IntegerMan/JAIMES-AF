@@ -102,17 +102,23 @@ public class GameAwareAgent(
             ResponseId = lastUpdate?.ResponseId
         };
 
-        (int? userMessageId, List<int> assistantMessageIds) = await PersistGameStateAsync(messagesList, finalResponse, gameThread ?? thread, cancellationToken);
+        (int? userMessageId, List<int> assistantMessageIds) = await PersistGameStateAsync(messagesList,
+            finalResponse,
+            gameThread ?? thread,
+            cancellationToken);
 
         yield return new AgentRunResponseUpdate
         {
             Role = ChatRole.System,
-            Contents = {new TextContent(JsonSerializer.Serialize(new
+            Contents =
             {
-                Type = "MessagePersisted",
-                UserMessageId = userMessageId,
-                AssistantMessageIds = assistantMessageIds
-            }))},
+                new TextContent(JsonSerializer.Serialize(new
+                {
+                    Type = "MessagePersisted",
+                    UserMessageId = userMessageId,
+                    AssistantMessageIds = assistantMessageIds
+                }))
+            },
             MessageId = "persistence-complete"
         };
     }
@@ -244,7 +250,8 @@ public class GameAwareAgent(
         return gameThread;
     }
 
-    private async Task<(int? UserMessageId, List<int> AssistantMessageIds)> PersistGameStateAsync(IEnumerable<ChatMessage> incomingMessages,
+    private async Task<(int? UserMessageId, List<int> AssistantMessageIds)> PersistGameStateAsync(
+        IEnumerable<ChatMessage> incomingMessages,
         AgentRunResponse response,
         AgentThread? thread,
         CancellationToken cancellationToken)
@@ -275,7 +282,8 @@ public class GameAwareAgent(
             }
             else
             {
-                _logger.LogWarning("Cannot create thread for persistence - agent not available for game {GameId}", gameId);
+                _logger.LogWarning("Cannot create thread for persistence - agent not available for game {GameId}",
+                    gameId);
                 return (null, new List<int>());
             }
         }
@@ -329,7 +337,7 @@ public class GameAwareAgent(
                 .AsNoTracking()
                 .Where(v => v.AgentId == agentId && v.IsActive)
                 .OrderByDescending(v => v.CreatedAt)
-                .Select(v => new { v.Id })
+                .Select(v => new {v.Id})
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (latestVersion != null)
@@ -343,7 +351,7 @@ public class GameAwareAgent(
                     .AsNoTracking()
                     .Where(v => v.AgentId == agentId)
                     .OrderByDescending(v => v.CreatedAt)
-                    .Select(v => new { v.Id })
+                    .Select(v => new {v.Id})
                     .FirstOrDefaultAsync(cancellationToken);
 
                 if (anyVersion != null)
@@ -357,7 +365,9 @@ public class GameAwareAgent(
                     // so that the AgentId and InstructionVersionId remain consistent.
                     _logger.LogWarning(
                         "Agent {AgentId} has no instruction versions. Falling back to scenario agent {ScenarioAgentId} and version {VersionId}",
-                        agentId, scenarioAgent.AgentId, scenarioAgent.InstructionVersionId);
+                        agentId,
+                        scenarioAgent.AgentId,
+                        scenarioAgent.InstructionVersionId);
                     resolvedInstructionVersionId = scenarioAgent.InstructionVersionId;
                     agentId = scenarioAgent.AgentId;
                 }
@@ -414,7 +424,7 @@ public class GameAwareAgent(
 
         dbContext.Messages.Add(userMessageEntity);
 
-        List<Message> aiMessageEntities = response.Messages
+        List<Message> aiMessageEntities = (response.Messages ?? [])
             .Where(m => m.Role == ChatRole.Assistant)
             .Select(m => new Message
             {
@@ -440,7 +450,6 @@ public class GameAwareAgent(
                 IReadOnlyList<ToolCallRecord> toolCalls = await toolCallTracker.GetToolCallsAsync();
                 if (toolCalls.Count > 0)
                 {
-
                     // Load tools for lookup
                     var tools = await dbContext.Tools
                         .ToDictionaryAsync(t => t.Name.ToLower(), t => t.Id, cancellationToken);
@@ -485,7 +494,9 @@ public class GameAwareAgent(
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to notify clients of tool calls for message {MessageId}", lastAiMessage.Id);
+                        _logger.LogWarning(ex,
+                            "Failed to notify clients of tool calls for message {MessageId}",
+                            lastAiMessage.Id);
                     }
                 }
             }
