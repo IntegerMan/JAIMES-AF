@@ -88,61 +88,59 @@
 			</MudStack>
 		}
 
-		<MudGrid Spacing="4">
-			<MudItem xs="12" md="6">
-				<MudStack Spacing="4">
-					@* Test Case Details Card *@
-					<MudPaper Class="pa-4" Elevation="2">
-						<MudText Typo="Typo.h6" Class="mb-3">Test Case Details</MudText>
-						<MudStack Spacing="2">
-							<MudStack Row="true">
-								<MudText><strong>Agent:</strong></MudText>
-								<MattEland.Jaimes.Web.Components.Shared.AgentLink AgentId="@_testCase.AgentId" AgentName="@(_testCase.AgentName ?? "Unknown")" />
-							</MudStack>
-							<MudStack Row="true">
-								<MudText><strong>Game:</strong></MudText>
-								<MudLink Href="@($"/games/{_testCase.GameId}")">@(_testCase.GameTitle ?? "Unknown")</MudLink>
-							</MudStack>
-							<MudStack Row="true">
-								<MudText><strong>Created:</strong></MudText>
-								<MudText>@_testCase.CreatedAt.ToLocalTime().ToString("g")</MudText>
-							</MudStack>
-							<MudStack Row="true">
-								<MudText><strong>Test Runs:</strong></MudText>
-								<MudChip T="string" Size="Size.Small" Color="Color.Info">@_testCase.RunCount</MudChip>
-							</MudStack>
+		@* Test Case Details and Context - Compact Layout *@
+		<MudGrid Spacing="3" Class="mb-4">
+			<MudItem xs="12" md="4">
+				<MudPaper Class="pa-3" Elevation="2">
+					<MudText Typo="Typo.h6" Class="mb-2">Test Case Details</MudText>
+					<MudStack Spacing="1">
+						<MudStack Row="true" Spacing="1">
+							<MudText Typo="Typo.body2"><strong>Agent:</strong></MudText>
+							<MattEland.Jaimes.Web.Components.Shared.AgentLink AgentId="@_testCase.AgentId" AgentName="@(_testCase.AgentName ?? "Unknown")" />
 						</MudStack>
-					</MudPaper>
-				</MudStack>
+						<MudStack Row="true" Spacing="1">
+							<MudText Typo="Typo.body2"><strong>Game:</strong></MudText>
+							<MudLink Href="@($"/games/{_testCase.GameId}")">@(_testCase.GameTitle ?? "Unknown")</MudLink>
+						</MudStack>
+						<MudStack Row="true" Spacing="1">
+							<MudText Typo="Typo.body2"><strong>Created:</strong></MudText>
+							<MudText Typo="Typo.body2">@_testCase.CreatedAt.ToLocalTime().ToString("g")</MudText>
+						</MudStack>
+						<MudStack Row="true" Spacing="1">
+							<MudText Typo="Typo.body2"><strong>Test Runs:</strong></MudText>
+							<MudChip T="string" Size="Size.Small" Color="Color.Info">@_testCase.RunCount</MudChip>
+						</MudStack>
+					</MudStack>
+				</MudPaper>
 			</MudItem>
 
-			<MudItem xs="12" md="6">
-				<MudPaper Class="pa-4" Elevation="2" Style="min-height: 400px;">
-					<MudText Typo="Typo.h6" Class="mb-3">Conversation Context</MudText>
+			<MudItem xs="12" md="8">
+				<MudPaper Class="pa-3" Elevation="2">
+					<MudText Typo="Typo.h6" Class="mb-2">Conversation Context</MudText>
 					<ReadOnlyConversation MessageId="@_testCase.MessageId" ContextCount="5" />
 				</MudPaper>
 			</MudItem>
 		</MudGrid>
 
-		@* Model Version Comparison Grid *@
+		@* Model Version Comparison Grid - Full Width *@
 		@if (_runs is not null && _runs.Count > 0)
 		{
-			<MudPaper Class="pa-4 mt-4" Elevation="2">
+			<MudPaper Class="pa-3" Elevation="2">
 				<MudText Typo="Typo.h6" Class="mb-3">Model Version Performance Comparison</MudText>
-				<MudTable Items="@_paginatedRuns" Dense="true" Hover="true" Striped="true">
+				<MudTable Items="@_paginatedRuns" Dense="true" Hover="true" Striped="true" FixedHeader="true" Height="600px">
 					<HeaderContent>
-						<MudTh>Version</MudTh>
-						<MudTh>Executed</MudTh>
-						<MudTh>Avg Score</MudTh>
+						<MudTh Style="min-width: 140px;">Version</MudTh>
+						<MudTh Style="min-width: 130px;">Executed</MudTh>
+						<MudTh Style="min-width: 90px;">Avg Score</MudTh>
 						@foreach (var metricName in _metricNames)
 						{
-							<MudTh>
+							<MudTh Style="min-width: 80px;">
 								<MudTooltip Text="@metricName">
 									<span style="cursor: help;">@GetMetricShortName(metricName)</span>
 								</MudTooltip>
 							</MudTh>
 						}
-						<MudTh>Duration</MudTh>
+						<MudTh Style="min-width: 90px;">Duration</MudTh>
 					</HeaderContent>
 					<RowTemplate>
 						<MudTd>
@@ -190,7 +188,7 @@
 						</MudTd>
 					</RowTemplate>
 					<PagerContent>
-						<MudTablePager PageSizeOptions="new int[] { 5, 10, 25, 50 }" />
+						<MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
 					</PagerContent>
 				</MudTable>
 			</MudPaper>
