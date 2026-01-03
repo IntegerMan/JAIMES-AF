@@ -1,0 +1,36 @@
+@using MudBlazor
+
+<MudChat ChatPosition="ChatBubblePosition.Start"
+         Variant="Variant.Filled"
+         Color="Color.Error">
+    <MudChatHeader Name="System"/>
+    <MudChatBubble>
+        <MudStack Spacing="2">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                <MudIcon Icon="@Icons.Material.Filled.Block" Size="Size.Small"/>
+                <MudText Typo="Typo.body1">
+                    <strong>Content Moderation Error</strong>
+                </MudText>
+            </MudStack>
+            <MudText Typo="Typo.body2" Style="color: rgba(255, 255, 255, 0.9);">
+                I apologize, but I cannot process your request as it was filtered by Azure's content moderation policy.
+                This may be due to sensitive content in your message. Please rephrase your request and try again.
+            </MudText>
+        </MudStack>
+    </MudChatBubble>
+    <MudChatFooter Class="feedback-footer">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudTooltip Text="Learn More" Placement="Placement.Top">
+                <MudIconButton Icon="@Icons.Material.Filled.Link"
+                               Size="Size.Small"
+                               Color="Color.Inherit"
+                               Href="https://go.microsoft.com/fwlink/?linkid=2198766"
+                               Target="_blank"/>
+            </MudTooltip>
+        </MudStack>
+    </MudChatFooter>
+</MudChat>
+
+@code {
+    // No parameters needed - this is a static error message component
+}

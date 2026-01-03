@@ -1,0 +1,25 @@
+@using MudBlazor
+
+<MudChat ChatPosition="ChatBubblePosition.Start"
+         Variant="Variant.Filled"
+         Color="Color.Error">
+    <MudChatHeader Name="System"/>
+    <MudChatBubble>
+        <MudStack Spacing="2">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Small"/>
+                <MudText Typo="Typo.body1">
+                    <strong>Error</strong>
+                </MudText>
+            </MudStack>
+            <MudText Typo="Typo.body2" Style="color: rgba(255, 255, 255, 0.9);">
+                @ErrorMessage
+            </MudText>
+        </MudStack>
+    </MudChatBubble>
+</MudChat>
+
+@code {
+    [Parameter]
+    public string ErrorMessage { get; set; } = "An error occurred while processing your request. Please try again.";
+}

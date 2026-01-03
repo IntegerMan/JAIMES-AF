@@ -15,6 +15,18 @@
     @if (IsLastParagraph)
     {
         <MudChatFooter Class="d-flex justify-content-end align-items-center gap-2 mt-1">
+            @if (TriggeredContentModeration)
+            {
+                <MudTooltip Text="This message triggered Azure's content moderation policy. Click to learn more." Placement="Placement.Top">
+                    <MudIconButton Icon="@Icons.Material.Filled.ReportProblem"
+                                   Color="Color.Error"
+                                   Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Class="pa-0"
+                                   Href="https://go.microsoft.com/fwlink/?linkid=2198766"
+                                   Target="_blank" />
+                </MudTooltip>
+            }
             @if (IsTestCase && TestCaseId.HasValue)
             {
                 <MudTooltip Text="This message is marked as a test case - Click to view details" Placement="Placement.Top">
@@ -153,7 +165,11 @@
     [Parameter]
     public int? TestCaseId { get; set; }
 
-
+    /// <summary>
+    /// When true, shows a red exclamation mark indicating this message triggered Azure content moderation.
+    /// </summary>
+    [Parameter]
+    public bool TriggeredContentModeration { get; set; }
     private string GetSentimentIcon() => Sentiment switch
     {
         > 0 => Icons.Material.Filled.ThumbUp,

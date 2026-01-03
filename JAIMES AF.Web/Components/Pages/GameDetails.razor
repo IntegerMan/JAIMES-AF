@@ -17,7 +17,7 @@
 		{
 			<MudProgressCircular Indeterminate="true" Class="my-4"/>
 		}
-		else if (!string.IsNullOrEmpty(_errorMessage))
+		else if (!string.IsNullOrEmpty(_errorMessage) && _failedMessageIndex == null)
 		{
 			<MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
 		}
@@ -199,7 +199,8 @@
 								SentimentSource="@sentimentInfo?.SentimentSource"
 								SentimentId="@sentimentInfo?.SentimentId"
 								IsTestCase="@(messageId.HasValue && _messageTestCases.ContainsKey(messageId.Value))"
-								TestCaseId="@(messageId.HasValue && _messageTestCases.TryGetValue(messageId.Value, out var tcId) ? tcId : null)"/>
+								TestCaseId="@(messageId.HasValue && _messageTestCases.TryGetValue(messageId.Value, out var tcId) ? tcId : null)"
+								TriggeredContentModeration="@_contentModerationMessageIndexes.Contains(msgIndex)"/>
 						}
 						else
 						{
@@ -231,17 +232,17 @@
 						}
 					}
 
+					@* Show error message immediately after the message that triggered it *@
 					@if (_failedMessageIndex == msgIndex && !string.IsNullOrEmpty(_errorMessage))
 					{
-						<MudChat ChatPosition="ChatBubblePosition.End">
-							<MudChatBubble Color="Color.Error">
-								<MudIcon Icon="@Icons.Material.Filled.Error" Class="mr-2" Size="Size.Small"/>
-								@_errorMessage
-								<MudButton Size="Size.Small" Color="Color.Inherit" OnClick="@(() => RetryMessageAsync(capturedIndex))" Variant="Variant.Text">
-									Retry
-								</MudButton>
-							</MudChatBubble>
-						</MudChat>
+						@if (_isContentModerationError)
+						{
+							<ContentModerationErrorMessage />
+						}
+						else
+						{
+							<GenericErrorMessage ErrorMessage="@_errorMessage" />
+						}
 					}
 				}
 
