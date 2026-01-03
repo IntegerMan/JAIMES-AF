@@ -1,3 +1,5 @@
+using MattEland.Jaimes.Web.Components.Dialogs;
+using MudBlazor;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 
@@ -69,6 +71,37 @@ public partial class AgentDetails
         {
             _isLoading = false;
             StateHasChanged();
+        }
+    }
+
+    private async Task RunTestsForVersionAsync(int versionId)
+    {
+        if (string.IsNullOrEmpty(AgentId) || _agent == null) return;
+
+        var version = _versions?.FirstOrDefault(v => v.Id == versionId);
+
+        var parameters = new DialogParameters
+        {
+            { "AgentId", AgentId },
+            { "VersionId", versionId },
+            { "AgentName", _agent.Name },
+            { "VersionNumber", version?.VersionNumber }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseOnEscapeKey = true
+        };
+
+        var dialog = await DialogService.ShowAsync<RunTestsDialog>("Run Test Cases", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: string executionName } && !string.IsNullOrEmpty(executionName))
+        {
+            // Navigate to comparison page with the execution name
+            NavigationManager.NavigateTo($"/admin/test-runs/compare?executions={Uri.EscapeDataString(executionName)}");
         }
     }
 }

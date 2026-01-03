@@ -53,15 +53,13 @@
             </PropertyColumn>
             <PropertyColumn Property="x => x.AgentName" Title="Agent">
                 <CellTemplate>
-                    @if (!string.IsNullOrEmpty(context.Item.AgentName))
+                    @if (!string.IsNullOrEmpty(context.Item.AgentId))
                     {
-                        <MudText Typo="Typo.body2">
-                            @context.Item.AgentName
-                            @if (!string.IsNullOrEmpty(context.Item.AgentVersion))
-                            {
-                                <span class="text-muted"> v@(context.Item.AgentVersion)</span>
-                            }
-                        </MudText>
+                        <MattEland.Jaimes.Web.Components.Shared.AgentVersionDisplay 
+                            AgentId="@context.Item.AgentId" 
+                            AgentName="@(context.Item.AgentName ?? "Unknown")" 
+                            VersionId="@context.Item.InstructionVersionId"
+                            VersionNumber="@context.Item.AgentVersion" />
                     }
                     else
                     {

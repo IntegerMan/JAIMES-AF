@@ -972,6 +972,178 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.ToTable("ScenarioAgents");
                 });
 
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.StoredFile", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<byte[]>("BinaryContent")
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("Content")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("ItemKind")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<long?>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemKind");
+
+                    b.ToTable("StoredFiles");
+                });
+
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.TestCase", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("MessageId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MessageId")
+                        .IsUnique();
+
+                    b.ToTable("TestCases");
+                });
+
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.TestCaseRun", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AgentId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("DurationMs")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("ExecutedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ExecutionName")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)");
+
+                    b.Property<string>("GeneratedResponse")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("InstructionVersionId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ReportFileId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TestCaseId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgentId");
+
+                    b.HasIndex("ExecutionName");
+
+                    b.HasIndex("InstructionVersionId");
+
+                    b.HasIndex("ReportFileId");
+
+                    b.HasIndex("TestCaseId");
+
+                    b.ToTable("TestCaseRuns");
+                });
+
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.TestCaseRunMetric", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Diagnostics")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("EvaluatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("EvaluationModelId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("EvaluatorId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("MetricName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(2000)
+                        .HasColumnType("text");
+
+                    b.Property<double>("Score")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("TestCaseRunId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EvaluationModelId");
+
+                    b.HasIndex("EvaluatorId");
+
+                    b.HasIndex("TestCaseRunId");
+
+                    b.ToTable("TestCaseRunMetrics");
+                });
+
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Tool", b =>
                 {
                     b.Property<int>("Id")
@@ -1365,6 +1537,76 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.Navigation("Scenario");
                 });
 
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.TestCase", b =>
+                {
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.Message", "Message")
+                        .WithOne("TestCase")
+                        .HasForeignKey("MattEland.Jaimes.Repositories.Entities.TestCase", "MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Message");
+                });
+
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.TestCaseRun", b =>
+                {
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.Agent", "Agent")
+                        .WithMany()
+                        .HasForeignKey("AgentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.AgentInstructionVersion", "InstructionVersion")
+                        .WithMany()
+                        .HasForeignKey("InstructionVersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.StoredFile", "ReportFile")
+                        .WithMany()
+                        .HasForeignKey("ReportFileId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.TestCase", "TestCase")
+                        .WithMany("Runs")
+                        .HasForeignKey("TestCaseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Agent");
+
+                    b.Navigation("InstructionVersion");
+
+                    b.Navigation("ReportFile");
+
+                    b.Navigation("TestCase");
+                });
+
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.TestCaseRunMetric", b =>
+                {
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.Model", "EvaluationModel")
+                        .WithMany()
+                        .HasForeignKey("EvaluationModelId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.Evaluator", "Evaluator")
+                        .WithMany()
+                        .HasForeignKey("EvaluatorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MattEland.Jaimes.Repositories.Entities.TestCaseRun", "TestCaseRun")
+                        .WithMany("Metrics")
+                        .HasForeignKey("TestCaseRunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EvaluationModel");
+
+                    b.Navigation("Evaluator");
+
+                    b.Navigation("TestCaseRun");
+                });
+
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Agent", b =>
                 {
                     b.Navigation("InstructionVersions");
@@ -1411,6 +1653,8 @@ namespace MattEland.Jaimes.Repositories.Migrations
 
                     b.Navigation("MessageSentiment");
 
+                    b.Navigation("TestCase");
+
                     b.Navigation("ToolCalls");
                 });
 
@@ -1447,6 +1691,16 @@ namespace MattEland.Jaimes.Repositories.Migrations
                     b.Navigation("Games");
 
                     b.Navigation("ScenarioAgents");
+                });
+
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.TestCase", b =>
+                {
+                    b.Navigation("Runs");
+                });
+
+            modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.TestCaseRun", b =>
+                {
+                    b.Navigation("Metrics");
                 });
 
             modelBuilder.Entity("MattEland.Jaimes.Repositories.Entities.Tool", b =>

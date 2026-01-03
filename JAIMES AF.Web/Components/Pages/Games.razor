@@ -63,7 +63,11 @@
 					<MudTd>
 						@if (!string.IsNullOrEmpty(context.AgentId))
 						{
-							<MudLink Href="@($"/agents/{context.AgentId}")">@context.AgentName @context.VersionNumber</MudLink>
+							<MattEland.Jaimes.Web.Components.Shared.AgentVersionDisplay 
+							AgentId="@context.AgentId" 
+							AgentName="@(context.AgentName ?? "Unknown")" 
+							VersionId="@context.InstructionVersionId"
+							VersionNumber="@context.VersionNumber" />
 						}
 						else
 						{

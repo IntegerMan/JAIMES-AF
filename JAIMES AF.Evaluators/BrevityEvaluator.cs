@@ -60,7 +60,9 @@ public class BrevityEvaluator(IOptions<BrevityEvaluatorOptions> options) : IEval
         NumericMetric metric = new(BrevityMetricName)
         {
             Value = score,
-            Reason = reasoning
+            Reason = reasoning,
+            Interpretation =
+                new EvaluationMetricInterpretation(score <= 3 ? EvaluationRating.Inconclusive : EvaluationRating.Good)
         };
 
         // Add additional information as diagnostics for this metric specifically

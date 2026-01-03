@@ -15,6 +15,28 @@
     @if (IsLastParagraph)
     {
         <MudChatFooter Class="d-flex justify-content-end align-items-center gap-2 mt-1">
+            @if (IsTestCase && TestCaseId.HasValue)
+            {
+                <MudTooltip Text="This message is marked as a test case - Click to view details" Placement="Placement.Top">
+                    <MudIconButton Icon="@Icons.Material.Filled.Science"
+                                   Color="Color.Success"
+                                   Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Class="pa-0"
+                                   OnClick="ViewTestCase" />
+                </MudTooltip>
+            }
+            else if (MessageId.HasValue)
+            {
+                <MudTooltip Text="Mark as test case - Save this message and prior conversation as a test case for evaluating future agent versions" Placement="Placement.Top">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Science"
+                                   Color="Color.Default"
+                                   Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Class="pa-0"
+                                   OnClick="CreateTestCaseAsync" />
+                </MudTooltip>
+            }
             @if (MessageId.HasValue && Sentiment.HasValue)
             {
                 @if (ReadOnly && NavigateOnClick && SentimentId.HasValue)
@@ -119,6 +141,19 @@
     [Parameter]
     public bool NavigateOnClick { get; set; }
 
+    /// <summary>
+    /// True if this message is marked as a test case.
+    /// </summary>
+    [Parameter]
+    public bool IsTestCase { get; set; }
+
+    /// <summary>
+    /// The ID of the test case if this message is a test case.
+    /// </summary>
+    [Parameter]
+    public int? TestCaseId { get; set; }
+
+
     private string GetSentimentIcon() => Sentiment switch
     {
         > 0 => Icons.Material.Filled.ThumbUp,
@@ -161,6 +196,59 @@
         if (SentimentId.HasValue)
         {
             NavigationManager.NavigateTo($"/admin/sentiments/{SentimentId.Value}");
+        }
+    }
+
+    private void ViewTestCase()
+    {
+        if (TestCaseId.HasValue)
+        {
+            NavigationManager.NavigateTo($"/admin/test-cases/{TestCaseId.Value}");
+        }
+    }
+
+    private async Task CreateTestCaseAsync()
+    {
+        if (!MessageId.HasValue) return;
+
+        try
+        {
+            // Use first 50 characters of message text as default name
+            string defaultName = Text.Length > 50 ? Text.Substring(0, 50) + "..." : Text;
+            
+            var request = new MattEland.Jaimes.ServiceDefinitions.Requests.CreateTestCaseRequest
+            {
+                MessageId = MessageId.Value,
+                Name = defaultName,
+                Description = null
+            };
+
+            var response = await Http.PostAsJsonAsync("/test-cases", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var testCase = await response.Content.ReadFromJsonAsync<MattEland.Jaimes.ServiceDefinitions.Responses.TestCaseResponse>();
+                if (testCase != null)
+                {
+                    // Update local state to show the green icon
+                    IsTestCase = true;
+                    TestCaseId = testCase.Id;
+                    Snackbar.Add("Message marked as a test case!", Severity.Success);
+                }
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                Snackbar.Add("This message is already a test case.", Severity.Warning);
+            }
+            else
+            {
+                var errorMsg = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Failed to create test case: {errorMsg}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to create test case: {ex.Message}", Severity.Error);
         }
     }
 

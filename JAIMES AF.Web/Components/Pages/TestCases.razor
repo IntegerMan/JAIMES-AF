@@ -1,0 +1,128 @@
+@page "/admin/test-cases"
+@rendermode InteractiveServer
+
+@inject HttpClient Http
+@inject ILoggerFactory LoggerFactory
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@using MattEland.Jaimes.Web.Components.Dialogs
+
+<PageTitle>Test Cases</PageTitle>
+
+<MudPaper Class="pa-4">
+	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+	</MudStack>
+	<MudText Typo="Typo.h4">Test Cases</MudText>
+
+	<MudText Class="mb-4">Manage test cases for agent evaluation. Test cases are player messages that can be used to test agent versions.</MudText>
+
+	@if (_testCases is not null && _testCases.Count > 0)
+	{
+		<MudStack Row="true" Spacing="2" Class="mb-4">
+			<MudButton Variant="Variant.Filled" 
+			           Color="Color.Success" 
+			           StartIcon="@Icons.Material.Filled.PlayArrow"
+			           Href="/admin/run-tests">
+				Run Tests
+			</MudButton>
+			<MudButton Variant="Variant.Outlined"
+			           Color="Color.Primary"
+			           StartIcon="@Icons.Material.Filled.Description"
+			           Href="/admin/test-reports">
+				View Reports
+			</MudButton>
+		</MudStack>
+	}
+
+	<div style="position: relative; min-height: 200px;">
+		@if (_isLoading)
+		{
+			<div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+				<MudProgressCircular Indeterminate="true"/>
+			</div>
+		}
+
+		@if (!_isLoading && !string.IsNullOrEmpty(_errorMessage))
+		{
+			<MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
+		}
+
+		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && (_testCases is null || _testCases.Count == 0))
+		{
+			<MudText Class="mb-4">
+				No test cases yet. Mark player messages as test cases from the game conversation view.
+			</MudText>
+		}
+
+		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && _testCases is not null && _testCases.Count > 0)
+		{
+			<MudTable Items="_testCases" Dense="true" Hover="true">
+				<HeaderContent>
+					<MudTh>Name</MudTh>
+					<MudTh>Agent</MudTh>
+					<MudTh>Message</MudTh>
+					<MudTh Style="text-align: center">Runs</MudTh>
+					<MudTh Style="text-align: center">Status</MudTh>
+					<MudTh Style="text-align: right">Actions</MudTh>
+				</HeaderContent>
+				<RowTemplate>
+					<MudTd>
+						<MudLink Href="@($"/admin/test-cases/{context.Id}")">@context.Name</MudLink>
+					</MudTd>
+					<MudTd>
+						@if (!string.IsNullOrEmpty(context.AgentId))
+						{
+							<MattEland.Jaimes.Web.Components.Shared.AgentLink AgentId="@context.AgentId" AgentName="@(context.AgentName ?? "Unknown")" />
+						}
+						else
+						{
+							<MudText Typo="Typo.body2" Class="text-muted">Unknown</MudText>
+						}
+					</MudTd>
+					<MudTd Style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+						<MudTooltip Text="@context.MessageText">
+							@TruncateText(context.MessageText, 50)
+						</MudTooltip>
+					</MudTd>
+					<MudTd Style="text-align: center">
+						<MudChip T="string" Size="Size.Small" Color="Color.Info">@context.RunCount</MudChip>
+					</MudTd>
+					<MudTd Style="text-align: center">
+						@if (context.IsActive)
+						{
+							<MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
+						}
+						else
+						{
+							<MudChip T="string" Size="Size.Small" Color="Color.Default">Inactive</MudChip>
+						}
+					</MudTd>
+					<MudTd Style="text-align: right">
+						<MudTooltip Text="View Details" Placement="Placement.Top">
+							<MudIconButton Icon="@Icons.Material.Filled.Visibility"
+							               Color="Color.Primary"
+							               Size="Size.Small"
+							               Href="@($"/admin/test-cases/{context.Id}")"/>
+						</MudTooltip>
+						<MudTooltip Text="View Game" Placement="Placement.Top">
+							<MudIconButton Icon="@Icons.Material.Filled.Gamepad"
+							               Color="Color.Secondary"
+							               Size="Size.Small"
+							               Href="@($"/games/{context.GameId}")"/>
+						</MudTooltip>
+						@if (context.IsActive)
+						{
+							<MudTooltip Text="Deactivate Test Case" Placement="Placement.Top">
+								<MudIconButton Icon="@Icons.Material.Filled.Delete"
+								               Color="Color.Error"
+								               Size="Size.Small"
+								               OnClick="@(() => DeactivateTestCaseAsync(context.Id))"/>
+							</MudTooltip>
+						}
+					</MudTd>
+				</RowTemplate>
+			</MudTable>
+		}
+	</div>
+</MudPaper>

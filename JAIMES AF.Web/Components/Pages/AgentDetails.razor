@@ -3,6 +3,9 @@
 
 @inject HttpClient Http
 @inject ILoggerFactory LoggerFactory
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@using MattEland.Jaimes.Web.Components.Dialogs
 
 <PageTitle>Agent Details</PageTitle>
 
@@ -41,6 +44,12 @@
                                Href="@($"/agents/{AgentId}/improve")">
                         Improve
                     </MudButton>
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Success"
+                               StartIcon="@Icons.Material.Filled.Science"
+                               Href="@($"/admin/run-tests?agentId={AgentId}")">
+                        Test
+                    </MudButton>
                 </MudStack>
             </MudStack>
 
@@ -70,7 +79,10 @@
                     </HeaderContent>
                     <RowTemplate>
                         <MudTd>
-                            <MudLink Href="@($"/agents/{AgentId}/versions/{context.Id}")">@context.VersionNumber</MudLink>
+                            <MattEland.Jaimes.Web.Components.Shared.AgentVersionLink 
+                                AgentId="@AgentId" 
+                                VersionId="@context.Id" 
+                                VersionNumber="@context.VersionNumber" />
                         </MudTd>
                         <MudTd>@context.CreatedAt.ToString("yyyy-MM-dd")</MudTd>
                         <MudTd>
@@ -109,6 +121,12 @@
                                                Color="Color.Primary"
                                                Size="Size.Small"
                                                Href="@($"/agents/{AgentId}/versions/{context.Id}")"/>
+                            </MudTooltip>
+                            <MudTooltip Text="Run Test Cases">
+                                <MudIconButton Icon="@Icons.Material.Filled.Science"
+                                               Color="Color.Success"
+                                               Size="Size.Small"
+                                               OnClick="@(() => RunTestsForVersionAsync(context.Id))"/>
                             </MudTooltip>
                         </MudTd>
                     </RowTemplate>

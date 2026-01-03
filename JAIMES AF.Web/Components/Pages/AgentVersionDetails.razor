@@ -3,6 +3,9 @@
 
 @inject HttpClient Http
 @inject ILoggerFactory LoggerFactory
+@inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+@using MattEland.Jaimes.Web.Components.Dialogs
 
 <PageTitle>Agent Version Details</PageTitle>
 
@@ -87,6 +90,12 @@
                            StartIcon="@Icons.Material.Filled.AutoAwesome"
                            Href="@($"/agents/{AgentId}/versions/{VersionId}/improve")">
                     Improve
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Success"
+                           StartIcon="@Icons.Material.Filled.Science"
+                           OnClick="RunTestsAsync">
+                    Run Tests
                 </MudButton>
             </MudStack>
 

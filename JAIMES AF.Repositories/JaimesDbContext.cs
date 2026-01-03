@@ -43,13 +43,35 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
     public DbSet<LocationEvent> LocationEvents { get; set; } = null!;
     public DbSet<NearbyLocation> NearbyLocations { get; set; } = null!;
 
+    // Test case entities for agent evaluation
+    public DbSet<TestCase> TestCases { get; set; } = null!;
+    public DbSet<TestCaseRun> TestCaseRuns { get; set; } = null!;
+
+    public DbSet<TestCaseRunMetric> TestCaseRunMetrics { get; set; } = null!;
+
+    // File storage for reports and other binary content
+    public DbSet<StoredFile> StoredFiles { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
         // Enable pgvector extension for PostgreSQL (skip for in-memory database used in tests)
         // Only call HasPostgresExtension if we're using the Npgsql provider
-        if (string.Equals(Database.ProviderName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
+        // Note: Database.ProviderName can throw an exception at design-time when EF Core tools are running
+        // (e.g., during dotnet ef migrations add), so we wrap this in a try-catch and default to PostgreSQL
+        string providerName;
+        try
+        {
+            providerName = Database.ProviderName ?? "Npgsql.EntityFrameworkCore.PostgreSQL";
+        }
+        catch
+        {
+            // At design-time, Database.ProviderName may throw. Default to PostgreSQL.
+            providerName = "Npgsql.EntityFrameworkCore.PostgreSQL";
+        }
+
+        if (string.Equals(providerName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
             modelBuilder.HasPostgresExtension("vector");
 
         modelBuilder.Entity<Ruleset>(entity =>
@@ -111,12 +133,12 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 .HasForeignKey(iv => iv.ModelId)
                 .OnDelete(DeleteBehavior.NoAction);
 
-            entity.HasIndex(iv => new {iv.AgentId, iv.VersionNumber}).IsUnique();
+            entity.HasIndex(iv => new { iv.AgentId, iv.VersionNumber }).IsUnique();
         });
 
         modelBuilder.Entity<ScenarioAgent>(entity =>
         {
-            entity.HasKey(sa => new {sa.ScenarioId, sa.AgentId});
+            entity.HasKey(sa => new { sa.ScenarioId, sa.AgentId });
             entity.Property(sa => sa.ScenarioId).IsRequired();
             entity.Property(sa => sa.AgentId).IsRequired();
             entity.Property(sa => sa.InstructionVersionId);
@@ -272,18 +294,6 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             // Configure Embedding property for different database providers
             // For PostgreSQL: pgvector extension handles Vector natively via the [Column(TypeName = "vector")] attribute
             // For other providers (like in-memory): use a value converter to store as byte array
-            // Check if database is available (may not be at design-time)
-            string providerName;
-            try
-            {
-                providerName = Database.ProviderName ?? "Npgsql.EntityFrameworkCore.PostgreSQL";
-            }
-            catch
-            {
-                // At design-time or when database is not initialized, assume PostgreSQL
-                providerName = "Npgsql.EntityFrameworkCore.PostgreSQL";
-            }
-
             if (!string.Equals(providerName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
             {
                 // For non-PostgreSQL providers (like in-memory), convert Vector to/from byte array
@@ -323,18 +333,6 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             // Configure Embedding property for different database providers
             // For PostgreSQL: pgvector extension handles Vector natively via the [Column(TypeName = "vector")] attribute
             // For other providers (like in-memory): use a value converter to store as byte array
-            // Check if database is available (may not be at design-time)
-            string providerName;
-            try
-            {
-                providerName = Database.ProviderName ?? "Npgsql.EntityFrameworkCore.PostgreSQL";
-            }
-            catch
-            {
-                // At design-time or when database is not initialized, assume PostgreSQL
-                providerName = "Npgsql.EntityFrameworkCore.PostgreSQL";
-            }
-
             if (!string.Equals(providerName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
             {
                 // For non-PostgreSQL providers (like in-memory), convert Vector to/from byte array
@@ -504,7 +502,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
 
             // Unique constraint: location names must be unique within a game (case-insensitive)
             // Using the NameLower computed column ensures the constraint is enforced at database level
-            entity.HasIndex(l => new {l.GameId, l.NameLower}).IsUnique();
+            entity.HasIndex(l => new { l.GameId, l.NameLower }).IsUnique();
 
             entity.HasOne(l => l.Game)
                 .WithMany()
@@ -528,7 +526,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
 
         modelBuilder.Entity<NearbyLocation>(entity =>
         {
-            entity.HasKey(nl => new {nl.SourceLocationId, nl.TargetLocationId});
+            entity.HasKey(nl => new { nl.SourceLocationId, nl.TargetLocationId });
             entity.Property(nl => nl.Distance).HasMaxLength(100);
 
             entity.HasOne(nl => nl.SourceLocation)
@@ -552,7 +550,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.Property(m => m.CreatedAt).IsRequired();
 
             // Create unique index on Name + Provider + Endpoint to prevent duplicates
-            var indexBuilder = entity.HasIndex(m => new {m.Name, m.Provider, m.Endpoint})
+            var indexBuilder = entity.HasIndex(m => new { m.Name, m.Provider, m.Endpoint })
                 .IsUnique();
 
             // AreNullsDistinct is a relational-only feature. PostgreSQL 15+ supports it.
@@ -572,17 +570,6 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.Property(mem => mem.EvaluatedAt).IsRequired();
 
             // Configure Diagnostics as JSONB for PostgreSQL
-            string providerName;
-            try
-            {
-                providerName = Database.ProviderName ?? "Npgsql.EntityFrameworkCore.PostgreSQL";
-            }
-            catch
-            {
-                // At design-time or when database is not initialized, assume PostgreSQL
-                providerName = "Npgsql.EntityFrameworkCore.PostgreSQL";
-            }
-
             if (string.Equals(providerName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
             {
                 // For PostgreSQL, use jsonb type for Diagnostics
@@ -624,22 +611,12 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
 
         modelBuilder.Entity<EvaluationScenarioIteration>(entity =>
         {
-            entity.HasKey(si => new {si.ExecutionName, si.ScenarioName, si.IterationName});
+            entity.HasKey(si => new { si.ExecutionName, si.ScenarioName, si.IterationName });
             entity.Property(si => si.ExecutionName).IsRequired().HasMaxLength(250);
             entity.Property(si => si.ScenarioName).IsRequired().HasMaxLength(250);
             entity.Property(si => si.IterationName).IsRequired().HasMaxLength(250);
 
             // Configure ResultJson as jsonb for PostgreSQL
-            string providerName;
-            try
-            {
-                providerName = Database.ProviderName ?? "Npgsql.EntityFrameworkCore.PostgreSQL";
-            }
-            catch
-            {
-                providerName = "Npgsql.EntityFrameworkCore.PostgreSQL";
-            }
-
             if (string.Equals(providerName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
             {
                 entity.Property(si => si.ResultJson).HasColumnType("jsonb");
@@ -650,17 +627,124 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 .HasForeignKey(si => si.ExecutionName)
                 .OnDelete(DeleteBehavior.Cascade);
         });
+
+        // Test case entity configurations
+        modelBuilder.Entity<TestCase>(entity =>
+        {
+            entity.HasKey(tc => tc.Id);
+            entity.Property(tc => tc.MessageId).IsRequired();
+            entity.Property(tc => tc.Name).IsRequired().HasMaxLength(200);
+            entity.Property(tc => tc.Description).HasMaxLength(2000);
+            entity.Property(tc => tc.CreatedAt).IsRequired();
+            entity.Property(tc => tc.IsActive).IsRequired();
+
+            // Create unique index on MessageId to prevent duplicate test cases for same message
+            entity.HasIndex(tc => tc.MessageId).IsUnique();
+
+            entity.HasOne(tc => tc.Message)
+                .WithOne(m => m.TestCase)
+                .HasForeignKey<TestCase>(tc => tc.MessageId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TestCaseRun>(entity =>
+        {
+            entity.HasKey(tcr => tcr.Id);
+            entity.Property(tcr => tcr.TestCaseId).IsRequired();
+            entity.Property(tcr => tcr.AgentId).IsRequired();
+            entity.Property(tcr => tcr.InstructionVersionId).IsRequired();
+            entity.Property(tcr => tcr.ExecutedAt).IsRequired();
+            entity.Property(tcr => tcr.GeneratedResponse).IsRequired();
+            entity.Property(tcr => tcr.ExecutionName).HasMaxLength(250);
+
+            // Create index on ExecutionName for report queries
+            entity.HasIndex(tcr => tcr.ExecutionName);
+
+            entity.HasOne(tcr => tcr.TestCase)
+                .WithMany(tc => tc.Runs)
+                .HasForeignKey(tcr => tcr.TestCaseId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(tcr => tcr.Agent)
+                .WithMany()
+                .HasForeignKey(tcr => tcr.AgentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(tcr => tcr.InstructionVersion)
+                .WithMany()
+                .HasForeignKey(tcr => tcr.InstructionVersionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TestCaseRunMetric>(entity =>
+        {
+            entity.HasKey(tcrm => tcrm.Id);
+            entity.Property(tcrm => tcrm.TestCaseRunId).IsRequired();
+            entity.Property(tcrm => tcrm.MetricName).IsRequired().HasMaxLength(100);
+            entity.Property(tcrm => tcrm.Score).IsRequired();
+            entity.Property(tcrm => tcrm.Remarks).HasMaxLength(2000);
+
+            // Create index on TestCaseRunId for efficient queries
+            entity.HasIndex(tcrm => tcrm.TestCaseRunId);
+
+            entity.HasOne(tcrm => tcrm.TestCaseRun)
+                .WithMany(tcr => tcr.Metrics)
+                .HasForeignKey(tcrm => tcrm.TestCaseRunId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(tcrm => tcrm.Evaluator)
+                .WithMany()
+                .HasForeignKey(tcrm => tcrm.EvaluatorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.Property(tcrm => tcrm.EvaluatedAt).IsRequired();
+
+            // Configure Diagnostics as JSONB for PostgreSQL
+            if (string.Equals(providerName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
+            {
+                entity.Property(tcrm => tcrm.Diagnostics)
+                    .HasColumnType("jsonb");
+            }
+
+            entity.HasOne(tcrm => tcrm.EvaluationModel)
+                .WithMany()
+                .HasForeignKey(tcrm => tcrm.EvaluationModelId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasIndex(tcrm => tcrm.EvaluationModelId);
+        });
+
+        // StoredFile entity configuration
+        modelBuilder.Entity<StoredFile>(entity =>
+        {
+            entity.HasKey(sf => sf.Id);
+            entity.Property(sf => sf.ItemKind).IsRequired().HasMaxLength(50);
+            entity.Property(sf => sf.FileName).IsRequired().HasMaxLength(255);
+            entity.Property(sf => sf.ContentType).IsRequired().HasMaxLength(100);
+            entity.Property(sf => sf.CreatedAt).IsRequired();
+
+            // Create index on ItemKind for efficient queries by type
+            entity.HasIndex(sf => sf.ItemKind);
+        });
+
+        // Add relationship from TestCaseRun to StoredFile for reports
+        modelBuilder.Entity<TestCaseRun>()
+            .HasOne(tcr => tcr.ReportFile)
+            .WithMany()
+            .HasForeignKey(tcr => tcr.ReportFileId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         // Seed data - use lowercase ids for new defaults
         // IMPORTANT: When modifying any seed data values (e.g., ScenarioInstructions, InitialGreeting, or any HasData() values),
         // you MUST create a new EF Core migration. See AGENTS.md for the migration command.
         modelBuilder.Entity<Ruleset>()
             .HasData(
-                new Ruleset {Id = "dnd5e", Name = "Dungeons and Dragons 5th Edition"}
+                new Ruleset { Id = "dnd5e", Name = "Dungeons and Dragons 5th Edition" }
             );
 
         modelBuilder.Entity<Player>()
             .HasData(
-                new Player {Id = "emcee", RulesetId = "dnd5e", Description = "Default player", Name = "Emcee"},
+                new Player { Id = "emcee", RulesetId = "dnd5e", Description = "Default player", Name = "Emcee" },
                 new Player
                 {
                     Id = "kigorath", RulesetId = "dnd5e",

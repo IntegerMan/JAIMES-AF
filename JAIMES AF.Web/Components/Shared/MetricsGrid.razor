@@ -39,11 +39,13 @@
         </PropertyColumn>
         <PropertyColumn Property="x => x.AgentName" Title="Agent">
             <CellTemplate>
-                @if (context.Item.InstructionVersionId.HasValue && !string.IsNullOrEmpty(context.Item.AgentId))
+                @if (!string.IsNullOrEmpty(context.Item.AgentId))
                 {
-                    <MudLink Href="@($"/agents/{context.Item.AgentId}/versions/{context.Item.InstructionVersionId}")">
-                        @context.Item.AgentName @(context.Item.AgentVersion ?? "?")
-                    </MudLink>
+                    <MattEland.Jaimes.Web.Components.Shared.AgentVersionDisplay 
+                        AgentId="@context.Item.AgentId" 
+                        AgentName="@(context.Item.AgentName ?? "Unknown")" 
+                        VersionId="@context.Item.InstructionVersionId"
+                        VersionNumber="@context.Item.AgentVersion" />
                 }
                 else
                 {

@@ -1,0 +1,34 @@
+@* 
+    AgentVersionLink.razor - Reusable component for displaying version number with link to version details.
+    Displays as a chip with an update icon for consistent styling throughout the Admin UI.
+*@
+
+<MudChip T="string"
+         Size="Size.Small"
+         Color="Color.Info"
+         Variant="Variant.Text"
+         Icon="@Icons.Material.Filled.Update"
+         Href="@($"/agents/{AgentId}/versions/{VersionId}")"
+         Label="true">
+    @VersionNumber
+</MudChip>
+
+@code {
+    /// <summary>
+    /// The agent's unique identifier.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string AgentId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The instruction version ID.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public int VersionId { get; set; }
+
+    /// <summary>
+    /// Display version number (e.g., "v1.0", "v2.3").
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string VersionNumber { get; set; } = string.Empty;
+}

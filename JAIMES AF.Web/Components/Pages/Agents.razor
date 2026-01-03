@@ -53,19 +53,25 @@
 					</MudTd>
 					<MudTd>@context.Role</MudTd>
 					<MudTd align="Align.Right">
-						<MudTooltip Text="View Details">
+						<MudTooltip Text="View Details" Placement="Placement.Top">
 							<MudIconButton Icon="@Icons.Material.Filled.Visibility"
 							               Color="Color.Primary"
 							               Size="Size.Small"
 							               Href="@($"/agents/{context.Id}")"/>
 						</MudTooltip>
-						<MudTooltip Text="Improve Prompt">
+						<MudTooltip Text="Improve Prompt" Placement="Placement.Top">
 							<MudIconButton Icon="@Icons.Material.Filled.AutoAwesome"
 							               Color="Color.Secondary"
 							               Size="Size.Small"
 							               Href="@($"/agents/{context.Id}/improve")"/>
 						</MudTooltip>
-						<MudTooltip Text="Edit Agent">
+						<MudTooltip Text="Run Test Cases" Placement="Placement.Top">
+							<MudIconButton Icon="@Icons.Material.Filled.Science"
+							               Color="Color.Success"
+							               Size="Size.Small"
+							               Href="@($"/agents/{context.Id}")"/>
+						</MudTooltip>
+						<MudTooltip Text="Edit Agent" Placement="Placement.Top">
 							<MudIconButton Icon="@Icons.Material.Filled.Edit"
 							               Color="Color.Default"
 							               Size="Size.Small"
