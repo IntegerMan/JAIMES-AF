@@ -168,7 +168,8 @@ public static class AgentRunMiddleware
                 messageCount);
 
             return WrapStreamingWithErrorHandling(
-                innerAgent.RunStreamingAsync(messages, thread, options, cancellationToken));
+                innerAgent.RunStreamingAsync(messages, thread, options, cancellationToken),
+                cancellationToken);
         };
     }
 

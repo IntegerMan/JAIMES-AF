@@ -535,6 +535,9 @@ public partial class GameDetails : IAsyncDisposable
         _messages.RemoveRange(messageIndex, countToRemove);
         _messageIds.RemoveRange(messageIndex, countToRemove);
 
+        // Clear content moderation tracking for removed messages
+        _contentModerationMessageIndexes.RemoveWhere(idx => idx >= messageIndex);
+
         _failedMessageIndex = null;
         _errorMessage = null;
         _isContentModerationError = false;
