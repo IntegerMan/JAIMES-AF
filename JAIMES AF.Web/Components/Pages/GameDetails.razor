@@ -223,7 +223,8 @@
 									ExemptFromProcessing="@isExempt"
 									IsScriptedMessage="@isExempt"
 									HasMissingEvaluators="@(messageId.HasValue && _messageHasMissingEvaluators.TryGetValue(messageId.Value, out var hasM) && hasM)"
-									IsProcessing="@(!messageId.HasValue || !_loadedMetricsMessageIds.Contains(messageId.Value))"/>
+									IsProcessing="@(!messageId.HasValue || !_loadedMetricsMessageIds.Contains(messageId.Value))"
+									IsStreaming="@isStreaming"/>
 							}
 						}
 					}
