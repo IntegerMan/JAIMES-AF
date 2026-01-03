@@ -93,7 +93,7 @@ public static class ChatClientMiddleware
 
                 // Calculate duration
                 long durationTicks = Stopwatch.GetTimestamp() - startTime;
-                double durationMs = durationTicks / (double)Stopwatch.Frequency * 1000.0;
+                double durationMs = durationTicks / (double) Stopwatch.Frequency * 1000.0;
 
                 // Record metrics
                 ChatClientInvocations.Add(1, new KeyValuePair<string, object?>("status", "success"));
@@ -123,7 +123,7 @@ public static class ChatClientMiddleware
 
                 // Calculate duration even on error
                 long durationTicks = Stopwatch.GetTimestamp() - startTime;
-                double durationMs = durationTicks / (double)Stopwatch.Frequency * 1000.0;
+                double durationMs = durationTicks / (double) Stopwatch.Frequency * 1000.0;
 
                 // Record error metric
                 ChatClientInvocations.Add(1, new KeyValuePair<string, object?>("status", "error"));
@@ -158,12 +158,37 @@ public static class ChatClientMiddleware
                         // Log the response text prominently
                         logger.LogInformation(
                             "📤 Chat client response text: {ResponseText}",
-                            fullResponseText.Length > 500 ? fullResponseText.Substring(0, 500) + "..." : fullResponseText);
+                            fullResponseText.Length > 500
+                                ? fullResponseText.Substring(0, 500) + "..."
+                                : fullResponseText);
                     }
                 }
             }
 
             return response!;
+        };
+    }
+
+    /// <summary>
+    /// Creates an IChatClient streaming middleware that tracks streaming chat client invocations.
+    /// </summary>
+    /// <param name="logger">The logger to use for logging chat client invocations.</param>
+    /// <returns>A middleware function that can be used with the chat client builder.</returns>
+    public static Func<IEnumerable<ChatMessage>, ChatOptions?, IChatClient, CancellationToken,
+            IAsyncEnumerable<ChatResponseUpdate>>
+        CreateStreaming(ILogger logger)
+    {
+        return (messages, options, innerChatClient, cancellationToken) =>
+        {
+            // We can't easily track duration or token usage for the full stream without wrapping the enumerator,
+            // but we can log the start.
+            int messageCount = messages.Count();
+
+            logger.LogInformation(
+                "💬 Chat client streaming invocation started: {MessageCount} message(s)",
+                messageCount);
+
+            return innerChatClient.GetStreamingResponseAsync(messages, options, cancellationToken);
         };
     }
 }

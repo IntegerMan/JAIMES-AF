@@ -29,9 +29,6 @@ public class Program
         // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
         builder.Services.AddOpenApi();
 
-        // Add AG-UI Backend
-        builder.Services.AddAGUI();
-
         // Add Swagger services
         builder.Services.AddEndpointsApiExplorer();
 
@@ -114,7 +111,7 @@ public class Program
         // Register HttpContextAccessor for GameAwareAgent
         builder.Services.AddHttpContextAccessor();
 
-        // Register GameAwareAgent as singleton for use with MapAGUI
+        // Register GameAwareAgent as singleton for use with StreamingChatEndpoint
         // It's safe to be singleton because it uses IHttpContextAccessor for per-request context
         builder.Services.AddSingleton<GameAwareAgent>();
 
@@ -180,10 +177,6 @@ public class Program
 
         // Map SignalR hub for real-time message updates
         app.MapHub<MessageHub>("/hubs/messages");
-
-        // Map AG-UI endpoint for game-specific chat
-        // Use GameAwareAgent which creates game-specific agents based on route
-        app.MapAGUI("/games/{gameId:guid}/chat", app.Services.GetRequiredService<GameAwareAgent>());
 
         await app.RunAsync();
     }

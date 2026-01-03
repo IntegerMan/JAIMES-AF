@@ -118,17 +118,17 @@
 					bool isVersionSwitch = false;
 					bool isExempt = false;
 					int? messageId = GetMessageId(msgIndex);
+					bool isStreaming = _streamingMessageIndexes.Contains(msgIndex);
 
 					MessageAgentInfo? agentInfo = null;
 					if (messageId.HasValue)
 						_messageAgentInfo.TryGetValue(messageId.Value, out agentInfo);
-					else
-						_pendingMessageAgentInfo.TryGetValue(m, out agentInfo);
 
-					if (m.Role == ChatRole.Assistant && agentInfo != null)
+					// Only show agent info for completed (non-streaming) messages
+					if (m.Role == ChatRole.Assistant && agentInfo != null && !isStreaming)
 					{
 						agentId = agentInfo.AgentId;
-						agentName = agentInfo.AgentName ?? _agent?.Name; // Fallback to current agent name
+						agentName = agentInfo.AgentName;
 						instructionVersionId = agentInfo.InstructionVersionId;
 						versionNumber = agentInfo.VersionNumber ?? "1"; // Default to v1 if unknown
 						isExempt = agentInfo.IsScriptedMessage;
@@ -143,7 +143,6 @@
 
 							MessageAgentInfo? prevAgentInfo = null;
 							if (prevMsgId.HasValue) _messageAgentInfo.TryGetValue(prevMsgId.Value, out prevAgentInfo);
-							else _pendingMessageAgentInfo.TryGetValue(prevMsg, out prevAgentInfo);
 
 							if (prevMsg.Role == ChatRole.Assistant && prevAgentInfo != null)
 							{
@@ -223,7 +222,9 @@
 									IsVersionSwitch="@isVersionSwitch"
 									ExemptFromProcessing="@isExempt"
 									IsScriptedMessage="@isExempt"
-									HasMissingEvaluators="@(messageId.HasValue && _messageHasMissingEvaluators.TryGetValue(messageId.Value, out var hasM) && hasM)"/>
+									HasMissingEvaluators="@(messageId.HasValue && _messageHasMissingEvaluators.TryGetValue(messageId.Value, out var hasM) && hasM)"
+									IsProcessing="@(!messageId.HasValue || !_loadedMetricsMessageIds.Contains(messageId.Value))"
+									IsStreaming="@isStreaming"/>
 							}
 						}
 					}
@@ -262,8 +263,8 @@
 			<div class="message-bar">
 				<MudGrid Class="align-items-center">
 					<MudItem xs="10" sm="11">
-					<MudTextField @key="_chatInputKey" @ref="_chatInput" @bind-Value="_userMessage.Text" Label="Message" Placeholder="Type a message..."
-					              FullWidth="true" Immediate="true" TextUpdateSuppression="false" OnKeyDown="OnKeyDown"/>
+						<MudTextField @key="_chatInputKey" @ref="_chatInput" @bind-Value="_userMessageText" Label="Message" Placeholder="Type a message..."
+						              FullWidth="true" Immediate="true" TextUpdateSuppression="false" OnKeyDown="OnKeyDown"/>
 					</MudItem>
 					<MudItem xs="2" sm="1" Class="d-flex justify-end">
 						<MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SendMessageAsync">

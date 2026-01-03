@@ -15,7 +15,7 @@
         <MudChatBubble>
             @((MarkupString) ChatHelpers.RenderMarkdown(Text))
         </MudChatBubble>
-        @if (IsLastParagraph)
+        @if (IsLastParagraph && !IsStreaming)
         {
             <MudChatFooter Class="feedback-footer">
                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
@@ -46,7 +46,8 @@
                         OnFeedbackClick="OnFeedbackClick"
                         OnMetricsClick="OnMetricsClick"
                         HasMissingEvaluators="@HasMissingEvaluators"
-                        ExemptFromProcessing="@ExemptFromProcessing"/>
+                        ExemptFromProcessing="@ExemptFromProcessing"
+                        IsProcessing="@IsProcessing"/>
                 </MudStack>
             </MudChatFooter>
         }
@@ -88,5 +89,7 @@
     [Parameter] public bool ExemptFromProcessing { get; set; }
     [Parameter] public bool IsScriptedMessage { get; set; }
     [Parameter] public bool HasMissingEvaluators { get; set; }
+    [Parameter] public bool IsProcessing { get; set; }
+    [Parameter] public bool IsStreaming { get; set; }
 }
 

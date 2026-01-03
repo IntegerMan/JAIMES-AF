@@ -42,7 +42,7 @@
             </ChildContent>
         </MudTooltip>
     }
-    else if (!ReadOnly && !ExemptFromProcessing)
+    else if (IsProcessing)
     {
         <MudTooltip Text="Analysing Metrics..." Placement="Placement.Top">
             <div class="d-flex align-center justify-center" style="width:32px; height:32px;">
@@ -133,6 +133,13 @@
 @code {
     private bool _isHoveringThumbUp;
     private bool _isHoveringThumbDown;
+
+    /// <summary>
+    /// If true, means the message is still being processed/analyzed.
+    /// Default is false.
+    /// </summary>
+    [Parameter]
+    public bool IsProcessing { get; set; }
 
     /// <summary>
     /// The evaluation metrics for this message

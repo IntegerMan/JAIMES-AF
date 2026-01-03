@@ -146,4 +146,28 @@ public static class AgentRunMiddleware
             return response!;
         };
     }
+
+    /// <summary>
+    /// Creates an agent run streaming middleware that tracks agent run execution.
+    /// </summary>
+    /// <param name="logger">The logger to use for logging agent runs.</param>
+    /// <returns>A middleware function that can be used with the agent builder.</returns>
+    public static
+        Func<IEnumerable<ChatMessage>, AgentThread?, AgentRunOptions?, AIAgent, CancellationToken,
+            IAsyncEnumerable<AgentRunResponseUpdate>>
+        CreateStreamingRunFunc(ILogger logger)
+    {
+        return (messages, thread, options, innerAgent, cancellationToken) =>
+        {
+            string agentName = innerAgent.Name ?? "unknown";
+            int messageCount = messages.Count();
+
+            logger.LogInformation(
+                "🤖 Agent streaming run started: {AgentName} with {MessageCount} message(s)",
+                agentName,
+                messageCount);
+
+            return innerAgent.RunStreamingAsync(messages, thread, options, cancellationToken);
+        };
+    }
 }

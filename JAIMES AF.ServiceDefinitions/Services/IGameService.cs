@@ -14,4 +14,5 @@ public interface IGameService
         CancellationToken cancellationToken = default);
 
     Task DeleteGameAsync(Guid gameId, CancellationToken cancellationToken = default);
+    Task<GameDto?> GetLastPlayedGameAsync(CancellationToken cancellationToken = default);
 }

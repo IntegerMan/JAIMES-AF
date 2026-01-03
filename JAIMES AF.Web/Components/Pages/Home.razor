@@ -2,10 +2,14 @@
 
 <PageTitle>Home</PageTitle>
 
+@inject HttpClient Http
+@inject ILoggerFactory LoggerFactory
+
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
 	<MudPaper Class="pa-8" Elevation="2">
 		<MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">Welcome to JAIMES AF</MudText>
-		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">Join AI in Making Epic Stories —
+		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">
+			Join AI in Making Epic Stories —
 			Agent Framework edition
 		</MudText>
 
@@ -18,14 +22,46 @@
 		<MudGrid Class="mb-8" Justify="Justify.Center">
 			<MudItem xs="12" md="8" Class="text-center">
 				<MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" Href="/games/new"
-				           Class="px-8 py-4 mb-3" Style="font-size: 1.1rem; font-weight: 500;">
+				           Class="px-8 py-4 mb-3 mr-3" Style="font-size: 1.1rem; font-weight: 500;">
 					Start New Game
 				</MudButton>
-				<MudText Typo="Typo.body2" Class="text-muted">or
+
+				@if (_lastPlayedGame != null)
+				{
+					<MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Large"
+					           Href="@($"/games/{_lastPlayedGame.GameId}")"
+					           Class="px-8 py-4 mb-3" Style="font-size: 1.1rem; font-weight: 500;">
+						Continue: @_lastPlayedGame.Title
+					</MudButton>
+				}
+
+				<MudText Typo="Typo.body2" Class="text-muted mt-2">
+					or
 					<MudLink Href="/games" Typo="Typo.body2">view existing games</MudLink>
 				</MudText>
 			</MudItem>
 		</MudGrid>
+
+		@code {
+			private GameInfoResponse? _lastPlayedGame;
+
+			protected override async Task OnInitializedAsync()
+			{
+				try
+				{
+					var response = await Http.GetAsync("/games/latest");
+					if (response.IsSuccessStatusCode)
+					{
+						_lastPlayedGame = await response.Content.ReadFromJsonAsync<GameInfoResponse>();
+					}
+				}
+				catch (Exception ex)
+				{
+					LoggerFactory.CreateLogger("Home").LogError(ex, "Failed to load last played game");
+				}
+			}
+
+		}
 
 		<MudDivider Class="my-8"/>
 
@@ -34,11 +70,13 @@
 			<MudItem xs="12" sm="6" md="4">
 				<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
 					<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Play Games</MudText>
-					<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">Start a new
+					<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
+						Start a new
 						game or continue an existing one. Chat with your AI Game Master in real-time.
 					</MudText>
 					<MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/games" Class="mt-auto"
-					           FullWidth="true">Continue Game
+					           FullWidth="true">
+						Continue Game
 					</MudButton>
 				</MudPaper>
 			</MudItem>
@@ -46,11 +84,13 @@
 			<MudItem xs="12" sm="6" md="4">
 				<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
 					<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Scenarios</MudText>
-					<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">Create and edit
+					<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
+						Create and edit
 						game scenarios with system prompts and initial instructions.
 					</MudText>
 					<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/scenarios" Class="mt-auto"
-					           FullWidth="true">Manage Scenarios
+					           FullWidth="true">
+						Manage Scenarios
 					</MudButton>
 				</MudPaper>
 			</MudItem>
@@ -58,11 +98,13 @@
 			<MudItem xs="12" sm="6" md="4">
 				<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
 					<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Players</MudText>
-					<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">Create and edit
+					<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
+						Create and edit
 						player characters with names, descriptions, and ruleset assignments.
 					</MudText>
 					<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/players" Class="mt-auto"
-					           FullWidth="true">Manage Players
+					           FullWidth="true">
+						Manage Players
 					</MudButton>
 				</MudPaper>
 			</MudItem>
@@ -75,11 +117,13 @@
 			<MudItem xs="12" sm="6" md="3">
 				<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
 					<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Admin</MudText>
-					<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">Access
+					<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
+						Access
 						administrative tools, content management, and testing utilities.
 					</MudText>
 					<MudButton Variant="Variant.Filled" Color="Color.Info" Href="/admin" Class="mt-auto"
-					           FullWidth="true">Admin Panel
+					           FullWidth="true">
+						Admin Panel
 					</MudButton>
 				</MudPaper>
 			</MudItem>
@@ -123,7 +167,8 @@
 
 		<MudDivider Class="my-6"/>
 
-		<MudText Typo="Typo.caption" Class="text-muted text-center" Style="opacity: 0.7;">Powered by .NET and Microsoft
+		<MudText Typo="Typo.caption" Class="text-muted text-center" Style="opacity: 0.7;">
+			Powered by .NET and Microsoft
 			Agent Framework
 		</MudText>
 	</MudPaper>

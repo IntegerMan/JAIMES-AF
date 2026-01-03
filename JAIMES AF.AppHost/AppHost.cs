@@ -21,7 +21,7 @@ IConfiguration configuration = new ConfigurationBuilder()
 var textGenConfig = new ModelProviderConfig(
     Provider: configuration["TextGenerationModel:Provider"] ?? "Ollama",
     Endpoint: configuration["TextGenerationModel:Endpoint"],
-    Name: configuration["TextGenerationModel:Name"] ?? "gemma3",
+    Name: configuration["TextGenerationModel:Name"] ?? "llama3.2:3b",
     Auth: configuration["TextGenerationModel:Auth"] ?? "None",
     Key: configuration["TextGenerationModel:Key"]);
 bool isTextGenOllama = string.Equals(textGenConfig.Provider, "Ollama", StringComparison.OrdinalIgnoreCase);
@@ -41,142 +41,28 @@ bool needsOllamaContainer = (isTextGenOllama && string.IsNullOrWhiteSpace(textGe
 
 // See https://storybooks.fluentui.dev/react/?path=/docs/icons-catalog--docs for available icons. Icon names should not end in "Regular", "Filled", etc.
 
-// We'll be consolidating our various datastores into PostgreSQL with JSONB and pgvector in the future,
-IResourceBuilder<PostgresServerResource> postgres = builder.AddPostgres("postgres")
-    .WithImage("pgvector/pgvector", "pg17-trixie")
-    .WithIconName("DatabaseSwitch")
-    .WithDataVolume("jaimes-pg17-v7", false);
-
-IResourceBuilder<PostgresServerResource> pgAdmin = postgres.WithPgAdmin(admin =>
-{
-    admin.WithIconName("TaskListSquareDatabase");
-    admin.WithHostPort(5858);
-    admin.WithParentRelationship(postgres);
-    admin.WithUrls(u =>
-    {
-        u.Urls.Clear();
-        u.Urls.Add(new ResourceUrlAnnotation {Url = "http://localhost:5858", DisplayText = "📋 pgAdmin"});
-    });
-});
-
-IResourceBuilder<PostgresDatabaseResource> postgresdb = postgres.AddDatabase("postgres-db", "postgres")
-    .WithCreationScript("CREATE EXTENSION IF NOT EXISTS vector;");
-
-// Group all workers under a parent resource for better UI organization
-IResourceBuilder<ContainerResource> workersGroup = builder
-    .AddContainer("workers", "mcr.microsoft.com/dotnet/runtime-deps", "10.0")
-    .WithIconName("PeopleTeam")
-    .WithEnvironment("DOTNET_RUNNING_IN_CONTAINER", "true")
-    .ExcludeFromManifest();
-
-// Migration worker must run first and complete before other services start
-IResourceBuilder<ProjectResource> databaseMigrationWorker = builder
-    .AddProject<Projects.JAIMES_AF_Workers_DatabaseMigration>("database-migration-worker")
-    .WithIconName("DatabasePlugConnected")
-    .WithReference(postgresdb)
-    .WaitFor(postgres)
-    .WaitFor(postgresdb)
-    .WithParentRelationship(workersGroup);
-
 // Conditionally create Ollama container only if needed
 IResourceBuilder<OllamaResource>? ollama = null;
 IResourceBuilder<OllamaModelResource>? chatModel = null;
 IResourceBuilder<OllamaModelResource>? embedModel = null;
 
-if (needsOllamaContainer)
-{
-    ollama = builder.AddOllama("ollama-models")
-        .WithIconName("BrainSparkle")
-        .WithDataVolume();
+// ========================================
+// ========================================
+// APP GROUP (Ensures App is top of list)
+// ========================================
 
-    // Conditionally create models only if Ollama container exists
-    if (isTextGenOllama && string.IsNullOrWhiteSpace(textGenConfig.Endpoint))
-    {
-        chatModel = ollama.AddModel("chatModel", textGenConfig.Name!).WithIconName("CommentText");
-    }
+IResourceBuilder<ContainerResource> appGroup = builder
+    .AddContainer("app", "mcr.microsoft.com/dotnet/runtime-deps", "10.0")
+    .WithIconName("Window")
+    .WithEnvironment("DOTNET_RUNNING_IN_CONTAINER", "true")
+    .ExcludeFromManifest();
 
-    if (isEmbedOllama && string.IsNullOrWhiteSpace(embedConfig.Endpoint))
-    {
-        embedModel = ollama.AddModel("embedModel", embedConfig.Name!).WithIconName("CodeTextEdit");
-    }
-}
+// ========================================
+// WEB APPLICATION
+// ========================================
 
-// Add Qdrant for vector embeddings
-// Note: Qdrant API key is an Aspire parameter (not user secret) because it's required by the Aspire-managed Qdrant resource.
-// Application-level secrets (e.g., Azure OpenAI API keys) are managed via user secrets.
-IResourceBuilder<ParameterResource> qdrantApiKey = builder.AddParameter("qdrant-api-key", "qdrant", secret: true)
-    .WithDescription("API key for Qdrant vector database");
-
-IResourceBuilder<QdrantServerResource> qdrant = builder.AddQdrant("qdrant-embeddings", qdrantApiKey)
-    .WithIconName("DatabaseSearch")
-    .WithLifetime(ContainerLifetime.Persistent)
-    .WithDataVolume();
-
-// Add LavinMQ for messaging (wire-compatible with RabbitMQ)
-IResourceBuilder<LavinMQContainerResource> lavinmq = builder.AddLavinMQ("LavinMQ-Messaging")
-    .WithIconName("PeopleQueue")
-    .WithLifetime(ContainerLifetime.Persistent)
-    .WithUrls(u =>
-    {
-        u.Urls.Clear();
-        u.Urls.Add(new ResourceUrlAnnotation {Url = "http://localhost:15672", DisplayText = "📋 Management"});
-        u.Urls.Add(new ResourceUrlAnnotation {Url = "http://localhost:15672/queues", DisplayText = "📬 Queues"});
-        u.Urls.Add(new ResourceUrlAnnotation
-            {Url = "http://localhost:15672/consumers", DisplayText = "👥 Consumers"});
-    });
-
-// Note: MongoDB has been replaced with PostgreSQL + JSONB for document storage
-// All document data (metadata, cracked documents, and chunks) are now stored in PostgreSQL
-
-IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIMES_AF_ApiService>("jaimes-api")
-    .WithIconName("DocumentGlobe", IconVariant.Regular)
-    .WithExternalHttpEndpoints()
-    //.WithUrls(u => u.Urls.Clear())
-    .WithUrlForEndpoint("http", static url => url.DisplayText = "🌳 Root")
-    .WithUrlForEndpoint("http",
-        static _ => new ResourceUrlAnnotation
-        {
-            Url = "/openapi/v1.json",
-            DisplayText = "🌐 OpenAPI"
-        })
-    .WithUrlForEndpoint("http",
-        static _ => new ResourceUrlAnnotation
-        {
-            Url = "/swagger",
-            DisplayText = "📃 Swagger"
-        })
-    .WithHttpHealthCheck("/health")
-    .WithUrlForEndpoint("http",
-        static _ => new ResourceUrlAnnotation
-        {
-            Url = "/health",
-            DisplayText = "👨‍⚕️ Health"
-        });
-
-apiService = apiService
-    .WithOllamaReferences(ollama, chatModel, embedModel, needsChatModel: true, needsEmbedModel: true)
-    .WithReference(postgresdb)
-    .WithReference(qdrant)
-    .WithReference(lavinmq)
-    .WaitFor(databaseMigrationWorker)
-    .WaitFor(qdrant)
-    .WaitFor(postgres)
-    .WaitFor(postgresdb)
-    .WaitFor(lavinmq)
-    .WithEnvironment(context =>
-    {
-        void SetVar(string key, object value) => context.EnvironmentVariables[key] = value;
-
-        SetModelProviderEnvironmentVariables(SetVar,
-            "TextGenerationModel",
-            textGenConfig,
-            chatModel,
-            ollama,
-            isTextGenOllama);
-        SetModelProviderEnvironmentVariables(SetVar, "EmbeddingModel", embedConfig, embedModel, ollama, isEmbedOllama);
-    });
-
-builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")
+IResourceBuilder<ProjectResource> webApp = builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")
+    .WithParentRelationship(appGroup)
     .WithIconName("GameChat")
     .WithExternalHttpEndpoints()
     .WithHttpHealthCheck("/health")
@@ -210,7 +96,160 @@ builder.AddProject<Projects.JAIMES_AF_Web>("jaimes-chat")
         {
             Url = "/players",
             DisplayText = "👤 Players"
+        });
+
+// ========================================
+// API SERVICE (Second in UI)
+// ========================================
+
+// Note: MongoDB has been replaced with PostgreSQL + JSONB for document storage
+// All document data (metadata, cracked documents, and chunks) are now stored in PostgreSQL
+
+IResourceBuilder<ProjectResource> apiService = builder.AddProject<Projects.JAIMES_AF_ApiService>("jaimes-api")
+    .WithParentRelationship(appGroup)
+    .WithIconName("DocumentGlobe", IconVariant.Regular)
+    .WithExternalHttpEndpoints()
+    //.WithUrls(u => u.Urls.Clear())
+    .WithUrlForEndpoint("http", static url => url.DisplayText = "🌳 Root")
+    .WithUrlForEndpoint("http",
+        static _ => new ResourceUrlAnnotation
+        {
+            Url = "/openapi/v1.json",
+            DisplayText = "🌐 OpenAPI"
         })
+    .WithUrlForEndpoint("http",
+        static _ => new ResourceUrlAnnotation
+        {
+            Url = "/swagger",
+            DisplayText = "📃 Swagger"
+        })
+    .WithHttpHealthCheck("/health")
+    .WithUrlForEndpoint("http",
+        static _ => new ResourceUrlAnnotation
+        {
+            Url = "/health",
+            DisplayText = "👨‍⚕️ Health"
+        });
+
+// ========================================
+// INFRASTRUCTURE
+// ========================================
+
+// Create a parent group for all data resources
+IResourceBuilder<ContainerResource> dataGroup = builder
+    .AddContainer("data", "mcr.microsoft.com/dotnet/runtime-deps", "10.0")
+    .WithIconName("Database")
+    .WithEnvironment("DOTNET_RUNNING_IN_CONTAINER", "true")
+    .ExcludeFromManifest();
+
+if (needsOllamaContainer)
+{
+    ollama = builder.AddOllama("ollama-models")
+        .WithIconName("BrainSparkle")
+        .WithDataVolume()
+        .WithParentRelationship(dataGroup);
+
+    // Conditionally create models only if Ollama container exists
+    if (isTextGenOllama && string.IsNullOrWhiteSpace(textGenConfig.Endpoint))
+    {
+        chatModel = ollama.AddModel("chatModel", textGenConfig.Name!).WithIconName("CommentText");
+    }
+
+    if (isEmbedOllama && string.IsNullOrWhiteSpace(embedConfig.Endpoint))
+    {
+        embedModel = ollama.AddModel("embedModel", embedConfig.Name!).WithIconName("CodeTextEdit");
+    }
+}
+
+// We'll be consolidating our various datastores into PostgreSQL with JSONB and pgvector in the future
+IResourceBuilder<PostgresServerResource> postgres = builder.AddPostgres("postgres")
+    .WithImage("pgvector/pgvector", "pg17-trixie")
+    .WithIconName("DatabaseSwitch")
+    .WithDataVolume("jaimes-pg17-v7", false)
+    .WithParentRelationship(dataGroup);
+
+IResourceBuilder<PostgresServerResource> pgAdmin = postgres.WithPgAdmin(admin =>
+{
+    admin.WithIconName("TaskListSquareDatabase");
+    admin.WithHostPort(5858);
+    admin.WithParentRelationship(postgres);
+    admin.WithUrls(u =>
+    {
+        u.Urls.Clear();
+        u.Urls.Add(new ResourceUrlAnnotation {Url = "http://localhost:5858", DisplayText = "📋 pgAdmin"});
+    });
+});
+
+IResourceBuilder<PostgresDatabaseResource> postgresdb = postgres.AddDatabase("postgres-db", "postgres")
+    .WithCreationScript("CREATE EXTENSION IF NOT EXISTS vector;");
+
+// Add Qdrant for vector embeddings
+// Note: Qdrant API key is an Aspire parameter (not user secret) because it's required by the Aspire-managed Qdrant resource.
+// Application-level secrets (e.g., Azure OpenAI API keys) are managed via user secrets.
+IResourceBuilder<ParameterResource> qdrantApiKey = builder.AddParameter("qdrant-api-key", "qdrant", secret: true)
+    .WithDescription("API key for Qdrant vector database");
+
+IResourceBuilder<QdrantServerResource> qdrant = builder.AddQdrant("qdrant-embeddings", qdrantApiKey)
+    .WithIconName("DatabaseSearch")
+    .WithLifetime(ContainerLifetime.Persistent)
+    .WithDataVolume()
+    .WithParentRelationship(dataGroup);
+
+// Add LavinMQ for messaging (wire-compatible with RabbitMQ)
+IResourceBuilder<LavinMQContainerResource> lavinmq = builder.AddLavinMQ("LavinMQ-Messaging")
+    .WithIconName("PeopleQueue")
+    .WithLifetime(ContainerLifetime.Persistent)
+    .WithUrls(u =>
+    {
+        u.Urls.Clear();
+        u.Urls.Add(new ResourceUrlAnnotation {Url = "http://localhost:15672", DisplayText = "📋 Management"});
+        u.Urls.Add(new ResourceUrlAnnotation {Url = "http://localhost:15672/queues", DisplayText = "📬 Queues"});
+        u.Urls.Add(new ResourceUrlAnnotation
+            {Url = "http://localhost:15672/consumers", DisplayText = "👥 Consumers"});
+    })
+    .WithParentRelationship(dataGroup);
+
+// Group all workers under a parent resource for better UI organization
+IResourceBuilder<ContainerResource> workersGroup = builder
+    .AddContainer("workers", "mcr.microsoft.com/dotnet/runtime-deps", "10.0")
+    .WithIconName("PeopleTeam")
+    .WithEnvironment("DOTNET_RUNNING_IN_CONTAINER", "true")
+    .ExcludeFromManifest();
+
+// Migration worker must run first and complete before other services start
+IResourceBuilder<ProjectResource> databaseMigrationWorker = builder
+    .AddProject<Projects.JAIMES_AF_Workers_DatabaseMigration>("database-migration-worker")
+    .WithIconName("DatabasePlugConnected")
+    .WithReference(postgresdb)
+    .WaitFor(postgres)
+    .WaitFor(postgresdb)
+    .WithParentRelationship(workersGroup);
+
+
+apiService = apiService
+    .WithOllamaReferences(ollama, chatModel, embedModel, needsChatModel: true, needsEmbedModel: true)
+    .WithReference(postgresdb)
+    .WithReference(qdrant)
+    .WithReference(lavinmq)
+    .WaitFor(databaseMigrationWorker)
+    .WaitFor(qdrant)
+    .WaitFor(postgres)
+    .WaitFor(postgresdb)
+    .WaitFor(lavinmq)
+    .WithEnvironment(context =>
+    {
+        void SetVar(string key, object value) => context.EnvironmentVariables[key] = value;
+
+        SetModelProviderEnvironmentVariables(SetVar,
+            "TextGenerationModel",
+            textGenConfig,
+            chatModel,
+            ollama,
+            isTextGenOllama);
+        SetModelProviderEnvironmentVariables(SetVar, "EmbeddingModel", embedConfig, embedModel, ollama, isEmbedOllama);
+    });
+
+webApp = webApp
     .WithReference(apiService)
     .WaitFor(apiService);
 

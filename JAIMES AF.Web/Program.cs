@@ -1,6 +1,5 @@
 using Microsoft.Agents.AI;
 using MudBlazor.Services;
-using Microsoft.Agents.AI.AGUI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Http.Resilience;
 
@@ -21,11 +20,6 @@ if (builder.Configuration["ApiService:TimeoutMinutes"] != null
 builder.Services.AddHttpClient("Api", ConfigureHttpClient)
     .AddServiceDiscovery()
     .AddStandardResilienceHandler(options => { ConfigureGetOnlyResiliency(options, httpClientTimeout); });
-// AGUI client - note: default resilience handler from AddServiceDefaults() won't retry POST requests anyway
-// (ConfigureResilienceHandlerExcludingPost excludes POST from retries)
-// But we configure it explicitly to avoid any overhead
-builder.Services.AddHttpClient("AGUI", ConfigureHttpClient)
-    .AddServiceDiscovery();
 
 // Make the named client the default HttpClient that's injected with `@inject HttpClient Http`
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api"));

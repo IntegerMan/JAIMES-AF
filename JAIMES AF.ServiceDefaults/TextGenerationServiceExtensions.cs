@@ -171,6 +171,8 @@ public static class TextGenerationServiceExtensions
             ChatOptions? options = null,
             CancellationToken cancellationToken = default)
         {
+            logger.LogInformation("GetResponseAsync called (Non-streaming) for model {Model}", model);
+
             // Convert ChatMessage collection to Ollama chat format
             List<OllamaChatMessage> ollamaMessages = [];
             foreach (ChatMessage message in messages)
@@ -231,14 +233,137 @@ public static class TextGenerationServiceExtensions
             [System.Runtime.CompilerServices.EnumeratorCancellation]
             CancellationToken cancellationToken = default)
         {
-            // For streaming, we'd need to handle SSE (Server-Sent Events) from Ollama
-            // This is a simplified implementation that falls back to non-streaming
-            await Task.CompletedTask;
-            yield break;
+            logger.LogInformation("Starting streaming response for model {Model}", model);
+
+            // Convert ChatMessage collection to Ollama chat format
+            List<OllamaChatMessage> ollamaMessages = [];
+            foreach (ChatMessage message in messages)
+            {
+                string role;
+                if (message.Role == ChatRole.System)
+                    role = "system";
+                else if (message.Role == ChatRole.User)
+                    role = "user";
+                else if (message.Role == ChatRole.Assistant)
+                    role = "assistant";
+                else
+                    role = "user";
+
+                ollamaMessages.Add(new OllamaChatMessage
+                {
+                    Role = role,
+                    Content = message.Text ?? string.Empty
+                });
+            }
+
+            string requestUrl = $"{_endpoint}/api/chat";
+
+            OllamaChatRequest request = new()
+            {
+                Model = model,
+                Messages = ollamaMessages,
+                Stream = true
+            };
+
+            string json = System.Text.Json.JsonSerializer.Serialize(request);
+            logger.LogInformation("Sending Ollama Request: {Json}", json);
+
+            // Send streaming request
+            var httpRequest = new HttpRequestMessage(HttpMethod.Post, requestUrl)
+            {
+                Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+            };
+
+            HttpResponseMessage? response = null;
+            try
+            {
+                logger.LogInformation("Initiating Ollama request to {Url}", requestUrl);
+
+                response = await httpClient.SendAsync(httpRequest,
+                    HttpCompletionOption.ResponseHeadersRead,
+                    cancellationToken);
+
+                logger.LogInformation("Ollama SendAsync completed with status {StatusCode}", response.StatusCode);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    string errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                    logger.LogError("Failed to stream text. Status: {StatusCode}, Response: {Response}",
+                        response.StatusCode,
+                        errorContent);
+                    response.EnsureSuccessStatusCode();
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Exception occurred during Ollama request initiation");
+                response?.Dispose();
+                throw;
+            }
+
+            using (response)
+            {
+                using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                using StreamReader reader = new(stream, System.Text.Encoding.UTF8);
+
+                logger.LogInformation("Ollama Stream opened. Reading lines...");
+
+                while (true)
+                {
+                    string? line;
+                    try
+                    {
+                        if (reader.EndOfStream || cancellationToken.IsCancellationRequested) break;
+                        line = await reader.ReadLineAsync(cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Exception occurred while reading from Ollama stream");
+                        throw;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(line)) continue;
+
+                    logger.LogInformation("Ollama SSE Line: {LineLength}", line.Length);
+
+                    OllamaChatResponse? chatResponse = null;
+                    try
+                    {
+                        chatResponse = System.Text.Json.JsonSerializer.Deserialize<OllamaChatResponse>(line);
+                    }
+                    catch (System.Text.Json.JsonException jex)
+                    {
+                        logger.LogWarning(jex, "Failed to deserialize Ollama JSON chunk: {Line}", line);
+                        continue;
+                    }
+
+                    if (chatResponse?.Message?.Content != null)
+                    {
+                        yield return new ChatResponseUpdate
+                        {
+                            Role = ChatRole.Assistant,
+                            Contents = {new TextContent(chatResponse.Message.Content)}
+                        };
+                    }
+
+                    if (chatResponse?.Done == true)
+                    {
+                        logger.LogInformation("Ollama stream marked as done.");
+                        break;
+                    }
+                }
+
+                logger.LogInformation("Ollama streaming loop finished naturally.");
+            }
         }
 
         public object? GetService(Type serviceType, object? serviceKey = null)
         {
+            if (serviceType == typeof(ChatClientMetadata))
+            {
+                return new ChatClientMetadata(nameof(OllamaChatClientWrapper), new Uri(_endpoint), model);
+            }
+
             return null;
         }
 
@@ -263,6 +388,8 @@ public static class TextGenerationServiceExtensions
             [JsonPropertyName("model")] public string? Model { get; init; }
 
             [JsonPropertyName("message")] public OllamaChatMessage? Message { get; init; }
+
+            [JsonPropertyName("done")] public bool Done { get; init; }
 
             [JsonPropertyName("usage")] public OllamaUsage? Usage { get; init; }
         }

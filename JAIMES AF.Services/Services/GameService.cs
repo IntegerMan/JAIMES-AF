@@ -312,4 +312,34 @@ public class GameService(
         context.Games.Remove(game);
         await context.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<GameDto?> GetLastPlayedGameAsync(CancellationToken cancellationToken = default)
+    {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        // Find the most recent message across all games
+        var lastMessage = await context.Messages
+            .AsNoTracking()
+            .OrderByDescending(m => m.CreatedAt)
+            .Select(m => new {m.GameId, m.CreatedAt})
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (lastMessage == null)
+        {
+            // Fallback to the most recently created game if no messages exist
+            // This handles the case of a new game that hasn't started yet (though CreateGame adds a message)
+            // or just finding the newest game in general.
+            var lastCreatedGame = await context.Games
+                .AsNoTracking()
+                .OrderByDescending(g => g.CreatedAt)
+                .Select(g => g.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (lastCreatedGame == Guid.Empty) return null;
+
+            return await GetGameAsync(lastCreatedGame, cancellationToken);
+        }
+
+        return await GetGameAsync(lastMessage.GameId, cancellationToken);
+    }
 }
