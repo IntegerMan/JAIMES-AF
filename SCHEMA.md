@@ -63,6 +63,7 @@ erDiagram
     TestCaseRun }o--|| Agent : "tested by"
     TestCaseRun }o--|| AgentInstructionVersion : "uses version"
     TestCaseRun |o--o| StoredFile : "has report"
+
     ScenarioAgent {
         string ScenarioId FK
         string AgentId FK
@@ -308,6 +309,9 @@ erDiagram
         double Score
         string Remarks "nullable"
         int EvaluatorId FK "nullable"
+        datetime EvaluatedAt
+        jsonb Diagnostics "nullable"
+        int EvaluationModelId FK "nullable"
     }
 ```
 

@@ -61,7 +61,8 @@ public class BrevityEvaluator(IOptions<BrevityEvaluatorOptions> options) : IEval
         {
             Value = score,
             Reason = reasoning,
-            Interpretation = score <= 3 ? EvaluationRating.Inconclusive : EvaluationRating.Good
+            Interpretation =
+                new EvaluationMetricInterpretation(score <= 3 ? EvaluationRating.Inconclusive : EvaluationRating.Good)
         };
 
         // Add additional information as diagnostics for this metric specifically

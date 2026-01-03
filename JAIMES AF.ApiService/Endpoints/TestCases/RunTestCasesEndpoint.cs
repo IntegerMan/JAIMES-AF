@@ -31,6 +31,7 @@ public class RunTestCasesEndpoint : Ep.Req<RunTestCasesRequest>.Res<TestRunResul
                 versionId,
                 req.TestCaseIds,
                 req.ExecutionName,
+                req.EvaluatorNames,
                 ct);
 
             Logger.LogInformation("Test run {ExecutionName} completed: {Completed}/{Total} test cases",

@@ -17,4 +17,9 @@ public record RunTestCasesRequest
     /// </summary>
     [MaxLength(250)]
     public string? ExecutionName { get; init; }
+
+    /// <summary>
+    /// Optional evaluator names to filter. If null or empty, uses all configured evaluators.
+    /// </summary>
+    public IEnumerable<string>? EvaluatorNames { get; init; }
 }

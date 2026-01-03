@@ -55,7 +55,8 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
 
         // Enable pgvector extension for PostgreSQL (skip for in-memory database used in tests)
         // Only call HasPostgresExtension if we're using the Npgsql provider
-        if (string.Equals(Database.ProviderName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
+        string providerName = Database.ProviderName ?? "Npgsql.EntityFrameworkCore.PostgreSQL";
+        if (string.Equals(providerName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
             modelBuilder.HasPostgresExtension("vector");
 
         modelBuilder.Entity<Ruleset>(entity =>
@@ -278,18 +279,6 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             // Configure Embedding property for different database providers
             // For PostgreSQL: pgvector extension handles Vector natively via the [Column(TypeName = "vector")] attribute
             // For other providers (like in-memory): use a value converter to store as byte array
-            // Check if database is available (may not be at design-time)
-            string providerName;
-            try
-            {
-                providerName = Database.ProviderName ?? "Npgsql.EntityFrameworkCore.PostgreSQL";
-            }
-            catch
-            {
-                // At design-time or when database is not initialized, assume PostgreSQL
-                providerName = "Npgsql.EntityFrameworkCore.PostgreSQL";
-            }
-
             if (!string.Equals(providerName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
             {
                 // For non-PostgreSQL providers (like in-memory), convert Vector to/from byte array
@@ -329,18 +318,6 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             // Configure Embedding property for different database providers
             // For PostgreSQL: pgvector extension handles Vector natively via the [Column(TypeName = "vector")] attribute
             // For other providers (like in-memory): use a value converter to store as byte array
-            // Check if database is available (may not be at design-time)
-            string providerName;
-            try
-            {
-                providerName = Database.ProviderName ?? "Npgsql.EntityFrameworkCore.PostgreSQL";
-            }
-            catch
-            {
-                // At design-time or when database is not initialized, assume PostgreSQL
-                providerName = "Npgsql.EntityFrameworkCore.PostgreSQL";
-            }
-
             if (!string.Equals(providerName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
             {
                 // For non-PostgreSQL providers (like in-memory), convert Vector to/from byte array
@@ -578,17 +555,6 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.Property(mem => mem.EvaluatedAt).IsRequired();
 
             // Configure Diagnostics as JSONB for PostgreSQL
-            string providerName;
-            try
-            {
-                providerName = Database.ProviderName ?? "Npgsql.EntityFrameworkCore.PostgreSQL";
-            }
-            catch
-            {
-                // At design-time or when database is not initialized, assume PostgreSQL
-                providerName = "Npgsql.EntityFrameworkCore.PostgreSQL";
-            }
-
             if (string.Equals(providerName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
             {
                 // For PostgreSQL, use jsonb type for Diagnostics
@@ -636,16 +602,6 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.Property(si => si.IterationName).IsRequired().HasMaxLength(250);
 
             // Configure ResultJson as jsonb for PostgreSQL
-            string providerName;
-            try
-            {
-                providerName = Database.ProviderName ?? "Npgsql.EntityFrameworkCore.PostgreSQL";
-            }
-            catch
-            {
-                providerName = "Npgsql.EntityFrameworkCore.PostgreSQL";
-            }
-
             if (string.Equals(providerName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
             {
                 entity.Property(si => si.ResultJson).HasColumnType("jsonb");
@@ -725,6 +681,22 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 .WithMany()
                 .HasForeignKey(tcrm => tcrm.EvaluatorId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity.Property(tcrm => tcrm.EvaluatedAt).IsRequired();
+
+            // Configure Diagnostics as JSONB for PostgreSQL
+            if (string.Equals(providerName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
+            {
+                entity.Property(tcrm => tcrm.Diagnostics)
+                    .HasColumnType("jsonb");
+            }
+
+            entity.HasOne(tcrm => tcrm.EvaluationModel)
+                .WithMany()
+                .HasForeignKey(tcrm => tcrm.EvaluationModelId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasIndex(tcrm => tcrm.EvaluationModelId);
         });
 
         // StoredFile entity configuration

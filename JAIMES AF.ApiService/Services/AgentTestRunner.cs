@@ -35,6 +35,7 @@ public class AgentTestRunner(
         int instructionVersionId,
         IEnumerable<int>? testCaseIds = null,
         string? executionName = null,
+        IEnumerable<string>? evaluatorNames = null,
         CancellationToken ct = default)
     {
         DateTime startedAt = DateTime.UtcNow;
@@ -89,7 +90,7 @@ public class AgentTestRunner(
             try
             {
                 TestCaseRunResponse runResponse = await RunSingleTestCaseAsync(
-                    context, testCase, agent, version, executionName, ct);
+                    context, testCase, agent, version, executionName, evaluatorNames, ct);
                 runResponses.Add(runResponse);
             }
             catch (Exception ex)
@@ -133,6 +134,7 @@ public class AgentTestRunner(
         Agent agent,
         AgentInstructionVersion version,
         string executionName,
+        IEnumerable<string>? evaluatorNames,
         CancellationToken ct)
     {
         logger.LogInformation("Running test case {TestCaseId}: {Name}", testCase.Id, testCase.Name);
@@ -178,7 +180,8 @@ public class AgentTestRunner(
         await context.SaveChangesAsync(ct);
 
         // Evaluate the response
-        await EvaluateTestRunAsync(context, run, testCase, chatMessages, generatedResponse, agent, version, ct);
+        List<TestCaseRunMetricResponse> metrics = await EvaluateTestRunAsync(context, run, testCase, chatMessages,
+            generatedResponse, agent, version, evaluatorNames, ct);
 
         return new TestCaseRunResponse
         {
@@ -193,7 +196,7 @@ public class AgentTestRunner(
             GeneratedResponse = generatedResponse,
             DurationMs = run.DurationMs,
             ExecutionName = executionName,
-            Metrics = [] // Metrics would be populated by a separate evaluation pass
+            Metrics = metrics
         };
     }
 
@@ -232,7 +235,7 @@ public class AgentTestRunner(
             .ToList();
     }
 
-    private async Task EvaluateTestRunAsync(
+    private async Task<List<TestCaseRunMetricResponse>> EvaluateTestRunAsync(
         JaimesDbContext context,
         TestCaseRun run,
         TestCase testCase,
@@ -240,8 +243,10 @@ public class AgentTestRunner(
         string generatedResponse,
         Agent agent,
         AgentInstructionVersion version,
+        IEnumerable<string>? evaluatorNames,
         CancellationToken ct)
     {
+        List<TestCaseRunMetricResponse> results = [];
         try
         {
             logger.LogInformation("Evaluating test run {RunId}", run.Id);
@@ -254,8 +259,17 @@ public class AgentTestRunner(
             List<ChatMessage> evaluationContext = [new ChatMessage(ChatRole.System, version.Instructions)];
             evaluationContext.AddRange(contextMessages);
 
+            // Filter evaluators if requested
+            List<string> filteredEvaluatorNames = evaluatorNames?.ToList() ?? [];
+            IEnumerable<IEvaluator> evaluatorsToUse = evaluators;
+            if (filteredEvaluatorNames.Count > 0)
+            {
+                evaluatorsToUse = evaluators.Where(e =>
+                    filteredEvaluatorNames.Contains(e.GetType().Name, StringComparer.OrdinalIgnoreCase));
+            }
+
             // Create composite evaluator
-            IEvaluator compositeEvaluator = new CompositeEvaluator(evaluators);
+            IEvaluator compositeEvaluator = new CompositeEvaluator(evaluatorsToUse);
 
             // Create ReportingConfiguration
             ChatConfiguration chatConfiguration = new(chatClient);
@@ -315,7 +329,7 @@ public class AgentTestRunner(
                         diagnosticsJson = JsonSerializer.Serialize(diagnostics);
                     }
 
-                    context.TestCaseRunMetrics.Add(new TestCaseRunMetric
+                    var metricRecord = new TestCaseRunMetric
                     {
                         TestCaseRunId = run.Id,
                         MetricName = metricPair.Key,
@@ -324,18 +338,31 @@ public class AgentTestRunner(
                         EvaluatorId = evaluatorId,
                         EvaluatedAt = evaluatedAt,
                         Diagnostics = diagnosticsJson
+                    };
+                    context.TestCaseRunMetrics.Add(metricRecord);
+
+                    results.Add(new TestCaseRunMetricResponse
+                    {
+                        Id = 0, // Id will be set after save if needed, but we can return it as 0 for now or wait
+                        MetricName = metricRecord.MetricName,
+                        Score = metricRecord.Score,
+                        Remarks = metricRecord.Remarks,
+                        EvaluatorId = metricRecord.EvaluatorId,
+                        EvaluatorName = evaluatorClassName
                     });
                 }
             }
 
             await context.SaveChangesAsync(ct);
             logger.LogInformation("Evaluation complete for run {RunId}: {MetricCount} metrics", run.Id,
-                result.Metrics.Count);
+                results.Count);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Evaluation failed for run {RunId}", run.Id);
         }
+
+        return results;
     }
 
     /// <inheritdoc/>
@@ -376,6 +403,7 @@ public class AgentTestRunner(
                     versionToTest.InstructionVersionId,
                     testCaseIds,
                     executionName,
+                    evaluatorNames,
                     ct);
 
                 versionResults.Add(result);

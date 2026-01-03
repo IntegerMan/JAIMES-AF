@@ -21,6 +21,7 @@ public interface IAgentTestRunner
         int instructionVersionId,
         IEnumerable<int>? testCaseIds = null,
         string? executionName = null,
+        IEnumerable<string>? evaluatorNames = null,
         CancellationToken ct = default);
 
     /// <summary>
