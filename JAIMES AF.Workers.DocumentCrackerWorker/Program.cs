@@ -21,12 +21,23 @@ builder.Configuration
     .AddEnvironmentVariables()
     .AddCommandLine(args);
 
-// Bind configuration
+// Bind configuration using IOptions pattern
+builder.Services.Configure<DocumentCrackerWorkerOptions>(
+    builder.Configuration.GetSection("DocumentCrackerWorker"));
+
+// Also keep a direct instance for backward compatibility with existing code
 DocumentCrackerWorkerOptions options =
     builder.Configuration.GetSection("DocumentCrackerWorker").Get<DocumentCrackerWorkerOptions>()
     ?? throw new InvalidOperationException("DocumentCrackerWorker configuration section is required");
 
 builder.Services.AddSingleton(options);
+
+// Configure DocumentCrackingOptions for the cracking service
+// This reads from DocumentCrackerWorker config and maps UploadDocumentsWhenCracking
+builder.Services.Configure<MattEland.Jaimes.ServiceDefinitions.Configuration.DocumentCrackingOptions>(opts =>
+{
+    opts.UploadDocumentsWhenCracking = options.UploadDocumentsWhenCracking;
+});
 
 // Add PostgreSQL with EF Core
 builder.Services.AddJaimesRepositories(builder.Configuration);
@@ -45,8 +56,8 @@ builder.Services.AddSingleton<IMessageConsumer<CrackDocumentMessage>, CrackDocum
 
 // Configure HTTP client for API service communication (pipeline status reporting)
 string? apiBaseUrl = builder.Configuration["Services:apiservice:http:0"]
-    ?? builder.Configuration["Services:apiservice:https:0"]
-    ?? builder.Configuration["ApiService:BaseUrl"];
+                     ?? builder.Configuration["Services:apiservice:https:0"]
+                     ?? builder.Configuration["ApiService:BaseUrl"];
 
 // Register pipeline status reporter if API service is configured
 if (!string.IsNullOrEmpty(apiBaseUrl))
@@ -61,7 +72,8 @@ if (!string.IsNullOrEmpty(apiBaseUrl))
     {
         IHttpClientFactory httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
         HttpClient httpClient = httpClientFactory.CreateClient("ApiService");
-        ILogger<HttpPipelineStatusReporter> reporterLogger = sp.GetRequiredService<ILogger<HttpPipelineStatusReporter>>();
+        ILogger<HttpPipelineStatusReporter> reporterLogger =
+            sp.GetRequiredService<ILogger<HttpPipelineStatusReporter>>();
         return new HttpPipelineStatusReporter(httpClient, reporterLogger, "DocumentCrackerWorker");
     });
 }
@@ -71,10 +83,11 @@ builder.Services.AddHostedService(sp =>
 {
     IConnectionFactory connFactory = sp.GetRequiredService<IConnectionFactory>();
     IMessageConsumer<CrackDocumentMessage> consumer = sp.GetRequiredService<IMessageConsumer<CrackDocumentMessage>>();
-    ILogger<MessageConsumerService<CrackDocumentMessage>> consumerLogger = sp.GetRequiredService<ILogger<MessageConsumerService<CrackDocumentMessage>>>();
+    ILogger<MessageConsumerService<CrackDocumentMessage>> consumerLogger =
+        sp.GetRequiredService<ILogger<MessageConsumerService<CrackDocumentMessage>>>();
     ActivitySource? activity = sp.GetService<ActivitySource>();
     IPipelineStatusReporter? statusReporter = sp.GetService<IPipelineStatusReporter>();
-    
+
     return new MessageConsumerService<CrackDocumentMessage>(
         connFactory, consumer, consumerLogger, activity, statusReporter, "cracking");
 });

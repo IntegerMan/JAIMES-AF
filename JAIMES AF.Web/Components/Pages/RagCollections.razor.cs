@@ -1,3 +1,5 @@
+using MattEland.Jaimes.Web.Components.Shared;
+
 namespace MattEland.Jaimes.Web.Components.Pages;
 
 public partial class RagCollections
@@ -5,6 +7,8 @@ public partial class RagCollections
     [Inject] public HttpClient Http { get; set; } = null!;
 
     [Inject] public ILoggerFactory LoggerFactory { get; set; } = null!;
+
+    [Inject] public IDialogService DialogService { get; set; } = null!;
 
     private bool _isLoading = true;
     private string? _errorMessage;
@@ -88,5 +92,27 @@ public partial class RagCollections
             "transcript" when doc.GameId.HasValue => $"/admin/games/{doc.GameId}/transcript-chunks",
             _ => $"/admin/documents/{doc.DocumentId}/chunks"
         };
+    }
+
+    private async Task ViewDocumentAsync(RagCollectionDocumentInfo document)
+    {
+        // Build full URL to API service for iframe
+        string relativePath = $"admin/rag-documents/{document.DocumentId}/file";
+        string fileUrl = new Uri(Http.BaseAddress!, relativePath).ToString();
+
+        var parameters = new DialogParameters<DocumentViewerDialog>
+        {
+            { x => x.FileName, document.FileName },
+            { x => x.FileUrl, fileUrl }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true,
+            CloseButton = true
+        };
+
+        await DialogService.ShowAsync<DocumentViewerDialog>($"View {document.FileName}", parameters, options);
     }
 }
