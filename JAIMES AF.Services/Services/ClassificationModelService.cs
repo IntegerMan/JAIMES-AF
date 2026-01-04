@@ -170,20 +170,22 @@ public class ClassificationModelService(
                 cm.IsActive))
             .ToListAsync(cancellationToken);
 
-        // Get pending training jobs (not yet completed)
+        // Get pending and failed training jobs (not completed successfully - those become models)
         List<ClassificationModelResponse> pendingJobs = await context.ClassificationModelTrainingJobs
-            .Where(tj => tj.Status == "Queued" || tj.Status == "Training")
+            .Where(tj => tj.Status == "Queued" || tj.Status == "Training" || tj.Status == "Failed")
             .OrderByDescending(tj => tj.CreatedAt)
             .Select(tj => new ClassificationModelResponse(
                 -tj.Id, // Use negative ID to distinguish from real models
                 ClassificationModelTypes.SentimentClassification,
-                $"Training Job #{tj.Id}",
-                $"Parameters: {tj.MinConfidence:P0} confidence, {tj.TrainTestSplit:P0} split, {tj.TrainingTimeSeconds}s",
+                tj.Status == "Failed" ? $"Failed Training Job #{tj.Id}" : $"Training Job #{tj.Id}",
+                tj.Status == "Failed"
+                    ? (tj.ErrorMessage ?? "Training failed")
+                    : $"Parameters: {tj.MinConfidence:P0} confidence, {tj.TrainTestSplit:P0} split, {tj.TrainingTimeSeconds}s",
                 "",
                 0,
                 null,
                 tj.CreatedAt,
-                tj.Status == "Training" ? "Training..." : "Queued",
+                tj.Status == "Training" ? "Training..." : tj.Status,
                 false))
             .ToListAsync(cancellationToken);
 

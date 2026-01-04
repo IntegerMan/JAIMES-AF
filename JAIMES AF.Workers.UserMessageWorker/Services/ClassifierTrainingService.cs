@@ -38,97 +38,103 @@ public class ClassifierTrainingService(ILogger<ClassifierTrainingService> logger
         CancellationToken cancellationToken = default)
     {
         return await Task.Run(() =>
-        {
-            logger.LogInformation(
-                "Starting classifier training with {Count} rows, {Split:P0} split, {Time}s time, {Metric} metric",
-                data.Count,
-                trainTestSplit,
-                trainingTimeSeconds,
-                optimizingMetric);
-
-            // Convert to IDataView
-            IEnumerable<SentimentTrainingData> trainingData = data.Select(d => new SentimentTrainingData
             {
-                Text = d.Text,
-                Sentiment = d.Label
-            });
+                logger.LogInformation(
+                    "Starting classifier training with {Count} rows, {Split:P0} split, {Time}s time, {Metric} metric",
+                    data.Count,
+                    trainTestSplit,
+                    trainingTimeSeconds,
+                    optimizingMetric);
 
-            IDataView dataView = _mlContext.Data.LoadFromEnumerable(trainingData);
+                // Convert to IDataView
+                IEnumerable<SentimentTrainingData> trainingData = data.Select(d => new SentimentTrainingData
+                {
+                    Text = d.Text,
+                    Sentiment = d.Label
+                });
 
-            // Split into train/test
-            DataOperationsCatalog.TrainTestData splitData = _mlContext.Data.TrainTestSplit(
-                dataView,
-                testFraction: 1.0 - trainTestSplit,
-                seed: 0);
+                IDataView dataView = _mlContext.Data.LoadFromEnumerable(trainingData);
 
-            int trainingRows = (int)splitData.TrainSet.GetRowCount()!;
-            int testRows = (int)splitData.TestSet.GetRowCount()!;
+                // Split into train/test
+                DataOperationsCatalog.TrainTestData splitData = _mlContext.Data.TrainTestSplit(
+                    dataView,
+                    testFraction: 1.0 - trainTestSplit,
+                    seed: 0);
 
-            logger.LogInformation("Split data: {TrainingRows} training, {TestRows} test", trainingRows, testRows);
+                // GetRowCount() can return null for some data views, so handle gracefully
+                long? trainRowCount = splitData.TrainSet.GetRowCount();
+                long? testRowCount = splitData.TestSet.GetRowCount();
+                int trainingRows = trainRowCount.HasValue
+                    ? (int) trainRowCount.Value
+                    : data.Count - (int) (data.Count * (1.0 - trainTestSplit));
+                int testRows = testRowCount.HasValue ? (int) testRowCount.Value : data.Count - trainingRows;
 
-            // Configure AutoML experiment
-            MulticlassClassificationMetric metric = ParseMetric(optimizingMetric);
-            MulticlassExperimentSettings experimentSettings = new()
-            {
-                MaxExperimentTimeInSeconds = (uint)trainingTimeSeconds,
-                OptimizingMetric = metric
-            };
+                logger.LogInformation("Split data: {TrainingRows} training, {TestRows} test", trainingRows, testRows);
 
-            // Featurize text
-            logger.LogInformation("Featurizing text data...");
-            IEstimator<ITransformer> textFeaturizer = _mlContext.Transforms.Text
-                .FeaturizeText("Features", nameof(SentimentTrainingData.Text));
+                // Configure AutoML experiment
+                MulticlassClassificationMetric metric = ParseMetric(optimizingMetric);
+                MulticlassExperimentSettings experimentSettings = new()
+                {
+                    MaxExperimentTimeInSeconds = (uint) trainingTimeSeconds,
+                    OptimizingMetric = metric
+                };
 
-            ITransformer textTransformer = textFeaturizer.Fit(splitData.TrainSet);
-            IDataView featurizedTrainData = textTransformer.Transform(splitData.TrainSet);
-            IDataView featurizedTestData = textTransformer.Transform(splitData.TestSet);
+                // Featurize text
+                logger.LogInformation("Featurizing text data...");
+                IEstimator<ITransformer> textFeaturizer = _mlContext.Transforms.Text
+                    .FeaturizeText("Features", nameof(SentimentTrainingData.Text));
 
-            ColumnInformation columnInfo = new()
-            {
-                LabelColumnName = nameof(SentimentTrainingData.Sentiment)
-            };
+                ITransformer textTransformer = textFeaturizer.Fit(splitData.TrainSet);
+                IDataView featurizedTrainData = textTransformer.Transform(splitData.TrainSet);
+                IDataView featurizedTestData = textTransformer.Transform(splitData.TestSet);
 
-            logger.LogInformation("Starting AutoML experiment for {Time} seconds...", trainingTimeSeconds);
-            ExperimentResult<MulticlassClassificationMetrics> experimentResult = _mlContext.Auto()
-                .CreateMulticlassClassificationExperiment(experimentSettings)
-                .Execute(featurizedTrainData, columnInfo);
+                ColumnInformation columnInfo = new()
+                {
+                    LabelColumnName = nameof(SentimentTrainingData.Sentiment)
+                };
 
-            logger.LogInformation(
-                "AutoML completed. Best trainer: {TrainerName}, MacroAccuracy: {Accuracy:P2}",
-                experimentResult.BestRun.TrainerName,
-                experimentResult.BestRun.ValidationMetrics?.MacroAccuracy ?? 0);
+                logger.LogInformation("Starting AutoML experiment for {Time} seconds...", trainingTimeSeconds);
+                ExperimentResult<MulticlassClassificationMetrics> experimentResult = _mlContext.Auto()
+                    .CreateMulticlassClassificationExperiment(experimentSettings)
+                    .Execute(featurizedTrainData, columnInfo);
 
-            // Combine text featurizer with best model
-            ITransformer combinedModel = textTransformer.Append(experimentResult.BestRun.Model);
+                logger.LogInformation(
+                    "AutoML completed. Best trainer: {TrainerName}, MacroAccuracy: {Accuracy:P2}",
+                    experimentResult.BestRun.TrainerName,
+                    experimentResult.BestRun.ValidationMetrics?.MacroAccuracy ?? 0);
 
-            // Evaluate on test set
-            IDataView predictions = combinedModel.Transform(splitData.TestSet);
-            MulticlassClassificationMetrics metrics = _mlContext.MulticlassClassification.Evaluate(
-                predictions,
-                labelColumnName: nameof(SentimentTrainingData.Sentiment));
+                // Combine text featurizer with best model
+                ITransformer combinedModel = textTransformer.Append(experimentResult.BestRun.Model);
 
-            // Get confusion matrix
-            int[][] confusionMatrix = ExtractConfusionMatrix(metrics);
+                // Evaluate on test set
+                IDataView predictions = combinedModel.Transform(splitData.TestSet);
+                MulticlassClassificationMetrics metrics = _mlContext.MulticlassClassification.Evaluate(
+                    predictions,
+                    labelColumnName: nameof(SentimentTrainingData.Sentiment));
 
-            // Save model to bytes
-            using MemoryStream modelStream = new();
-            _mlContext.Model.Save(combinedModel, dataView.Schema, modelStream);
-            byte[] modelBytes = modelStream.ToArray();
+                // Get confusion matrix
+                int[][] confusionMatrix = ExtractConfusionMatrix(metrics);
 
-            logger.LogInformation("Model saved ({Size} bytes)", modelBytes.Length);
+                // Save model to bytes
+                using MemoryStream modelStream = new();
+                _mlContext.Model.Save(combinedModel, dataView.Schema, modelStream);
+                byte[] modelBytes = modelStream.ToArray();
 
-            return new ClassifierTrainingResult(
-                modelBytes,
-                trainingRows,
-                testRows,
-                metrics.MacroAccuracy,
-                metrics.MicroAccuracy,
-                0, // MacroPrecision - not directly available in metrics object
-                0, // MacroRecall - not directly available in metrics object
-                metrics.LogLoss,
-                confusionMatrix,
-                experimentResult.BestRun.TrainerName);
-        }, cancellationToken);
+                logger.LogInformation("Model saved ({Size} bytes)", modelBytes.Length);
+
+                return new ClassifierTrainingResult(
+                    modelBytes,
+                    trainingRows,
+                    testRows,
+                    metrics.MacroAccuracy,
+                    metrics.MicroAccuracy,
+                    0, // MacroPrecision - not directly available in metrics object
+                    0, // MacroRecall - not directly available in metrics object
+                    metrics.LogLoss,
+                    confusionMatrix,
+                    experimentResult.BestRun.TrainerName);
+            },
+            cancellationToken);
     }
 
     private static MulticlassClassificationMetric ParseMetric(string metric) => metric switch
@@ -159,7 +165,7 @@ public class ClassifierTrainingService(ILogger<ClassifierTrainingService> logger
                 matrix[i] = new int[numClasses];
                 for (int j = 0; j < numClasses; j++)
                 {
-                    matrix[i][j] = (int)cm.Counts[i][j];
+                    matrix[i][j] = (int) cm.Counts[i][j];
                 }
             }
 

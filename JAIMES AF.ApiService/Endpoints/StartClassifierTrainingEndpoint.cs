@@ -31,9 +31,9 @@ public class StartClassifierTrainingEndpoint : Endpoint<TrainClassifierRequest, 
             AddError("MinConfidence must be between 0.0 and 1.0");
         }
 
-        if (req.TrainTestSplit is < 0.5 or > 0.95)
+        if (req.TrainTestSplit is < 0.50 or > 0.90)
         {
-            AddError("TrainTestSplit must be between 0.5 and 0.95");
+            AddError("TrainTestSplit must be between 50% and 90%");
         }
 
         int[] validTimes = [5, 30, 60, 120, 300, 600];

@@ -41,21 +41,15 @@
 			             RowClick="@(row => NavigateToDetails(row.Item))">
 				<Columns>
 					<PropertyColumn Property="x => x.Id" Title="ID"/>
-					<TemplateColumn Title="Name">
-						<CellTemplate>
-							<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-								<MudText>@context.Item.Name</MudText>
-								@if (context.Item.IsActive)
-								{
-									<MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">Active</MudChip>
-								}
-							</MudStack>
-						</CellTemplate>
-					</TemplateColumn>
+					<PropertyColumn Property="x => x.Name" Title="Name"/>
 					<PropertyColumn Property="x => x.ModelType" Title="Type"/>
 					<TemplateColumn Title="Status">
 						<CellTemplate>
-							@if (context.Item.Status == "Training...")
+							@if (context.Item.IsActive)
+							{
+								<MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">Active</MudChip>
+							}
+							else if (context.Item.Status == "Training...")
 							{
 								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
 									<MudProgressCircular Size="Size.Small" Indeterminate="true"/>
@@ -66,9 +60,13 @@
 							{
 								<MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">Queued</MudChip>
 							}
+							else if (context.Item.Status == "Failed")
+							{
+								<MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Filled">Failed</MudChip>
+							}
 							else
 							{
-								<MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Text">Ready</MudChip>
+								<MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">Ready</MudChip>
 							}
 						</CellTemplate>
 					</TemplateColumn>

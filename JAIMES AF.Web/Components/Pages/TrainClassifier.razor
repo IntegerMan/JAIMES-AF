@@ -25,20 +25,32 @@
 		{
 			<MudForm @ref="_form" @bind-IsValid="_isValid">
 				<MudStack Spacing="4">
-					
+
 					@* Minimum Confidence Slider *@
 					<MudPaper Class="pa-4" Elevation="0" Outlined="true">
 						<MudText Typo="Typo.h6" Class="mb-2">Minimum Confidence</MudText>
 						<MudText Typo="Typo.body2" Class="mb-3 text-muted">
 							Only include messages with sentiment confidence above this threshold.
 						</MudText>
-						<MudSlider T="double" @bind-Value="_minConfidence" Min="0.5" Max="0.95" Step="0.05"
-						           ValueLabel="true" Color="Color.Primary">
-							@(_minConfidence.ToString("P0"))
-						</MudSlider>
-						
+
+						@* Slider with tick marks *@
+						<MudStack Spacing="0">
+							<MudSlider T="double" Value="_minConfidence" ValueChanged="OnConfidenceChanged"
+							           Min="0" Max="1" Step="0.05"
+							           TickMarks="true" TickMarkLabels="@_tickLabels"
+							           Color="Color.Primary" Class="mb-0">
+								<MudStack Row="true" Justify="Justify.Center">
+									<MudText Typo="Typo.h6" Color="Color.Primary">@(_minConfidence.ToString("P0"))</MudText>
+								</MudStack>
+							</MudSlider>
+							<MudStack Row="true" Justify="Justify.SpaceBetween" Class="mt-n2 px-1">
+								<MudText Typo="Typo.caption" Class="text-muted">0%</MudText>
+								<MudText Typo="Typo.caption" Class="text-muted">100%</MudText>
+							</MudStack>
+						</MudStack>
+
 						@* Data Count Preview *@
-						<MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-3" Spacing="2">
+						<MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-4" Spacing="2">
 							<MudIcon Icon="@Icons.Material.Filled.Dataset" Size="Size.Small"/>
 							@if (_dataCountLoading)
 							{
@@ -52,7 +64,7 @@
 								</MudText>
 							}
 						</MudStack>
-						
+
 						@if (_dataCount.MessagesAboveConfidence < 20)
 						{
 							<MudAlert Severity="Severity.Error" Class="mt-2">
@@ -73,10 +85,46 @@
 						<MudText Typo="Typo.body2" Class="mb-3 text-muted">
 							Percentage of data used for training vs. evaluation.
 						</MudText>
-						<MudSlider T="double" @bind-Value="_trainTestSplit" Min="0.60" Max="0.90" Step="0.05"
-						           ValueLabel="true" Color="Color.Primary">
-							@(_trainTestSplit.ToString("P0")) training / @((1-_trainTestSplit).ToString("P0")) testing
-						</MudSlider>
+
+						@* Slider with tick marks *@
+						<MudStack Spacing="0">
+							<MudSlider T="double" @bind-Value="_trainTestSplit" Min="0" Max="1" Step="0.05"
+							           TickMarks="true" TickMarkLabels="@_tickLabels"
+							           Color="@(HasSplitError ? Color.Error : Color.Primary)" Class="mb-0">
+								<MudStack Row="true" Justify="Justify.Center" Spacing="2">
+									<MudText Typo="Typo.h6" Color="@(HasSplitError ? Color.Error : Color.Primary)">
+										@(_trainTestSplit.ToString("P0")) training
+									</MudText>
+									<MudText Typo="Typo.h6" Color="Color.Default">/</MudText>
+									<MudText Typo="Typo.h6" Color="Color.Secondary">
+										@((1 - _trainTestSplit).ToString("P0")) testing
+									</MudText>
+								</MudStack>
+							</MudSlider>
+							<MudStack Row="true" Justify="Justify.SpaceBetween" Class="mt-n2 px-1">
+								<MudText Typo="Typo.caption" Class="text-muted">0%</MudText>
+								<MudText Typo="Typo.caption" Class="text-muted">100%</MudText>
+							</MudStack>
+						</MudStack>
+
+						@if (_trainTestSplit > 0.90)
+						{
+							<MudAlert Severity="Severity.Error" Class="mt-2">
+								Training split above 90% leaves too little data for evaluation. The model cannot be properly validated.
+							</MudAlert>
+						}
+						else if (_trainTestSplit < 0.50)
+						{
+							<MudAlert Severity="Severity.Error" Class="mt-2">
+								Training split below 50% provides insufficient data for training. Increase the training percentage.
+							</MudAlert>
+						}
+						else if (_trainTestSplit < 0.60)
+						{
+							<MudAlert Severity="Severity.Warning" Class="mt-2">
+								A training split below 60% may result in underfitting. Consider increasing the training percentage.
+							</MudAlert>
+						}
 					</MudPaper>
 
 					@* Training Time *@
@@ -111,13 +159,13 @@
 
 					@* Submit Button *@
 					<MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-4">
-						<MudButton Variant="Variant.Text" Color="Color.Default" 
+						<MudButton Variant="Variant.Text" Color="Color.Default"
 						           OnClick="@(() => NavigationManager.NavigateTo("/admin/classification-models"))">
 							Cancel
 						</MudButton>
-						<MudButton Variant="Variant.Filled" Color="Color.Primary" 
+						<MudButton Variant="Variant.Filled" Color="Color.Primary"
 						           StartIcon="@Icons.Material.Filled.PlayArrow"
-						           Disabled="@(_submitting || _dataCount.MessagesAboveConfidence < 20)"
+						           Disabled="@(_submitting || !CanStartTraining)"
 						           OnClick="StartTraining">
 							@if (_submitting)
 							{
@@ -160,6 +208,13 @@
 	private TrainingDataCountResponse _dataCount = new(0, 0, 0.75);
 	private System.Threading.Timer? _debounceTimer;
 
+	// Tick mark labels for major intervals (every 25%)
+	private readonly string[] _tickLabels = ["", "", "", "", "", "25%", "", "", "", "", "50%", "", "", "", "", "75%", "", "", "", "", ""];
+
+	// Validation helpers
+	private bool HasSplitError => _trainTestSplit > 0.90 || _trainTestSplit < 0.50;
+	private bool CanStartTraining => _dataCount.MessagesAboveConfidence >= 20 && !HasSplitError;
+
 	protected override async Task OnInitializedAsync()
 	{
 		_breadcrumbs = new List<BreadcrumbItem>
@@ -177,6 +232,8 @@
 	private async Task LoadDataCountAsync()
 	{
 		_dataCountLoading = true;
+		StateHasChanged();
+
 		try
 		{
 			var response = await Http.GetFromJsonAsync<TrainingDataCountResponse>(
@@ -190,23 +247,17 @@
 		finally
 		{
 			_dataCountLoading = false;
+			StateHasChanged();
 		}
 	}
 
 	private void OnConfidenceChanged(double value)
 	{
 		_minConfidence = value;
-		
+
 		// Debounce the data count request
 		_debounceTimer?.Dispose();
-		_debounceTimer = new System.Threading.Timer(async _ =>
-		{
-			await InvokeAsync(async () =>
-			{
-				await LoadDataCountAsync();
-				StateHasChanged();
-			});
-		}, null, TimeSpan.FromMilliseconds(300), Timeout.InfiniteTimeSpan);
+		_debounceTimer = new System.Threading.Timer(async _ => { await InvokeAsync(async () => { await LoadDataCountAsync(); }); }, null, TimeSpan.FromMilliseconds(300), Timeout.InfiniteTimeSpan);
 	}
 
 	private async Task StartTraining()
@@ -243,4 +294,6 @@
 			_submitting = false;
 		}
 	}
+
 }
+
