@@ -38,21 +38,21 @@
 
                 <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="text-muted" />
 
-                @* Sentiment Analysis Stage *@
-                <MudPaper Class="pa-2" Elevation="0" Style="min-width: 90px; text-align: center; background-color: transparent;">
-                    <MudStack AlignItems="AlignItems.Center" Spacing="0">
-                        <MudIcon Icon="@Icons.Material.Filled.SentimentSatisfied" Size="Size.Medium" Color="Color.Default" />
-                        <MudText Typo="Typo.caption">Sentiment</MudText>
-                    </MudStack>
-                </MudPaper>
-
-                <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="text-muted" />
-
                 @* Embedding Queue Stage *@
                 <MudPaper Class="pa-2" Elevation="0" Style="min-width: 90px; text-align: center; background-color: transparent;">
                     <MudStack AlignItems="AlignItems.Center" Spacing="0">
                         <MudIcon Icon="@Icons.Material.Filled.Memory" Size="Size.Medium" Color="Color.Default" />
                         <MudText Typo="Typo.caption">Embedding</MudText>
+                    </MudStack>
+                </MudPaper>
+
+                <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="text-muted" />
+
+                @* Sentiment Analysis Stage *@
+                <MudPaper Class="pa-2" Elevation="0" Style="min-width: 90px; text-align: center; background-color: transparent;">
+                    <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                        <MudIcon Icon="@Icons.Material.Filled.SentimentSatisfied" Size="Size.Medium" Color="Color.Default" />
+                        <MudText Typo="Typo.caption">Sentiment</MudText>
                     </MudStack>
                 </MudPaper>
 
@@ -115,21 +115,21 @@
 
                         <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="text-muted" />
 
-                        @* Sentiment Analysis Stage *@
-                        <MudPaper Class="pa-2" Elevation="0" Style="min-width: 90px; text-align: center; background-color: transparent;">
-                            <MudStack AlignItems="AlignItems.Center" Spacing="0">
-                                <MudIcon Icon="@Icons.Material.Filled.SentimentSatisfied" Size="Size.Medium" Color="@GetStageColor(msg, MessagePipelineStage.SentimentAnalysis)" />
-                                <MudText Typo="Typo.caption">Sentiment</MudText>
-                            </MudStack>
-                        </MudPaper>
-
-                        <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="text-muted" />
-
                         @* Embedding Queue Stage *@
                         <MudPaper Class="pa-2" Elevation="0" Style="min-width: 90px; text-align: center; background-color: transparent;">
                             <MudStack AlignItems="AlignItems.Center" Spacing="0">
                                 <MudIcon Icon="@Icons.Material.Filled.Memory" Size="Size.Medium" Color="@GetStageColor(msg, MessagePipelineStage.EmbeddingQueue)" />
                                 <MudText Typo="Typo.caption">Embedding</MudText>
+                            </MudStack>
+                        </MudPaper>
+
+                        <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="text-muted" />
+
+                        @* Sentiment Analysis Stage *@
+                        <MudPaper Class="pa-2" Elevation="0" Style="min-width: 90px; text-align: center; background-color: transparent;">
+                            <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                                <MudIcon Icon="@Icons.Material.Filled.SentimentSatisfied" Size="Size.Medium" Color="@GetStageColor(msg, MessagePipelineStage.SentimentAnalysis)" />
+                                <MudText Typo="Typo.caption">Sentiment</MudText>
                             </MudStack>
                         </MudPaper>
 
@@ -409,7 +409,16 @@
 
         public void UpdateFromNotification(MessagePipelineStageNotification notification)
         {
-            CurrentStage = notification.Stage;
+            // Prevent stage regression - only allow forward progression or Failed state
+            var stageOrder = new[] { MessagePipelineStage.Queued, MessagePipelineStage.Loading, MessagePipelineStage.EmbeddingQueue, MessagePipelineStage.SentimentAnalysis, MessagePipelineStage.Complete, MessagePipelineStage.Failed };
+            int currentIndex = Array.IndexOf(stageOrder, CurrentStage);
+            int newIndex = Array.IndexOf(stageOrder, notification.Stage);
+            
+            if (newIndex >= currentIndex || notification.Stage == MessagePipelineStage.Failed)
+            {
+                CurrentStage = notification.Stage;
+            }
+            
             LastUpdatedAt = DateTimeOffset.UtcNow;
             
             if (!string.IsNullOrEmpty(notification.MessagePreview))
