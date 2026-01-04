@@ -49,19 +49,27 @@
 						<MudStack Spacing="2">
 							<MudStack Row="true" Justify="Justify.SpaceBetween">
 								<MudText Typo="Typo.body2" Color="Color.Default">Type:</MudText>
-								<MudText Typo="Typo.body2"><strong>@_model.ModelType</strong></MudText>
+								<MudText Typo="Typo.body2">
+									<strong>@_model.ModelType</strong>
+								</MudText>
 							</MudStack>
 							<MudStack Row="true" Justify="Justify.SpaceBetween">
 								<MudText Typo="Typo.body2" Color="Color.Default">File:</MudText>
-								<MudText Typo="Typo.body2"><strong>@_model.FileName</strong></MudText>
+								<MudText Typo="Typo.body2">
+									<strong>@_model.FileName</strong>
+								</MudText>
 							</MudStack>
 							<MudStack Row="true" Justify="Justify.SpaceBetween">
 								<MudText Typo="Typo.body2" Color="Color.Default">Size:</MudText>
-								<MudText Typo="Typo.body2"><strong>@FormatFileSize(_model.SizeBytes)</strong></MudText>
+								<MudText Typo="Typo.body2">
+									<strong>@FormatFileSize(_model.SizeBytes)</strong>
+								</MudText>
 							</MudStack>
 							<MudStack Row="true" Justify="Justify.SpaceBetween">
 								<MudText Typo="Typo.body2" Color="Color.Default">Created:</MudText>
-								<MudText Typo="Typo.body2"><strong>@_model.CreatedAt.ToString("g")</strong></MudText>
+								<MudText Typo="Typo.body2">
+									<strong>@_model.CreatedAt.ToString("g")</strong>
+								</MudText>
 							</MudStack>
 						</MudStack>
 					</MudPaper>
@@ -75,23 +83,33 @@
 							<MudStack Spacing="2">
 								<MudStack Row="true" Justify="Justify.SpaceBetween">
 									<MudText Typo="Typo.body2" Color="Color.Default">Min Confidence:</MudText>
-									<MudText Typo="Typo.body2"><strong>@(_model.TrainingJob.MinConfidence.ToString("P0"))</strong></MudText>
+									<MudText Typo="Typo.body2">
+										<strong>@(_model.TrainingJob.MinConfidence.ToString("P0"))</strong>
+									</MudText>
 								</MudStack>
 								<MudStack Row="true" Justify="Justify.SpaceBetween">
 									<MudText Typo="Typo.body2" Color="Color.Default">Train/Test Split:</MudText>
-									<MudText Typo="Typo.body2"><strong>@(_model.TrainingJob.TrainTestSplit.ToString("P0"))</strong></MudText>
+									<MudText Typo="Typo.body2">
+										<strong>@(_model.TrainingJob.TrainTestSplit.ToString("P0"))</strong>
+									</MudText>
 								</MudStack>
 								<MudStack Row="true" Justify="Justify.SpaceBetween">
 									<MudText Typo="Typo.body2" Color="Color.Default">Training Time:</MudText>
-									<MudText Typo="Typo.body2"><strong>@(_model.TrainingJob.TrainingTimeSeconds)s</strong></MudText>
+									<MudText Typo="Typo.body2">
+										<strong>@(_model.TrainingJob.TrainingTimeSeconds)s</strong>
+									</MudText>
 								</MudStack>
 								<MudStack Row="true" Justify="Justify.SpaceBetween">
 									<MudText Typo="Typo.body2" Color="Color.Default">Metric:</MudText>
-									<MudText Typo="Typo.body2"><strong>@_model.TrainingJob.OptimizingMetric</strong></MudText>
+									<MudText Typo="Typo.body2">
+										<strong>@_model.TrainingJob.OptimizingMetric</strong>
+									</MudText>
 								</MudStack>
 								<MudStack Row="true" Justify="Justify.SpaceBetween">
 									<MudText Typo="Typo.body2" Color="Color.Default">Trainer:</MudText>
-									<MudText Typo="Typo.body2"><strong>@(_model.TrainingJob.TrainerName ?? "N/A")</strong></MudText>
+									<MudText Typo="Typo.body2">
+										<strong>@(_model.TrainingJob.TrainerName ?? "N/A")</strong>
+									</MudText>
 								</MudStack>
 							</MudStack>
 						</MudPaper>
@@ -146,34 +164,55 @@
 				@if (_model.TrainingJob.ConfusionMatrix != null && _model.TrainingJob.ConfusionMatrix.Length > 0)
 				{
 					<MudText Typo="Typo.h5" Class="mb-4">Confusion Matrix</MudText>
-					<MudPaper Class="pa-4" Elevation="1" Style="max-width: 500px;">
-						<MudSimpleTable Dense="true" Hover="true" Bordered="true">
+					<MudPaper Class="pa-4" Elevation="1" Style="max-width: 600px;">
+						<MudSimpleTable Dense="true" Bordered="true">
 							<thead>
-								<tr>
-									<th></th>
-									@foreach (var label in GetLabels())
-									{
-										<th class="text-center"><strong>Predicted @label</strong></th>
-									}
-								</tr>
+							<tr>
+								<th></th>
+								@foreach (var label in GetLabels())
+								{
+									<th class="text-center">
+										<strong>Predicted @label</strong>
+									</th>
+								}
+								<th class="text-center">
+									<strong>Total</strong>
+								</th>
+							</tr>
 							</thead>
 							<tbody>
-								@for (int i = 0; i < _model.TrainingJob.ConfusionMatrix.Length; i++)
-								{
-									var row = _model.TrainingJob.ConfusionMatrix[i];
-									<tr>
-										<td><strong>Actual @GetLabels()[i]</strong></td>
-										@for (int j = 0; j < row.Length; j++)
-										{
-											var isCorrect = i == j;
-											<td class="text-center" style="@(isCorrect ? "background-color: rgba(0,200,0,0.2);" : "")">
-												@row[j]
-											</td>
-										}
-									</tr>
-								}
+							@for (int i = 0; i < _model.TrainingJob.ConfusionMatrix.Length; i++)
+							{
+								var row = _model.TrainingJob.ConfusionMatrix[i];
+								var rowTotal = row.Sum();
+								<tr>
+									<td>
+										<strong>Actual @GetLabels()[i]</strong>
+									</td>
+									@for (int j = 0; j < row.Length; j++)
+									{
+										var isCorrect = i == j;
+										var percentage = rowTotal > 0 ? (double) row[j] / rowTotal : 0;
+										var cellStyle = GetCellColor(percentage, isCorrect);
+										<td class="text-center" style="@cellStyle">
+											@row[j]
+											@if (rowTotal > 0)
+											{
+												<br/>
+												<small class="text-muted">(@(percentage.ToString("P0")))</small>
+											}
+										</td>
+									}
+									<td class="text-center">
+										<strong>@rowTotal</strong>
+									</td>
+								</tr>
+							}
 							</tbody>
 						</MudSimpleTable>
+						<MudText Typo="Typo.caption" Class="mt-2 text-muted">
+							Green = correct predictions, Red = incorrect predictions. Color intensity indicates percentage of row.
+						</MudText>
 					</MudPaper>
 				}
 			}
@@ -241,7 +280,8 @@
 		bool? result = await DialogService.ShowMessageBox(
 			"Activate Model",
 			$"Are you sure you want to activate '{_model?.Name}'? This will make it the active model for sentiment classification and redirect all inference to use this model.",
-			yesText: "Activate", cancelText: "Cancel");
+			yesText: "Activate",
+			cancelText: "Cancel");
 
 		if (result == true)
 		{
@@ -288,4 +328,26 @@
 			_ => Enumerable.Range(0, numClasses).Select(i => $"Class {i}").ToArray()
 		};
 	}
+
+	private static string GetCellColor(double percentage, bool isCorrect)
+	{
+		// Use green for correct predictions (diagonal), red for incorrect (off-diagonal)
+		// Intensity is based on the percentage
+		if (percentage <= 0) return "";
+
+		int alpha = (int) (percentage * 180) + 30; // Range from 30-210 for visibility
+		alpha = Math.Min(alpha, 200); // Cap at 200 for readability
+
+		if (isCorrect)
+		{
+			// Green gradient for correct predictions
+			return $"background-color: rgba(46, 125, 50, {alpha / 255.0:F2});"; // MUI green-700
+		}
+		else
+		{
+			// Red gradient for incorrect predictions
+			return $"background-color: rgba(198, 40, 40, {alpha / 255.0:F2});"; // MUI red-800
+		}
+	}
+
 }

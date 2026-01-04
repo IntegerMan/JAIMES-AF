@@ -89,6 +89,10 @@ public class ClassificationModelService(
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
+        // Check if there's already an active model of this type
+        bool hasActiveModel = await context.ClassificationModels
+            .AnyAsync(cm => cm.ModelType == modelType && cm.IsActive, cancellationToken);
+
         // Create the stored file for binary content
         StoredFile storedFile = new()
         {
@@ -103,6 +107,7 @@ public class ClassificationModelService(
         context.StoredFiles.Add(storedFile);
 
         // Create the classification model record referencing the navigation property
+        // Auto-activate if no active model exists for this type
         ClassificationModel model = new()
         {
             ModelType = modelType,
@@ -110,17 +115,19 @@ public class ClassificationModelService(
             Description = description,
             StoredFile = storedFile,
             CreatedAt = DateTime.UtcNow,
-            TrainingJobId = trainingJobId
+            TrainingJobId = trainingJobId,
+            IsActive = !hasActiveModel // Auto-activate first model of a type
         };
 
         context.ClassificationModels.Add(model);
         await context.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
-            "Uploaded classification model '{Name}' (Type: {ModelType}, Size: {Size} bytes)",
+            "Uploaded classification model '{Name}' (Type: {ModelType}, Size: {Size} bytes, Active: {IsActive})",
             name,
             modelType,
-            content.Length);
+            content.Length,
+            model.IsActive);
 
         model.StoredFile = storedFile;
         return MapToResponse(model);

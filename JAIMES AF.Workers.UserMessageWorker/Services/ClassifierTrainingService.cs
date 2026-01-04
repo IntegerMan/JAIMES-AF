@@ -71,12 +71,23 @@ public class ClassifierTrainingService(ILogger<ClassifierTrainingService> logger
 
                 logger.LogInformation("Split data: {TrainingRows} training, {TestRows} test", trainingRows, testRows);
 
-                // Configure AutoML experiment
+                // Configure AutoML experiment with a minimum training time to ensure at least one trial completes
+                // The 5-second option is for quick testing but may fail with very small datasets
+                int effectiveTrainingTime = Math.Max(trainingTimeSeconds, 30); // Ensure at least 30 seconds
+                if (effectiveTrainingTime != trainingTimeSeconds)
+                {
+                    logger.LogWarning(
+                        "Training time increased from {Requested}s to {Effective}s to ensure successful completion",
+                        trainingTimeSeconds,
+                        effectiveTrainingTime);
+                }
+
                 MulticlassClassificationMetric metric = ParseMetric(optimizingMetric);
                 MulticlassExperimentSettings experimentSettings = new()
                 {
-                    MaxExperimentTimeInSeconds = (uint) trainingTimeSeconds,
-                    OptimizingMetric = metric
+                    MaxExperimentTimeInSeconds = (uint) effectiveTrainingTime,
+                    OptimizingMetric = metric,
+                    CacheBeforeTrainer = CacheBeforeTrainer.On // Cache data for faster training
                 };
 
                 // Featurize text
@@ -86,17 +97,28 @@ public class ClassifierTrainingService(ILogger<ClassifierTrainingService> logger
 
                 ITransformer textTransformer = textFeaturizer.Fit(splitData.TrainSet);
                 IDataView featurizedTrainData = textTransformer.Transform(splitData.TrainSet);
-                IDataView featurizedTestData = textTransformer.Transform(splitData.TestSet);
 
                 ColumnInformation columnInfo = new()
                 {
                     LabelColumnName = nameof(SentimentTrainingData.Sentiment)
                 };
 
-                logger.LogInformation("Starting AutoML experiment for {Time} seconds...", trainingTimeSeconds);
-                ExperimentResult<MulticlassClassificationMetrics> experimentResult = _mlContext.Auto()
-                    .CreateMulticlassClassificationExperiment(experimentSettings)
-                    .Execute(featurizedTrainData, columnInfo);
+                logger.LogInformation("Starting AutoML experiment for {Time} seconds...", effectiveTrainingTime);
+                ExperimentResult<MulticlassClassificationMetrics> experimentResult;
+                try
+                {
+                    experimentResult = _mlContext.Auto()
+                        .CreateMulticlassClassificationExperiment(experimentSettings)
+                        .Execute(featurizedTrainData, columnInfo);
+                }
+                catch (TimeoutException ex)
+                {
+                    throw new InvalidOperationException(
+                        $"AutoML training timed out after {effectiveTrainingTime} seconds without completing a successful trial. " +
+                        "This can happen with very small datasets or insufficient training time. " +
+                        "Try increasing training time or adding more training data.",
+                        ex);
+                }
 
                 logger.LogInformation(
                     "AutoML completed. Best trainer: {TrainerName}, MacroAccuracy: {Accuracy:P2}",
