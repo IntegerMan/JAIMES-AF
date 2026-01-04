@@ -19,10 +19,10 @@ public interface IClassificationModelService
     /// <summary>
     /// Gets the binary content of a stored model file.
     /// </summary>
-    /// <param name="storedFileId">The ID of the stored file.</param>
+    /// <param name="modelId">The ID of the classification model.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The model file content as bytes, or null if not found.</returns>
-    Task<byte[]?> GetModelContentAsync(int storedFileId, CancellationToken cancellationToken = default);
+    Task<byte[]?> GetModelContentAsync(int modelId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Uploads a new classification model to the database.

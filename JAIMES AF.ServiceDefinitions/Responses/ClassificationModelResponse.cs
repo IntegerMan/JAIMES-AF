@@ -9,5 +9,6 @@ public record ClassificationModelResponse(
     string Name,
     string? Description,
     string FileName,
+    int StoredFileId,
     long? SizeBytes,
     DateTime CreatedAt);

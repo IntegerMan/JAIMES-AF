@@ -48,8 +48,27 @@ public class SentimentModelService(
         // Fall back to local model or training
         if (File.Exists(modelPath))
         {
-            _logger.LogInformation("Loading existing sentiment model from {ModelPath}", modelPath);
-            await LoadModelAsync(modelPath, cancellationToken);
+            try
+            {
+                _logger.LogInformation("Loading existing sentiment model from {ModelPath}", modelPath);
+                await LoadModelAsync(modelPath, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to load sentiment model from {ModelPath}. File may be corrupted. Deleting and training new model.",
+                    modelPath);
+                try
+                {
+                    File.Delete(modelPath);
+                }
+                catch
+                {
+                    /* Ignore deletion errors */
+                }
+
+                await TrainAndSaveModelAsync(trainingDataPath, modelPath, cancellationToken);
+            }
         }
         else
         {
@@ -101,9 +120,9 @@ public class SentimentModelService(
                 _logger.LogInformation("Downloading classification model from database (no local model exists)");
             }
 
-            // Download model content from database
+            // Download model content from database using the model ID
             byte[]? modelContent = await classificationModelService.GetModelContentAsync(
-                GetStoredFileIdFromModel(dbModel),
+                dbModel.Id,
                 cancellationToken);
 
             if (modelContent == null || modelContent.Length == 0)
@@ -130,24 +149,12 @@ public class SentimentModelService(
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to download model from database. Falling back to local model.");
+            _logger.LogWarning(ex,
+                "Failed to download or load model from database. Falling back to local/fresh model.");
             return false;
         }
     }
 
-    /// <summary>
-    /// Gets the stored file ID from the model response by querying the database.
-    /// This is a workaround since the response doesn't directly include the StoredFileId.
-    /// </summary>
-    private int GetStoredFileIdFromModel(ClassificationModelResponse model)
-    {
-        // The ClassificationModelService uses the model ID to look up the StoredFileId
-        // For simplicity, we'll query the database directly here
-        // Note: In a real implementation, we might want to add StoredFileId to the response
-        using var context = contextFactory!.CreateDbContext();
-        var entity = context.ClassificationModels.Find(model.Id);
-        return entity?.StoredFileId ?? throw new InvalidOperationException($"Model {model.Id} not found");
-    }
 
     /// <summary>
     /// Predicts the sentiment of the given text.

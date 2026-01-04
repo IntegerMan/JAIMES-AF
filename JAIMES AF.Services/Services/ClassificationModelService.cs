@@ -39,16 +39,15 @@ public class ClassificationModelService(
 
     /// <inheritdoc />
     public async Task<byte[]?> GetModelContentAsync(
-        int storedFileId,
+        int modelId,
         CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
-        StoredFile? storedFile = await context.StoredFiles
-            .Where(sf => sf.Id == storedFileId)
+        return await context.ClassificationModels
+            .Where(cm => cm.Id == modelId)
+            .Select(cm => cm.StoredFile.BinaryContent)
             .FirstOrDefaultAsync(cancellationToken);
-
-        return storedFile?.BinaryContent;
     }
 
     /// <inheritdoc />
@@ -74,24 +73,25 @@ public class ClassificationModelService(
         };
 
         context.StoredFiles.Add(storedFile);
-        await context.SaveChangesAsync(cancellationToken);
 
-        // Create the classification model record
+        // Create the classification model record referencing the navigation property
         ClassificationModel model = new()
         {
             ModelType = modelType,
             Name = name,
             Description = description,
-            StoredFileId = storedFile.Id,
+            StoredFile = storedFile, // Use navigation property for atomicity
             CreatedAt = DateTime.UtcNow
         };
 
         context.ClassificationModels.Add(model);
-        await context.SaveChangesAsync(cancellationToken);
+        await context.SaveChangesAsync(cancellationToken); // Single save handles both entities in one transaction
 
         logger.LogInformation(
             "Uploaded classification model '{Name}' (Type: {ModelType}, Size: {Size} bytes)",
-            name, modelType, content.Length);
+            name,
+            modelType,
+            content.Length);
 
         model.StoredFile = storedFile;
         return MapToResponse(model);
@@ -119,6 +119,7 @@ public class ClassificationModelService(
             model.Name,
             model.Description,
             model.StoredFile.FileName,
+            model.StoredFileId,
             model.StoredFile.SizeBytes,
             model.CreatedAt);
     }
