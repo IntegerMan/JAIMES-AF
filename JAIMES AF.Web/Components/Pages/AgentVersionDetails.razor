@@ -98,13 +98,14 @@
                            OnClick="RunTestsAsync">
                     Run Tests
                 </MudButton>
-                <MudButton Variant="Variant.Outlined"
-                           Color="Color.Info"
-                           Tooltip="Export all messages and responses for this version to a JSONL file for evaluation in Microsoft Foundry"
-                           StartIcon="@Icons.Material.Filled.Download"
-                           OnClick="ExportJsonl">
-                    Export
-                </MudButton>
+                <MudTooltip Text="Export all messages and responses for this version to a JSONL file for evaluation in Microsoft Foundry" Placement="Placement.Top">
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Info"
+                               StartIcon="@Icons.Material.Filled.Download"
+                               OnClick="ExportJsonl">
+                        Export
+                    </MudButton>
+                </MudTooltip>
             </MudStack>
 
             <MudDivider Class="my-4"/>
