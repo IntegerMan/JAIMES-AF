@@ -22,6 +22,10 @@ public class GetDocumentChunksEndpoint(IDbContextFactory<JaimesDbContext> dbCont
         int page = Query<int?>("page") ?? 1;
         int pageSize = Query<int?>("pageSize") ?? 25;
 
+        // Fix pagination values
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 1;
+
         Logger.LogInformation(
             "Fetching chunks for document {DocumentId}, page {Page}, pageSize {PageSize}",
             documentId,

@@ -22,6 +22,10 @@ public class GetGameTranscriptChunksEndpoint(IDbContextFactory<JaimesDbContext> 
         int page = Query<int?>("page") ?? 1;
         int pageSize = Query<int?>("pageSize") ?? 25;
 
+        // Fix pagination values
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 1;
+
         Logger.LogInformation(
             "Fetching transcript chunks for game {GameId}, page {Page}, pageSize {PageSize}",
             gameId,

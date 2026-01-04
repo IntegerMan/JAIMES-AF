@@ -15,6 +15,11 @@ public partial class TestCaseDetails
 
     private List<BreadcrumbItem> _breadcrumbs = new();
 
+    // Comparison grid state
+    private List<string> _metricNames = new();
+    private IEnumerable<TestCaseRunResponse> _paginatedRuns => _runs?.OrderByDescending(r => r.ExecutedAt) ?? Enumerable.Empty<TestCaseRunResponse>();
+    private int _rowsPerPage = 15;
+
     protected override async Task OnParametersSetAsync()
     {
         await LoadTestCaseAsync();
@@ -42,6 +47,15 @@ public partial class TestCaseDetails
 
             // Load runs for this test case
             _runs = await Http.GetFromJsonAsync<List<TestCaseRunResponse>>($"/test-case-runs?testCaseId={TestCaseId}");
+
+            // Extract unique metric names from all runs
+            _metricNames = _runs?
+                .Where(r => r.Metrics != null)
+                .SelectMany(r => r.Metrics!)
+                .Select(m => m.MetricName)
+                .Distinct()
+                .OrderBy(m => m)
+                .ToList() ?? new List<string>();
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
@@ -191,5 +205,20 @@ public partial class TestCaseDetails
         }
 
         return null;
+    }
+
+    private static string GetMetricShortName(string metricName)
+    {
+        // Create abbreviated names for column headers
+        return metricName.Length > 15 ? metricName.Substring(0, 12) + "..." : metricName;
+    }
+
+    private static string GetMetricTooltip(string metricName, double score, string? remarks)
+    {
+        if (string.IsNullOrWhiteSpace(remarks))
+        {
+            return $"{metricName}: {score:F2}";
+        }
+        return $"{metricName}: {score:F2}\n\nReasoning: {remarks}";
     }
 }
