@@ -162,14 +162,15 @@ h1:focus {
 
 /* Compact link cards for admin */
 .compact-link-card {
-    min-height: 110px;
-    transition: all 0.2s ease;
-    border-radius: 8px;
+    min-height: 40px;
+    transition: all 0.15s ease;
+    border-radius: 6px;
 }
 
 .compact-link-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+    background-color: rgba(123, 44, 191, 0.04);
 }
 
 /* Admin dashboard sections */
@@ -216,3 +217,30 @@ h1:focus {
 .border-yellow-accent { border-color: #FFD60A !important; }
 .bg-purple-light { background-color: rgba(123, 44, 191, 0.08); }
 .bg-blue-light { background-color: rgba(67, 97, 238, 0.08); }
+
+/* Navigation menu icon styling */
+.mud-nav-link .mud-icon-root,
+.mud-nav-group .mud-icon-root {
+    color: #7B2CBF;
+    margin-right: 8px;
+}
+
+.mud-nav-link:hover .mud-icon-root,
+.mud-nav-link.active .mud-icon-root {
+    color: #4361EE;
+}
+
+.mud-navmenu .mud-nav-link {
+    padding: 8px 16px;
+    border-radius: 6px;
+    margin: 2px 8px;
+}
+
+.mud-navmenu .mud-nav-link:hover {
+    background-color: rgba(123, 44, 191, 0.08);
+}
+
+.mud-navmenu .mud-nav-link.active {
+    background-color: rgba(123, 44, 191, 0.12);
+    font-weight: 600;
+}

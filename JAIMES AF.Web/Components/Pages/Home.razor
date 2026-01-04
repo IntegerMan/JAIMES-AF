@@ -36,42 +36,19 @@
 					}
 				</MudStack>
 			</MudItem>
-			<MudItem xs="12" md="4" Class="d-flex align-center justify-center">
+			<MudItem xs="12" md="4" Class="d-flex flex-column align-end justify-space-between">
+				<MudButton Variant="Variant.Text" Href="/admin"
+				           StartIcon="@Icons.Material.Filled.AdminPanelSettings"
+				           Style="color: rgba(255,255,255,0.8);">
+					Admin Portal
+				</MudButton>
 				<MudIcon Icon="@Icons.Material.Filled.AutoAwesome"
-				         Style="font-size: 120px; color: rgba(255,255,255,0.2);" />
+				         Style="font-size: 100px; color: rgba(255,255,255,0.2);" />
 			</MudItem>
 		</MudGrid>
 	</MudPaper>
 
-	@* Metrics Dashboard *@
-	<MudGrid Spacing="3" Class="mb-4">
-		<MudItem xs="6" md="3">
-			<MetricCard Icon="@Icons.Material.Filled.SportsEsports"
-			            IconColor="Color.Primary"
-			            Value="@_gamesCount.ToString()"
-			            Label="Active Games" />
-		</MudItem>
-		<MudItem xs="6" md="3">
-			<MetricCard Icon="@Icons.Material.Filled.MenuBook"
-			            IconColor="Color.Secondary"
-			            Value="@_scenariosCount.ToString()"
-			            Label="Scenarios" />
-		</MudItem>
-		<MudItem xs="6" md="3">
-			<MetricCard Icon="@Icons.Material.Filled.Person"
-			            IconColor="Color.Info"
-			            Value="@_playersCount.ToString()"
-			            Label="Characters" />
-		</MudItem>
-		<MudItem xs="6" md="3">
-			<MetricCard Icon="@Icons.Material.Filled.AutoStories"
-			            IconColor="Color.Success"
-			            Value="@_rulesetsCount.ToString()"
-			            Label="Rulesets" />
-		</MudItem>
-	</MudGrid>
-
-	@* Quick Actions *@
+	@* Quick Actions - Now First *@
 	<MudGrid Spacing="3" Class="mb-4">
 		<MudItem xs="12" md="4">
 			<MudPaper Class="quick-action-card pa-4" Elevation="2" Style="height: 100%;">
@@ -125,6 +102,44 @@
 			</MudPaper>
 		</MudItem>
 	</MudGrid>
+
+	@* Metrics Dashboard - Now Second *@
+	<MudGrid Spacing="3" Class="mb-4">
+		<MudItem xs="6" md="3">
+			<MetricCard Icon="@Icons.Material.Filled.SportsEsports"
+			            IconColor="Color.Primary"
+			            Value="@_gamesCount.ToString()"
+			            Label="Active Games" />
+		</MudItem>
+		<MudItem xs="6" md="3">
+			<MetricCard Icon="@Icons.Material.Filled.MenuBook"
+			            IconColor="Color.Secondary"
+			            Value="@_scenariosCount.ToString()"
+			            Label="Scenarios" />
+		</MudItem>
+		<MudItem xs="6" md="3">
+			<MetricCard Icon="@Icons.Material.Filled.Person"
+			            IconColor="Color.Info"
+			            Value="@_playersCount.ToString()"
+			            Label="Characters" />
+		</MudItem>
+		<MudItem xs="6" md="3">
+			<MetricCard Icon="@Icons.Material.Filled.AutoStories"
+			            IconColor="Color.Success"
+			            Value="@_rulesetsCount.ToString()"
+			            Label="Rulesets" />
+		</MudItem>
+	</MudGrid>
+
+	@* Summary Paragraph *@
+	<MudPaper Class="pa-4 mb-4" Elevation="1" Style="background: linear-gradient(to right, rgba(123, 44, 191, 0.05), rgba(67, 97, 238, 0.05));">
+		<MudText Typo="Typo.body1" Style="line-height: 1.7;" Align="Align.Center">
+			JAIMES AF is an AI-powered single-player roleplaying platform built on Microsoft's Agent Framework.
+			It uses Azure OpenAI to create an intelligent Game Master that crafts immersive narratives,
+			remembers your story context, and adapts dynamically to your choices. Upload your favorite rulebooks,
+			create scenarios, and let the AI bring your adventures to life.
+		</MudText>
+	</MudPaper>
 
 	@* Feature Highlights *@
 	<MudPaper Class="feature-bar pa-3" Elevation="1">
