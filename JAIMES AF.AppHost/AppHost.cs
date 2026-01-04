@@ -307,6 +307,10 @@ IResourceBuilder<ProjectResource> documentEmbeddingWorker = builder
         SetLegacyOllamaEndpoint(SetVar, "DocumentEmbedding__OllamaEndpoint", ollama, embedModel, embedConfig.Endpoint);
     });
 
+// Add parameter for user-message-worker replicas (configurable parallelism)
+IResourceBuilder<ParameterResource> userWorkerReplicas = builder.AddParameter("user-worker-replicas", "1")
+    .WithDescription("Number of user-message-worker replicas for parallel message processing");
+
 IResourceBuilder<ProjectResource> userMessageWorker = builder
     .AddProject<Projects.JAIMES_AF_Workers_UserMessageWorker>("user-message-worker")
     .WithIconName("PersonChat")
@@ -317,7 +321,12 @@ IResourceBuilder<ProjectResource> userMessageWorker = builder
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
-    .WithParentRelationship(workersGroup);
+    .WithParentRelationship(workersGroup)
+    .WithReplicas(int.TryParse(configuration["Parameters:user-worker-replicas"], out int userReplicas) ? userReplicas : 1);
+
+// Add parameter for assistant-message-worker replicas (configurable parallelism)
+IResourceBuilder<ParameterResource> assistantWorkerReplicas = builder.AddParameter("assistant-worker-replicas", "1")
+    .WithDescription("Number of assistant-message-worker replicas for parallel message evaluation");
 
 IResourceBuilder<ProjectResource> assistantMessageWorker = builder
     .AddProject<Projects.JAIMES_AF_Workers_AssistantMessageWorker>("assistant-message-worker")
@@ -331,6 +340,7 @@ IResourceBuilder<ProjectResource> assistantMessageWorker = builder
     .WaitFor(postgres)
     .WaitFor(postgresdb)
     .WithParentRelationship(workersGroup)
+    .WithReplicas(int.TryParse(configuration["Parameters:assistant-worker-replicas"], out int assistantReplicas) ? assistantReplicas : 1)
     .WithEnvironment(context =>
     {
         void SetVar(string key, object value) => context.EnvironmentVariables[key] = value;

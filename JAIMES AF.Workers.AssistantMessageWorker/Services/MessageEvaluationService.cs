@@ -99,23 +99,71 @@ public class MessageEvaluationService(
             // Create ChatConfiguration for the evaluator
             ChatConfiguration chatConfiguration = new(chatClient);
 
-            // Create a composite evaluator from active evaluators (may be filtered)
-            IEvaluator compositeEvaluator = new CompositeEvaluator(activeEvaluators);
+            // Run evaluators individually for progress tracking
+            var activeEvaluatorList = activeEvaluators.ToList();
+            int totalEvaluators = activeEvaluatorList.Count;
+            var allResults = new EvaluationResult();
 
-            // Create ReportingConfiguration to integrate with the new result store
-            ReportingConfiguration reportConfig = new(
-                [compositeEvaluator],
-                resultStore,
-                executionName: "Assistant Message Quality",
-                chatConfiguration: chatConfiguration);
+            for (int i = 0; i < totalEvaluators; i++)
+            {
+                var evaluator = activeEvaluatorList[i];
+                string evaluatorName = evaluator.GetType().Name;
+                int evaluatorIndex = i + 1;
 
-            // Perform evaluation using a separate method to ensure ScenarioRun is disposed before we manually store metrics
-            EvaluationResult result = await PerformEvaluationInternalAsync(
-                reportConfig,
-                message,
-                evaluationContext,
-                assistantResponse,
-                cancellationToken);
+                // Notify evaluator started
+                await messageUpdateNotifier.NotifyEvaluatorStartedAsync(
+                    message.Id,
+                    message.GameId,
+                    evaluatorName,
+                    evaluatorIndex,
+                    totalEvaluators,
+                    cancellationToken);
+
+                try
+                {
+                    // Create ReportingConfiguration for this single evaluator
+                    ReportingConfiguration reportConfig = new(
+                        [evaluator],
+                        resultStore,
+                        executionName: $"Assistant Message Quality - {evaluatorName}",
+                        chatConfiguration: chatConfiguration);
+
+                    // Perform evaluation for this evaluator
+                    EvaluationResult result = await PerformEvaluationInternalAsync(
+                        reportConfig,
+                        message,
+                        evaluationContext,
+                        assistantResponse,
+                        cancellationToken);
+
+                    // Merge results
+                    foreach (var kvp in result.Metrics)
+                    {
+                        allResults.Metrics[kvp.Key] = kvp.Value;
+                    }
+
+                    logger.LogDebug(
+                        "Evaluator {EvaluatorName} ({Index}/{Total}) completed for message {MessageId}",
+                        evaluatorName,
+                        evaluatorIndex,
+                        totalEvaluators,
+                        message.Id);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Evaluator {EvaluatorName} failed for message {MessageId}", evaluatorName, message.Id);
+                    // Continue with other evaluators
+                }
+
+                // Notify evaluator completed
+                await messageUpdateNotifier.NotifyEvaluatorCompletedAsync(
+                    message.Id,
+                    message.GameId,
+                    evaluatorName,
+                    evaluatorIndex,
+                    totalEvaluators,
+                    cancellationToken);
+            }
 
             // Store metrics in database
             await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -145,7 +193,7 @@ public class MessageEvaluationService(
             var evaluatorIdLookup = await context.Evaluators
                 .ToDictionaryAsync(e => e.Name.ToLower(), e => e.Id, cancellationToken);
 
-            foreach (var metricPair in result.Metrics)
+            foreach (var metricPair in allResults.Metrics)
             {
                 string metricName = metricPair.Key;
                 if (metricPair.Value is NumericMetric metric && metric.Value != null)
@@ -212,10 +260,10 @@ public class MessageEvaluationService(
             await context.SaveChangesAsync(cancellationToken);
 
             // Notify web clients via SignalR
-            List<MessageEvaluationMetricResponse> metricResponses = result.Metrics.Keys
+            List<MessageEvaluationMetricResponse> metricResponses = allResults.Metrics.Keys
                 .Select(metricName =>
                 {
-                    NumericMetric? metric = result.Get<NumericMetric>(metricName);
+                    NumericMetric? metric = allResults.Get<NumericMetric>(metricName);
                     return metric != null && metric.Value.HasValue
                         ? new MessageEvaluationMetricResponse
                         {

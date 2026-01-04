@@ -13,4 +13,10 @@ public interface IPipelineStatusHubClient
     /// </summary>
     /// <param name="notification">The notification with current pipeline queue sizes.</param>
     Task PipelineStatusUpdated(PipelineStatusNotification notification);
+
+    /// <summary>
+    /// Called when a message processing stage has been updated.
+    /// </summary>
+    /// <param name="notification">The notification with current message processing stage.</param>
+    Task MessageStageUpdated(MessagePipelineStageNotification notification);
 }
