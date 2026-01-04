@@ -8,11 +8,19 @@
         </MudStack>
     </TitleContent>
     <DialogContent>
-        <MudPaper Style="width: 100%; height: 70vh; overflow: hidden;" Elevation="0">
+        <MudPaper Style="width: 100%; height: 70vh; overflow: hidden; position: relative;" Elevation="0">
+            @if (_isLoading)
+            {
+                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: var(--mud-palette-background); z-index: 1;">
+                    <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+                    <MudText Typo="Typo.body1" Class="mt-4">Loading document...</MudText>
+                </div>
+            }
             <iframe 
                 src="@FileUrl" 
                 style="width: 100%; height: 100%; border: none;"
-                title="Document Viewer">
+                title="Document Viewer"
+                @onload="OnIframeLoaded">
             </iframe>
         </MudPaper>
     </DialogContent>
@@ -30,6 +38,14 @@
 
     [Parameter]
     public string FileUrl { get; set; } = string.Empty;
+
+    private bool _isLoading = true;
+
+    private void OnIframeLoaded()
+    {
+        _isLoading = false;
+        StateHasChanged();
+    }
 
     private void Close() => MudDialog.Close();
 }
