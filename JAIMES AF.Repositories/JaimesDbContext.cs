@@ -52,6 +52,9 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
     // File storage for reports and other binary content
     public DbSet<StoredFile> StoredFiles { get; set; } = null!;
 
+    // Classification models for ML inference
+    public DbSet<ClassificationModel> ClassificationModels { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -133,12 +136,12 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
                 .HasForeignKey(iv => iv.ModelId)
                 .OnDelete(DeleteBehavior.NoAction);
 
-            entity.HasIndex(iv => new { iv.AgentId, iv.VersionNumber }).IsUnique();
+            entity.HasIndex(iv => new {iv.AgentId, iv.VersionNumber}).IsUnique();
         });
 
         modelBuilder.Entity<ScenarioAgent>(entity =>
         {
-            entity.HasKey(sa => new { sa.ScenarioId, sa.AgentId });
+            entity.HasKey(sa => new {sa.ScenarioId, sa.AgentId});
             entity.Property(sa => sa.ScenarioId).IsRequired();
             entity.Property(sa => sa.AgentId).IsRequired();
             entity.Property(sa => sa.InstructionVersionId);
@@ -502,7 +505,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
 
             // Unique constraint: location names must be unique within a game (case-insensitive)
             // Using the NameLower computed column ensures the constraint is enforced at database level
-            entity.HasIndex(l => new { l.GameId, l.NameLower }).IsUnique();
+            entity.HasIndex(l => new {l.GameId, l.NameLower}).IsUnique();
 
             entity.HasOne(l => l.Game)
                 .WithMany()
@@ -526,7 +529,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
 
         modelBuilder.Entity<NearbyLocation>(entity =>
         {
-            entity.HasKey(nl => new { nl.SourceLocationId, nl.TargetLocationId });
+            entity.HasKey(nl => new {nl.SourceLocationId, nl.TargetLocationId});
             entity.Property(nl => nl.Distance).HasMaxLength(100);
 
             entity.HasOne(nl => nl.SourceLocation)
@@ -550,7 +553,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.Property(m => m.CreatedAt).IsRequired();
 
             // Create unique index on Name + Provider + Endpoint to prevent duplicates
-            var indexBuilder = entity.HasIndex(m => new { m.Name, m.Provider, m.Endpoint })
+            var indexBuilder = entity.HasIndex(m => new {m.Name, m.Provider, m.Endpoint})
                 .IsUnique();
 
             // AreNullsDistinct is a relational-only feature. PostgreSQL 15+ supports it.
@@ -611,7 +614,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
 
         modelBuilder.Entity<EvaluationScenarioIteration>(entity =>
         {
-            entity.HasKey(si => new { si.ExecutionName, si.ScenarioName, si.IterationName });
+            entity.HasKey(si => new {si.ExecutionName, si.ScenarioName, si.IterationName});
             entity.Property(si => si.ExecutionName).IsRequired().HasMaxLength(250);
             entity.Property(si => si.ScenarioName).IsRequired().HasMaxLength(250);
             entity.Property(si => si.IterationName).IsRequired().HasMaxLength(250);
@@ -727,6 +730,25 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             entity.HasIndex(sf => sf.ItemKind);
         });
 
+        // ClassificationModel entity configuration
+        modelBuilder.Entity<ClassificationModel>(entity =>
+        {
+            entity.HasKey(cm => cm.Id);
+            entity.Property(cm => cm.ModelType).IsRequired().HasMaxLength(100);
+            entity.Property(cm => cm.Name).IsRequired().HasMaxLength(200);
+            entity.Property(cm => cm.Description).HasMaxLength(1000);
+            entity.Property(cm => cm.CreatedAt).IsRequired();
+
+            // Create index on ModelType for efficient queries
+            entity.HasIndex(cm => cm.ModelType);
+
+            // FK to StoredFile with cascade delete
+            entity.HasOne(cm => cm.StoredFile)
+                .WithMany()
+                .HasForeignKey(cm => cm.StoredFileId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         // Add relationship from TestCaseRun to StoredFile for reports
         modelBuilder.Entity<TestCaseRun>()
             .HasOne(tcr => tcr.ReportFile)
@@ -739,12 +761,12 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
         // you MUST create a new EF Core migration. See AGENTS.md for the migration command.
         modelBuilder.Entity<Ruleset>()
             .HasData(
-                new Ruleset { Id = "dnd5e", Name = "Dungeons and Dragons 5th Edition" }
+                new Ruleset {Id = "dnd5e", Name = "Dungeons and Dragons 5th Edition"}
             );
 
         modelBuilder.Entity<Player>()
             .HasData(
-                new Player { Id = "emcee", RulesetId = "dnd5e", Description = "Default player", Name = "Emcee" },
+                new Player {Id = "emcee", RulesetId = "dnd5e", Description = "Default player", Name = "Emcee"},
                 new Player
                 {
                     Id = "kigorath", RulesetId = "dnd5e",

@@ -37,6 +37,7 @@ builder.Services.AddJaimesRepositories(builder.Configuration);
 // Add registration services
 builder.Services.AddScoped<IToolRegistrar, ToolRegistrar>();
 builder.Services.AddScoped<IEvaluatorRegistrar, EvaluatorRegistrar>();
+builder.Services.AddScoped<IClassificationModelService, ClassificationModelService>();
 
 // Configure OpenTelemetry ActivitySource
 const string activitySourceName = "Jaimes.Workers.DatabaseMigration";
@@ -83,6 +84,10 @@ try
     logger.LogInformation("Registering evaluators in database...");
     await evaluatorRegistrar.RegisterEvaluatorsAsync();
 
+    // Upload classification model if not already present
+    var modelService = scope.ServiceProvider.GetRequiredService<IClassificationModelService>();
+    await UploadClassificationModelIfNeededAsync(modelService, logger);
+
     logger.LogInformation("Tool and evaluator registration completed. Exiting migration worker.");
 }
 catch (Exception ex)
@@ -91,3 +96,46 @@ catch (Exception ex)
     Environment.ExitCode = 1;
     throw;
 }
+
+/// <summary>
+/// Uploads the bundled sentiment classification model to the database if not already present.
+/// </summary>
+static async Task UploadClassificationModelIfNeededAsync(
+    IClassificationModelService modelService,
+    ILogger logger)
+{
+    // Check if model already exists in database
+    var existingModel = await modelService.GetLatestModelAsync(ClassificationModelTypes.SentimentClassification);
+    if (existingModel != null)
+    {
+        logger.LogInformation(
+            "Sentiment classification model already exists in database (Id: {Id}, Created: {Created})",
+            existingModel.Id,
+            existingModel.CreatedAt);
+        return;
+    }
+
+    // Look for bundled model file
+    string modelPath = Path.Combine(AppContext.BaseDirectory, "SentimentModel.zip");
+    if (!File.Exists(modelPath))
+    {
+        logger.LogWarning(
+            "No bundled sentiment model found at {ModelPath}. Model will be trained by UserMessageWorker on first run.",
+            modelPath);
+        return;
+    }
+
+    // Upload the model to the database
+    logger.LogInformation("Uploading bundled sentiment model to database from {ModelPath}", modelPath);
+    byte[] modelContent = await File.ReadAllBytesAsync(modelPath);
+
+    await modelService.UploadModelAsync(
+        ClassificationModelTypes.SentimentClassification,
+        "Sentiment Classification Model",
+        "SentimentModel.zip",
+        modelContent,
+        "ML.NET AutoML-trained sentiment classification model for user message analysis.");
+
+    logger.LogInformation("Sentiment classification model uploaded to database successfully.");
+}
+

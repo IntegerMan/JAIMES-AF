@@ -32,6 +32,7 @@
         <ProjectReference Include="..\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj"/>
         <ProjectReference Include="..\JAIMES AF.ServiceDefinitions\JAIMES AF.ServiceDefinitions.csproj"/>
         <ProjectReference Include="..\JAIMES AF.ServiceDefaults\JAIMES AF.ServiceDefaults.csproj"/>
+        <ProjectReference Include="..\JAIMES AF.Services\JAIMES AF.ServiceLayer.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
