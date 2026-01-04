@@ -128,7 +128,7 @@
                                         @for (int i = 1; i <= msg.TotalEvaluators; i++)
                                         {
                                             var evalIndex = i;
-                                            var evalName = msg.EvaluatorNames.ElementAtOrDefault(i - 1) ?? $"Eval {i}";
+                                            var evalName = msg.EvaluatorNames.TryGetValue(i, out var name) ? name : $"Eval {i}";
                                             var shortName = GetShortEvaluatorName(evalName);
                                             <MudTooltip Text="@evalName">
                                                 <MudChip T="string" 
@@ -469,7 +469,7 @@
         // Evaluator tracking
         public int CurrentEvaluatorIndex { get; private set; }
         public int TotalEvaluators { get; private set; }
-        public List<string> EvaluatorNames { get; } = new();
+        public Dictionary<int, string> EvaluatorNames { get; } = new();
         public HashSet<int> CompletedEvaluators { get; } = new();
 
         public ActiveMessageState(int messageId, Guid gameId)
@@ -481,7 +481,7 @@
         public void UpdateFromNotification(MessagePipelineStageNotification notification)
         {
             // Prevent stage regression - only allow forward progression or Failed state
-            var stageOrder = new[] { MessagePipelineStage.Queued, MessagePipelineStage.Loading, MessagePipelineStage.EmbeddingQueue, MessagePipelineStage.Evaluation, MessagePipelineStage.Complete, MessagePipelineStage.Failed };
+            var stageOrder = new[] { MessagePipelineStage.Queued, MessagePipelineStage.Loading, MessagePipelineStage.Evaluation, MessagePipelineStage.EmbeddingQueue, MessagePipelineStage.Complete, MessagePipelineStage.Failed };
             int currentIndex = Array.IndexOf(stageOrder, CurrentStage);
             int newIndex = Array.IndexOf(stageOrder, notification.Stage);
             
@@ -513,10 +513,9 @@
                 CurrentEvaluatorIndex = notification.EvaluatorIndex.Value;
                 TotalEvaluators = notification.TotalEvaluators ?? TotalEvaluators;
                 
-                if (!string.IsNullOrEmpty(notification.EvaluatorName) && 
-                    !EvaluatorNames.Contains(notification.EvaluatorName))
+                if (!string.IsNullOrEmpty(notification.EvaluatorName))
                 {
-                    EvaluatorNames.Add(notification.EvaluatorName);
+                    EvaluatorNames[notification.EvaluatorIndex.Value] = notification.EvaluatorName;
                 }
 
                 if (notification.StageStatus == MessagePipelineStageStatus.Completed)
