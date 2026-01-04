@@ -347,7 +347,7 @@
 
     private static Color GetStageColor(ActiveMessageState msg, MessagePipelineStage stage)
     {
-        var stageOrder = new[] { MessagePipelineStage.Loading, MessagePipelineStage.SentimentAnalysis, MessagePipelineStage.EmbeddingQueue, MessagePipelineStage.Complete };
+        var stageOrder = new[] { MessagePipelineStage.Loading, MessagePipelineStage.EmbeddingQueue, MessagePipelineStage.SentimentAnalysis, MessagePipelineStage.Complete };
         int currentIndex = Array.IndexOf(stageOrder, msg.CurrentStage);
         int stageIndex = Array.IndexOf(stageOrder, stage);
 

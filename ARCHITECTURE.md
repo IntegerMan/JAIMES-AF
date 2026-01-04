@@ -144,9 +144,9 @@ Background workers report their processing status in real-time via SignalR, enab
 graph LR
     subgraph UserMessagePipeline
     UQ[Queued] --> UL[Loading]
-    UL --> US[Sentiment Analysis]
-    US --> UE[Embedding Queue]
-    UE --> UC[Complete]
+    UL --> UE[Embedding Queue]
+    UE --> US[Sentiment Analysis]
+    US --> UC[Complete]
     end
 
     subgraph AssistantMessagePipeline
@@ -161,7 +161,7 @@ graph LR
 
 | Pipeline | Stages | Notes |
 |----------|--------|-------|
-| **User Message** | Queued → Loading → Sentiment Analysis → Embedding Queue → Complete | Sentiment analysis runs before embedding |
+| **User Message** | Queued → Loading → Embedding Queue → Sentiment Analysis → Complete | Embedding runs before sentiment analysis |
 | **Assistant Message** | Queued → Loading → Evaluation → Embedding Queue → Complete | Per-evaluator progress reported during Evaluation stage |
 
 ### Per-Evaluator Progress Tracking

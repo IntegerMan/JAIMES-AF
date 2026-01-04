@@ -64,8 +64,10 @@ sequenceDiagram
 ```
 
 **Stages tracked:**
-- **User Pipeline**: Queued → Loading → Sentiment Analysis → Embedding Queue → Complete/Failed
+- **User Pipeline**: Queued → Loading → Embedding Queue → Sentiment Analysis → Complete/Failed
 - **Assistant Pipeline**: Queued → Loading → Evaluation → Embedding Queue → Complete/Failed
+
+**Security considerations:** Internal pipeline notification endpoints are intended for worker-to-API traffic inside the trusted network or service mesh. If the endpoints are reachable outside that boundary, require network isolation or authentication/authorization (for example, mTLS between services or ingress ACLs) to prevent spoofed stage updates.
 
 **Per-Evaluator Progress:**
 The Assistant Message pipeline provides fine-grained progress during the Evaluation stage. Each evaluator triggers individual start/complete notifications with the evaluator name and index/total counts, enabling visualization of multi-evaluator runs.
@@ -96,16 +98,7 @@ This enables true horizontal scaling: with 3 workers and 3 evaluators, all evalu
 
 ## Worker Replica Configuration
 
-Workers can run with multiple replicas for horizontal scaling. Aspire orchestration supports configurable replicas:
-
-```csharp
-// In AppHost.cs
-var userReplicas = int.Parse(builder.Configuration["Parameters:user-worker-replicas"] ?? "1");
-builder.AddProject<Projects.UserMessageWorker>("user-message-worker")
-    .WithReplicas(userReplicas);
-```
-
-Each worker instance includes a `WorkerSource` identifier (hostname + process ID) in status updates, allowing the UI to show which instance is processing each message.
+Workers can run with multiple replicas for horizontal scaling. Aspire orchestration reads replica counts from configuration parameters (for example, `user-worker-replicas` and `assistant-worker-replicas`) and provisions worker instances accordingly. Each worker instance includes a `WorkerSource` identifier (hostname + process ID) in status updates, allowing the UI to show which instance is processing each message.
 
 ## Design Benefits
 
