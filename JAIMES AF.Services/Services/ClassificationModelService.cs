@@ -283,12 +283,12 @@ public class ClassificationModelService(
             return false;
         }
 
-        // Deactivate all models of the same type
+        // Deactivate all OTHER models of the same type (exclude target to avoid change tracking issue)
         await context.ClassificationModels
-            .Where(cm => cm.ModelType == model.ModelType && cm.IsActive)
+            .Where(cm => cm.ModelType == model.ModelType && cm.IsActive && cm.Id != modelId)
             .ExecuteUpdateAsync(s => s.SetProperty(cm => cm.IsActive, false), cancellationToken);
 
-        // Activate the selected model
+        // Activate the selected model (will be a no-op if already active, but ensures consistency)
         model.IsActive = true;
         await context.SaveChangesAsync(cancellationToken);
 
