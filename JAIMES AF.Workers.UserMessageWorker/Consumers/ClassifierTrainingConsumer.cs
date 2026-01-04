@@ -46,6 +46,9 @@ public class ClassifierTrainingConsumer(
                 "Training",
                 cancellationToken: cancellationToken);
 
+            // Notify clients that training has started
+            await NotifyStatusChanged(message.TrainingJobId, "Training", cancellationToken);
+
             // Get training data from database
             await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
@@ -56,13 +59,15 @@ public class ClassifierTrainingConsumer(
                     !string.IsNullOrWhiteSpace(ms.Message.Text) &&
                     (ms.SentimentSource == SentimentSource.Player ||
                      (ms.Confidence != null && ms.Confidence >= message.MinConfidence)))
-                .Select(ms => new { ms.Message!.Text, ms.Sentiment })
+                .Select(ms => new {ms.Message!.Text, ms.Sentiment})
                 .ToListAsync(cancellationToken)
-                .ContinueWith(t => t.Result.Select(x => (x.Text, MapSentimentToLabel(x.Sentiment))).ToList(), cancellationToken);
+                .ContinueWith(t => t.Result.Select(x => (x.Text, MapSentimentToLabel(x.Sentiment))).ToList(),
+                    cancellationToken);
 
             if (trainingData.Count < 20)
             {
-                string errorMessage = $"Insufficient training data: only {trainingData.Count} rows found (minimum 20 required)";
+                string errorMessage =
+                    $"Insufficient training data: only {trainingData.Count} rows found (minimum 20 required)";
                 logger.LogError("Training job #{JobId} failed: {Error}", message.TrainingJobId, errorMessage);
 
                 await classificationModelService.UpdateTrainingJobAsync(
@@ -142,7 +147,11 @@ public class ClassifierTrainingConsumer(
         }
     }
 
-    private async Task NotifyTrainingCompleted(int jobId, int? modelId, bool success, string? error, CancellationToken ct)
+    private async Task NotifyTrainingCompleted(int jobId,
+        int? modelId,
+        bool success,
+        string? error,
+        CancellationToken ct)
     {
         try
         {
@@ -152,6 +161,18 @@ public class ClassifierTrainingConsumer(
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to send training completion notification for job #{JobId}", jobId);
+        }
+    }
+
+    private async Task NotifyStatusChanged(int jobId, string status, CancellationToken ct)
+    {
+        try
+        {
+            await messageUpdateNotifier.NotifyClassifierTrainingStatusChangedAsync(jobId, status, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to send training status notification for job #{JobId}", jobId);
         }
     }
 

@@ -145,4 +145,17 @@ public class SignalRMessageUpdateNotifier(
 
         await hubContext.Clients.Group("admin").ClassifierTrainingCompleted(notification);
     }
+
+    public async Task NotifyClassifierTrainingStatusChangedAsync(
+        int trainingJobId,
+        string status,
+        CancellationToken cancellationToken = default)
+    {
+        logger.LogDebug(
+            "Broadcasting classifier training status changed for job {JobId}, status: {Status}",
+            trainingJobId,
+            status);
+
+        await hubContext.Clients.Group("admin").ClassifierTrainingStatusChanged(trainingJobId, status);
+    }
 }

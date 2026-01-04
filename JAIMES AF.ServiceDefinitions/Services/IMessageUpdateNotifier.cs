@@ -154,5 +154,13 @@ public interface IMessageUpdateNotifier
     Task NotifyClassifierTrainingCompletedAsync(
         ClassifierTrainingCompletedNotification notification,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Notifies clients that classifier training status has changed (e.g., Queued → Training).
+    /// </summary>
+    Task NotifyClassifierTrainingStatusChangedAsync(
+        int trainingJobId,
+        string status,
+        CancellationToken cancellationToken = default);
 }
 

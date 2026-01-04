@@ -3,6 +3,7 @@
 @using Microsoft.AspNetCore.SignalR.Client
 @rendermode InteractiveServer
 @inject HttpClient Http
+@inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager NavigationManager
 @implements IAsyncDisposable
 
@@ -65,8 +66,8 @@
 							else if (context.Item.Status == "Training...")
 							{
 								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-									<MudProgressCircular Size="Size.Small" Indeterminate="true"/>
-									<MudText Color="Color.Info">Training...</MudText>
+									<MudProgressCircular Size="@Size.Small" Indeterminate="true" Style="width: 16px; height: 16px;"/>
+									<MudText Typo="Typo.body2" Color="Color.Info">Training...</MudText>
 								</MudStack>
 							}
 							else if (context.Item.Status == "Queued")
@@ -126,16 +127,32 @@
 
 	private async Task SetupSignalRAsync()
 	{
+		// Build hub connection using the API service URL (hub is hosted on API, not Web)
+		HttpClient apiClient = HttpClientFactory.CreateClient("Api");
+		string hubUrl = new Uri(apiClient.BaseAddress!, "/hubs/messages").ToString();
+
 		_hubConnection = new HubConnectionBuilder()
-			.WithUrl(NavigationManager.ToAbsoluteUri("/messagehub"))
+			.WithUrl(hubUrl)
 			.WithAutomaticReconnect()
 			.Build();
 
+		// Listen for training completed notifications
 		_hubConnection.On<ClassifierTrainingCompletedNotification>("ClassifierTrainingCompleted",
-			(ClassifierTrainingCompletedNotification notification) =>
+			_ =>
 			{
 				// Refresh the list when training completes
-				// Fire and forget - InvokeAsync handles the UI thread marshalling
+				InvokeAsync(async () =>
+				{
+					await LoadModelsAsync();
+					StateHasChanged();
+				});
+			});
+
+		// Listen for training status changes (e.g., Queued → Training)
+		_hubConnection.On<int, string>("ClassifierTrainingStatusChanged",
+			(_, _) =>
+			{
+				// Refresh the list when training status changes
 				InvokeAsync(async () =>
 				{
 					await LoadModelsAsync();

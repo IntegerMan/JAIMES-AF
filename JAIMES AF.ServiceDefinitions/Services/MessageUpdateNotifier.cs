@@ -306,4 +306,36 @@ public class MessageUpdateNotifier : IMessageUpdateNotifier
                 notification.TrainingJobId);
         }
     }
+
+    public async Task NotifyClassifierTrainingStatusChangedAsync(
+        int trainingJobId,
+        string status,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug(
+                "Sending classifier training status changed notification for job {JobId}, status: {Status}",
+                trainingJobId,
+                status);
+
+            HttpResponseMessage response = await _httpClient.PostAsJsonAsync(
+                "/internal/classifier-training-status",
+                new {TrainingJobId = trainingJobId, Status = status},
+                cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning(
+                    "Failed to send classifier training status notification: {StatusCode}",
+                    response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Failed to send classifier training status notification for job {JobId}",
+                trainingJobId);
+        }
+    }
 }
