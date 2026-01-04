@@ -48,9 +48,13 @@ public class GetSourcebookDocumentFileEndpoint(IDbContextFactory<JaimesDbContext
         Logger.LogInformation("Returning document file: {FileName} ({Size} bytes)",
             document.FileName, document.StoredFile.BinaryContent.Length);
 
+        // Sanitize document.FileName to prevent header injection from special characters
+        string sanitizedName =
+            new string(document.FileName.Where(c => !char.IsControl(c) && c != '"' && c != '\\').ToArray());
+
         // Set response headers for PDF content
         HttpContext.Response.ContentType = "application/pdf";
-        HttpContext.Response.Headers.ContentDisposition = $"inline; filename=\"{document.FileName}\"";
+        HttpContext.Response.Headers.ContentDisposition = $"inline; filename=\"{sanitizedName}\"";
 
         // Write the file bytes to the response
         await HttpContext.Response.Body.WriteAsync(document.StoredFile.BinaryContent, ct);

@@ -270,6 +270,7 @@ IResourceBuilder<ProjectResource> documentChangeDetector = builder
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
+    .WithEnvironment("DocumentChangeDetector__UploadDocumentsWhenCracking", uploadDocumentsWhenCracking.ToString())
     .WithParentRelationship(workersGroup);
 
 IResourceBuilder<ProjectResource> documentChunkingWorker = builder
@@ -331,7 +332,9 @@ IResourceBuilder<ProjectResource> userMessageWorker = builder
 // Configure assistant worker replicas for parallel message processing
 int assistantWorkerReplicaCount = int.TryParse(
     builder.Configuration["Parameters:assistant-worker-replicas"] ?? "3",
-    out int replicas) ? replicas : 3;
+    out int replicas)
+    ? replicas
+    : 3;
 
 IResourceBuilder<ProjectResource> assistantMessageWorker = builder
     .AddProject<Projects.JAIMES_AF_Workers_AssistantMessageWorker>("assistant-message-worker")
