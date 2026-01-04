@@ -279,16 +279,8 @@ public static class ChatClientMiddleware
                     caughtException.GetType().Name,
                     caughtException.Message);
 
-                // Return a generic error message for other exceptions
-                yield return new ChatResponseUpdate
-                {
-                    Role = ChatRole.Assistant,
-                    Contents =
-                    {
-                        new TextContent(
-                            $"I apologize, but an error occurred while processing your request: {caughtException.Message}")
-                    }
-                };
+                // Re-throw so the error is not persisted and is sent as an error SSE event
+                throw caughtException;
             }
         }
     }
