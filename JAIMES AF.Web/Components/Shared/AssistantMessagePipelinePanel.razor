@@ -25,9 +25,57 @@
 
     @if (_activeMessages.Count == 0)
     {
-        <MudAlert Severity="Severity.Info" Class="mb-4">
-            No assistant messages are currently being processed. Messages will appear here as they flow through the evaluation pipeline.
-        </MudAlert>
+        @* Show empty state pipeline diagram *@
+        <MudPaper Class="pa-3 mb-4" Elevation="1" Style="background-color: var(--mud-palette-background-grey);">
+            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Justify="Justify.Center" Class="flex-wrap">
+                @* Loading Stage *@
+                <MudPaper Class="pa-2" Elevation="0" Style="min-width: 70px; text-align: center; background-color: transparent;">
+                    <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                        <MudIcon Icon="@Icons.Material.Filled.CloudDownload" Size="Size.Medium" Color="Color.Default" />
+                        <MudText Typo="Typo.caption">Load</MudText>
+                    </MudStack>
+                </MudPaper>
+
+                <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="text-muted" />
+
+                @* Evaluation Stage *@
+                <MudPaper Class="pa-2" Elevation="0" Style="text-align: center; background-color: transparent;">
+                    <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                        <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">Brevity</MudChip>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">Coherence</MudChip>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">...</MudChip>
+                        </MudStack>
+                        <MudText Typo="Typo.caption" Class="mt-1">Evaluation</MudText>
+                    </MudStack>
+                </MudPaper>
+
+                <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="text-muted" />
+
+                @* Embedding Queue Stage *@
+                <MudPaper Class="pa-2" Elevation="0" Style="min-width: 70px; text-align: center; background-color: transparent;">
+                    <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                        <MudIcon Icon="@Icons.Material.Filled.Memory" Size="Size.Medium" Color="Color.Default" />
+                        <MudText Typo="Typo.caption">Embed</MudText>
+                    </MudStack>
+                </MudPaper>
+
+                <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="text-muted" />
+
+                @* Complete Stage *@
+                <MudPaper Class="pa-2" Elevation="0" Style="min-width: 70px; text-align: center; background-color: transparent;">
+                    <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Medium" Color="Color.Default" />
+                        <MudText Typo="Typo.caption">Complete</MudText>
+                    </MudStack>
+                </MudPaper>
+            </MudStack>
+        </MudPaper>
+
+        <MudText Typo="Typo.body2" Color="Color.Default" Class="text-center">
+            <MudIcon Icon="@Icons.Material.Filled.HourglassEmpty" Size="Size.Small" Style="vertical-align: middle;" />
+            Waiting for assistant messages to evaluate...
+        </MudText>
     }
     else
     {

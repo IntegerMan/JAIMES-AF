@@ -25,9 +25,53 @@
 
     @if (_activeMessages.Count == 0)
     {
-        <MudAlert Severity="Severity.Info" Class="mb-4">
-            No user messages are currently being processed. Messages will appear here as they flow through the pipeline.
-        </MudAlert>
+        @* Show empty state pipeline diagram *@
+        <MudPaper Class="pa-3 mb-4" Elevation="1" Style="background-color: var(--mud-palette-background-grey);">
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Justify="Justify.Center">
+                @* Loading Stage *@
+                <MudPaper Class="pa-2" Elevation="0" Style="min-width: 90px; text-align: center; background-color: transparent;">
+                    <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                        <MudIcon Icon="@Icons.Material.Filled.CloudDownload" Size="Size.Medium" Color="Color.Default" />
+                        <MudText Typo="Typo.caption">Loading</MudText>
+                    </MudStack>
+                </MudPaper>
+
+                <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="text-muted" />
+
+                @* Sentiment Analysis Stage *@
+                <MudPaper Class="pa-2" Elevation="0" Style="min-width: 90px; text-align: center; background-color: transparent;">
+                    <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                        <MudIcon Icon="@Icons.Material.Filled.SentimentSatisfied" Size="Size.Medium" Color="Color.Default" />
+                        <MudText Typo="Typo.caption">Sentiment</MudText>
+                    </MudStack>
+                </MudPaper>
+
+                <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="text-muted" />
+
+                @* Embedding Queue Stage *@
+                <MudPaper Class="pa-2" Elevation="0" Style="min-width: 90px; text-align: center; background-color: transparent;">
+                    <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                        <MudIcon Icon="@Icons.Material.Filled.Memory" Size="Size.Medium" Color="Color.Default" />
+                        <MudText Typo="Typo.caption">Embedding</MudText>
+                    </MudStack>
+                </MudPaper>
+
+                <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="text-muted" />
+
+                @* Complete Stage *@
+                <MudPaper Class="pa-2" Elevation="0" Style="min-width: 90px; text-align: center; background-color: transparent;">
+                    <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Medium" Color="Color.Default" />
+                        <MudText Typo="Typo.caption">Complete</MudText>
+                    </MudStack>
+                </MudPaper>
+            </MudStack>
+        </MudPaper>
+
+        <MudText Typo="Typo.body2" Color="Color.Default" Class="text-center">
+            <MudIcon Icon="@Icons.Material.Filled.HourglassEmpty" Size="Size.Small" Style="vertical-align: middle;" />
+            Waiting for user messages to process...
+        </MudText>
     }
     else
     {
