@@ -367,6 +367,9 @@ public class MessageEvaluationService(
         if (string.IsNullOrWhiteSpace(message.Text))
         {
             logger.LogWarning("Cannot evaluate message {MessageId} - message text is empty", message.Id);
+            
+            // Write a completion marker so the evaluator is counted as complete
+            await WriteEvaluatorCompletionMarkerAsync(message.Id, evaluatorName, "Empty message text", cancellationToken);
             return;
         }
 
@@ -380,6 +383,9 @@ public class MessageEvaluationService(
                 "Evaluator {EvaluatorName} not found for message {MessageId}",
                 evaluatorName,
                 message.Id);
+            
+            // Write a completion marker so the evaluator is counted as complete
+            await WriteEvaluatorCompletionMarkerAsync(message.Id, evaluatorName, "Evaluator not found", cancellationToken);
             return;
         }
 
@@ -539,7 +545,72 @@ public class MessageEvaluationService(
         {
             logger.LogError(ex, "Failed to run evaluator {EvaluatorName} for message {MessageId}",
                 evaluatorName, message.Id);
+            
+            // Write a completion marker so the evaluator is counted as complete even on failure
+            await WriteEvaluatorCompletionMarkerAsync(message.Id, evaluatorName, $"Exception: {ex.Message}", cancellationToken);
+            
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Writes a completion marker for an evaluator that failed or was skipped.
+    /// This ensures the evaluator is counted in completion tracking.
+    /// </summary>
+    private async Task WriteEvaluatorCompletionMarkerAsync(
+        int messageId,
+        string evaluatorName,
+        string reason,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+            
+            // Get or create the evaluator entity
+            var evaluatorEntity = await context.Evaluators
+                .FirstOrDefaultAsync(e => e.Name.ToLower() == evaluatorName.ToLower(), cancellationToken);
+
+            if (evaluatorEntity == null)
+            {
+                // Create a new evaluator entity if it doesn't exist
+                evaluatorEntity = new Evaluator
+                {
+                    Name = evaluatorName,
+                    Description = $"Auto-created for {evaluatorName}",
+                    CreatedAt = DateTime.UtcNow
+                };
+                context.Evaluators.Add(evaluatorEntity);
+                await context.SaveChangesAsync(cancellationToken);
+            }
+
+            // Write a marker metric with score -1 to indicate failure/skip
+            MessageEvaluationMetric marker = new()
+            {
+                MessageId = messageId,
+                MetricName = $"{evaluatorName}_Completion",
+                Score = -1, // Negative score indicates failure/skip
+                Remarks = reason,
+                EvaluatedAt = DateTime.UtcNow,
+                EvaluatorId = evaluatorEntity.Id
+            };
+
+            context.MessageEvaluationMetrics.Add(marker);
+            await context.SaveChangesAsync(cancellationToken);
+            
+            logger.LogInformation(
+                "Wrote completion marker for evaluator {EvaluatorName} on message {MessageId}: {Reason}",
+                evaluatorName,
+                messageId,
+                reason);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Failed to write completion marker for evaluator {EvaluatorName} on message {MessageId}",
+                evaluatorName,
+                messageId);
+            // Don't rethrow - this is a best-effort marker
         }
     }
 }
