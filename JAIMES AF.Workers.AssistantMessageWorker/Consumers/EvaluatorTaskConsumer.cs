@@ -124,8 +124,15 @@ public class EvaluatorTaskConsumer(
                 message.TotalEvaluators,
                 cancellationToken);
 
-            // Check if this was the last evaluator in the batch
-            if (message.EvaluatorIndex == message.TotalEvaluators)
+            // Check if all evaluators have completed by counting distinct evaluators in database
+            // This handles parallel execution where evaluators can complete in any order
+            int completedEvaluatorCount = await context.MessageEvaluationMetrics
+                .Where(m => m.MessageId == message.MessageId && m.EvaluatorId != null)
+                .Select(m => m.EvaluatorId)
+                .Distinct()
+                .CountAsync(cancellationToken);
+
+            if (completedEvaluatorCount >= message.TotalEvaluators)
             {
                 // All evaluators for this message have completed - notify stage completion
                 await messageUpdateNotifier.NotifyStageCompletedAsync(
@@ -136,9 +143,10 @@ public class EvaluatorTaskConsumer(
                     cancellationToken);
                 
                 logger.LogInformation(
-                    "All {TotalEvaluators} evaluators completed for message {MessageId}, batch {BatchId}",
+                    "All {TotalEvaluators} evaluators completed for message {MessageId} (found {CompletedCount} distinct evaluators), batch {BatchId}",
                     message.TotalEvaluators,
                     message.MessageId,
+                    completedEvaluatorCount,
                     message.BatchId);
             }
 
