@@ -277,7 +277,8 @@
             Name = "Messages",
             Data = _throughputHistory.Select(x => (double)x).ToArray()
         });
-        _chartLabels = Enumerable.Range(1, _throughputHistory.Count).Select(i => $"{5 - _throughputHistory.Count + i}m").ToArray();
+        // Labels should count down from total count: oldest data is labeled with highest minute value
+        _chartLabels = Enumerable.Range(0, _throughputHistory.Count).Select(i => $"{_throughputHistory.Count - i}m").ToArray();
     }
 
     private async Task SetupSignalRConnection()
