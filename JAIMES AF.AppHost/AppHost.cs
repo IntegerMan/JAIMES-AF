@@ -340,10 +340,10 @@ IResourceBuilder<ParameterResource> assistantWorkerReplicas = builder.AddParamet
 
 // Configure assistant worker replicas for parallel message processing
 int assistantWorkerReplicaCount = int.TryParse(
-    builder.Configuration["Parameters:assistant-worker-replicas"] ?? "3",
+    builder.Configuration["Parameters:assistant-worker-replicas"] ?? "1",
     out int replicas)
     ? replicas
-    : 3;
+    : 1;
 IResourceBuilder<ProjectResource> assistantMessageWorker = builder
     .AddProject<Projects.JAIMES_AF_Workers_AssistantMessageWorker>("assistant-message-worker")
     .WithIconName("SettingsChat")

@@ -124,6 +124,24 @@ public class EvaluatorTaskConsumer(
                 message.TotalEvaluators,
                 cancellationToken);
 
+            // Check if this was the last evaluator in the batch
+            if (message.EvaluatorIndex == message.TotalEvaluators)
+            {
+                // All evaluators for this message have completed - notify stage completion
+                await messageUpdateNotifier.NotifyStageCompletedAsync(
+                    message.MessageId,
+                    message.GameId,
+                    MessagePipelineType.Assistant,
+                    MessagePipelineStage.Evaluation,
+                    cancellationToken);
+                
+                logger.LogInformation(
+                    "All {TotalEvaluators} evaluators completed for message {MessageId}, batch {BatchId}",
+                    message.TotalEvaluators,
+                    message.MessageId,
+                    message.BatchId);
+            }
+
             activity?.SetStatus(ActivityStatusCode.Ok);
         }
         catch (Exception ex)

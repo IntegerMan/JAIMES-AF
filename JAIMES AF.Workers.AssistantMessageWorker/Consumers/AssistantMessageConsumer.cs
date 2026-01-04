@@ -187,13 +187,7 @@ public class AssistantMessageConsumer(
                         messageEntity.Id,
                         batchId);
 
-                    // Mark evaluation stage as completed (tasks are now distributed)
-                    await messageUpdateNotifier.NotifyStageCompletedAsync(
-                        messageEntity.Id,
-                        messageEntity.GameId,
-                        MessagePipelineType.Assistant,
-                        MessagePipelineStage.Evaluation,
-                        cancellationToken);
+                    // Note: Stage completion will be notified by EvaluatorTaskConsumer after all evaluators finish
                 }
 
                 evaluationActivity?.SetStatus(ActivityStatusCode.Ok);
