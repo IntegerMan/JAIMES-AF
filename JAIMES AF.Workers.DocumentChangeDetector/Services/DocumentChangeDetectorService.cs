@@ -106,13 +106,22 @@ public class DocumentChangeDetectorService(
                     {
                         // Document is cracked but missing stored file - upload directly without re-cracking
                         string? relativeDirectory = GetRelativeDirectory(filePath, rootDirectory);
-                        await UploadStoredFileForDocumentAsync(filePath, cancellationToken);
-                        await UpdateMetadataAsync(filePath, currentHash, relativeDirectory, cancellationToken);
-                        summary.FilesEnqueued++; // Count as processed
-                        logger.LogInformation(
-                            "Uploaded stored file for already-cracked document: {FilePath}",
-                            filePath);
-                        fileActivity?.SetTag("scanner.status", "uploaded_stored_file");
+                        bool uploaded = await UploadStoredFileForDocumentAsync(filePath, cancellationToken);
+                        if (uploaded)
+                        {
+                            await UpdateMetadataAsync(filePath, currentHash, relativeDirectory, cancellationToken);
+                            summary.FilesEnqueued++; // Count as processed
+                            logger.LogInformation(
+                                "Uploaded stored file for already-cracked document: {FilePath}",
+                                filePath);
+                            fileActivity?.SetTag("scanner.status", "uploaded_stored_file");
+                        }
+                        else
+                        {
+                            // If upload failed (e.g. file moved or db error), don't update metadata so we retry next time
+                            summary.Errors++;
+                            fileActivity?.SetTag("scanner.status", "upload_failed");
+                        }
                     }
                     else
                     {
@@ -157,8 +166,9 @@ public class DocumentChangeDetectorService(
     {
         await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
+        string lowPath = filePath.ToLowerInvariant();
         return await dbContext.DocumentMetadata
-            .FirstOrDefaultAsync(x => x.FilePath == filePath, cancellationToken);
+            .FirstOrDefaultAsync(x => x.FilePath.ToLower() == lowPath, cancellationToken);
     }
 
     private async Task<(bool IsComplete, string? ReenqueueReason)> CheckDocumentStatusAsync(
@@ -167,8 +177,9 @@ public class DocumentChangeDetectorService(
     {
         await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
+        string lowPath = filePath.ToLowerInvariant();
         CrackedDocument? crackedDocument = await dbContext.CrackedDocuments
-            .FirstOrDefaultAsync(x => x.FilePath == filePath, cancellationToken);
+            .FirstOrDefaultAsync(x => x.FilePath.ToLower() == lowPath, cancellationToken);
 
         // Not cracked at all
         if (crackedDocument == null || string.IsNullOrWhiteSpace(crackedDocument.Content))
@@ -242,26 +253,27 @@ public class DocumentChangeDetectorService(
         logger.LogDebug("Published CrackDocumentMessage for: {FilePath}", filePath);
     }
 
-    private async Task UploadStoredFileForDocumentAsync(
+    private async Task<bool> UploadStoredFileForDocumentAsync(
         string filePath,
         CancellationToken cancellationToken)
     {
         await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
+        string lowPath = filePath.ToLowerInvariant();
         // Find the cracked document
         CrackedDocument? crackedDocument = await dbContext.CrackedDocuments
-            .FirstOrDefaultAsync(x => x.FilePath == filePath, cancellationToken);
+            .FirstOrDefaultAsync(x => x.FilePath.ToLower() == lowPath, cancellationToken);
 
         if (crackedDocument == null)
         {
             logger.LogWarning("Cannot upload stored file: CrackedDocument not found for {FilePath}", filePath);
-            return;
+            return false;
         }
 
         if (crackedDocument.StoredFileId.HasValue)
         {
             logger.LogDebug("Document already has a stored file, skipping upload: {FilePath}", filePath);
-            return;
+            return true;
         }
 
         try
@@ -270,7 +282,7 @@ public class DocumentChangeDetectorService(
             if (!fileInfo.Exists)
             {
                 logger.LogWarning("Cannot upload stored file: File not found at {FilePath}", filePath);
-                return;
+                return false;
             }
 
             // Read the file bytes
@@ -296,10 +308,13 @@ public class DocumentChangeDetectorService(
 
             logger.LogInformation("Successfully uploaded stored file for document: {FilePath} ({Size} bytes)",
                 filePath, fileInfo.Length);
+
+            return true;
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to upload stored file for document: {FilePath}", filePath);
+            return false;
         }
     }
 

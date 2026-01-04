@@ -25,7 +25,7 @@ public class DocumentChangeDetectorServiceTests
             .Setup(scanner => scanner.GetFiles(subDirectory, context.Options.SupportedExtensions))
             .Returns(new[] { filePath });
         context.ChangeTrackerMock
-            .Setup(tracker => tracker.ComputeFileHashAsync(filePath, It.IsAny<CancellationToken>()))
+            .Setup(tracker => tracker.ComputeFileHashAsync(filePath, TestContext.Current.CancellationToken))
             .ReturnsAsync("hash-new");
         DocumentChangeDetectorService service = context.CreateService();
 
@@ -68,7 +68,7 @@ public class DocumentChangeDetectorServiceTests
             .Returns(new[] { filePath });
 
         context.ChangeTrackerMock
-            .Setup(tracker => tracker.ComputeFileHashAsync(filePath, It.IsAny<CancellationToken>()))
+            .Setup(tracker => tracker.ComputeFileHashAsync(filePath, TestContext.Current.CancellationToken))
             .ReturnsAsync("hash-static");
 
         DocumentMetadata metadata = new()
@@ -87,7 +87,8 @@ public class DocumentChangeDetectorServiceTests
             Content = "already processed",
             FileName = Path.GetFileName(filePath),
             RulesetId = "ruleset-b",
-            DocumentKind = DocumentKinds.Sourcebook
+            DocumentKind = DocumentKinds.Sourcebook,
+            StoredFileId = 1 // Indicate it already has a file
         };
         context.DbContext.CrackedDocuments.Add(crackedDocument);
         await context.DbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -130,7 +131,7 @@ public class DocumentChangeDetectorServiceTests
             .Returns(new[] { filePath });
 
         context.ChangeTrackerMock
-            .Setup(tracker => tracker.ComputeFileHashAsync(filePath, It.IsAny<CancellationToken>()))
+            .Setup(tracker => tracker.ComputeFileHashAsync(filePath, TestContext.Current.CancellationToken))
             .ReturnsAsync("hash-stale");
 
         DocumentMetadata metadata = new()
@@ -162,6 +163,82 @@ public class DocumentChangeDetectorServiceTests
             Times.Once);
     }
 
+    [Fact]
+    public async Task ScanAndEnqueueAsync_WhenFileCrackedButMissingStoredFile_UploadsDirectly()
+    {
+        using TempDirectory root = new();
+        string subDirectory = Path.Combine(root.Path, "ruleset-d");
+        Directory.CreateDirectory(subDirectory);
+        string fileName = "upload-me.pdf";
+        string filePath = Path.Combine(subDirectory, fileName);
+        await File.WriteAllTextAsync(filePath, "PDF CONTENT", TestContext.Current.CancellationToken);
+
+        using DocumentChangeDetectorTestContext context = new();
+        context.Options.UploadDocumentsWhenCracking = true;
+        context.DirectoryScannerMock
+            .Setup(scanner => scanner.GetSubdirectories(root.Path))
+            .Returns(new[] { subDirectory });
+        context.DirectoryScannerMock
+            .Setup(scanner => scanner.GetFiles(root.Path, context.Options.SupportedExtensions))
+            .Returns(Array.Empty<string>());
+        context.DirectoryScannerMock
+            .Setup(scanner => scanner.GetFiles(subDirectory, context.Options.SupportedExtensions))
+            .Returns(new[] { filePath });
+
+        context.ChangeTrackerMock
+            .Setup(tracker => tracker.ComputeFileHashAsync(filePath, TestContext.Current.CancellationToken))
+            .ReturnsAsync("hash-ready");
+
+        // Metadata setup
+        DocumentMetadata metadata = new()
+        {
+            FilePath = filePath,
+            Hash = "hash-ready",
+            LastScanned = DateTime.UtcNow,
+            RulesetId = "ruleset-d",
+            DocumentKind = DocumentKinds.Sourcebook
+        };
+        context.DbContext.DocumentMetadata.Add(metadata);
+
+        // Cracked document setup (WITHOUT StoredFileId)
+        CrackedDocument crackedDocument = new()
+        {
+            FilePath = filePath,
+            Content = "cracked text",
+            FileName = fileName,
+            RulesetId = "ruleset-d",
+            DocumentKind = DocumentKinds.Sourcebook,
+            CrackedAt = DateTime.UtcNow
+        };
+        context.DbContext.CrackedDocuments.Add(crackedDocument);
+        await context.DbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        DocumentChangeDetectorService service = context.CreateService();
+
+        // Act
+        DocumentScanSummary summary = await service.ScanAndEnqueueAsync(
+            root.Path,
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        summary.Errors.ShouldBe(0, "Scan should not have errors. If this fails, check the logs for exceptions.");
+        summary.FilesScanned.ShouldBe(1);
+        summary.FilesEnqueued.ShouldBe(1); // Enqueued = processed/enqueued/uploaded
+        summary.FilesUnchanged.ShouldBe(0);
+
+        // Verify StoredFile was created and linked
+        var doc = context.DbContext.CrackedDocuments
+            .AsNoTracking()
+            .Include(d => d.StoredFile)
+            .AsEnumerable()
+            .FirstOrDefault(d => d.FilePath == filePath);
+
+        doc.ShouldNotBeNull("Document should exist in DB");
+        doc.StoredFileId.ShouldNotBeNull("StoredFileId should be set after successful upload.");
+        doc.StoredFile.ShouldNotBeNull("StoredFile entity should be linked.");
+        doc.StoredFile.FileName.ShouldBe(fileName);
+    }
+
     private sealed class DocumentChangeDetectorTestContext : IDisposable
     {
         public DocumentChangeDetectorOptions Options { get; }
@@ -186,13 +263,16 @@ public class DocumentChangeDetectorServiceTests
             ChangeTrackerMock = new Mock<IChangeTracker>();
             MessagePublisherMock = new Mock<IMessagePublisher>();
 
+            // Unique ID per test context to avoid collision
+            string dbName = $"DocumentChangeDetectorTests-{Guid.NewGuid():N}";
             _dbOptions = new DbContextOptionsBuilder<JaimesDbContext>()
-                .UseInMemoryDatabase($"DocumentChangeDetectorTests-{Guid.NewGuid()}")
+                .UseInMemoryDatabase(dbName)
                 .Options;
             DbContext = new JaimesDbContext(_dbOptions);
+            DbContext.Database.EnsureDeleted();
             DbContext.Database.EnsureCreated();
 
-            _activitySource = new ActivitySource($"DocumentChangeDetectorTests-{Guid.NewGuid()}");
+            _activitySource = new ActivitySource($"DocumentChangeDetectorTests-{Guid.NewGuid():N}");
         }
 
         public DocumentChangeDetectorService CreateService()
@@ -222,7 +302,7 @@ public class DocumentChangeDetectorServiceTests
 
         public TempDirectory()
         {
-            Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"jaimes-detector-tests-{Guid.NewGuid()}");
+            Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"jaimes-detector-tests-{Guid.NewGuid():N}");
             Directory.CreateDirectory(Path);
         }
 
@@ -237,16 +317,12 @@ public class DocumentChangeDetectorServiceTests
     {
         public JaimesDbContext CreateDbContext()
         {
-            // Return a new context that shares the same in-memory database
-            // This allows the service to dispose it without affecting the test's context
             return new JaimesDbContext(options);
         }
 
         public async Task<JaimesDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
         {
             await Task.CompletedTask;
-            // Return a new context that shares the same in-memory database
-            // This allows the service to dispose it without affecting the test's context
             return new JaimesDbContext(options);
         }
     }
