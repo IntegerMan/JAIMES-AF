@@ -169,21 +169,21 @@ public class MessageEvaluationService(
                         evaluatorIndex,
                         totalEvaluators,
                         message.Id);
+
+                    // Notify evaluator completed (only on success)
+                    await messageUpdateNotifier.NotifyEvaluatorCompletedAsync(
+                        message.Id,
+                        message.GameId,
+                        evaluatorName,
+                        evaluatorIndex,
+                        totalEvaluators,
+                        cancellationToken);
                 }
                 catch (Exception ex)
                 {
                     logger.LogError(ex, "Evaluator {EvaluatorName} failed for message {MessageId}", evaluatorName, message.Id);
                     // Continue with other evaluators
                 }
-
-                // Notify evaluator completed
-                await messageUpdateNotifier.NotifyEvaluatorCompletedAsync(
-                    message.Id,
-                    message.GameId,
-                    evaluatorName,
-                    evaluatorIndex,
-                    totalEvaluators,
-                    cancellationToken);
             }
 
             // Store metrics in database
