@@ -24,11 +24,11 @@
 		else
 		{
 			<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
-				<MudStack>
+				<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
 					<MudText Typo="Typo.h3">@_model.Name</MudText>
 					@if (_model.IsActive)
 					{
-						<MudChip T="string" Size="Size.Medium" Color="Color.Success" Variant="Variant.Filled">Active Model</MudChip>
+						<MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">Active</MudChip>
 					}
 				</MudStack>
 				@if (!_model.IsActive)
@@ -43,7 +43,7 @@
 
 			@* Model Info *@
 			<MudGrid Class="mb-6">
-				<MudItem xs="12" md="6">
+				<MudItem xs="12" md="5">
 					<MudPaper Class="pa-4" Elevation="0" Outlined="true">
 						<MudText Typo="Typo.h6" Class="mb-3">Model Information</MudText>
 						<MudStack Spacing="2">
@@ -77,7 +77,7 @@
 
 				@if (_model.TrainingJob != null)
 				{
-					<MudItem xs="12" md="6">
+					<MudItem xs="12" md="7">
 						<MudPaper Class="pa-4" Elevation="0" Outlined="true">
 							<MudText Typo="Typo.h6" Class="mb-3">Training Parameters</MudText>
 							<MudStack Spacing="2">
@@ -164,8 +164,8 @@
 				@if (_model.TrainingJob.ConfusionMatrix != null && _model.TrainingJob.ConfusionMatrix.Length > 0)
 				{
 					<MudText Typo="Typo.h5" Class="mb-4">Confusion Matrix</MudText>
-					<MudPaper Class="pa-4" Elevation="1" Style="max-width: 600px;">
-						<MudSimpleTable Dense="true" Bordered="true">
+					<MudPaper Class="pa-4" Elevation="1">
+						<MudSimpleTable Dense="true" Bordered="true" Style="width: 100%;">
 							<thead>
 							<tr>
 								<th></th>
@@ -178,22 +178,39 @@
 								<th class="text-center">
 									<strong>Total</strong>
 								</th>
+								<th class="text-center">
+									<strong>Recall</strong>
+								</th>
 							</tr>
 							</thead>
 							<tbody>
-							@for (int i = 0; i < _model.TrainingJob.ConfusionMatrix.Length; i++)
+							@{
+								var matrix = _model.TrainingJob.ConfusionMatrix;
+								var labels = GetLabels();
+								var columnTotals = new int[matrix.Length];
+
+								// Calculate column totals for precision
+								for (int j = 0; j < matrix.Length; j++)
+								{
+									for (int i = 0; i < matrix.Length; i++)
+									{
+										columnTotals[j] += matrix[i][j];
+									}
+								}
+							}
+							@for (int i = 0; i < matrix.Length; i++)
 							{
-								var row = _model.TrainingJob.ConfusionMatrix[i];
+								var row = matrix[i];
 								var rowTotal = row.Sum();
+								var recall = rowTotal > 0 ? (double) row[i] / rowTotal : 0;
 								<tr>
 									<td>
-										<strong>Actual @GetLabels()[i]</strong>
+										<strong>Actual @labels[i]</strong>
 									</td>
 									@for (int j = 0; j < row.Length; j++)
 									{
-										var isCorrect = i == j;
 										var percentage = rowTotal > 0 ? (double) row[j] / rowTotal : 0;
-										var cellStyle = GetCellColor(percentage, isCorrect);
+										var cellStyle = GetCellColor(percentage);
 										<td class="text-center" style="@cellStyle">
 											@row[j]
 											@if (rowTotal > 0)
@@ -206,12 +223,47 @@
 									<td class="text-center">
 										<strong>@rowTotal</strong>
 									</td>
+									<td class="text-center">
+										<strong>@recall.ToString("P1")</strong>
+									</td>
 								</tr>
 							}
+							@* Precision row *@
+							<tr>
+								<td>
+									<strong>Total</strong>
+								</td>
+								@for (int j = 0; j < matrix.Length; j++)
+								{
+									<td class="text-center">
+										<strong>@columnTotals[j]</strong>
+									</td>
+								}
+								<td class="text-center">
+									<strong>@matrix.Sum(r => r.Sum())</strong>
+								</td>
+								<td></td>
+							</tr>
+							<tr>
+								<td>
+									<strong>Precision</strong>
+								</td>
+								@for (int j = 0; j < matrix.Length; j++)
+								{
+									var precision = columnTotals[j] > 0 ? (double) matrix[j][j] / columnTotals[j] : 0;
+									<td class="text-center">
+										<strong>@precision.ToString("P1")</strong>
+									</td>
+								}
+								<td></td>
+								<td></td>
+							</tr>
 							</tbody>
 						</MudSimpleTable>
 						<MudText Typo="Typo.caption" Class="mt-2 text-muted">
-							Green = correct predictions, Red = incorrect predictions. Color intensity indicates percentage of row.
+							Color intensity indicates percentage of row (white = low, blue = high).
+							<strong>Recall</strong> = correctly predicted / actual total per class.
+							<strong>Precision</strong> = correctly predicted / predicted total per class.
 						</MudText>
 					</MudPaper>
 				}
@@ -329,25 +381,19 @@
 		};
 	}
 
-	private static string GetCellColor(double percentage, bool isCorrect)
+	private static string GetCellColor(double percentage)
 	{
-		// Use green for correct predictions (diagonal), red for incorrect (off-diagonal)
-		// Intensity is based on the percentage
+		// Use white-to-dark-blue gradient based on percentage
+		// Higher percentage = more blue
 		if (percentage <= 0) return "";
 
-		int alpha = (int) (percentage * 180) + 30; // Range from 30-210 for visibility
-		alpha = Math.Min(alpha, 200); // Cap at 200 for readability
+		// Map percentage to RGB - start from white (255,255,255), end at dark blue (21,101,192)
+		// MUI blue-700 = #1565c0 = rgb(21, 101, 192)
+		int r = (int) (255 - (percentage * (255 - 21)));
+		int g = (int) (255 - (percentage * (255 - 101)));
+		int b = (int) (255 - (percentage * (255 - 192)));
 
-		if (isCorrect)
-		{
-			// Green gradient for correct predictions
-			return $"background-color: rgba(46, 125, 50, {alpha / 255.0:F2});"; // MUI green-700
-		}
-		else
-		{
-			// Red gradient for incorrect predictions
-			return $"background-color: rgba(198, 40, 40, {alpha / 255.0:F2});"; // MUI red-800
-		}
+		return $"background-color: rgb({r}, {g}, {b}); color: {(percentage > 0.5 ? "white" : "black")};";
 	}
 
 }

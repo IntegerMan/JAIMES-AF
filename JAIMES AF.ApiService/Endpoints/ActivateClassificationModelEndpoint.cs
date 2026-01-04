@@ -14,7 +14,7 @@ public class ActivateClassificationModelEndpoint : EndpointWithoutRequest
         Post("/admin/classification-models/{id}/activate");
         AllowAnonymous();
         Description(b => b
-            .Produces(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status204NoContent)
             .Produces(StatusCodes.Status404NotFound)
             .WithTags("Admin"));
     }
@@ -22,15 +22,15 @@ public class ActivateClassificationModelEndpoint : EndpointWithoutRequest
     public override async Task HandleAsync(CancellationToken ct)
     {
         int id = Route<int>("id");
-        
+
         bool success = await ClassificationModelService.ActivateModelAsync(id, ct);
-        
+
         if (!success)
         {
             await Send.NotFoundAsync(ct);
             return;
         }
 
-        await Send.OkAsync(ct);
+        HttpContext.Response.StatusCode = StatusCodes.Status204NoContent;
     }
 }
