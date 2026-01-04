@@ -23,18 +23,19 @@ public class ClassificationModelService(
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
-        ClassificationModel? model = await context.ClassificationModels
-            .Include(cm => cm.StoredFile)
+        return await context.ClassificationModels
             .Where(cm => cm.ModelType == modelType)
             .OrderByDescending(cm => cm.CreatedAt)
+            .Select(cm => new ClassificationModelResponse(
+                cm.Id,
+                cm.ModelType,
+                cm.Name,
+                cm.Description,
+                cm.StoredFile.FileName,
+                cm.StoredFileId,
+                cm.StoredFile.SizeBytes,
+                cm.CreatedAt))
             .FirstOrDefaultAsync(cancellationToken);
-
-        if (model == null)
-        {
-            return null;
-        }
-
-        return MapToResponse(model);
     }
 
     /// <inheritdoc />
@@ -103,12 +104,18 @@ public class ClassificationModelService(
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
-        List<ClassificationModel> models = await context.ClassificationModels
-            .Include(cm => cm.StoredFile)
+        return await context.ClassificationModels
             .OrderByDescending(cm => cm.CreatedAt)
+            .Select(cm => new ClassificationModelResponse(
+                cm.Id,
+                cm.ModelType,
+                cm.Name,
+                cm.Description,
+                cm.StoredFile.FileName,
+                cm.StoredFileId,
+                cm.StoredFile.SizeBytes,
+                cm.CreatedAt))
             .ToListAsync(cancellationToken);
-
-        return models.Select(MapToResponse).ToList();
     }
 
     private static ClassificationModelResponse MapToResponse(ClassificationModel model)
