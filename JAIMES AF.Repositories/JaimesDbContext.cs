@@ -54,6 +54,7 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
 
     // Classification models for ML inference
     public DbSet<ClassificationModel> ClassificationModels { get; set; } = null!;
+    public DbSet<ClassificationModelTrainingJob> ClassificationModelTrainingJobs { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -748,11 +749,34 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
             // Create index on ModelType for efficient queries
             entity.HasIndex(cm => cm.ModelType);
 
+            // Create index on IsActive for finding active models
+            entity.HasIndex(cm => new {cm.ModelType, cm.IsActive});
+
             // FK to StoredFile with cascade delete
             entity.HasOne(cm => cm.StoredFile)
                 .WithMany()
                 .HasForeignKey(cm => cm.StoredFileId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // FK to TrainingJob (optional, null for externally trained models)
+            entity.HasOne(cm => cm.TrainingJob)
+                .WithOne(tj => tj.ClassificationModel)
+                .HasForeignKey<ClassificationModel>(cm => cm.TrainingJobId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // ClassificationModelTrainingJob entity configuration
+        modelBuilder.Entity<ClassificationModelTrainingJob>(entity =>
+        {
+            entity.HasKey(tj => tj.Id);
+            entity.Property(tj => tj.Status).IsRequired().HasMaxLength(50);
+            entity.Property(tj => tj.OptimizingMetric).IsRequired().HasMaxLength(50);
+            entity.Property(tj => tj.CreatedAt).IsRequired();
+            entity.Property(tj => tj.TrainerName).HasMaxLength(200);
+            entity.Property(tj => tj.ErrorMessage).HasMaxLength(2000);
+
+            // Create index on Status for filtering
+            entity.HasIndex(tj => tj.Status);
         });
 
         // Add relationship from TestCaseRun to StoredFile for reports

@@ -1,0 +1,246 @@
+@page "/admin/classification-models/train"
+@using MattEland.Jaimes.ServiceDefinitions.Requests
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@rendermode InteractiveServer
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+
+<PageTitle>Train Classifier</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="pa-4">
+	<MudPaper Class="pa-8" Elevation="2">
+		<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+			<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+		</MudStack>
+		<MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">Train New Classifier</MudText>
+		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">
+			Train a custom sentiment classifier using labeled user messages.
+		</MudText>
+
+		@if (_loading)
+		{
+			<MudProgressCircular Indeterminate="true" Class="mb-4"/>
+		}
+		else
+		{
+			<MudForm @ref="_form" @bind-IsValid="_isValid">
+				<MudStack Spacing="4">
+					
+					@* Minimum Confidence Slider *@
+					<MudPaper Class="pa-4" Elevation="0" Outlined="true">
+						<MudText Typo="Typo.h6" Class="mb-2">Minimum Confidence</MudText>
+						<MudText Typo="Typo.body2" Class="mb-3 text-muted">
+							Only include messages with sentiment confidence above this threshold.
+						</MudText>
+						<MudSlider T="double" @bind-Value="_minConfidence" Min="0.5" Max="0.95" Step="0.05"
+						           ValueLabel="true" Color="Color.Primary">
+							@(_minConfidence.ToString("P0"))
+						</MudSlider>
+						
+						@* Data Count Preview *@
+						<MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-3" Spacing="2">
+							<MudIcon Icon="@Icons.Material.Filled.Dataset" Size="Size.Small"/>
+							@if (_dataCountLoading)
+							{
+								<MudProgressCircular Size="Size.Small" Indeterminate="true"/>
+							}
+							else
+							{
+								<MudText>
+									<strong>@_dataCount.MessagesAboveConfidence</strong> messages available for training
+									(out of @_dataCount.TotalMessagesWithSentiment total)
+								</MudText>
+							}
+						</MudStack>
+						
+						@if (_dataCount.MessagesAboveConfidence < 20)
+						{
+							<MudAlert Severity="Severity.Error" Class="mt-2">
+								Need at least 20 messages above the confidence threshold. Currently only @_dataCount.MessagesAboveConfidence available.
+							</MudAlert>
+						}
+						else if (_dataCount.MessagesAboveConfidence < 100)
+						{
+							<MudAlert Severity="Severity.Warning" Class="mt-2">
+								Fewer than 100 messages may result in poor model accuracy. Consider lowering the confidence threshold.
+							</MudAlert>
+						}
+					</MudPaper>
+
+					@* Train/Test Split *@
+					<MudPaper Class="pa-4" Elevation="0" Outlined="true">
+						<MudText Typo="Typo.h6" Class="mb-2">Train/Test Split</MudText>
+						<MudText Typo="Typo.body2" Class="mb-3 text-muted">
+							Percentage of data used for training vs. evaluation.
+						</MudText>
+						<MudSlider T="double" @bind-Value="_trainTestSplit" Min="0.60" Max="0.90" Step="0.05"
+						           ValueLabel="true" Color="Color.Primary">
+							@(_trainTestSplit.ToString("P0")) training / @((1-_trainTestSplit).ToString("P0")) testing
+						</MudSlider>
+					</MudPaper>
+
+					@* Training Time *@
+					<MudPaper Class="pa-4" Elevation="0" Outlined="true">
+						<MudText Typo="Typo.h6" Class="mb-2">Training Time</MudText>
+						<MudText Typo="Typo.body2" Class="mb-3 text-muted">
+							Maximum time for AutoML to experiment with different algorithms.
+						</MudText>
+						<MudSelect T="int" @bind-Value="_trainingTimeSeconds" Label="Duration" Variant="Variant.Outlined">
+							<MudSelectItem Value="5">5 seconds (quick test)</MudSelectItem>
+							<MudSelectItem Value="30">30 seconds</MudSelectItem>
+							<MudSelectItem Value="60">1 minute</MudSelectItem>
+							<MudSelectItem Value="120">2 minutes</MudSelectItem>
+							<MudSelectItem Value="300">5 minutes (recommended)</MudSelectItem>
+							<MudSelectItem Value="600">10 minutes (thorough)</MudSelectItem>
+						</MudSelect>
+					</MudPaper>
+
+					@* Optimizing Metric *@
+					<MudPaper Class="pa-4" Elevation="0" Outlined="true">
+						<MudText Typo="Typo.h6" Class="mb-2">Optimizing Metric</MudText>
+						<MudText Typo="Typo.body2" Class="mb-3 text-muted">
+							The metric AutoML will optimize for when selecting the best algorithm.
+						</MudText>
+						<MudSelect T="string" @bind-Value="_optimizingMetric" Label="Metric" Variant="Variant.Outlined">
+							<MudSelectItem Value="@("MacroAccuracy")">Macro Accuracy (balanced across classes)</MudSelectItem>
+							<MudSelectItem Value="@("MicroAccuracy")">Micro Accuracy (overall accuracy)</MudSelectItem>
+							<MudSelectItem Value="@("LogLoss")">Log Loss (confidence calibration)</MudSelectItem>
+							<MudSelectItem Value="@("TopKAccuracy")">Top-K Accuracy</MudSelectItem>
+						</MudSelect>
+					</MudPaper>
+
+					@* Submit Button *@
+					<MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-4">
+						<MudButton Variant="Variant.Text" Color="Color.Default" 
+						           OnClick="@(() => NavigationManager.NavigateTo("/admin/classification-models"))">
+							Cancel
+						</MudButton>
+						<MudButton Variant="Variant.Filled" Color="Color.Primary" 
+						           StartIcon="@Icons.Material.Filled.PlayArrow"
+						           Disabled="@(_submitting || _dataCount.MessagesAboveConfidence < 20)"
+						           OnClick="StartTraining">
+							@if (_submitting)
+							{
+								<MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2"/>
+								<span>Starting...</span>
+							}
+							else
+							{
+								<span>Start Training</span>
+							}
+						</MudButton>
+					</MudStack>
+				</MudStack>
+			</MudForm>
+
+			@if (!string.IsNullOrEmpty(_error))
+			{
+				<MudAlert Severity="Severity.Error" Class="mt-4">@_error</MudAlert>
+			}
+		}
+	</MudPaper>
+</MudContainer>
+
+@code {
+	private MudForm? _form;
+	private bool _isValid;
+	private bool _loading = true;
+	private bool _submitting;
+	private bool _dataCountLoading;
+	private string? _error;
+	private List<BreadcrumbItem> _breadcrumbs = new();
+
+	// Form values
+	private double _minConfidence = 0.75;
+	private double _trainTestSplit = 0.80;
+	private int _trainingTimeSeconds = 300;
+	private string _optimizingMetric = "MacroAccuracy";
+
+	// Data count
+	private TrainingDataCountResponse _dataCount = new(0, 0, 0.75);
+	private System.Threading.Timer? _debounceTimer;
+
+	protected override async Task OnInitializedAsync()
+	{
+		_breadcrumbs = new List<BreadcrumbItem>
+		{
+			new BreadcrumbItem("Home", href: "/"),
+			new BreadcrumbItem("Admin", href: "/admin"),
+			new BreadcrumbItem("Classification Models", href: "/admin/classification-models"),
+			new BreadcrumbItem("Train", href: null, disabled: true)
+		};
+
+		await LoadDataCountAsync();
+		_loading = false;
+	}
+
+	private async Task LoadDataCountAsync()
+	{
+		_dataCountLoading = true;
+		try
+		{
+			var response = await Http.GetFromJsonAsync<TrainingDataCountResponse>(
+				$"/admin/classification-models/training-data-count?minConfidence={_minConfidence}");
+			_dataCount = response ?? new TrainingDataCountResponse(0, 0, _minConfidence);
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Failed to load data count: {ex.Message}");
+		}
+		finally
+		{
+			_dataCountLoading = false;
+		}
+	}
+
+	private void OnConfidenceChanged(double value)
+	{
+		_minConfidence = value;
+		
+		// Debounce the data count request
+		_debounceTimer?.Dispose();
+		_debounceTimer = new System.Threading.Timer(async _ =>
+		{
+			await InvokeAsync(async () =>
+			{
+				await LoadDataCountAsync();
+				StateHasChanged();
+			});
+		}, null, TimeSpan.FromMilliseconds(300), Timeout.InfiniteTimeSpan);
+	}
+
+	private async Task StartTraining()
+	{
+		_submitting = true;
+		_error = null;
+
+		try
+		{
+			var request = new TrainClassifierRequest(
+				_minConfidence,
+				_trainTestSplit,
+				_trainingTimeSeconds,
+				_optimizingMetric);
+
+			var response = await Http.PostAsJsonAsync("/admin/classification-models/train", request);
+
+			if (response.IsSuccessStatusCode)
+			{
+				NavigationManager.NavigateTo("/admin/classification-models");
+			}
+			else
+			{
+				var errorContent = await response.Content.ReadAsStringAsync();
+				_error = $"Training request failed: {errorContent}";
+			}
+		}
+		catch (Exception ex)
+		{
+			_error = $"Failed to start training: {ex.Message}";
+		}
+		finally
+		{
+			_submitting = false;
+		}
+	}
+}

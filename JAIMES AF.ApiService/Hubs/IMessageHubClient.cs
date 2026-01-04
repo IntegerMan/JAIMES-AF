@@ -13,4 +13,10 @@ public interface IMessageHubClient
     /// </summary>
     /// <param name="notification">The update notification with message details.</param>
     Task MessageUpdated(MessageUpdateNotification notification);
+
+    /// <summary>
+    /// Called when classifier training has completed (successfully or with an error).
+    /// </summary>
+    /// <param name="notification">The training completion notification.</param>
+    Task ClassifierTrainingCompleted(ClassifierTrainingCompletedNotification notification);
 }

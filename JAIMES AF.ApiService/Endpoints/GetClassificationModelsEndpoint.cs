@@ -4,7 +4,7 @@ using MattEland.Jaimes.ServiceDefinitions.Services;
 namespace MattEland.Jaimes.ApiService.Endpoints;
 
 /// <summary>
-/// Endpoint for listing classification models.
+/// Endpoint for listing classification models including pending training jobs.
 /// </summary>
 public class GetClassificationModelsEndpoint : EndpointWithoutRequest<List<ClassificationModelResponse>>
 {
@@ -21,7 +21,9 @@ public class GetClassificationModelsEndpoint : EndpointWithoutRequest<List<Class
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        List<ClassificationModelResponse> models = await ClassificationModelService.GetAllModelsAsync(ct);
+        List<ClassificationModelResponse> models =
+            await ClassificationModelService.GetAllModelsWithTrainingJobsAsync(ct);
         await Send.OkAsync(models, ct);
     }
 }
+

@@ -13,8 +13,12 @@ public class SignalRMessageUpdateNotifier(
     IHubContext<MessageHub, IMessageHubClient> hubContext,
     ILogger<SignalRMessageUpdateNotifier> logger) : IMessageUpdateNotifier
 {
-    public async Task NotifySentimentAnalyzedAsync(int messageId, Guid gameId, int sentiment, double? confidence,
-        string messageText, CancellationToken cancellationToken = default)
+    public async Task NotifySentimentAnalyzedAsync(int messageId,
+        Guid gameId,
+        int sentiment,
+        double? confidence,
+        string messageText,
+        CancellationToken cancellationToken = default)
     {
         MessageUpdateNotification notification = new()
         {
@@ -30,9 +34,12 @@ public class SignalRMessageUpdateNotifier(
         await BroadcastUpdateAsync(notification);
     }
 
-    public async Task NotifyMetricsEvaluatedAsync(int messageId, Guid gameId,
-        List<MessageEvaluationMetricResponse> metrics, string messageText,
-        bool hasMissingEvaluators, CancellationToken cancellationToken = default)
+    public async Task NotifyMetricsEvaluatedAsync(int messageId,
+        Guid gameId,
+        List<MessageEvaluationMetricResponse> metrics,
+        string messageText,
+        bool hasMissingEvaluators,
+        CancellationToken cancellationToken = default)
     {
         MessageUpdateNotification notification = new()
         {
@@ -47,9 +54,14 @@ public class SignalRMessageUpdateNotifier(
         await BroadcastUpdateAsync(notification);
     }
 
-    public async Task NotifyMetricEvaluatedAsync(int messageId, Guid gameId,
-        MessageEvaluationMetricResponse metric, int expectedMetricCount, int completedMetricCount,
-        bool isError = false, string? errorMessage = null, CancellationToken cancellationToken = default)
+    public async Task NotifyMetricEvaluatedAsync(int messageId,
+        Guid gameId,
+        MessageEvaluationMetricResponse metric,
+        int expectedMetricCount,
+        int completedMetricCount,
+        bool isError = false,
+        string? errorMessage = null,
+        CancellationToken cancellationToken = default)
     {
         MessageUpdateNotification notification = new()
         {
@@ -66,7 +78,9 @@ public class SignalRMessageUpdateNotifier(
         await BroadcastUpdateAsync(notification);
     }
 
-    public async Task NotifyToolCallsProcessedAsync(int messageId, Guid gameId, bool hasToolCalls,
+    public async Task NotifyToolCallsProcessedAsync(int messageId,
+        Guid gameId,
+        bool hasToolCalls,
         string? messageText = null,
         CancellationToken cancellationToken = default)
     {
@@ -118,5 +132,17 @@ public class SignalRMessageUpdateNotifier(
 
         await hubContext.Clients.Group(groupName).MessageUpdated(notification);
         await hubContext.Clients.Group("admin").MessageUpdated(notification);
+    }
+
+    public async Task NotifyClassifierTrainingCompletedAsync(
+        ClassifierTrainingCompletedNotification notification,
+        CancellationToken cancellationToken = default)
+    {
+        logger.LogDebug(
+            "Broadcasting classifier training completed for job {JobId}, success: {Success}",
+            notification.TrainingJobId,
+            notification.Success);
+
+        await hubContext.Clients.Group("admin").ClassifierTrainingCompleted(notification);
     }
 }

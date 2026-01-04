@@ -1,0 +1,291 @@
+@page "/admin/classification-models/{Id:int}"
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@rendermode InteractiveServer
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+
+<PageTitle>Model Details</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
+	<MudPaper Class="pa-8" Elevation="2">
+		<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+			<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+		</MudStack>
+
+		@if (_loading)
+		{
+			<MudProgressCircular Indeterminate="true" Class="mb-4"/>
+		}
+		else if (_model == null)
+		{
+			<MudAlert Severity="Severity.Error">Model not found.</MudAlert>
+		}
+		else
+		{
+			<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+				<MudStack>
+					<MudText Typo="Typo.h3">@_model.Name</MudText>
+					@if (_model.IsActive)
+					{
+						<MudChip T="string" Size="Size.Medium" Color="Color.Success" Variant="Variant.Filled">Active Model</MudChip>
+					}
+				</MudStack>
+				@if (!_model.IsActive)
+				{
+					<MudButton Variant="Variant.Filled" Color="Color.Primary"
+					           StartIcon="@Icons.Material.Filled.CheckCircle"
+					           OnClick="ConfirmActivation">
+						Activate This Model
+					</MudButton>
+				}
+			</MudStack>
+
+			@* Model Info *@
+			<MudGrid Class="mb-6">
+				<MudItem xs="12" md="6">
+					<MudPaper Class="pa-4" Elevation="0" Outlined="true">
+						<MudText Typo="Typo.h6" Class="mb-3">Model Information</MudText>
+						<MudStack Spacing="2">
+							<MudStack Row="true" Justify="Justify.SpaceBetween">
+								<MudText Typo="Typo.body2" Color="Color.Default">Type:</MudText>
+								<MudText Typo="Typo.body2"><strong>@_model.ModelType</strong></MudText>
+							</MudStack>
+							<MudStack Row="true" Justify="Justify.SpaceBetween">
+								<MudText Typo="Typo.body2" Color="Color.Default">File:</MudText>
+								<MudText Typo="Typo.body2"><strong>@_model.FileName</strong></MudText>
+							</MudStack>
+							<MudStack Row="true" Justify="Justify.SpaceBetween">
+								<MudText Typo="Typo.body2" Color="Color.Default">Size:</MudText>
+								<MudText Typo="Typo.body2"><strong>@FormatFileSize(_model.SizeBytes)</strong></MudText>
+							</MudStack>
+							<MudStack Row="true" Justify="Justify.SpaceBetween">
+								<MudText Typo="Typo.body2" Color="Color.Default">Created:</MudText>
+								<MudText Typo="Typo.body2"><strong>@_model.CreatedAt.ToString("g")</strong></MudText>
+							</MudStack>
+						</MudStack>
+					</MudPaper>
+				</MudItem>
+
+				@if (_model.TrainingJob != null)
+				{
+					<MudItem xs="12" md="6">
+						<MudPaper Class="pa-4" Elevation="0" Outlined="true">
+							<MudText Typo="Typo.h6" Class="mb-3">Training Parameters</MudText>
+							<MudStack Spacing="2">
+								<MudStack Row="true" Justify="Justify.SpaceBetween">
+									<MudText Typo="Typo.body2" Color="Color.Default">Min Confidence:</MudText>
+									<MudText Typo="Typo.body2"><strong>@(_model.TrainingJob.MinConfidence.ToString("P0"))</strong></MudText>
+								</MudStack>
+								<MudStack Row="true" Justify="Justify.SpaceBetween">
+									<MudText Typo="Typo.body2" Color="Color.Default">Train/Test Split:</MudText>
+									<MudText Typo="Typo.body2"><strong>@(_model.TrainingJob.TrainTestSplit.ToString("P0"))</strong></MudText>
+								</MudStack>
+								<MudStack Row="true" Justify="Justify.SpaceBetween">
+									<MudText Typo="Typo.body2" Color="Color.Default">Training Time:</MudText>
+									<MudText Typo="Typo.body2"><strong>@(_model.TrainingJob.TrainingTimeSeconds)s</strong></MudText>
+								</MudStack>
+								<MudStack Row="true" Justify="Justify.SpaceBetween">
+									<MudText Typo="Typo.body2" Color="Color.Default">Metric:</MudText>
+									<MudText Typo="Typo.body2"><strong>@_model.TrainingJob.OptimizingMetric</strong></MudText>
+								</MudStack>
+								<MudStack Row="true" Justify="Justify.SpaceBetween">
+									<MudText Typo="Typo.body2" Color="Color.Default">Trainer:</MudText>
+									<MudText Typo="Typo.body2"><strong>@(_model.TrainingJob.TrainerName ?? "N/A")</strong></MudText>
+								</MudStack>
+							</MudStack>
+						</MudPaper>
+					</MudItem>
+				}
+			</MudGrid>
+
+			@* Evaluation Metrics *@
+			@if (_model.TrainingJob != null)
+			{
+				<MudText Typo="Typo.h5" Class="mb-4">Evaluation Metrics</MudText>
+				<MudGrid Class="mb-6">
+					<MudItem xs="6" sm="4" md="2">
+						<MudPaper Class="pa-4 text-center" Elevation="1">
+							<MudText Typo="Typo.h4" Color="Color.Primary">@((_model.TrainingJob.MacroAccuracy ?? 0).ToString("P1"))</MudText>
+							<MudText Typo="Typo.caption">Macro Accuracy</MudText>
+						</MudPaper>
+					</MudItem>
+					<MudItem xs="6" sm="4" md="2">
+						<MudPaper Class="pa-4 text-center" Elevation="1">
+							<MudText Typo="Typo.h4" Color="Color.Secondary">@((_model.TrainingJob.MicroAccuracy ?? 0).ToString("P1"))</MudText>
+							<MudText Typo="Typo.caption">Micro Accuracy</MudText>
+						</MudPaper>
+					</MudItem>
+					<MudItem xs="6" sm="4" md="2">
+						<MudPaper Class="pa-4 text-center" Elevation="1">
+							<MudText Typo="Typo.h4">@((_model.TrainingJob.LogLoss ?? 0).ToString("F3"))</MudText>
+							<MudText Typo="Typo.caption">Log Loss</MudText>
+						</MudPaper>
+					</MudItem>
+					<MudItem xs="6" sm="4" md="2">
+						<MudPaper Class="pa-4 text-center" Elevation="1">
+							<MudText Typo="Typo.h4">@_model.TrainingJob.TotalRows</MudText>
+							<MudText Typo="Typo.caption">Total Rows</MudText>
+						</MudPaper>
+					</MudItem>
+					<MudItem xs="6" sm="4" md="2">
+						<MudPaper Class="pa-4 text-center" Elevation="1">
+							<MudText Typo="Typo.h4">@_model.TrainingJob.TrainingRows</MudText>
+							<MudText Typo="Typo.caption">Training</MudText>
+						</MudPaper>
+					</MudItem>
+					<MudItem xs="6" sm="4" md="2">
+						<MudPaper Class="pa-4 text-center" Elevation="1">
+							<MudText Typo="Typo.h4">@_model.TrainingJob.TestRows</MudText>
+							<MudText Typo="Typo.caption">Test</MudText>
+						</MudPaper>
+					</MudItem>
+				</MudGrid>
+
+				@* Confusion Matrix *@
+				@if (_model.TrainingJob.ConfusionMatrix != null && _model.TrainingJob.ConfusionMatrix.Length > 0)
+				{
+					<MudText Typo="Typo.h5" Class="mb-4">Confusion Matrix</MudText>
+					<MudPaper Class="pa-4" Elevation="1" Style="max-width: 500px;">
+						<MudSimpleTable Dense="true" Hover="true" Bordered="true">
+							<thead>
+								<tr>
+									<th></th>
+									@foreach (var label in GetLabels())
+									{
+										<th class="text-center"><strong>Predicted @label</strong></th>
+									}
+								</tr>
+							</thead>
+							<tbody>
+								@for (int i = 0; i < _model.TrainingJob.ConfusionMatrix.Length; i++)
+								{
+									var row = _model.TrainingJob.ConfusionMatrix[i];
+									<tr>
+										<td><strong>Actual @GetLabels()[i]</strong></td>
+										@for (int j = 0; j < row.Length; j++)
+										{
+											var isCorrect = i == j;
+											<td class="text-center" style="@(isCorrect ? "background-color: rgba(0,200,0,0.2);" : "")">
+												@row[j]
+											</td>
+										}
+									</tr>
+								}
+							</tbody>
+						</MudSimpleTable>
+					</MudPaper>
+				}
+			}
+			else
+			{
+				<MudAlert Severity="Severity.Info" Class="mt-4">
+					This model was not trained through the application and has no training metrics available.
+				</MudAlert>
+			}
+		}
+
+		@if (!string.IsNullOrEmpty(_error))
+		{
+			<MudAlert Severity="Severity.Error" Class="mt-4">@_error</MudAlert>
+		}
+	</MudPaper>
+</MudContainer>
+
+@code {
+	[Parameter] public int Id { get; set; }
+
+	private ClassificationModelDetailsResponse? _model;
+	private bool _loading = true;
+	private string? _error;
+	private List<BreadcrumbItem> _breadcrumbs = new();
+
+	protected override async Task OnInitializedAsync()
+	{
+		_breadcrumbs = new List<BreadcrumbItem>
+		{
+			new BreadcrumbItem("Home", href: "/"),
+			new BreadcrumbItem("Admin", href: "/admin"),
+			new BreadcrumbItem("Classification Models", href: "/admin/classification-models"),
+			new BreadcrumbItem("Details", href: null, disabled: true)
+		};
+
+		await LoadModelAsync();
+	}
+
+	private async Task LoadModelAsync()
+	{
+		_loading = true;
+		_error = null;
+
+		try
+		{
+			_model = await Http.GetFromJsonAsync<ClassificationModelDetailsResponse>($"/admin/classification-models/{Id}");
+		}
+		catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+		{
+			_model = null;
+		}
+		catch (Exception ex)
+		{
+			_error = $"Failed to load model: {ex.Message}";
+		}
+		finally
+		{
+			_loading = false;
+		}
+	}
+
+	private async Task ConfirmActivation()
+	{
+		bool? result = await DialogService.ShowMessageBox(
+			"Activate Model",
+			$"Are you sure you want to activate '{_model?.Name}'? This will make it the active model for sentiment classification and redirect all inference to use this model.",
+			yesText: "Activate", cancelText: "Cancel");
+
+		if (result == true)
+		{
+			await ActivateModel();
+		}
+	}
+
+	private async Task ActivateModel()
+	{
+		try
+		{
+			var response = await Http.PostAsync($"/admin/classification-models/{Id}/activate", null);
+			if (response.IsSuccessStatusCode)
+			{
+				await LoadModelAsync();
+			}
+			else
+			{
+				_error = "Failed to activate model";
+			}
+		}
+		catch (Exception ex)
+		{
+			_error = $"Failed to activate model: {ex.Message}";
+		}
+	}
+
+	private static string FormatFileSize(long? bytes)
+	{
+		if (bytes == null) return "Unknown";
+		if (bytes < 1024) return $"{bytes} B";
+		if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+		return $"{bytes / (1024.0 * 1024.0):F1} MB";
+	}
+
+	private string[] GetLabels()
+	{
+		// For 3-class sentiment: negative, neutral, positive
+		int numClasses = _model?.TrainingJob?.ConfusionMatrix?.Length ?? 3;
+		return numClasses switch
+		{
+			3 => ["Negative", "Neutral", "Positive"],
+			2 => ["Negative", "Positive"],
+			_ => Enumerable.Range(0, numClasses).Select(i => $"Class {i}").ToArray()
+		};
+	}
+}

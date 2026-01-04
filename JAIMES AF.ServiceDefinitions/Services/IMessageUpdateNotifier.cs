@@ -16,8 +16,12 @@ public interface IMessageUpdateNotifier
     /// <param name="sentiment">The sentiment value (-1, 0, or 1).</param>
     /// <param name="confidence">The sentiment confidence score (0.0 to 1.0).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    Task NotifySentimentAnalyzedAsync(int messageId, Guid gameId, int sentiment, double? confidence,
-        string messageText, CancellationToken cancellationToken = default);
+    Task NotifySentimentAnalyzedAsync(int messageId,
+        Guid gameId,
+        int sentiment,
+        double? confidence,
+        string messageText,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Notifies the API that an assistant message has been evaluated for metrics.
@@ -26,8 +30,12 @@ public interface IMessageUpdateNotifier
     /// <param name="gameId">The game ID.</param>
     /// <param name="metrics">The evaluation metrics.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    Task NotifyMetricsEvaluatedAsync(int messageId, Guid gameId, List<MessageEvaluationMetricResponse> metrics,
-        string messageText, bool hasMissingEvaluators, CancellationToken cancellationToken = default);
+    Task NotifyMetricsEvaluatedAsync(int messageId,
+        Guid gameId,
+        List<MessageEvaluationMetricResponse> metrics,
+        string messageText,
+        bool hasMissingEvaluators,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Notifies the API that a single metric has been evaluated (streaming update).
@@ -40,8 +48,13 @@ public interface IMessageUpdateNotifier
     /// <param name="isError">Whether this metric resulted from an error.</param>
     /// <param name="errorMessage">Error message if isError is true.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    Task NotifyMetricEvaluatedAsync(int messageId, Guid gameId, MessageEvaluationMetricResponse metric,
-        int expectedMetricCount, int completedMetricCount, bool isError = false, string? errorMessage = null,
+    Task NotifyMetricEvaluatedAsync(int messageId,
+        Guid gameId,
+        MessageEvaluationMetricResponse metric,
+        int expectedMetricCount,
+        int completedMetricCount,
+        bool isError = false,
+        string? errorMessage = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -134,4 +147,12 @@ public interface IMessageUpdateNotifier
         int evaluatorIndex,
         int totalEvaluators,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Notifies clients that classifier training has completed.
+    /// </summary>
+    Task NotifyClassifierTrainingCompletedAsync(
+        ClassifierTrainingCompletedNotification notification,
+        CancellationToken cancellationToken = default);
 }
+

@@ -1,7 +1,10 @@
 @page "/admin/classification-models"
 @using MattEland.Jaimes.ServiceDefinitions.Responses
+@using Microsoft.AspNetCore.SignalR.Client
 @rendermode InteractiveServer
 @inject HttpClient Http
+@inject NavigationManager NavigationManager
+@implements IAsyncDisposable
 
 <PageTitle>Classification Models</PageTitle>
 
@@ -10,7 +13,13 @@
 		<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
 			<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
 		</MudStack>
-		<MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">Classification Models</MudText>
+		<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+			<MudText Typo="Typo.h3" GutterBottom="true">Classification Models</MudText>
+			<MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ModelTraining"
+			           OnClick="NavigateToTraining">
+				Train New Classifier
+			</MudButton>
+		</MudStack>
 		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">
 			Machine learning models stored in the database for inference.
 		</MudText>
@@ -28,12 +37,41 @@
 		}
 		else
 		{
-			<MudDataGrid Items="@_models" Dense="true" Hover="true" Striped="true" Class="mb-4">
+			<MudDataGrid Items="@_models" Dense="true" Hover="true" Striped="true" Class="mb-4" T="ClassificationModelResponse"
+			             RowClick="@(row => NavigateToDetails(row.Item))">
 				<Columns>
 					<PropertyColumn Property="x => x.Id" Title="ID"/>
-					<PropertyColumn Property="x => x.Name" Title="Name"/>
+					<TemplateColumn Title="Name">
+						<CellTemplate>
+							<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+								<MudText>@context.Item.Name</MudText>
+								@if (context.Item.IsActive)
+								{
+									<MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">Active</MudChip>
+								}
+							</MudStack>
+						</CellTemplate>
+					</TemplateColumn>
 					<PropertyColumn Property="x => x.ModelType" Title="Type"/>
-					<PropertyColumn Property="x => x.FileName" Title="File Name"/>
+					<TemplateColumn Title="Status">
+						<CellTemplate>
+							@if (context.Item.Status == "Training...")
+							{
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+									<MudProgressCircular Size="Size.Small" Indeterminate="true"/>
+									<MudText Color="Color.Info">Training...</MudText>
+								</MudStack>
+							}
+							else if (context.Item.Status == "Queued")
+							{
+								<MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">Queued</MudChip>
+							}
+							else
+							{
+								<MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Text">Ready</MudChip>
+							}
+						</CellTemplate>
+					</TemplateColumn>
 					<TemplateColumn Title="Size">
 						<CellTemplate>
 							@FormatFileSize(context.Item.SizeBytes)
@@ -60,6 +98,7 @@
 	private bool _loading = true;
 	private string? _error;
 	private List<BreadcrumbItem> _breadcrumbs = new();
+	private HubConnection? _hubConnection;
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -71,6 +110,34 @@
 		};
 
 		await LoadModelsAsync();
+		await SetupSignalRAsync();
+	}
+
+	private async Task SetupSignalRAsync()
+	{
+		_hubConnection = new HubConnectionBuilder()
+			.WithUrl(NavigationManager.ToAbsoluteUri("/messagehub"))
+			.WithAutomaticReconnect()
+			.Build();
+
+		_hubConnection.On<ClassifierTrainingCompletedNotification>("ClassifierTrainingCompleted",
+			async notification =>
+			{
+				// Refresh the list when training completes
+				await LoadModelsAsync();
+				await InvokeAsync(StateHasChanged);
+			});
+
+		try
+		{
+			await _hubConnection.StartAsync();
+			// Join admin group to receive training notifications
+			await _hubConnection.InvokeAsync("JoinAdmin");
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"SignalR connection failed: {ex.Message}");
+		}
 	}
 
 	private async Task LoadModelsAsync()
@@ -93,6 +160,20 @@
 		}
 	}
 
+	private void NavigateToTraining()
+	{
+		NavigationManager.NavigateTo("/admin/classification-models/train");
+	}
+
+	private void NavigateToDetails(ClassificationModelResponse model)
+	{
+		// Only navigate for real models, not pending training jobs (which have negative IDs)
+		if (model.Id > 0)
+		{
+			NavigationManager.NavigateTo($"/admin/classification-models/{model.Id}");
+		}
+	}
+
 	private static string FormatFileSize(long? bytes)
 	{
 		if (bytes == null) return "Unknown";
@@ -101,4 +182,13 @@
 		return $"{bytes / (1024.0 * 1024.0):F1} MB";
 	}
 
+	public async ValueTask DisposeAsync()
+	{
+		if (_hubConnection != null)
+		{
+			await _hubConnection.DisposeAsync();
+		}
+	}
+
 }
+
