@@ -1,3 +1,5 @@
+using System.Runtime.ExceptionServices;
+
 namespace MattEland.Jaimes.Agents.Middleware;
 
 /// <summary>
@@ -279,8 +281,8 @@ public static class ChatClientMiddleware
                     caughtException.GetType().Name,
                     caughtException.Message);
 
-                // Re-throw so the error is not persisted and is sent as an error SSE event
-                throw caughtException;
+                // Re-throw preserving original stack trace so the error is not persisted and is sent as an error SSE event
+                ExceptionDispatchInfo.Capture(caughtException).Throw();
             }
         }
     }
