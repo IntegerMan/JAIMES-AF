@@ -3,6 +3,7 @@ using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.ServiceLayer;
+using MattEland.Jaimes.Workers.AssistantMessageWorker.Consumers;
 using MattEland.Jaimes.Workers.AssistantMessageWorker.Services;
 using Microsoft.Extensions.AI.Evaluation;
 using Microsoft.Extensions.AI.Evaluation.Quality;
@@ -79,8 +80,9 @@ builder.Services.AddHttpClient<IMessageUpdateNotifier, MessageUpdateNotifier>(cl
     client.BaseAddress = new Uri(baseAddress);
 });
 
-// Register consumer
+// Register consumers
 builder.Services.AddSingleton<IMessageConsumer<ConversationMessageQueuedMessage>, AssistantMessageConsumer>();
+builder.Services.AddSingleton<IMessageConsumer<EvaluatorTaskMessage>, EvaluatorTaskConsumer>();
 
 // Register consumer service (background service) with role-based routing
 builder.Services.AddHostedService(serviceProvider =>
@@ -97,6 +99,22 @@ builder.Services.AddHostedService(serviceProvider =>
         logger,
         "assistant",
         activitySource);
+});
+
+// Register evaluator task consumer service (for parallel evaluation processing)
+builder.Services.AddHostedService(serviceProvider =>
+{
+    IConnectionFactory factory = serviceProvider.GetRequiredService<IConnectionFactory>();
+    IMessageConsumer<EvaluatorTaskMessage> consumer =
+        serviceProvider.GetRequiredService<IMessageConsumer<EvaluatorTaskMessage>>();
+    ILogger<MessageConsumerService<EvaluatorTaskMessage>> consumerLogger = serviceProvider
+        .GetRequiredService<ILogger<MessageConsumerService<EvaluatorTaskMessage>>>();
+    ActivitySource? actSource = serviceProvider.GetService<ActivitySource>();
+    return new MessageConsumerService<EvaluatorTaskMessage>(
+        factory,
+        consumer,
+        consumerLogger,
+        actSource);
 });
 
 // Configure OpenTelemetry ActivitySource

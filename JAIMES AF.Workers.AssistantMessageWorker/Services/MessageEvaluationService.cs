@@ -439,4 +439,197 @@ public class MessageEvaluationService(
             assistantResponse,
             cancellationToken: cancellationToken);
     }
+
+    /// <inheritdoc />
+    public IReadOnlyList<string> GetAvailableEvaluatorNames()
+    {
+        return evaluators.Select(e => e.GetType().Name).ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task EvaluateSingleEvaluatorAsync(
+        Message message,
+        string systemPrompt,
+        List<Message> conversationContext,
+        string evaluatorName,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(message.Text))
+        {
+            logger.LogWarning("Cannot evaluate message {MessageId} - message text is empty", message.Id);
+            return;
+        }
+
+        // Find the specific evaluator
+        var evaluator = evaluators.FirstOrDefault(e =>
+            e.GetType().Name.Equals(evaluatorName, StringComparison.OrdinalIgnoreCase));
+
+        if (evaluator == null)
+        {
+            logger.LogWarning(
+                "Evaluator {EvaluatorName} not found for message {MessageId}",
+                evaluatorName,
+                message.Id);
+            return;
+        }
+
+        logger.LogInformation(
+            "Running single evaluator {EvaluatorName} for message {MessageId}",
+            evaluatorName,
+            message.Id);
+
+        try
+        {
+            // Build the conversation history for evaluation context
+            List<ChatMessage> chatMessages = conversationContext
+                .TakeLast(5)
+                .Select(m => new ChatMessage(
+                    m.PlayerId == null ? ChatRole.Assistant : ChatRole.User,
+                    m.Text ?? string.Empty))
+                .ToList();
+
+            // Add system prompt as the first message
+            List<ChatMessage> evaluationContext = new()
+            {
+                new ChatMessage(ChatRole.System, systemPrompt)
+            };
+            evaluationContext.AddRange(chatMessages);
+
+            // The assistant message to evaluate
+            ChatMessage assistantChatMessage = new(ChatRole.Assistant, message.Text);
+            ChatResponse assistantResponse = new(assistantChatMessage);
+
+            // Create ChatConfiguration for the evaluator
+            ChatConfiguration chatConfiguration = new(chatClient);
+
+            // Create ReportingConfiguration for this single evaluator
+            ReportingConfiguration reportConfig = new(
+                [evaluator],
+                resultStore,
+                executionName: $"Assistant Message Quality - {evaluatorName}",
+                chatConfiguration: chatConfiguration);
+
+            // Perform evaluation
+            EvaluationResult result = await PerformEvaluationInternalAsync(
+                reportConfig,
+                message,
+                evaluationContext,
+                assistantResponse,
+                cancellationToken);
+
+            // Store metrics in database
+            await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+            // Get or create the model for evaluation
+            Model? evaluationModel = await context.GetOrCreateModelAsync(
+                modelOptions.Name,
+                modelOptions.Provider.ToString(),
+                modelOptions.Endpoint,
+                logger,
+                cancellationToken);
+
+            DateTime evaluatedAt = DateTime.UtcNow;
+
+            // Get evaluator ID
+            var evaluatorEntity = await context.Evaluators
+                .FirstOrDefaultAsync(e => e.Name.ToLower() == evaluatorName.ToLower(), cancellationToken);
+
+            foreach (var metricPair in result.Metrics)
+            {
+                string metricName = metricPair.Key;
+                if (metricPair.Value is NumericMetric metric && metric.Value != null)
+                {
+                    // Serialize diagnostics
+                    string? diagnosticsJson = null;
+                    try
+                    {
+                        var diagnostics = new Dictionary<string, object?>
+                        {
+                            { "MetricName", metricName },
+                            { "EvaluatedAt", evaluatedAt },
+                            { "Messages", metric.Diagnostics?.Select(d => d.Message).ToList() ?? [] }
+                        };
+                        diagnosticsJson = JsonSerializer.Serialize(diagnostics);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning(ex, "Failed to serialize diagnostics for metric {MetricName}", metricName);
+                    }
+
+                    MessageEvaluationMetric evaluationMetric = new()
+                    {
+                        MessageId = message.Id,
+                        MetricName = metricName,
+                        Score = metric.Value.Value,
+                        Remarks = metric.Reason,
+                        EvaluatedAt = evaluatedAt,
+                        Diagnostics = diagnosticsJson,
+                        EvaluationModelId = evaluationModel?.Id,
+                        EvaluatorId = evaluatorEntity?.Id
+                    };
+
+                    context.MessageEvaluationMetrics.Add(evaluationMetric);
+
+                    logger.LogDebug(
+                        "Stored evaluation metric: MessageId={MessageId}, MetricName={MetricName}, Score={Score}",
+                        message.Id,
+                        metricName,
+                        metric.Value.Value);
+                }
+            }
+
+            await context.SaveChangesAsync(cancellationToken);
+
+            // Notify web clients via SignalR
+            List<MessageEvaluationMetricResponse> metricResponses = result.Metrics.Keys
+                .Select(metricName =>
+                {
+                    NumericMetric? metric = result.Get<NumericMetric>(metricName);
+                    return metric != null && metric.Value.HasValue
+                        ? new MessageEvaluationMetricResponse
+                        {
+                            MessageId = message.Id,
+                            MetricName = metricName,
+                            Score = metric.Value.Value,
+                            Remarks = metric.Reason,
+                            EvaluatedAt = evaluatedAt
+                        }
+                        : null;
+                })
+                .Where(m => m != null)
+                .Cast<MessageEvaluationMetricResponse>()
+                .ToList();
+
+            // Calculate if all evaluators have run
+            var totalEvaluatorCount = await context.Evaluators.CountAsync(cancellationToken);
+            var msgEvaluatorCount = await context.MessageEvaluationMetrics
+                .Where(m => m.MessageId == message.Id && m.EvaluatorId.HasValue)
+                .Select(m => m.EvaluatorId)
+                .Distinct()
+                .CountAsync(cancellationToken);
+            bool hasMissingEvaluators = msgEvaluatorCount < totalEvaluatorCount;
+
+            if (metricResponses.Count > 0)
+            {
+                await messageUpdateNotifier.NotifyMetricsEvaluatedAsync(
+                    message.Id,
+                    message.GameId,
+                    metricResponses,
+                    message.Text,
+                    hasMissingEvaluators,
+                    cancellationToken);
+            }
+
+            logger.LogInformation(
+                "Successfully ran evaluator {EvaluatorName} for message {MessageId}",
+                evaluatorName,
+                message.Id);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to run evaluator {EvaluatorName} for message {MessageId}",
+                evaluatorName, message.Id);
+            throw;
+        }
+    }
 }
