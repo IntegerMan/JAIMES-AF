@@ -1,4 +1,5 @@
 using MattEland.Jaimes.ServiceDefinitions.Messages;
+using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Workers.UserMessageWorker.Options;
 using MattEland.Jaimes.Workers.UserMessageWorker.Services;
@@ -34,6 +35,14 @@ public class UserMessageConsumer(
                 message.MessageId,
                 message.GameId);
 
+            // Notify pipeline stage: Loading
+            await messageUpdateNotifier.NotifyStageStartedAsync(
+                message.MessageId,
+                message.GameId,
+                MessagePipelineType.User,
+                MessagePipelineStage.Loading,
+                cancellationToken: cancellationToken);
+
             // Load message from database
             await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
             Message? messageEntity = await context.Messages
@@ -48,8 +57,23 @@ public class UserMessageConsumer(
                     "Message {MessageId} not found in database. It may have been deleted.",
                     message.MessageId);
                 activity?.SetStatus(ActivityStatusCode.Error, "Message not found");
+
+                await messageUpdateNotifier.NotifyStageFailedAsync(
+                    message.MessageId,
+                    message.GameId,
+                    MessagePipelineType.User,
+                    MessagePipelineStage.Loading,
+                    cancellationToken);
                 return;
             }
+
+            // Notify pipeline stage: Loading completed
+            await messageUpdateNotifier.NotifyStageCompletedAsync(
+                message.MessageId,
+                message.GameId,
+                MessagePipelineType.User,
+                MessagePipelineStage.Loading,
+                cancellationToken);
 
             // Set additional trace tags
             activity?.SetTag("message.text_length", messageEntity.Text?.Length ?? 0);
@@ -75,6 +99,15 @@ public class UserMessageConsumer(
                 messageEntity.CreatedAt,
                 textPreview);
 
+            // Notify pipeline stage: Embedding Queue
+            await messageUpdateNotifier.NotifyStageStartedAsync(
+                messageEntity.Id,
+                messageEntity.GameId,
+                MessagePipelineType.User,
+                MessagePipelineStage.EmbeddingQueue,
+                messageEntity.Text,
+                cancellationToken);
+
             // Enqueue message for embedding
             ConversationMessageReadyForEmbeddingMessage embeddingMessage = new()
             {
@@ -87,20 +120,51 @@ public class UserMessageConsumer(
             await messagePublisher.PublishAsync(embeddingMessage, cancellationToken);
             logger.LogDebug("Enqueued user message {MessageId} for embedding", messageEntity.Id);
 
+            // Notify pipeline stage: Embedding Queue completed
+            await messageUpdateNotifier.NotifyStageCompletedAsync(
+                messageEntity.Id,
+                messageEntity.GameId,
+                MessagePipelineType.User,
+                MessagePipelineStage.EmbeddingQueue,
+                cancellationToken);
+
             bool sentimentAnalysisSucceeded =
                 await AnalyzeSentimentAsync(messageEntity, activity, context, cancellationToken);
 
-            // Only set status to Ok if sentiment analysis succeeded or wasn't attempted
-            // If sentiment analysis failed, the activity status was already set to Error in AnalyzeSentimentAsync
+            // Notify pipeline stage: Complete or Failed
             if (sentimentAnalysisSucceeded)
             {
+                await messageUpdateNotifier.NotifyStageCompletedAsync(
+                    messageEntity.Id,
+                    messageEntity.GameId,
+                    MessagePipelineType.User,
+                    MessagePipelineStage.Complete,
+                    cancellationToken);
+
                 activity?.SetStatus(ActivityStatusCode.Ok);
+            }
+            else
+            {
+                await messageUpdateNotifier.NotifyStageFailedAsync(
+                    messageEntity.Id,
+                    messageEntity.GameId,
+                    MessagePipelineType.User,
+                    MessagePipelineStage.SentimentAnalysis,
+                    cancellationToken);
             }
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to process user message {MessageId}", message.MessageId);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+
+            // Notify pipeline stage: Failed
+            await messageUpdateNotifier.NotifyStageFailedAsync(
+                message.MessageId,
+                message.GameId,
+                MessagePipelineType.User,
+                MessagePipelineStage.Failed,
+                cancellationToken);
 
             // Re-throw to let message consumer service handle retry logic
             throw;
@@ -113,6 +177,15 @@ public class UserMessageConsumer(
         // Perform sentiment analysis
         if (!string.IsNullOrWhiteSpace(messageEntity.Text))
         {
+            // Notify pipeline stage: Sentiment Analysis started
+            await messageUpdateNotifier.NotifyStageStartedAsync(
+                messageEntity.Id,
+                messageEntity.GameId,
+                MessagePipelineType.User,
+                MessagePipelineStage.SentimentAnalysis,
+                messageEntity.Text,
+                cancellationToken);
+
             try
             {
                 double confidenceThreshold = sentimentOptions.Value.ConfidenceThreshold;
@@ -150,6 +223,15 @@ public class UserMessageConsumer(
                         logger.LogInformation(
                             "Skipping sentiment update for message {MessageId} as it was manually set by a player.",
                             messageEntity.Id);
+
+                        // Notify pipeline stage: Sentiment Analysis completed (skipped)
+                        await messageUpdateNotifier.NotifyStageCompletedAsync(
+                            messageEntity.Id,
+                            messageEntity.GameId,
+                            MessagePipelineType.User,
+                            MessagePipelineStage.SentimentAnalysis,
+                            cancellationToken);
+
                         return true;
                     }
 
@@ -169,6 +251,14 @@ public class UserMessageConsumer(
 
                 // Save sentiment to database
                 await context.SaveChangesAsync(cancellationToken);
+
+                // Notify pipeline stage: Sentiment Analysis completed
+                await messageUpdateNotifier.NotifyStageCompletedAsync(
+                    messageEntity.Id,
+                    messageEntity.GameId,
+                    MessagePipelineType.User,
+                    MessagePipelineStage.SentimentAnalysis,
+                    cancellationToken);
 
                 // Notify web clients via SignalR
                 await messageUpdateNotifier.NotifySentimentAnalyzedAsync(

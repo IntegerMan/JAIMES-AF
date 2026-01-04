@@ -1,4 +1,6 @@
 using MattEland.Jaimes.ServiceDefinitions.Messages;
+using MattEland.Jaimes.ServiceDefinitions.Responses;
+using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Workers.AssistantMessageWorker.Services;
 
 namespace MattEland.Jaimes.Workers.AssistantMessageWorker.Consumers;
@@ -9,7 +11,8 @@ public class AssistantMessageConsumer(
     ILogger<AssistantMessageConsumer> logger,
     ActivitySource activitySource,
     IMessageEvaluationService evaluationService,
-    IInstructionService instructionService) : IMessageConsumer<ConversationMessageQueuedMessage>
+    IInstructionService instructionService,
+    IMessageUpdateNotifier messageUpdateNotifier) : IMessageConsumer<ConversationMessageQueuedMessage>
 {
     public async Task HandleAsync(ConversationMessageQueuedMessage message,
         CancellationToken cancellationToken = default)
@@ -33,6 +36,14 @@ public class AssistantMessageConsumer(
                 message.EvaluateMissingOnly,
                 message.EvaluatorsToRun != null ? string.Join(", ", message.EvaluatorsToRun) : "(all)");
 
+            // Notify pipeline stage: Loading
+            await messageUpdateNotifier.NotifyStageStartedAsync(
+                message.MessageId,
+                message.GameId,
+                MessagePipelineType.Assistant,
+                MessagePipelineStage.Loading,
+                cancellationToken: cancellationToken);
+
             // Load message from database
             await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
             Message? messageEntity = await context.Messages
@@ -47,8 +58,23 @@ public class AssistantMessageConsumer(
                     "Message {MessageId} not found in database. It may have been deleted.",
                     message.MessageId);
                 activity?.SetStatus(ActivityStatusCode.Error, "Message not found");
+
+                await messageUpdateNotifier.NotifyStageFailedAsync(
+                    message.MessageId,
+                    message.GameId,
+                    MessagePipelineType.Assistant,
+                    MessagePipelineStage.Loading,
+                    cancellationToken);
                 return;
             }
+
+            // Notify pipeline stage: Loading completed
+            await messageUpdateNotifier.NotifyStageCompletedAsync(
+                message.MessageId,
+                message.GameId,
+                MessagePipelineType.Assistant,
+                MessagePipelineStage.Loading,
+                cancellationToken);
 
             // Set additional trace tags
             activity?.SetTag("message.text_length", messageEntity.Text?.Length ?? 0);
@@ -85,10 +111,12 @@ public class AssistantMessageConsumer(
 
             try
             {
-                // Load last 5 messages for conversation context (ordered by CreatedAt descending, take 5, reverse)
+                // Load last 5 messages for conversation context (ordered by CreatedAt, with ID as tiebreaker)
+                // Use CreatedAt < (not <=) to exclude the current message, with ID tiebreaker for concurrent inserts
                 List<Message> conversationContext = await context.Messages
-                    .Where(m => m.GameId == messageEntity.GameId && m.CreatedAt <= messageEntity.CreatedAt &&
-                                m.Id != messageEntity.Id)
+                    .Where(m => m.GameId == messageEntity.GameId && 
+                               (m.CreatedAt < messageEntity.CreatedAt || 
+                                (m.CreatedAt == messageEntity.CreatedAt && m.Id < messageEntity.Id)))
                     .OrderByDescending(m => m.CreatedAt)
                     .ThenByDescending(m => m.Id)
                     .Take(5)
@@ -121,16 +149,51 @@ public class AssistantMessageConsumer(
                 evaluationActivity?.SetTag("evaluation.context_message_count", conversationContext.Count);
                 evaluationActivity?.SetTag("evaluation.system_prompt_length", systemPrompt.Length);
 
-                // Perform evaluation (optionally with filtered evaluators)
-                await evaluationService.EvaluateMessageAsync(
-                    messageEntity,
-                    systemPrompt,
-                    conversationContext,
-                    message.EvaluatorsToRun,
-                    cancellationToken);
+                // Get the list of evaluators to run
+                IReadOnlyList<string> availableEvaluators = evaluationService.GetAvailableEvaluatorNames();
+                IEnumerable<string> evaluatorsToRun = message.EvaluatorsToRun ?? availableEvaluators;
+                var evaluatorList = evaluatorsToRun.ToList();
+
+                if (evaluatorList.Count > 0)
+                {
+                    // Notify pipeline stage: Evaluation
+                    await messageUpdateNotifier.NotifyStageStartedAsync(
+                        messageEntity.Id,
+                        messageEntity.GameId,
+                        MessagePipelineType.Assistant,
+                        MessagePipelineStage.Evaluation,
+                        messageEntity.Text,
+                        cancellationToken);
+
+                    // Publish individual evaluator tasks for parallel processing
+                    Guid batchId = Guid.NewGuid();
+                    int totalEvaluators = evaluatorList.Count;
+
+                    for (int i = 0; i < totalEvaluators; i++)
+                    {
+                        EvaluatorTaskMessage evaluatorTask = new()
+                        {
+                            MessageId = messageEntity.Id,
+                            GameId = messageEntity.GameId,
+                            EvaluatorName = evaluatorList[i],
+                            EvaluatorIndex = i + 1,
+                            TotalEvaluators = totalEvaluators,
+                            BatchId = batchId
+                        };
+                        await messagePublisher.PublishAsync(evaluatorTask, cancellationToken);
+                    }
+
+                    logger.LogInformation(
+                        "Published {Count} evaluator tasks for message {MessageId} (BatchId: {BatchId})",
+                        totalEvaluators,
+                        messageEntity.Id,
+                        batchId);
+
+                    // Note: Stage completion will be notified by EvaluatorTaskConsumer after all evaluators finish
+                }
 
                 evaluationActivity?.SetStatus(ActivityStatusCode.Ok);
-                logger.LogDebug("Successfully evaluated message {MessageId}", messageEntity.Id);
+                logger.LogDebug("Successfully dispatched evaluators for message {MessageId}", messageEntity.Id);
             }
             catch (Exception ex)
             {
@@ -142,6 +205,15 @@ public class AssistantMessageConsumer(
             // Enqueue message for embedding (skip if only evaluating missing evaluators)
             if (!message.EvaluateMissingOnly)
             {
+                // Notify pipeline stage: Embedding Queue
+                await messageUpdateNotifier.NotifyStageStartedAsync(
+                    messageEntity.Id,
+                    messageEntity.GameId,
+                    MessagePipelineType.Assistant,
+                    MessagePipelineStage.EmbeddingQueue,
+                    messageEntity.Text,
+                    cancellationToken);
+
                 ConversationMessageReadyForEmbeddingMessage embeddingMessage = new()
                 {
                     MessageId = messageEntity.Id,
@@ -152,6 +224,14 @@ public class AssistantMessageConsumer(
                 };
                 await messagePublisher.PublishAsync(embeddingMessage, cancellationToken);
                 logger.LogDebug("Enqueued assistant message {MessageId} for embedding", messageEntity.Id);
+
+                // Notify pipeline stage: Embedding Queue completed
+                await messageUpdateNotifier.NotifyStageCompletedAsync(
+                    messageEntity.Id,
+                    messageEntity.GameId,
+                    MessagePipelineType.Assistant,
+                    MessagePipelineStage.EmbeddingQueue,
+                    cancellationToken);
             }
             else
             {
@@ -159,12 +239,28 @@ public class AssistantMessageConsumer(
                     messageEntity.Id);
             }
 
+            // Notify pipeline stage: Complete
+            await messageUpdateNotifier.NotifyStageCompletedAsync(
+                messageEntity.Id,
+                messageEntity.GameId,
+                MessagePipelineType.Assistant,
+                MessagePipelineStage.Complete,
+                cancellationToken);
+
             activity?.SetStatus(ActivityStatusCode.Ok);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to process assistant message {MessageId}", message.MessageId);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+
+            // Notify pipeline stage: Failed
+            await messageUpdateNotifier.NotifyStageFailedAsync(
+                message.MessageId,
+                message.GameId,
+                MessagePipelineType.Assistant,
+                MessagePipelineStage.Failed,
+                cancellationToken);
 
             // Re-throw to let message consumer service handle retry logic
             throw;

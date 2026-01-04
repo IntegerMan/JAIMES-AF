@@ -136,6 +136,59 @@ flowchart LR
 3. **DocumentChunking** normalizes text blocks aligned to the ruleset/game domain.
 4. **DocumentEmbedding** vectorizes chunks and pushes them into Qdrant + metadata tables.
 
+## Real-Time Pipeline Status Updates
+
+Background workers report their processing status in real-time via SignalR, enabling dashboard visualization of pipeline progress:
+
+```mermaid
+graph LR
+    subgraph UserMessagePipeline
+    UQ[Queued] --> UL[Loading]
+    UL --> UE[Embedding Queue]
+    UE --> US[Sentiment Analysis]
+    US --> UC[Complete]
+    end
+
+    subgraph AssistantMessagePipeline
+    AQ[Queued] --> AL[Loading]
+    AL --> AEV[Evaluation]
+    AEV --> AE[Embedding Queue]
+    AE --> AC[Complete]
+    end
+```
+
+### Pipeline Stages
+
+| Pipeline | Stages | Notes |
+|----------|--------|-------|
+| **User Message** | Queued → Loading → Embedding Queue → Sentiment Analysis → Complete | Embedding runs before sentiment analysis |
+| **Assistant Message** | Queued → Loading → Evaluation → Embedding Queue → Complete | Per-evaluator progress reported during Evaluation stage |
+
+### Per-Evaluator Progress Tracking
+
+The Assistant Message pipeline reports granular progress during the Evaluation stage. Each evaluator (e.g., BrevityEvaluator, CoherenceEvaluator) triggers separate start/complete notifications with index and total counts. This enables UI visualization of evaluation progress through individual evaluators.
+
+### Configurable Worker Parallelism
+
+Worker replicas are configurable via Aspire parameters in `appsettings.json`:
+
+```json
+{
+  "Parameters": {
+    "user-worker-replicas": "2",
+    "assistant-worker-replicas": "3"
+  }
+}
+```
+
+When multiple replicas run, each worker instance identifies itself via the `WorkerSource` field in status updates.
+
+### Visualization Components
+
+- **UserMessagePipelinePanel**: Shows active user messages moving through sentiment analysis pipeline with throughput sparkline
+- **AssistantMessagePipelinePanel**: Shows active assistant messages with per-evaluator progress chips during evaluation
+- Both panels display on the Admin dashboard; user pipeline also on Sentiment page, assistant pipeline on Metrics page
+
 ## Tips & Conventions
 
 - Keep endpoints lean: validation + mapper + service call; let services enforce business invariants.

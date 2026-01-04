@@ -53,4 +53,85 @@ public interface IMessageUpdateNotifier
         bool hasToolCalls,
         string? messageText = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Notifies clients that a pipeline stage has started for a message.
+    /// </summary>
+    /// <param name="messageId">The message ID.</param>
+    /// <param name="gameId">The game ID.</param>
+    /// <param name="pipelineType">The type of pipeline (User or Assistant).</param>
+    /// <param name="stage">The stage that started.</param>
+    /// <param name="messagePreview">Optional preview of the message text.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task NotifyStageStartedAsync(
+        int messageId,
+        Guid gameId,
+        MessagePipelineType pipelineType,
+        MessagePipelineStage stage,
+        string? messagePreview = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Notifies clients that a pipeline stage has completed for a message.
+    /// </summary>
+    /// <param name="messageId">The message ID.</param>
+    /// <param name="gameId">The game ID.</param>
+    /// <param name="pipelineType">The type of pipeline (User or Assistant).</param>
+    /// <param name="stage">The stage that completed.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task NotifyStageCompletedAsync(
+        int messageId,
+        Guid gameId,
+        MessagePipelineType pipelineType,
+        MessagePipelineStage stage,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Notifies clients that a pipeline stage has failed for a message.
+    /// </summary>
+    /// <param name="messageId">The message ID.</param>
+    /// <param name="gameId">The game ID.</param>
+    /// <param name="pipelineType">The type of pipeline (User or Assistant).</param>
+    /// <param name="stage">The stage that failed.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task NotifyStageFailedAsync(
+        int messageId,
+        Guid gameId,
+        MessagePipelineType pipelineType,
+        MessagePipelineStage stage,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Notifies clients that an evaluator has started processing a message.
+    /// </summary>
+    /// <param name="messageId">The message ID.</param>
+    /// <param name="gameId">The game ID.</param>
+    /// <param name="evaluatorName">The name of the evaluator.</param>
+    /// <param name="evaluatorIndex">The 1-based index of the evaluator.</param>
+    /// <param name="totalEvaluators">The total number of evaluators to run.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task NotifyEvaluatorStartedAsync(
+        int messageId,
+        Guid gameId,
+        string evaluatorName,
+        int evaluatorIndex,
+        int totalEvaluators,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Notifies clients that an evaluator has completed processing a message.
+    /// </summary>
+    /// <param name="messageId">The message ID.</param>
+    /// <param name="gameId">The game ID.</param>
+    /// <param name="evaluatorName">The name of the evaluator.</param>
+    /// <param name="evaluatorIndex">The 1-based index of the evaluator.</param>
+    /// <param name="totalEvaluators">The total number of evaluators to run.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task NotifyEvaluatorCompletedAsync(
+        int messageId,
+        Guid gameId,
+        string evaluatorName,
+        int evaluatorIndex,
+        int totalEvaluators,
+        CancellationToken cancellationToken = default);
 }

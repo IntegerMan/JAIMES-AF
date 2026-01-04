@@ -39,11 +39,66 @@ Acts as the central nervous system. It receives events (like `ConversationMessag
 These are independent services that listen for specific events.
 
 - **UserMessageWorker (Sentiment)**: Analyzes the user's input to determine emotional tone (Positive/Negative). This helps agents adjust their future responses.
-- **AssistantMessageWorker (Evaluation)**: Uses a separate AI model to "grade" the assistant's response on metrics like coherence, relevance, and creativity.
+- **AssistantMessageWorker (Evaluation)**: Dispatches individual evaluator tasks to the message bus for parallel processing. Each evaluator (BrevityEvaluator, CoherenceEvaluator, etc.) runs as a separate task that can be picked up by any available worker instance.
 - **ConversationEmbeddingWorker (Memory)**: Generates vector embeddings for new messages and stores them in Qdrant, making them searchable for future context retrieval (RAG).
 
 ### 3. Real-Time Updates (SignalR)
 Since background tasks take time (seconds to minutes), the UI cannot wait for them. Instead, as soon as a worker finishes its job, it sends a notification via **SignalR**. The UI listens for these events and updates the interface live (e.g., showing a sentiment icon appearing next to a message).
+
+### 4. Stage-Level Pipeline Notifications
+Beyond completion notifications, workers report granular stage-level progress via SignalR:
+
+```mermaid
+sequenceDiagram
+    participant Worker as Message Worker
+    participant Notifier as IMessageUpdateNotifier
+    participant Endpoint as /internal/message-pipeline-updates
+    participant Hub as PipelineStatusHub
+    participant UI as Blazor Component
+
+    Worker->>Notifier: NotifyStageStartedAsync(Loading)
+    Notifier->>Endpoint: POST stage notification
+    Endpoint->>Hub: Invoke MessageStageUpdated
+    Hub->>UI: SignalR push (message-pipeline-status group)
+    UI->>UI: Update stage visualization
+```
+
+**Stages tracked:**
+- **User Pipeline**: Queued → Loading → Embedding Queue → Sentiment Analysis → Complete/Failed
+- **Assistant Pipeline**: Queued → Loading → Evaluation → Embedding Queue → Complete/Failed
+
+**Security considerations:** Internal pipeline notification endpoints are intended for worker-to-API traffic inside the trusted network or service mesh. If the endpoints are reachable outside that boundary, require network isolation or authentication/authorization (for example, mTLS between services or ingress ACLs) to prevent spoofed stage updates.
+
+**Per-Evaluator Progress:**
+The Assistant Message pipeline provides fine-grained progress during the Evaluation stage. Each evaluator triggers individual start/complete notifications with the evaluator name and index/total counts, enabling visualization of multi-evaluator runs.
+
+## Parallel Evaluation Processing
+
+The assistant message worker uses a **fan-out pattern** for evaluation:
+
+```mermaid
+graph LR
+    A[ConversationMessageQueuedMessage] --> B[AssistantMessageConsumer]
+    B -->|Publish| C[EvaluatorTaskMessage - Brevity]
+    B -->|Publish| D[EvaluatorTaskMessage - Coherence]
+    B -->|Publish| E[EvaluatorTaskMessage - GameMechanics]
+    
+    C --> F[Worker Instance 1]
+    D --> G[Worker Instance 2]
+    E --> H[Worker Instance 3]
+```
+
+When an assistant message arrives:
+1. `AssistantMessageConsumer` loads the message and determines which evaluators to run
+2. It publishes individual `EvaluatorTaskMessage` for each evaluator
+3. Multiple worker instances can process these tasks **in parallel**
+4. Each `EvaluatorTaskConsumer` runs a single evaluator and stores results independently
+
+This enables true horizontal scaling: with 3 workers and 3 evaluators, all evaluators can run simultaneously on different workers.
+
+## Worker Replica Configuration
+
+Workers can run with multiple replicas for horizontal scaling. Aspire orchestration reads replica counts from configuration parameters (for example, `user-worker-replicas` and `assistant-worker-replicas`) and provisions worker instances accordingly. Each worker instance includes a `WorkerSource` identifier (hostname + process ID) in status updates, allowing the UI to show which instance is processing each message.
 
 ## Design Benefits
 

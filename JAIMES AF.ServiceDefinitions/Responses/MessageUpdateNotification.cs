@@ -105,5 +105,25 @@ public enum MessageUpdateType
     /// <summary>
     /// Tool calls processed for an assistant message.
     /// </summary>
-    ToolCallsProcessed
+    ToolCallsProcessed,
+
+    /// <summary>
+    /// A pipeline processing stage has started.
+    /// </summary>
+    PipelineStageStarted,
+
+    /// <summary>
+    /// A pipeline processing stage has completed.
+    /// </summary>
+    PipelineStageCompleted,
+
+    /// <summary>
+    /// An evaluator has started processing.
+    /// </summary>
+    EvaluatorStarted,
+
+    /// <summary>
+    /// An evaluator has completed processing.
+    /// </summary>
+    EvaluatorCompleted
 }
