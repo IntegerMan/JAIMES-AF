@@ -207,8 +207,9 @@ public class DocumentChangeDetectorService(
         string rulesetId = DocumentMetadataExtractor.ExtractRulesetId(relativeDirectory);
         string documentKind = DocumentMetadataExtractor.DetermineDocumentKind(relativeDirectory);
 
+        string lowPath = filePath.ToLowerInvariant();
         DocumentMetadata? existingMetadata = await dbContext.DocumentMetadata
-            .FirstOrDefaultAsync(x => x.FilePath == filePath, cancellationToken);
+            .FirstOrDefaultAsync(x => x.FilePath.ToLower() == lowPath, cancellationToken);
 
         if (existingMetadata != null)
         {
