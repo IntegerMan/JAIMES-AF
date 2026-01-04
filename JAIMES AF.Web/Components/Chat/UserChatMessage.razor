@@ -11,7 +11,7 @@
     <MudChatBubble>
         @Text
     </MudChatBubble>
-    
+
     @if (IsLastParagraph)
     {
         <MudChatFooter Class="d-flex justify-content-end align-items-center gap-2 mt-1">
@@ -24,7 +24,7 @@
                                    Variant="Variant.Text"
                                    Class="pa-0"
                                    Href="https://go.microsoft.com/fwlink/?linkid=2198766"
-                                   Target="_blank" />
+                                   Target="_blank"/>
                 </MudTooltip>
             }
             @if (IsTestCase && TestCaseId.HasValue)
@@ -35,7 +35,7 @@
                                    Size="Size.Small"
                                    Variant="Variant.Text"
                                    Class="pa-0"
-                                   OnClick="ViewTestCase" />
+                                   OnClick="ViewTestCase"/>
                 </MudTooltip>
             }
             else if (MessageId.HasValue)
@@ -46,7 +46,7 @@
                                    Size="Size.Small"
                                    Variant="Variant.Text"
                                    Class="pa-0"
-                                   OnClick="CreateTestCaseAsync" />
+                                   OnClick="CreateTestCaseAsync"/>
                 </MudTooltip>
             }
             @if (MessageId.HasValue)
@@ -62,7 +62,7 @@
                                            Size="Size.Small"
                                            Variant="Variant.Text"
                                            Class="pa-0"
-                                           OnClick="ViewDetails" />
+                                           OnClick="ViewDetails"/>
                         </MudTooltip>
                     }
                     else if (ReadOnly)
@@ -71,7 +71,7 @@
                         <MudTooltip Text="@GetSentimentTooltipText()" Placement="Placement.Top">
                             <MudIcon Icon="@GetSentimentIcon()"
                                      Color="@GetSentimentColor()"
-                                     Size="Size.Small" />
+                                     Size="Size.Small"/>
                         </MudTooltip>
                     }
                     else
@@ -84,7 +84,7 @@
                                                    Color="@GetSentimentColor()"
                                                    Size="Size.Small"
                                                    Variant="Variant.Text"
-                                                   Class="pa-0" />
+                                                   Class="pa-0"/>
                                 </MudTooltip>
                             </ActivatorContent>
                             <ChildContent>
@@ -93,7 +93,7 @@
                                 <MudMenuItem OnClick="@(() => SetSentimentAsync(-1))" Icon="@Icons.Material.Filled.ThumbDown" IconColor="Color.Error">Negative</MudMenuItem>
                                 @if (SentimentId.HasValue)
                                 {
-                                    <MudDivider />
+                                    <MudDivider/>
                                     <MudMenuItem OnClick="ViewDetails" Icon="@Icons.Material.Filled.Visibility" IconColor="Color.Primary">View Details</MudMenuItem>
                                 }
                             </ChildContent>
@@ -106,7 +106,7 @@
                         <MudIcon Icon="@Icons.Material.Filled.HourglassBottom"
                                  Color="Color.Default"
                                  Size="Size.Small"
-                                 Class="spin-icon" />
+                                 Class="spin-icon"/>
                     </MudTooltip>
                 }
             }
@@ -117,7 +117,7 @@
                     <MudIcon Icon="@Icons.Material.Filled.HourglassBottom"
                              Color="Color.Default"
                              Size="Size.Small"
-                             Class="spin-icon" />
+                             Class="spin-icon"/>
                 </MudTooltip>
             }
         </MudChatFooter>
@@ -127,38 +127,27 @@
 @inject ISnackbar Snackbar
 
 @code {
-    [Parameter]
-    public required string Text { get; set; }
+    [Parameter] public required string Text { get; set; }
 
-    [Parameter]
-    public bool IsFirstParagraph { get; set; }
+    [Parameter] public bool IsFirstParagraph { get; set; }
 
-    [Parameter]
-    public bool IsLastParagraph { get; set; }
+    [Parameter] public bool IsLastParagraph { get; set; }
 
-    [Parameter]
-    public int? MessageId { get; set; }
+    [Parameter] public int? MessageId { get; set; }
 
-    [Parameter]
-    public Color Color { get; set; } = Color.Primary;
+    [Parameter] public Color Color { get; set; } = Color.Primary;
 
-    [Parameter]
-    public bool Highlighted { get; set; }
+    [Parameter] public bool Highlighted { get; set; }
 
-    [Parameter]
-    public int? Sentiment { get; set; }
+    [Parameter] public int? Sentiment { get; set; }
 
-    [Parameter]
-    public double? Confidence { get; set; }
+    [Parameter] public double? Confidence { get; set; }
 
-    [Parameter]
-    public bool ReadOnly { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
 
-    [Parameter]
-    public int? SentimentSource { get; set; }
+    [Parameter] public int? SentimentSource { get; set; }
 
-    [Parameter]
-    public int? SentimentId { get; set; }
+    [Parameter] public int? SentimentId { get; set; }
 
     /// <summary>
     /// When true and in ReadOnly mode, clicking the sentiment icon navigates to the details page.
@@ -183,6 +172,7 @@
     /// </summary>
     [Parameter]
     public bool TriggeredContentModeration { get; set; }
+
     private string GetSentimentIcon() => Sentiment switch
     {
         > 0 => Icons.Material.Filled.ThumbUp,
@@ -190,22 +180,32 @@
         _ => Icons.Material.Filled.Balance
     };
 
-    private Color GetSentimentColor() => Sentiment switch
+    private Color GetSentimentColor()
     {
-        > 0 => Color.Success,
-        < 0 => Color.Error,
-        _ => Color.Default
-    };
+        // If sentiment was set by user (1) or admin (2), always use Primary color
+        if (SentimentSource is 1 or 2)
+        {
+            return Color.Primary;
+        }
+
+        // For model-assigned sentiments, use semantic colors
+        return Sentiment switch
+        {
+            > 0 => Color.Success,
+            < 0 => Color.Error,
+            _ => Color.Default
+        };
+    }
 
     private async Task SetSentimentAsync(int newSentiment)
     {
         if (!MessageId.HasValue || ReadOnly) return;
 
-        MattEland.Jaimes.ServiceDefinitions.Requests.UpdateMessageSentimentRequest request = new() { Sentiment = newSentiment };
+        MattEland.Jaimes.ServiceDefinitions.Requests.UpdateMessageSentimentRequest request = new() {Sentiment = newSentiment};
         try
         {
             var response = await Http.PutAsJsonAsync($"/messages/{MessageId}/sentiment", request);
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 var errorMsg = await response.Content.ReadAsStringAsync();
@@ -214,9 +214,9 @@
         }
         catch (Exception ex)
         {
-             Snackbar.Add($"Failed to update sentiment: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Failed to update sentiment: {ex.Message}", Severity.Error);
         }
-        
+
         // Note: The UI will update automatically via SignalR broadcast from the server if successful
     }
 
@@ -244,7 +244,7 @@
         {
             // Use first 50 characters of message text as default name
             string defaultName = Text.Length > 50 ? Text.Substring(0, 50) + "..." : Text;
-            
+
             var request = new MattEland.Jaimes.ServiceDefinitions.Requests.CreateTestCaseRequest
             {
                 MessageId = MessageId.Value,
@@ -287,13 +287,14 @@
             return "Unknown Sentiment";
 
         string sentimentLabel = Sentiment.Value > 0 ? "Positive" :
-                                Sentiment.Value < 0 ? "Negative" : "Neutral";
+            Sentiment.Value < 0 ? "Negative" : "Neutral";
 
         // SentimentSource: 0 = Model, 1 = Player, 2 = Admin
         if (SentimentSource == 2)
         {
             return $"{sentimentLabel} Sentiment - Set by Admin";
         }
+
         if (SentimentSource == 1)
         {
             return $"{sentimentLabel} Sentiment - Set by User";
@@ -301,7 +302,7 @@
 
         if (Confidence.HasValue)
         {
-            int confidencePercent = (int)(Confidence.Value * 100);
+            int confidencePercent = (int) (Confidence.Value * 100);
             return $"{sentimentLabel} Sentiment - {confidencePercent}% Confidence";
         }
 
@@ -312,4 +313,5 @@
     {
         return GetSentimentTooltipText() + " - Click to view details";
     }
+
 }

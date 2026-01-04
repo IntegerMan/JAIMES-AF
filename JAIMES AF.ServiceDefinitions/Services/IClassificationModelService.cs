@@ -17,6 +17,12 @@ public interface IClassificationModelService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets the active classification model of the specified type.
+    /// </summary>
+    Task<ClassificationModelResponse?> GetActiveModelAsync(string modelType,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets the binary content of a stored model file.
     /// </summary>
     /// <param name="modelId">The ID of the classification model.</param>
@@ -27,25 +33,72 @@ public interface IClassificationModelService
     /// <summary>
     /// Uploads a new classification model to the database.
     /// </summary>
-    /// <param name="modelType">The type of model.</param>
-    /// <param name="name">Descriptive name for the model.</param>
-    /// <param name="fileName">Original filename.</param>
-    /// <param name="content">Binary model content.</param>
-    /// <param name="description">Optional description.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The created model response.</returns>
     Task<ClassificationModelResponse> UploadModelAsync(
         string modelType,
         string name,
         string fileName,
         byte[] content,
         string? description = null,
+        int? trainingJobId = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets all classification models for admin display.
     /// </summary>
     Task<List<ClassificationModelResponse>> GetAllModelsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all models including pending training jobs.
+    /// </summary>
+    Task<List<ClassificationModelResponse>> GetAllModelsWithTrainingJobsAsync(CancellationToken cancellationToken =
+        default);
+
+    /// <summary>
+    /// Gets detailed information about a specific model including training metrics.
+    /// </summary>
+    Task<ClassificationModelDetailsResponse?> GetModelDetailsAsync(int modelId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sets a model as the active model for its type.
+    /// </summary>
+    Task<bool> ActivateModelAsync(int modelId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the count of messages available for training based on confidence threshold.
+    /// </summary>
+    Task<TrainingDataCountResponse> GetTrainingDataCountAsync(double minConfidence,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates a new training job.
+    /// </summary>
+    Task<int> CreateTrainingJobAsync(
+        double minConfidence,
+        double trainTestSplit,
+        int trainingTimeSeconds,
+        string optimizingMetric,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates a training job's status and metrics after training completes.
+    /// </summary>
+    Task UpdateTrainingJobAsync(
+        int jobId,
+        string status,
+        int? totalRows = null,
+        int? trainingRows = null,
+        int? testRows = null,
+        double? macroAccuracy = null,
+        double? microAccuracy = null,
+        double? macroPrecision = null,
+        double? macroRecall = null,
+        double? logLoss = null,
+        int[][]? confusionMatrix = null,
+        string? trainerName = null,
+        int? classificationModelId = null,
+        string? errorMessage = null,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -55,3 +108,4 @@ public static class ClassificationModelTypes
 {
     public const string SentimentClassification = "SentimentClassification";
 }
+

@@ -8,6 +8,7 @@ global using MattEland.Jaimes.ServiceDefinitions.Messages;
 global using MattEland.Jaimes.ServiceDefinitions.Services;
 global using MattEland.Jaimes.ServiceLayer.Services;
 global using MattEland.Jaimes.Workers.UserMessageWorker.Consumers;
+global using MattEland.Jaimes.Workers.UserMessageWorker.Services;
 global using Microsoft.EntityFrameworkCore;
 global using Microsoft.Extensions.AI;
 global using OpenTelemetry.Metrics;

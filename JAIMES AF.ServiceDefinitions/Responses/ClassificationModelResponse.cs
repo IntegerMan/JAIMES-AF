@@ -11,4 +11,6 @@ public record ClassificationModelResponse(
     string FileName,
     int StoredFileId,
     long? SizeBytes,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string Status,
+    bool IsActive);

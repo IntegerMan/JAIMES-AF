@@ -9,7 +9,7 @@
         <MudTooltip Text="@GetSentimentTooltipText()" Placement="Placement.Top">
             <MudIcon Icon="@GetSentimentIcon()"
                      Color="@GetSentimentColor()"
-                     Size="Size.Small" />
+                     Size="Size.Small"/>
         </MudTooltip>
     }
     else
@@ -21,7 +21,7 @@
                                    Color="@GetSentimentColor()"
                                    Size="Size.Small"
                                    Variant="Variant.Text"
-                                   Class="pa-0" />
+                                   Class="pa-0"/>
                 </MudTooltip>
             </ActivatorContent>
             <ChildContent>
@@ -30,7 +30,7 @@
                 <MudMenuItem OnClick="@(() => SetSentimentAsync(-1))" Icon="@Icons.Material.Filled.ThumbDown" IconColor="Color.Error">Negative</MudMenuItem>
                 @if (ShowViewDetails && SentimentId.HasValue)
                 {
-                    <MudDivider />
+                    <MudDivider/>
                     <MudMenuItem OnClick="ViewDetails" Icon="@Icons.Material.Filled.Visibility" IconColor="Color.Primary">View Details</MudMenuItem>
                 }
             </ChildContent>
@@ -40,14 +40,15 @@
 else
 {
     <MudTooltip Text="Analyzing Sentiment..." Placement="Placement.Top">
-        <MudIcon Icon="@Icons.Material.Filled.HourglassBottom" 
-                 Color="Color.Default" 
+        <MudIcon Icon="@Icons.Material.Filled.HourglassBottom"
+                 Color="Color.Default"
                  Size="Size.Small"
-                 Class="spin-icon" />
+                 Class="spin-icon"/>
     </MudTooltip>
 }
 
 @code {
+
     /// <summary>
     /// The sentiment value: -1 (negative), 0 (neutral), 1 (positive).
     /// </summary>
@@ -109,27 +110,37 @@ else
         _ => Icons.Material.Filled.Balance
     };
 
-    private Color GetSentimentColor() => Sentiment switch
+    private Color GetSentimentColor()
     {
-        > 0 => Color.Success,
-        < 0 => Color.Error,
-        _ => Color.Default
-    };
+        // If sentiment was set by user (1) or admin (2), always use Primary color
+        if (SentimentSource is 1 or 2)
+        {
+            return Color.Primary;
+        }
+
+        // For model-assigned sentiments, use semantic colors
+        return Sentiment switch
+        {
+            > 0 => Color.Success,
+            < 0 => Color.Error,
+            _ => Color.Default
+        };
+    }
 
     private async Task SetSentimentAsync(int newSentiment)
     {
         if (!MessageId.HasValue || ReadOnly) return;
 
-        var request = new MattEland.Jaimes.ServiceDefinitions.Requests.UpdateMessageSentimentRequest 
-        { 
+        var request = new MattEland.Jaimes.ServiceDefinitions.Requests.UpdateMessageSentimentRequest
+        {
             Sentiment = newSentiment,
             Source = IsAdminContext ? 2 : 1 // 2 = Admin, 1 = Player
         };
-        
+
         try
         {
             var response = await Http.PutAsJsonAsync($"/messages/{MessageId}/sentiment", request);
-            
+
             if (response.IsSuccessStatusCode)
             {
                 // Notify parent with the new values instead of directly modifying parameters
@@ -166,13 +177,13 @@ else
             return "Unknown Sentiment";
 
         string sentimentLabel = Sentiment.Value > 0 ? "Positive" :
-                                Sentiment.Value < 0 ? "Negative" : "Neutral";
+            Sentiment.Value < 0 ? "Negative" : "Neutral";
 
         string sourceLabel = SentimentSource switch
         {
             2 => " - Set by Admin",
             1 => " - Set by User",
-            0 when Confidence.HasValue => $" - {(int)(Confidence.Value * 100)}% Confidence",
+            0 when Confidence.HasValue => $" - {(int) (Confidence.Value * 100)}% Confidence",
             _ => ""
         };
 
@@ -188,4 +199,5 @@ else
         public int SentimentSource { get; init; }
         public double Confidence { get; init; }
     }
+
 }

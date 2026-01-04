@@ -19,8 +19,12 @@ public class MessageUpdateNotifier : IMessageUpdateNotifier
         _logger = logger;
     }
 
-    public async Task NotifySentimentAnalyzedAsync(int messageId, Guid gameId, int sentiment, double? confidence,
-        string messageText, CancellationToken cancellationToken = default)
+    public async Task NotifySentimentAnalyzedAsync(int messageId,
+        Guid gameId,
+        int sentiment,
+        double? confidence,
+        string messageText,
+        CancellationToken cancellationToken = default)
     {
         MessageUpdateNotification notification = new()
         {
@@ -36,9 +40,12 @@ public class MessageUpdateNotifier : IMessageUpdateNotifier
         await SendNotificationAsync(notification, cancellationToken);
     }
 
-    public async Task NotifyMetricsEvaluatedAsync(int messageId, Guid gameId,
-        List<MessageEvaluationMetricResponse> metrics, string messageText,
-        bool hasMissingEvaluators, CancellationToken cancellationToken = default)
+    public async Task NotifyMetricsEvaluatedAsync(int messageId,
+        Guid gameId,
+        List<MessageEvaluationMetricResponse> metrics,
+        string messageText,
+        bool hasMissingEvaluators,
+        CancellationToken cancellationToken = default)
     {
         MessageUpdateNotification notification = new()
         {
@@ -53,9 +60,14 @@ public class MessageUpdateNotifier : IMessageUpdateNotifier
         await SendNotificationAsync(notification, cancellationToken);
     }
 
-    public async Task NotifyMetricEvaluatedAsync(int messageId, Guid gameId,
-        MessageEvaluationMetricResponse metric, int expectedMetricCount, int completedMetricCount,
-        bool isError = false, string? errorMessage = null, CancellationToken cancellationToken = default)
+    public async Task NotifyMetricEvaluatedAsync(int messageId,
+        Guid gameId,
+        MessageEvaluationMetricResponse metric,
+        int expectedMetricCount,
+        int completedMetricCount,
+        bool isError = false,
+        string? errorMessage = null,
+        CancellationToken cancellationToken = default)
     {
         MessageUpdateNotification notification = new()
         {
@@ -72,7 +84,9 @@ public class MessageUpdateNotifier : IMessageUpdateNotifier
         await SendNotificationAsync(notification, cancellationToken);
     }
 
-    public async Task NotifyToolCallsProcessedAsync(int messageId, Guid gameId, bool hasToolCalls,
+    public async Task NotifyToolCallsProcessedAsync(int messageId,
+        Guid gameId,
+        bool hasToolCalls,
         string? messageText = null,
         CancellationToken cancellationToken = default)
     {
@@ -224,7 +238,8 @@ public class MessageUpdateNotifier : IMessageUpdateNotifier
         catch (Exception ex)
         {
             // Log but don't throw - notification failure shouldn't fail message processing
-            _logger.LogWarning(ex, "Failed to send message update notification for message {MessageId}",
+            _logger.LogWarning(ex,
+                "Failed to send message update notification for message {MessageId}",
                 notification.MessageId);
         }
     }
@@ -258,6 +273,69 @@ public class MessageUpdateNotifier : IMessageUpdateNotifier
             // Log but don't throw - notification failure shouldn't fail message processing
             _logger.LogWarning(ex, "Failed to send message pipeline notification for message {MessageId}",
                 notification.MessageId);
+        }
+    }
+
+    public async Task NotifyClassifierTrainingCompletedAsync(
+        ClassifierTrainingCompletedNotification notification,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug(
+                "Sending classifier training completed notification for job {JobId}, success: {Success}",
+                notification.TrainingJobId,
+                notification.Success);
+
+            HttpResponseMessage response = await _httpClient.PostAsJsonAsync(
+                "/internal/classifier-training-completed",
+                notification,
+                cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning(
+                    "Failed to send classifier training notification: {StatusCode}",
+                    response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Failed to send classifier training notification for job {JobId}",
+                notification.TrainingJobId);
+        }
+    }
+
+    public async Task NotifyClassifierTrainingStatusChangedAsync(
+        int trainingJobId,
+        string status,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug(
+                "Sending classifier training status changed notification for job {JobId}, status: {Status}",
+                trainingJobId,
+                status);
+
+            HttpResponseMessage response = await _httpClient.PostAsJsonAsync(
+                "/internal/classifier-training-status",
+                new {TrainingJobId = trainingJobId, Status = status},
+                cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning(
+                    "Failed to send classifier training status notification: {StatusCode}",
+                    response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Failed to send classifier training status notification for job {JobId}",
+                trainingJobId);
         }
     }
 }

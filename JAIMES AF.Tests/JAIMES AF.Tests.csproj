@@ -50,6 +50,7 @@
         <ProjectReference Include="..\JAIMES AF.Workers.DocumentChunking\JAIMES AF.Workers.DocumentChunking.csproj" />
         <ProjectReference Include="..\JAIMES AF.Workers.DocumentEmbedding\JAIMES AF.Workers.DocumentEmbedding.csproj" />
         <ProjectReference Include="..\JAIMES AF.Workers.AssistantMessageWorker\JAIMES AF.Workers.AssistantMessageWorker.csproj" />
+        <ProjectReference Include="..\JAIMES AF.Workers.UserMessageWorker\JAIMES AF.Workers.UserMessageWorker.csproj" />
     </ItemGroup>
 
     <ItemGroup>

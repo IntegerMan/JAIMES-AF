@@ -62,10 +62,14 @@ builder.Services.AddHttpClient<IMessageUpdateNotifier, MessageUpdateNotifier>(cl
     client.BaseAddress = new Uri(baseAddress);
 });
 
-// Register consumer
-builder.Services.AddSingleton<IMessageConsumer<ConversationMessageQueuedMessage>, UserMessageConsumer>();
+// Register classifier training service
+builder.Services.AddSingleton<ClassifierTrainingService>();
 
-// Register consumer service (background service) with role-based routing
+// Register consumers
+builder.Services.AddSingleton<IMessageConsumer<ConversationMessageQueuedMessage>, UserMessageConsumer>();
+builder.Services.AddSingleton<IMessageConsumer<TrainClassifierMessage>, ClassifierTrainingConsumer>();
+
+// Register consumer service for user messages (background service) with role-based routing
 builder.Services.AddHostedService(serviceProvider =>
 {
     IConnectionFactory factory = serviceProvider.GetRequiredService<IConnectionFactory>();
@@ -80,6 +84,17 @@ builder.Services.AddHostedService(serviceProvider =>
         logger,
         "user",
         activitySource);
+});
+
+// Register consumer service for classifier training messages
+builder.Services.AddHostedService(serviceProvider =>
+{
+    IConnectionFactory factory = serviceProvider.GetRequiredService<IConnectionFactory>();
+    IMessageConsumer<TrainClassifierMessage> consumer =
+        serviceProvider.GetRequiredService<IMessageConsumer<TrainClassifierMessage>>();
+    ILogger<MessageConsumerService<TrainClassifierMessage>> logger = serviceProvider
+        .GetRequiredService<ILogger<MessageConsumerService<TrainClassifierMessage>>>();
+    return new MessageConsumerService<TrainClassifierMessage>(factory, consumer, logger);
 });
 
 // Configure OpenTelemetry ActivitySource
