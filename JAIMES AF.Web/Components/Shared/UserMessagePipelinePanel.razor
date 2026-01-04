@@ -184,6 +184,7 @@
     private System.Timers.Timer? _staleCheckTimer;
     private System.Timers.Timer? _throughputTimer;
     private int _messagesCompletedThisMinute;
+    private CancellationTokenSource _componentLifetimeCts = new();
 
     /// <summary>
     /// Additional CSS class to apply to the component.
@@ -287,14 +288,18 @@
                     if (notification.Stage == MessagePipelineStage.Complete || 
                         notification.Stage == MessagePipelineStage.Failed)
                     {
-                        _ = Task.Delay(30000).ContinueWith(_ =>
-                        {
-                            InvokeAsync(() =>
+                        _ = Task.Delay(30000, _componentLifetimeCts.Token)
+                            .ContinueWith(async task =>
                             {
-                                _activeMessages.Remove(notification.MessageId);
-                                StateHasChanged();
-                            });
-                        });
+                                if (!task.IsCanceled)
+                                {
+                                    await InvokeAsync(() =>
+                                    {
+                                        _activeMessages.Remove(notification.MessageId);
+                                        StateHasChanged();
+                                    });
+                                }
+                            }, TaskScheduler.Default);
                     }
 
                     StateHasChanged();
@@ -371,6 +376,10 @@
 
     public async ValueTask DisposeAsync()
     {
+        // Cancel all pending fire-and-forget tasks
+        _componentLifetimeCts.Cancel();
+        _componentLifetimeCts.Dispose();
+        
         _staleCheckTimer?.Dispose();
         _throughputTimer?.Dispose();
 
