@@ -190,4 +190,12 @@ public partial class AgentVersionDetails
             NavigationManager.NavigateTo($"/admin/test-runs/compare?executions={Uri.EscapeDataString(executionName)}");
         }
     }
+
+    private void ExportJsonl()
+    {
+        if (string.IsNullOrEmpty(AgentId) || _version == null) return;
+
+        var url = $"/agents/{AgentId}/versions/{VersionId}/export-jsonl";
+        NavigationManager.NavigateTo(url, forceLoad: true);
+    }
 }
