@@ -18,7 +18,16 @@
 	Access administrative functions and testing tools for the JAIMES AF system.
 </MudText>
 
-<PipelineStatusPanel Class="mb-6"/>
+<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Pipeline Status</MudText>
+<PipelineStatusPanel Class="mb-4" />
+<MudGrid Spacing="3" Class="mb-6">
+	<MudItem xs="12" md="6">
+		<UserMessagePipelinePanel />
+	</MudItem>
+	<MudItem xs="12" md="6">
+		<AssistantMessagePipelinePanel />
+	</MudItem>
+</MudGrid>
 
 <MudDivider Class="my-8"/>
 

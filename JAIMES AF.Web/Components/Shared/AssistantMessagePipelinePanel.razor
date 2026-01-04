@@ -1,0 +1,493 @@
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using Microsoft.AspNetCore.SignalR.Client
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+@inject IHttpClientFactory HttpClientFactory
+@inject ISnackbar Snackbar
+
+<MudPaper Class="@CombinedClass" Elevation="2">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+        <MudText Typo="Typo.h6">Assistant Message Processing Pipeline</MudText>
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            @if (_isConnected)
+            {
+                <MudChip T="string" Color="Color.Success" Size="Size.Small" Icon="@Icons.Material.Filled.SignalCellular4Bar">Live</MudChip>
+            }
+            else
+            {
+                <MudChip T="string" Color="Color.Warning" Size="Size.Small" Icon="@Icons.Material.Filled.SignalCellularOff">Connecting...</MudChip>
+            }
+            <MudTooltip Text="Clear completed messages">
+                <MudIconButton Icon="@Icons.Material.Filled.ClearAll" OnClick="ClearCompleted" Size="Size.Small" />
+            </MudTooltip>
+        </MudStack>
+    </MudStack>
+
+    @if (_activeMessages.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Class="mb-4">
+            No assistant messages are currently being processed. Messages will appear here as they flow through the evaluation pipeline.
+        </MudAlert>
+    }
+    else
+    {
+        <MudStack Spacing="2">
+            @foreach (var msg in _activeMessages.Values.OrderByDescending(m => m.StartedAt).Take(10))
+            {
+                <MudPaper Class="pa-3" Elevation="1">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-2">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Small" Color="Color.Secondary" />
+                            <MudText Typo="Typo.subtitle2">Message #@msg.MessageId</MudText>
+                            @if (!string.IsNullOrEmpty(msg.MessagePreview))
+                            {
+                                <MudText Typo="Typo.caption" Class="text-muted" Style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    @msg.MessagePreview
+                                </MudText>
+                            }
+                        </MudStack>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            @if (msg.IsStale)
+                            {
+                                <MudTooltip Text="Processing is taking longer than expected">
+                                    <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Size="Size.Small" Class="pulse-animation" />
+                                </MudTooltip>
+                            }
+                            @if (!string.IsNullOrEmpty(msg.WorkerSource))
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@msg.WorkerSource</MudChip>
+                            }
+                        </MudStack>
+                    </MudStack>
+
+                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Justify="Justify.Center" Class="flex-wrap">
+                        @* Loading Stage *@
+                        <MudPaper Class="pa-2" Elevation="0" Style="min-width: 70px; text-align: center; background-color: transparent;">
+                            <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                                <MudIcon Icon="@Icons.Material.Filled.CloudDownload" Size="Size.Medium" Color="@GetStageColor(msg, MessagePipelineStage.Loading)" />
+                                <MudText Typo="Typo.caption">Load</MudText>
+                            </MudStack>
+                        </MudPaper>
+
+                        <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="text-muted" />
+
+                        @* Evaluation Stage with individual evaluators *@
+                        <MudPaper Class="pa-2" Elevation="0" Style="text-align: center; background-color: transparent;">
+                            <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                                @if (msg.CurrentStage == MessagePipelineStage.Evaluation && msg.TotalEvaluators > 0)
+                                {
+                                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                        @for (int i = 1; i <= msg.TotalEvaluators; i++)
+                                        {
+                                            var evalIndex = i;
+                                            var evalName = msg.EvaluatorNames.ElementAtOrDefault(i - 1) ?? $"Eval {i}";
+                                            var shortName = GetShortEvaluatorName(evalName);
+                                            <MudTooltip Text="@evalName">
+                                                <MudChip T="string" 
+                                                         Size="Size.Small" 
+                                                         Color="@GetEvaluatorColor(msg, evalIndex)"
+                                                         Variant="Variant.Filled"
+                                                         Class="@(msg.CurrentEvaluatorIndex == evalIndex && !msg.CompletedEvaluators.Contains(evalIndex) ? "pulse-animation" : "")">
+                                                    @shortName
+                                                </MudChip>
+                                            </MudTooltip>
+                                        }
+                                    </MudStack>
+                                    <MudText Typo="Typo.caption" Class="mt-1">@msg.CurrentEvaluatorIndex/@msg.TotalEvaluators Evaluators</MudText>
+                                }
+                                else if (msg.CompletedStages.Contains(MessagePipelineStage.Evaluation))
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.Assessment" Size="Size.Medium" Color="Color.Success" />
+                                    <MudText Typo="Typo.caption">Evaluated</MudText>
+                                }
+                                else
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.Assessment" Size="Size.Medium" Color="@GetStageColor(msg, MessagePipelineStage.Evaluation)" />
+                                    <MudText Typo="Typo.caption">Evaluation</MudText>
+                                }
+                            </MudStack>
+                        </MudPaper>
+
+                        <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="text-muted" />
+
+                        @* Embedding Queue Stage *@
+                        <MudPaper Class="pa-2" Elevation="0" Style="min-width: 70px; text-align: center; background-color: transparent;">
+                            <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                                <MudIcon Icon="@Icons.Material.Filled.Memory" Size="Size.Medium" Color="@GetStageColor(msg, MessagePipelineStage.EmbeddingQueue)" />
+                                <MudText Typo="Typo.caption">Embed</MudText>
+                            </MudStack>
+                        </MudPaper>
+
+                        <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="text-muted" />
+
+                        @* Complete Stage *@
+                        <MudPaper Class="pa-2" Elevation="0" Style="min-width: 70px; text-align: center; background-color: transparent;">
+                            <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                                @if (msg.CurrentStage == MessagePipelineStage.Complete)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Medium" Color="Color.Success" />
+                                }
+                                else if (msg.CurrentStage == MessagePipelineStage.Failed)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Medium" Color="Color.Error" />
+                                }
+                                else
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.HourglassEmpty" Size="Size.Medium" Color="Color.Default" />
+                                }
+                                <MudText Typo="Typo.caption">@(msg.CurrentStage == MessagePipelineStage.Failed ? "Failed" : "Done")</MudText>
+                            </MudStack>
+                        </MudPaper>
+                    </MudStack>
+                </MudPaper>
+            }
+        </MudStack>
+    }
+
+    @* Throughput Sparkline *@
+    @if (_throughputHistory.Count > 1)
+    {
+        <MudDivider Class="my-4" />
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Messages Processed (Last 5 Minutes)</MudText>
+        <MudChart ChartType="ChartType.Line" 
+                  ChartSeries="@_chartSeries" 
+                  XAxisLabels="@_chartLabels"
+                  Width="100%" 
+                  Height="80px"
+                  ChartOptions="@_chartOptions" />
+    }
+</MudPaper>
+
+@code {
+    private readonly Dictionary<int, ActiveMessageState> _activeMessages = new();
+    private HubConnection? _hubConnection;
+    private bool _isConnected;
+    private readonly List<int> _throughputHistory = new();
+    private readonly List<ChartSeries> _chartSeries = new();
+    private string[] _chartLabels = Array.Empty<string>();
+    private readonly ChartOptions _chartOptions = new() { YAxisLines = false, XAxisLines = false };
+    private System.Timers.Timer? _staleCheckTimer;
+    private System.Timers.Timer? _throughputTimer;
+    private int _messagesCompletedThisMinute;
+
+    /// <summary>
+    /// Additional CSS class to apply to the component.
+    /// </summary>
+    [Parameter]
+    public string? Class { get; set; }
+
+    private string CombinedClass => string.IsNullOrEmpty(Class) ? "pa-4" : $"pa-4 {Class}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await SetupSignalRConnection();
+        SetupTimers();
+    }
+
+    private void SetupTimers()
+    {
+        // Check for stale messages every 5 seconds
+        _staleCheckTimer = new System.Timers.Timer(5000);
+        _staleCheckTimer.Elapsed += async (_, _) =>
+        {
+            await InvokeAsync(() =>
+            {
+                foreach (var msg in _activeMessages.Values)
+                {
+                    msg.UpdateStaleStatus();
+                }
+                StateHasChanged();
+            });
+        };
+        _staleCheckTimer.Start();
+
+        // Record throughput every minute
+        _throughputTimer = new System.Timers.Timer(60000);
+        _throughputTimer.Elapsed += async (_, _) =>
+        {
+            await InvokeAsync(() =>
+            {
+                _throughputHistory.Add(_messagesCompletedThisMinute);
+                if (_throughputHistory.Count > 5)
+                {
+                    _throughputHistory.RemoveAt(0);
+                }
+                _messagesCompletedThisMinute = 0;
+                UpdateChartData();
+                StateHasChanged();
+            });
+        };
+        _throughputTimer.Start();
+    }
+
+    private void UpdateChartData()
+    {
+        _chartSeries.Clear();
+        _chartSeries.Add(new ChartSeries
+        {
+            Name = "Messages",
+            Data = _throughputHistory.Select(x => (double)x).ToArray()
+        });
+        _chartLabels = Enumerable.Range(1, _throughputHistory.Count).Select(i => $"{5 - _throughputHistory.Count + i}m").ToArray();
+    }
+
+    private async Task SetupSignalRConnection()
+    {
+        try
+        {
+            HttpClient apiClient = HttpClientFactory.CreateClient("Api");
+            string hubUrl = new Uri(apiClient.BaseAddress!, "/hubs/pipeline-status").ToString();
+
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(hubUrl)
+                .WithAutomaticReconnect()
+                .Build();
+
+            _hubConnection.On<MessagePipelineStageNotification>("MessageStageUpdated", async (notification) =>
+            {
+                await InvokeAsync(() =>
+                {
+                    // Only handle assistant pipeline messages
+                    if (notification.PipelineType != MessagePipelineType.Assistant)
+                    {
+                        return;
+                    }
+
+                    if (!_activeMessages.TryGetValue(notification.MessageId, out var state))
+                    {
+                        state = new ActiveMessageState(notification.MessageId, notification.GameId);
+                        _activeMessages[notification.MessageId] = state;
+                    }
+
+                    state.UpdateFromNotification(notification);
+
+                    // Track completion for throughput
+                    if (notification.Stage == MessagePipelineStage.Complete && 
+                        notification.StageStatus == MessagePipelineStageStatus.Completed)
+                    {
+                        _messagesCompletedThisMinute++;
+                    }
+
+                    // Auto-remove completed messages after 30 seconds
+                    if (notification.Stage == MessagePipelineStage.Complete || 
+                        notification.Stage == MessagePipelineStage.Failed)
+                    {
+                        _ = Task.Delay(30000).ContinueWith(_ =>
+                        {
+                            InvokeAsync(() =>
+                            {
+                                _activeMessages.Remove(notification.MessageId);
+                                StateHasChanged();
+                            });
+                        });
+                    }
+
+                    StateHasChanged();
+                });
+            });
+
+            _hubConnection.Reconnecting += _ =>
+            {
+                _isConnected = false;
+                InvokeAsync(StateHasChanged);
+                return Task.CompletedTask;
+            };
+
+            _hubConnection.Reconnected += _ =>
+            {
+                _isConnected = true;
+                InvokeAsync(async () =>
+                {
+                    await _hubConnection.InvokeAsync("SubscribeToMessagePipelineStatus");
+                    StateHasChanged();
+                });
+                return Task.CompletedTask;
+            };
+
+            await _hubConnection.StartAsync();
+            await _hubConnection.InvokeAsync("SubscribeToMessagePipelineStatus");
+            _isConnected = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to connect to SignalR hub: {ex.Message}");
+            _isConnected = false;
+        }
+    }
+
+    private void ClearCompleted()
+    {
+        var toRemove = _activeMessages.Where(kvp => 
+            kvp.Value.CurrentStage == MessagePipelineStage.Complete || 
+            kvp.Value.CurrentStage == MessagePipelineStage.Failed)
+            .Select(kvp => kvp.Key)
+            .ToList();
+        
+        foreach (var key in toRemove)
+        {
+            _activeMessages.Remove(key);
+        }
+        StateHasChanged();
+    }
+
+    private static string GetShortEvaluatorName(string name)
+    {
+        // Remove common suffixes and shorten names
+        return name
+            .Replace("Evaluator", "")
+            .Replace("Assessment", "")
+            switch
+        {
+            "Brevity" => "Brev",
+            "Storyteller" => "Story",
+            "PlayerAgency" => "Agency",
+            "GameMechanics" => "Mech",
+            "RelevanceTruthAndCompleteness" => "RTC",
+            var other => other.Length > 6 ? other[..6] : other
+        };
+    }
+
+    private static Color GetStageColor(ActiveMessageState msg, MessagePipelineStage stage)
+    {
+        var stageOrder = new[] { MessagePipelineStage.Loading, MessagePipelineStage.Evaluation, MessagePipelineStage.EmbeddingQueue, MessagePipelineStage.Complete };
+        int currentIndex = Array.IndexOf(stageOrder, msg.CurrentStage);
+        int stageIndex = Array.IndexOf(stageOrder, stage);
+
+        if (msg.CurrentStage == MessagePipelineStage.Failed)
+        {
+            return Color.Error;
+        }
+
+        if (stageIndex < currentIndex || (stageIndex == currentIndex && msg.CompletedStages.Contains(stage)))
+        {
+            return Color.Success;
+        }
+
+        if (stageIndex == currentIndex)
+        {
+            return msg.IsStale ? Color.Warning : Color.Primary;
+        }
+
+        return Color.Default;
+    }
+
+    private static Color GetEvaluatorColor(ActiveMessageState msg, int evaluatorIndex)
+    {
+        if (msg.CompletedEvaluators.Contains(evaluatorIndex))
+        {
+            return Color.Success;
+        }
+
+        if (msg.CurrentEvaluatorIndex == evaluatorIndex)
+        {
+            return msg.IsStale ? Color.Warning : Color.Primary;
+        }
+
+        return Color.Default;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _staleCheckTimer?.Dispose();
+        _throughputTimer?.Dispose();
+
+        if (_hubConnection is not null)
+        {
+            try
+            {
+                await _hubConnection.InvokeAsync("UnsubscribeFromMessagePipelineStatus");
+            }
+            catch
+            {
+                // Ignore errors during cleanup
+            }
+
+            await _hubConnection.DisposeAsync();
+        }
+    }
+
+    private class ActiveMessageState
+    {
+        public int MessageId { get; }
+        public Guid GameId { get; }
+        public MessagePipelineStage CurrentStage { get; private set; } = MessagePipelineStage.Queued;
+        public HashSet<MessagePipelineStage> CompletedStages { get; } = new();
+        public DateTimeOffset StartedAt { get; private set; } = DateTimeOffset.UtcNow;
+        public DateTimeOffset LastUpdatedAt { get; private set; } = DateTimeOffset.UtcNow;
+        public string? MessagePreview { get; private set; }
+        public string? WorkerSource { get; private set; }
+        public bool IsStale { get; private set; }
+        
+        // Evaluator tracking
+        public int CurrentEvaluatorIndex { get; private set; }
+        public int TotalEvaluators { get; private set; }
+        public List<string> EvaluatorNames { get; } = new();
+        public HashSet<int> CompletedEvaluators { get; } = new();
+
+        public ActiveMessageState(int messageId, Guid gameId)
+        {
+            MessageId = messageId;
+            GameId = gameId;
+        }
+
+        public void UpdateFromNotification(MessagePipelineStageNotification notification)
+        {
+            CurrentStage = notification.Stage;
+            LastUpdatedAt = DateTimeOffset.UtcNow;
+            
+            if (!string.IsNullOrEmpty(notification.MessagePreview))
+            {
+                MessagePreview = notification.MessagePreview;
+            }
+            
+            if (!string.IsNullOrEmpty(notification.WorkerSource))
+            {
+                WorkerSource = notification.WorkerSource;
+            }
+
+            if (notification.StageStatus == MessagePipelineStageStatus.Completed)
+            {
+                CompletedStages.Add(notification.Stage);
+            }
+
+            // Track evaluator progress
+            if (notification.Stage == MessagePipelineStage.Evaluation && notification.EvaluatorIndex.HasValue)
+            {
+                CurrentEvaluatorIndex = notification.EvaluatorIndex.Value;
+                TotalEvaluators = notification.TotalEvaluators ?? TotalEvaluators;
+                
+                if (!string.IsNullOrEmpty(notification.EvaluatorName) && 
+                    !EvaluatorNames.Contains(notification.EvaluatorName))
+                {
+                    EvaluatorNames.Add(notification.EvaluatorName);
+                }
+
+                if (notification.StageStatus == MessagePipelineStageStatus.Completed)
+                {
+                    CompletedEvaluators.Add(notification.EvaluatorIndex.Value);
+                }
+            }
+
+            UpdateStaleStatus();
+        }
+
+        public void UpdateStaleStatus()
+        {
+            // Consider stale if no update for 30 seconds and not complete/failed
+            IsStale = CurrentStage != MessagePipelineStage.Complete && 
+                      CurrentStage != MessagePipelineStage.Failed &&
+                      (DateTimeOffset.UtcNow - LastUpdatedAt).TotalSeconds > 30;
+        }
+    }
+}
+
+<style>
+    .pulse-animation {
+        animation: pulse 1.5s infinite;
+    }
+    
+    @@keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+    }
+</style>

@@ -88,6 +88,116 @@ public class MessageUpdateNotifier : IMessageUpdateNotifier
         await SendNotificationAsync(notification, cancellationToken);
     }
 
+    public async Task NotifyStageStartedAsync(
+        int messageId,
+        Guid gameId,
+        MessagePipelineType pipelineType,
+        MessagePipelineStage stage,
+        string? messagePreview = null,
+        CancellationToken cancellationToken = default)
+    {
+        MessagePipelineStageNotification notification = new()
+        {
+            MessageId = messageId,
+            GameId = gameId,
+            PipelineType = pipelineType,
+            Stage = stage,
+            StageStatus = MessagePipelineStageStatus.Started,
+            MessagePreview = messagePreview?.Length > 100 ? messagePreview[..100] + "..." : messagePreview,
+            WorkerSource = Environment.MachineName
+        };
+
+        await SendPipelineNotificationAsync(notification, cancellationToken);
+    }
+
+    public async Task NotifyStageCompletedAsync(
+        int messageId,
+        Guid gameId,
+        MessagePipelineType pipelineType,
+        MessagePipelineStage stage,
+        CancellationToken cancellationToken = default)
+    {
+        MessagePipelineStageNotification notification = new()
+        {
+            MessageId = messageId,
+            GameId = gameId,
+            PipelineType = pipelineType,
+            Stage = stage,
+            StageStatus = MessagePipelineStageStatus.Completed,
+            WorkerSource = Environment.MachineName
+        };
+
+        await SendPipelineNotificationAsync(notification, cancellationToken);
+    }
+
+    public async Task NotifyStageFailedAsync(
+        int messageId,
+        Guid gameId,
+        MessagePipelineType pipelineType,
+        MessagePipelineStage stage,
+        CancellationToken cancellationToken = default)
+    {
+        MessagePipelineStageNotification notification = new()
+        {
+            MessageId = messageId,
+            GameId = gameId,
+            PipelineType = pipelineType,
+            Stage = stage,
+            StageStatus = MessagePipelineStageStatus.Failed,
+            WorkerSource = Environment.MachineName
+        };
+
+        await SendPipelineNotificationAsync(notification, cancellationToken);
+    }
+
+    public async Task NotifyEvaluatorStartedAsync(
+        int messageId,
+        Guid gameId,
+        string evaluatorName,
+        int evaluatorIndex,
+        int totalEvaluators,
+        CancellationToken cancellationToken = default)
+    {
+        MessagePipelineStageNotification notification = new()
+        {
+            MessageId = messageId,
+            GameId = gameId,
+            PipelineType = MessagePipelineType.Assistant,
+            Stage = MessagePipelineStage.Evaluation,
+            StageStatus = MessagePipelineStageStatus.Started,
+            EvaluatorName = evaluatorName,
+            EvaluatorIndex = evaluatorIndex,
+            TotalEvaluators = totalEvaluators,
+            WorkerSource = Environment.MachineName
+        };
+
+        await SendPipelineNotificationAsync(notification, cancellationToken);
+    }
+
+    public async Task NotifyEvaluatorCompletedAsync(
+        int messageId,
+        Guid gameId,
+        string evaluatorName,
+        int evaluatorIndex,
+        int totalEvaluators,
+        CancellationToken cancellationToken = default)
+    {
+        MessagePipelineStageNotification notification = new()
+        {
+            MessageId = messageId,
+            GameId = gameId,
+            PipelineType = MessagePipelineType.Assistant,
+            Stage = MessagePipelineStage.Evaluation,
+            StageStatus = MessagePipelineStageStatus.Completed,
+            EvaluatorName = evaluatorName,
+            EvaluatorIndex = evaluatorIndex,
+            TotalEvaluators = totalEvaluators,
+            WorkerSource = Environment.MachineName
+        };
+
+        await SendPipelineNotificationAsync(notification, cancellationToken);
+    }
+
     private async Task SendNotificationAsync(MessageUpdateNotification notification,
         CancellationToken cancellationToken)
     {
@@ -115,6 +225,38 @@ public class MessageUpdateNotifier : IMessageUpdateNotifier
         {
             // Log but don't throw - notification failure shouldn't fail message processing
             _logger.LogWarning(ex, "Failed to send message update notification for message {MessageId}",
+                notification.MessageId);
+        }
+    }
+
+    private async Task SendPipelineNotificationAsync(MessagePipelineStageNotification notification,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            _logger.LogDebug(
+                "Sending pipeline stage {Stage} ({StageStatus}) notification for message {MessageId} in game {GameId}",
+                notification.Stage,
+                notification.StageStatus,
+                notification.MessageId,
+                notification.GameId);
+
+            HttpResponseMessage response = await _httpClient.PostAsJsonAsync(
+                "/internal/message-pipeline-updates",
+                notification,
+                cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning(
+                    "Failed to send message pipeline notification: {StatusCode}",
+                    response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log but don't throw - notification failure shouldn't fail message processing
+            _logger.LogWarning(ex, "Failed to send message pipeline notification for message {MessageId}",
                 notification.MessageId);
         }
     }

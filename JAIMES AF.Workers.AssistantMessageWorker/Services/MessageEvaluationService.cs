@@ -110,16 +110,84 @@ public class MessageEvaluationService(
             logger,
             cancellationToken);
 
+        // Run evaluators individually for progress tracking
+        var activeEvaluatorList = activeEvaluators.ToList();
+        int totalEvaluators = activeEvaluatorList.Count;
+        var allResults = new EvaluationResult();
+
         // Load evaluator ID lookup once
         var evaluatorIdLookup = await modelContext.Evaluators
             .ToDictionaryAsync(e => e.Name.ToLower(), e => e.Id, cancellationToken);
 
+        for (int i = 0; i < totalEvaluators; i++)
+        {
+            var evaluator = activeEvaluatorList[i];
+            string evaluatorName = evaluator.GetType().Name;
+            int evaluatorIndex = i + 1;
+
         // Create ChatConfiguration for evaluators
         ChatConfiguration chatConfiguration = new(chatClient);
+
+        // Notify evaluator started
+        await messageUpdateNotifier.NotifyEvaluatorStartedAsync(
+            message.Id,
+            message.GameId,
+            evaluatorName,
+            evaluatorIndex,
+            totalEvaluators,
+            cancellationToken);
 
         // Track all metrics for final notification
         List<MessageEvaluationMetricResponse> allMetricResponses = [];
         Lock metricsLock = new();
+                try
+                {
+                    // Create ReportingConfiguration for this single evaluator
+                    ReportingConfiguration reportConfig = new(
+                        [evaluator],
+                        resultStore,
+                        executionName: $"Assistant Message Quality - {evaluatorName}",
+                        chatConfiguration: chatConfiguration);
+
+                    // Perform evaluation for this evaluator
+                    EvaluationResult result = await PerformEvaluationInternalAsync(
+                        reportConfig,
+                        message,
+                        evaluationContext,
+                        assistantResponse,
+                        cancellationToken);
+
+                    // Merge results
+                    foreach (var kvp in result.Metrics)
+                    {
+                        allResults.Metrics[kvp.Key] = kvp.Value;
+                    }
+
+                    logger.LogDebug(
+                        "Evaluator {EvaluatorName} ({Index}/{Total}) completed for message {MessageId}",
+                        evaluatorName,
+                        evaluatorIndex,
+                        totalEvaluators,
+                        message.Id);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Evaluator {EvaluatorName} failed for message {MessageId}", evaluatorName, message.Id);
+                    // Continue with other evaluators
+                }
+
+                // Notify evaluator completed
+                await messageUpdateNotifier.NotifyEvaluatorCompletedAsync(
+                    message.Id,
+                    message.GameId,
+                    evaluatorName,
+                    evaluatorIndex,
+                    totalEvaluators,
+                    cancellationToken);
+            }
+
+            // Store metrics in database
+            await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
         // Run each evaluator in parallel
         var evaluatorTasks = activeEvaluators.Select(async evaluator =>
@@ -148,7 +216,7 @@ public class MessageEvaluationService(
                 DateTime evaluatedAt = DateTime.UtcNow;
 
                 // Process each metric from this evaluator
-                foreach (var metricPair in result.Metrics)
+                foreach (var metricPair in allResults.Metrics)
                 {
                     string metricName = metricPair.Key;
                     if (metricPair.Value is NumericMetric metric && metric.Value != null)
@@ -314,6 +382,26 @@ public class MessageEvaluationService(
             .Distinct()
             .CountAsync(cancellationToken);
         bool hasMissingEvaluators = msgEvaluatorCount < totalEvaluatorCount;
+
+        // Notify web clients via SignalR
+        List<MessageEvaluationMetricResponse> metricResponses = allResults.Metrics.Keys
+            .Select(metricName =>
+            {
+                NumericMetric? metric = allResults.Get<NumericMetric>(metricName);
+                return metric != null && metric.Value.HasValue
+                    ? new MessageEvaluationMetricResponse
+                    {
+                        MessageId = message.Id,
+                        MetricName = metricName,
+                        Score = metric.Value.Value,
+                        Remarks = metric.Reason,
+                        EvaluatedAt = evaluatedAt
+                    }
+                    : null;
+            })
+            .Where(m => m != null)
+            .Cast<MessageEvaluationMetricResponse>()
+            .ToList();
 
         // Send final MetricsEvaluated notification with all results
         if (allMetricResponses.Count > 0)

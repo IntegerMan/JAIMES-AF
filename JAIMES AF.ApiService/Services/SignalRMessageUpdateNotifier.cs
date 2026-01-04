@@ -82,6 +82,30 @@ public class SignalRMessageUpdateNotifier(
         await BroadcastUpdateAsync(notification);
     }
 
+    /// <summary>
+    /// Stage-level notifications are not used in the API service context - they are for worker-to-hub communication.
+    /// These no-op implementations satisfy the interface for DI compatibility.
+    /// </summary>
+    public Task NotifyStageStartedAsync(int messageId, Guid gameId, MessagePipelineType pipelineType,
+        MessagePipelineStage stage, string? messagePreview = null, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+
+    public Task NotifyStageCompletedAsync(int messageId, Guid gameId, MessagePipelineType pipelineType,
+        MessagePipelineStage stage, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+
+    public Task NotifyStageFailedAsync(int messageId, Guid gameId, MessagePipelineType pipelineType,
+        MessagePipelineStage stage, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+
+    public Task NotifyEvaluatorStartedAsync(int messageId, Guid gameId, string evaluatorName,
+        int evaluatorIndex, int totalEvaluators, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+
+    public Task NotifyEvaluatorCompletedAsync(int messageId, Guid gameId, string evaluatorName,
+        int evaluatorIndex, int totalEvaluators, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+
     private async Task BroadcastUpdateAsync(MessageUpdateNotification notification)
     {
         string groupName = MessageHub.GetGameGroupName(notification.GameId);
