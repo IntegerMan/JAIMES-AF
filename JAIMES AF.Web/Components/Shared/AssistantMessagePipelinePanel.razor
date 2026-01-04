@@ -480,7 +480,16 @@
 
         public void UpdateFromNotification(MessagePipelineStageNotification notification)
         {
-            CurrentStage = notification.Stage;
+            // Prevent stage regression - only allow forward progression or Failed state
+            var stageOrder = new[] { MessagePipelineStage.Queued, MessagePipelineStage.Loading, MessagePipelineStage.EmbeddingQueue, MessagePipelineStage.Evaluation, MessagePipelineStage.Complete, MessagePipelineStage.Failed };
+            int currentIndex = Array.IndexOf(stageOrder, CurrentStage);
+            int newIndex = Array.IndexOf(stageOrder, notification.Stage);
+            
+            if (newIndex >= currentIndex || notification.Stage == MessagePipelineStage.Failed)
+            {
+                CurrentStage = notification.Stage;
+            }
+            
             LastUpdatedAt = DateTimeOffset.UtcNow;
             
             if (!string.IsNullOrEmpty(notification.MessagePreview))
