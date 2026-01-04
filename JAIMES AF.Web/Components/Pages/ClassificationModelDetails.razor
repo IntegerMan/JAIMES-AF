@@ -169,15 +169,12 @@
 							<thead>
 							<tr>
 								<th></th>
-								@foreach (var label in GetLabels())
+								@foreach (var label in SentimentLabels)
 								{
 									<th class="text-center">
 										<strong>Predicted @label</strong>
 									</th>
 								}
-								<th class="text-center">
-									<strong>Total</strong>
-								</th>
 								<th class="text-center">
 									<strong>Recall</strong>
 								</th>
@@ -185,44 +182,35 @@
 							</thead>
 							<tbody>
 							@{
-								var matrix = _model.TrainingJob.ConfusionMatrix;
-								var labels = GetLabels();
-								var columnTotals = new int[matrix.Length];
+								var matrix = GetNormalizedMatrix();
+								var columnTotals = new int[3];
 
 								// Calculate column totals for precision
-								for (int j = 0; j < matrix.Length; j++)
+								for (int j = 0; j < 3; j++)
 								{
-									for (int i = 0; i < matrix.Length; i++)
+									for (int i = 0; i < 3; i++)
 									{
 										columnTotals[j] += matrix[i][j];
 									}
 								}
 							}
-							@for (int i = 0; i < matrix.Length; i++)
+							@for (int i = 0; i < 3; i++)
 							{
 								var row = matrix[i];
 								var rowTotal = row.Sum();
 								var recall = rowTotal > 0 ? (double) row[i] / rowTotal : 0;
 								<tr>
 									<td>
-										<strong>Actual @labels[i]</strong>
+										<strong>Actual @SentimentLabels[i]</strong>
 									</td>
-									@for (int j = 0; j < row.Length; j++)
+									@for (int j = 0; j < 3; j++)
 									{
 										var percentage = rowTotal > 0 ? (double) row[j] / rowTotal : 0;
 										var cellStyle = GetCellColor(percentage);
 										<td class="text-center" style="@cellStyle">
 											@row[j]
-											@if (rowTotal > 0)
-											{
-												<br/>
-												<small class="text-muted">(@(percentage.ToString("P0")))</small>
-											}
 										</td>
 									}
-									<td class="text-center">
-										<strong>@rowTotal</strong>
-									</td>
 									<td class="text-center">
 										<strong>@recall.ToString("P1")</strong>
 									</td>
@@ -231,31 +219,15 @@
 							@* Precision row *@
 							<tr>
 								<td>
-									<strong>Total</strong>
-								</td>
-								@for (int j = 0; j < matrix.Length; j++)
-								{
-									<td class="text-center">
-										<strong>@columnTotals[j]</strong>
-									</td>
-								}
-								<td class="text-center">
-									<strong>@matrix.Sum(r => r.Sum())</strong>
-								</td>
-								<td></td>
-							</tr>
-							<tr>
-								<td>
 									<strong>Precision</strong>
 								</td>
-								@for (int j = 0; j < matrix.Length; j++)
+								@for (int j = 0; j < 3; j++)
 								{
 									var precision = columnTotals[j] > 0 ? (double) matrix[j][j] / columnTotals[j] : 0;
 									<td class="text-center">
 										<strong>@precision.ToString("P1")</strong>
 									</td>
 								}
-								<td></td>
 								<td></td>
 							</tr>
 							</tbody>
@@ -369,16 +341,50 @@
 		return $"{bytes / (1024.0 * 1024.0):F1} MB";
 	}
 
-	private string[] GetLabels()
+	/// <summary>
+	/// Fixed labels for 3-class sentiment classification: Negative, Neutral, Positive.
+	/// </summary>
+	private static readonly string[] SentimentLabels = ["Negative", "Neutral", "Positive"];
+
+	/// <summary>
+	/// Normalizes the confusion matrix to always be 3x3 for sentiment classification.
+	/// If the source matrix is smaller (e.g., 2x2), missing classes are filled with zeros.
+	/// </summary>
+	private int[][] GetNormalizedMatrix()
 	{
-		// For 3-class sentiment: negative, neutral, positive
-		int numClasses = _model?.TrainingJob?.ConfusionMatrix?.Length ?? 3;
-		return numClasses switch
+		var sourceMatrix = _model?.TrainingJob?.ConfusionMatrix;
+		if (sourceMatrix == null) return [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+
+		int size = sourceMatrix.Length;
+
+		// If already 3x3, return as-is
+		if (size == 3) return sourceMatrix;
+
+		// If 2x2 (Negative/Positive only, no Neutral samples), expand to 3x3
+		// Source: [Neg, Pos] rows x [Neg, Pos] cols
+		// Target: [Neg, Neu, Pos] rows x [Neg, Neu, Pos] cols
+		if (size == 2)
 		{
-			3 => ["Negative", "Neutral", "Positive"],
-			2 => ["Negative", "Positive"],
-			_ => Enumerable.Range(0, numClasses).Select(i => $"Class {i}").ToArray()
-		};
+			return
+			[
+				[sourceMatrix[0][0], 0, sourceMatrix[0][1]], // Actual Negative: [Pred Neg, Pred Neu (0), Pred Pos]
+				[0, 0, 0], // Actual Neutral: all zeros (no samples)
+				[sourceMatrix[1][0], 0, sourceMatrix[1][1]] // Actual Positive: [Pred Neg, Pred Neu (0), Pred Pos]
+			];
+		}
+
+		// For other sizes, pad with zeros
+		int[][] normalized = new int[3][];
+		for (int i = 0; i < 3; i++)
+		{
+			normalized[i] = new int[3];
+			for (int j = 0; j < 3; j++)
+			{
+				normalized[i][j] = (i < size && j < size) ? sourceMatrix[i][j] : 0;
+			}
+		}
+
+		return normalized;
 	}
 
 	private static string GetCellColor(double percentage)
