@@ -96,7 +96,9 @@ public partial class RagCollections
 
     private async Task ViewDocumentAsync(RagCollectionDocumentInfo document)
     {
-        string fileUrl = $"/admin/rag-documents/{document.DocumentId}/file";
+        // Build full URL to API service for iframe
+        string relativePath = $"admin/rag-documents/{document.DocumentId}/file";
+        string fileUrl = new Uri(Http.BaseAddress!, relativePath).ToString();
 
         var parameters = new DialogParameters<DocumentViewerDialog>
         {

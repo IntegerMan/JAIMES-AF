@@ -90,31 +90,41 @@ public class DocumentChangeDetectorService(
                 // Check if file has changed
                 if (storedMetadata != null && storedMetadata.Hash == currentHash)
                 {
-                    // File hash matches - check if document was successfully cracked
-                    bool isCracked = await IsDocumentCrackedAsync(filePath, cancellationToken);
+                    // File hash matches - check if document was successfully cracked and has stored file
+                    var (isComplete, reenqueueReason) = await CheckDocumentStatusAsync(filePath, cancellationToken);
 
-                    if (isCracked)
+                    if (isComplete)
                     {
-                        // File unchanged and successfully cracked, update last scanned time
+                        // File unchanged and fully processed, update last scanned time
                         string? relativeDirectory = GetRelativeDirectory(filePath, rootDirectory);
                         await UpdateMetadataAsync(filePath, currentHash, relativeDirectory, cancellationToken);
                         summary.FilesUnchanged++;
-                        logger.LogDebug("File unchanged and cracked, skipping: {FilePath}", filePath);
+                        logger.LogDebug("File unchanged and complete, skipping: {FilePath}", filePath);
                         fileActivity?.SetTag("scanner.status", "unchanged");
+                    }
+                    else if (reenqueueReason == "missing_stored_file")
+                    {
+                        // Document is cracked but missing stored file - upload directly without re-cracking
+                        string? relativeDirectory = GetRelativeDirectory(filePath, rootDirectory);
+                        await UploadStoredFileForDocumentAsync(filePath, cancellationToken);
+                        await UpdateMetadataAsync(filePath, currentHash, relativeDirectory, cancellationToken);
+                        summary.FilesEnqueued++; // Count as processed
+                        logger.LogInformation(
+                            "Uploaded stored file for already-cracked document: {FilePath}",
+                            filePath);
+                        fileActivity?.SetTag("scanner.status", "uploaded_stored_file");
                     }
                     else
                     {
-                        // File hash matches but document wasn't cracked (likely failed previously)
-                        // Enqueue for retry
+                        // File hash matches but document wasn't cracked - enqueue for cracking
                         string? relativeDirectory = GetRelativeDirectory(filePath, rootDirectory);
                         await EnqueueDocumentAsync(filePath, relativeDirectory, cancellationToken);
                         await UpdateMetadataAsync(filePath, currentHash, relativeDirectory, cancellationToken);
                         summary.FilesEnqueued++;
                         logger.LogInformation(
-                            "File hash unchanged but not cracked, enqueuing for retry: {FilePath} (Hash: {Hash})",
-                            filePath,
-                            currentHash);
-                        fileActivity?.SetTag("scanner.status", "retry_uncracked");
+                            "File hash unchanged but not cracked, enqueuing for retry: {FilePath}",
+                            filePath);
+                        fileActivity?.SetTag("scanner.status", "retry_not_cracked");
                     }
                 }
                 else
@@ -151,7 +161,7 @@ public class DocumentChangeDetectorService(
             .FirstOrDefaultAsync(x => x.FilePath == filePath, cancellationToken);
     }
 
-    private async Task<bool> IsDocumentCrackedAsync(
+    private async Task<(bool IsComplete, string? ReenqueueReason)> CheckDocumentStatusAsync(
         string filePath,
         CancellationToken cancellationToken)
     {
@@ -159,7 +169,20 @@ public class DocumentChangeDetectorService(
 
         CrackedDocument? crackedDocument = await dbContext.CrackedDocuments
             .FirstOrDefaultAsync(x => x.FilePath == filePath, cancellationToken);
-        return crackedDocument != null && !string.IsNullOrWhiteSpace(crackedDocument.Content);
+
+        // Not cracked at all
+        if (crackedDocument == null || string.IsNullOrWhiteSpace(crackedDocument.Content))
+        {
+            return (false, "not_cracked");
+        }
+
+        // Check if upload is enabled and document is missing its stored file
+        if (options.UploadDocumentsWhenCracking && !crackedDocument.StoredFileId.HasValue)
+        {
+            return (false, "missing_stored_file");
+        }
+
+        return (true, null);
     }
 
     private async Task UpdateMetadataAsync(
@@ -217,6 +240,67 @@ public class DocumentChangeDetectorService(
 
         await messagePublisher.PublishAsync(message, cancellationToken);
         logger.LogDebug("Published CrackDocumentMessage for: {FilePath}", filePath);
+    }
+
+    private async Task UploadStoredFileForDocumentAsync(
+        string filePath,
+        CancellationToken cancellationToken)
+    {
+        await using JaimesDbContext dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        // Find the cracked document
+        CrackedDocument? crackedDocument = await dbContext.CrackedDocuments
+            .FirstOrDefaultAsync(x => x.FilePath == filePath, cancellationToken);
+
+        if (crackedDocument == null)
+        {
+            logger.LogWarning("Cannot upload stored file: CrackedDocument not found for {FilePath}", filePath);
+            return;
+        }
+
+        if (crackedDocument.StoredFileId.HasValue)
+        {
+            logger.LogDebug("Document already has a stored file, skipping upload: {FilePath}", filePath);
+            return;
+        }
+
+        try
+        {
+            FileInfo fileInfo = new(filePath);
+            if (!fileInfo.Exists)
+            {
+                logger.LogWarning("Cannot upload stored file: File not found at {FilePath}", filePath);
+                return;
+            }
+
+            // Read the file bytes
+            byte[] fileBytes = await File.ReadAllBytesAsync(filePath, cancellationToken);
+
+            // Create the stored file
+            StoredFile storedFile = new()
+            {
+                ItemKind = "SourcebookDocument",
+                FileName = fileInfo.Name,
+                ContentType = "application/pdf",
+                BinaryContent = fileBytes,
+                CreatedAt = DateTime.UtcNow,
+                SizeBytes = fileInfo.Length
+            };
+
+            dbContext.StoredFiles.Add(storedFile);
+
+            // Link to the cracked document
+            crackedDocument.StoredFile = storedFile;
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            logger.LogInformation("Successfully uploaded stored file for document: {FilePath} ({Size} bytes)",
+                filePath, fileInfo.Length);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to upload stored file for document: {FilePath}", filePath);
+        }
     }
 
     private static string? GetRelativeDirectory(string filePath, string rootDirectory)
