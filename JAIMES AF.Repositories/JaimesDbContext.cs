@@ -284,6 +284,12 @@ public class JaimesDbContext(DbContextOptions<JaimesDbContext> options) : DbCont
 
             // Create unique index on FilePath for fast lookups
             entity.HasIndex(cd => cd.FilePath).IsUnique();
+
+            // Optional relationship to StoredFile for PDF binary storage
+            entity.HasOne(cd => cd.StoredFile)
+                .WithMany()
+                .HasForeignKey(cd => cd.StoredFileId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<DocumentChunk>(entity =>

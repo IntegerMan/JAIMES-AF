@@ -63,6 +63,7 @@ erDiagram
     TestCaseRun }o--|| Agent : "tested by"
     TestCaseRun }o--|| AgentInstructionVersion : "uses version"
     TestCaseRun |o--o| StoredFile : "has report"
+    CrackedDocument |o--o| StoredFile : "has file"
 
     ClassificationModel }o--|| StoredFile : "stored as"
 
@@ -206,6 +207,7 @@ erDiagram
         int ProcessedChunkCount
         string DocumentKind
         string RulesetId
+        int StoredFileId FK "nullable"
     }
 
     DocumentChunk {
@@ -408,7 +410,7 @@ Stores evaluation metrics from test case runs, similar to `MessageEvaluationMetr
 Tracks source files and their hashes to detect changes and manage rescanning.
 
 ### CrackedDocument
-Stores the full text content and metadata of a "cracked" (parsed) source document.
+Stores the full text content and metadata of a "cracked" (parsed) source document. Optionally links to a `StoredFile` containing the original binary content for viewing in the admin UI.
 
 ### DocumentChunk
 Small, overlapping segments of text from a `CrackedDocument`, each with its own vector embedding for RAG retrieval.

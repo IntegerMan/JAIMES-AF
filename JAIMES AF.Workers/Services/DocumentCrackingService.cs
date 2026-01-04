@@ -1,10 +1,12 @@
 using System.Diagnostics;
+using MattEland.Jaimes.ServiceDefinitions.Configuration;
 using MattEland.Jaimes.ServiceDefinitions.Messages;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace MattEland.Jaimes.Workers.Services;
 
@@ -13,8 +15,11 @@ public class DocumentCrackingService(
     IDbContextFactory<JaimesDbContext> dbContextFactory,
     IMessagePublisher messagePublisher,
     ActivitySource activitySource,
-    IPdfTextExtractor pdfTextExtractor) : IDocumentCrackingService
+    IPdfTextExtractor pdfTextExtractor,
+    IOptions<DocumentCrackingOptions> options) : IDocumentCrackingService
 {
+    private readonly DocumentCrackingOptions _options = options.Value;
+
     public async Task ProcessDocumentAsync(string filePath, string? relativeDirectory, string rulesetId, string documentKind, CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Starting to crack document: {FilePath}", filePath);
@@ -57,6 +62,8 @@ public class DocumentCrackingService(
 
         bool contentChanged = existingDocument == null || existingDocument.Content != contents;
 
+        CrackedDocument documentEntity;
+
         if (existingDocument != null)
         {
             // Update existing document
@@ -74,6 +81,8 @@ public class DocumentCrackingService(
             {
                 existingDocument.IsProcessed = false;
             }
+
+            documentEntity = existingDocument;
         }
         else
         {
@@ -92,22 +101,22 @@ public class DocumentCrackingService(
                 IsProcessed = false
             };
             dbContext.CrackedDocuments.Add(newDocument);
+            documentEntity = newDocument;
+        }
+
+        // Upload document file to database if enabled and document is missing stored file
+        // This handles both new documents and existing documents that need their file uploaded
+        if (_options.UploadDocumentsWhenCracking && documentEntity.StoredFileId == null)
+        {
+            await UploadDocumentFileAsync(dbContext, documentEntity, filePath, fileInfo, cancellationToken);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
         // Get the document ID after save
-        // For existing documents, use the existing entity's ID
-        // For new documents, EF Core populates the Id after SaveChangesAsync
-        int documentId;
-        CrackedDocument? documentForProcessing;
+        int documentId = documentEntity.Id;
 
-        if (existingDocument != null)
-        {
-            documentId = existingDocument.Id;
-            documentForProcessing = existingDocument;
-        }
-        else
+        if (documentId == 0)
         {
             // For new documents, query the database to get the saved document with its ID
             CrackedDocument? savedDocument = await dbContext.CrackedDocuments
@@ -126,7 +135,7 @@ public class DocumentCrackingService(
             }
 
             documentId = savedDocument.Id;
-            documentForProcessing = savedDocument;
+            documentEntity = savedDocument;
         }
 
         logger.LogInformation("Cracked and saved to PostgreSQL: {FilePath} (DocumentId: {DocumentId}, {PageCount} pages, {FileSize} bytes)",
@@ -136,7 +145,7 @@ public class DocumentCrackingService(
         activity?.SetStatus(ActivityStatusCode.Ok);
 
         // Check if document needs processing (not processed yet)
-        bool needsProcessing = !documentForProcessing.IsProcessed;
+        bool needsProcessing = !documentEntity.IsProcessed;
 
         if (needsProcessing)
         {
@@ -147,6 +156,46 @@ public class DocumentCrackingService(
         else
         {
             logger.LogDebug("Document {DocumentId} already processed, skipping enqueue", documentId);
+        }
+    }
+
+    private async Task UploadDocumentFileAsync(
+        JaimesDbContext dbContext,
+        CrackedDocument documentEntity,
+        string filePath,
+        FileInfo fileInfo,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            logger.LogDebug("Uploading document file to database: {FilePath}", filePath);
+
+            // Read the file bytes
+            byte[] fileBytes = await File.ReadAllBytesAsync(filePath, cancellationToken);
+
+            // Create the stored file
+            StoredFile storedFile = new()
+            {
+                ItemKind = "SourcebookDocument",
+                FileName = fileInfo.Name,
+                ContentType = "application/pdf",
+                BinaryContent = fileBytes,
+                CreatedAt = DateTime.UtcNow,
+                SizeBytes = fileInfo.Length
+            };
+
+            dbContext.StoredFiles.Add(storedFile);
+
+            // Link to the cracked document
+            documentEntity.StoredFile = storedFile;
+
+            logger.LogInformation("Document file queued for upload: {FilePath} ({Size} bytes)",
+                filePath, fileInfo.Length);
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't fail the cracking process
+            logger.LogWarning(ex, "Failed to upload document file to database: {FilePath}. Document cracking will continue.", filePath);
         }
     }
 

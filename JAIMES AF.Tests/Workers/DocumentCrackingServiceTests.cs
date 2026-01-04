@@ -112,12 +112,17 @@ public class DocumentCrackingServiceTests
 
             TestDbContextFactory dbContextFactory = new(dbOptions);
 
+            // Create options with default values (UploadDocumentsToDatabase = true)
+            var crackingOptions = Microsoft.Extensions.Options.Options.Create(
+                new MattEland.Jaimes.ServiceDefinitions.Configuration.DocumentCrackingOptions());
+
             Service = new DocumentCrackingService(
                 LoggerMock.Object,
                 dbContextFactory,
                 MessagePublisherMock.Object,
                 _activitySource,
-                PdfTextExtractorMock.Object);
+                PdfTextExtractorMock.Object,
+                crackingOptions);
         }
 
         public void Dispose()

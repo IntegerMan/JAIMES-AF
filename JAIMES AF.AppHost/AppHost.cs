@@ -241,6 +241,14 @@ webApp = webApp
     .WithReference(apiService)
     .WaitFor(apiService);
 
+// Document processing configuration parameters
+// UploadDocumentsWhenCracking: When true, PDF binary content is stored for viewing in admin UI
+bool uploadDocumentsWhenCracking = bool.TryParse(
+                                       configuration["DocumentProcessing:UploadDocumentsWhenCracking"],
+                                       out bool parsed) && parsed
+                                   || !configuration.GetSection("DocumentProcessing:UploadDocumentsWhenCracking")
+                                       .Exists(); // Default to true
+
 IResourceBuilder<ProjectResource> documentCrackerWorker = builder
     .AddProject<Projects.JAIMES_AF_Workers_DocumentCrackerWorker>("document-cracker-worker")
     .WithIconName("DocumentTextExtract")
@@ -250,6 +258,7 @@ IResourceBuilder<ProjectResource> documentCrackerWorker = builder
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
+    .WithEnvironment("DocumentCrackerWorker__UploadDocumentsWhenCracking", uploadDocumentsWhenCracking.ToString())
     .WithParentRelationship(workersGroup);
 
 IResourceBuilder<ProjectResource> documentChangeDetector = builder

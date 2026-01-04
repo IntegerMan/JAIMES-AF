@@ -86,4 +86,14 @@ public class CrackedDocument
     [Required]
     [MaxLength(100)]
     public string RulesetId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the optional ID of the stored file containing the original document binary.
+    /// </summary>
+    public int? StoredFileId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the stored file containing the original document binary.
+    /// </summary>
+    public StoredFile? StoredFile { get; set; }
 }

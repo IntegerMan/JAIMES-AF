@@ -138,6 +138,19 @@
 						</CellTemplate>
 					</TemplateColumn>
 					<PropertyColumn Property="x => x.CrackedAt" Title="Processed" Format="g"/>
+					<TemplateColumn Title="Actions">
+						<CellTemplate>
+							@if (context.Item.HasStoredFile)
+							{
+								<MudTooltip Text="View Document" Placement="Placement.Top">
+									<MudIconButton Icon="@Icons.Material.Filled.Visibility"
+									               Color="Color.Primary"
+									               Size="Size.Small"
+									               OnClick="@(() => ViewDocumentAsync(context.Item))" />
+								</MudTooltip>
+							}
+						</CellTemplate>
+					</TemplateColumn>
 				</Columns>
 				<PagerContent>
 					<MudDataGridPager T="RagCollectionDocumentInfo"/>
