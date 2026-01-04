@@ -63,6 +63,17 @@ public class EvaluatorTaskConsumer(
                     "Message {MessageId} not found in database for evaluator {EvaluatorName}",
                     message.MessageId,
                     message.EvaluatorName);
+                
+                // Send completion notification to prevent UI from showing perpetual "started" state
+                await messageUpdateNotifier.NotifyEvaluatorCompletedAsync(
+                    message.MessageId,
+                    message.GameId,
+                    message.EvaluatorName,
+                    message.EvaluatorIndex,
+                    message.TotalEvaluators,
+                    cancellationToken);
+                
+                activity?.SetStatus(ActivityStatusCode.Error, "Message not found");
                 return;
             }
 
