@@ -28,7 +28,7 @@ public class NotifyClassifierTrainingCompletedEndpoint : Endpoint<ClassifierTrai
         AllowAnonymous(); // Internal endpoint - workers don't have auth
         Description(d => d
             .WithTags("Internal")
-            .Produces(200)
+            .Produces(204)
             .WithSummary("Notifies connected clients about classifier training completion")
             .WithDescription("Called by worker services when classifier training completes."));
     }
