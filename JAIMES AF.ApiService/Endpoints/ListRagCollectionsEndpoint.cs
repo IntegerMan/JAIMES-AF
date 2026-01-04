@@ -95,7 +95,8 @@ public class ListRagCollectionsEndpoint(IDbContextFactory<JaimesDbContext> dbCon
                     EmbeddedChunks = chunks.Embedded,
                     IsFullyProcessed = doc.IsProcessed,
                     CrackedAt = doc.CrackedAt,
-                    SearchResultCount = searchResultCount
+                    SearchResultCount = searchResultCount,
+                    HasStoredFile = doc.StoredFileId.HasValue
                 };
             })
             .OrderBy(d => d.DocumentKind)

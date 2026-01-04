@@ -1,10 +1,10 @@
-namespace MattEland.Jaimes.Workers.DocumentCrackerWorker.Configuration;
+namespace MattEland.Jaimes.ServiceDefinitions.Configuration;
 
-public class DocumentCrackerWorkerOptions
+/// <summary>
+/// Configuration options for the document cracking service.
+/// </summary>
+public class DocumentCrackingOptions
 {
-    public string? SourceDirectory { get; set; }
-    public List<string> SupportedExtensions { get; set; } = [".pdf"];
-
     /// <summary>
     /// When true, documents will have their binary content uploaded when cracked
     /// for viewing in the admin UI. Defaults to true.

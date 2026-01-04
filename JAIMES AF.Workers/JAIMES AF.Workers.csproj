@@ -22,6 +22,7 @@
     <PackageReference Include="UglyToad.PdfPig.DocumentLayoutAnalysis" />
     <PackageReference Include="Qdrant.Client" />
     <PackageReference Include="Microsoft.Extensions.AI" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
     <PackageReference Include="SemanticChunker.NET" />
     <PackageReference Include="drittich.SemanticSlicer" />
   </ItemGroup>

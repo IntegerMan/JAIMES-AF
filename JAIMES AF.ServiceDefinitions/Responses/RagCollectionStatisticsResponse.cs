@@ -59,6 +59,11 @@ public class RagCollectionDocumentInfo
     /// Gets or sets the number of times this document appeared in search results.
     /// </summary>
     public int SearchResultCount { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether this document has a stored file available for viewing.
+    /// </summary>
+    public bool HasStoredFile { get; set; }
 }
 
 /// <summary>
