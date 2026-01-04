@@ -33,4 +33,14 @@
         <ProjectReference Include="..\JAIMES AF.Services\JAIMES AF.ServiceLayer.csproj" />
     </ItemGroup>
 
+    <!-- Bundle pre-trained sentiment model for database seeding -->
+    <!-- Model will be uploaded on first run if not already in database -->
+    <ItemGroup Condition="Exists('..\JAIMES AF.Workers.UserMessageWorker\bin\Debug\net10.0\Result\SentimentModel.zip')">
+        <None Include="..\JAIMES AF.Workers.UserMessageWorker\bin\Debug\net10.0\Result\SentimentModel.zip">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <Link>SentimentModel.zip</Link>
+        </None>
+    </ItemGroup>
+
 </Project>
+
