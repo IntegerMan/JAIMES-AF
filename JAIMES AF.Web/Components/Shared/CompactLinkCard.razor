@@ -1,0 +1,27 @@
+@* Compact action card for admin tool links *@
+
+<MudPaper Class="compact-link-card pa-3" Elevation="1" Style="height: 100%;">
+    <MudStack Spacing="2" Style="height: 100%;">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icon" Color="@IconColor" Size="Size.Medium" />
+            <MudText Typo="Typo.subtitle1" Style="font-weight: 500;">@Title</MudText>
+        </MudStack>
+        @if (!string.IsNullOrEmpty(Description))
+        {
+            <MudText Typo="Typo.caption" Class="text-muted" Style="line-height: 1.3; flex-grow: 1;">@Description</MudText>
+        }
+        <MudButton Variant="Variant.Text" Color="@ButtonColor" Href="@Href" Size="Size.Small" FullWidth="true">
+            @ButtonText
+        </MudButton>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter] public string Icon { get; set; } = Icons.Material.Filled.OpenInNew;
+    [Parameter] public Color IconColor { get; set; } = Color.Primary;
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public string Href { get; set; } = "#";
+    [Parameter] public string ButtonText { get; set; } = "Open";
+    [Parameter] public Color ButtonColor { get; set; } = Color.Primary;
+}

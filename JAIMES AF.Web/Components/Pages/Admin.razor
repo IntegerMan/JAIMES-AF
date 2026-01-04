@@ -1,351 +1,296 @@
 @page "/admin"
-@using MattEland.Jaimes.Web.Components.Shared
 @rendermode InteractiveServer
 
-<PageTitle>Admin</PageTitle>
+@inject HttpClient Http
+@inject ILoggerFactory LoggerFactory
+
+<PageTitle>Admin Dashboard</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
-<MudPaper Class="pa-8" Elevation="2">
-<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-	<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
-</MudStack>
-<MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">Admin</MudText>
-<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">
-	Administrative tools and utilities
-</MudText>
 
-<MudText Typo="Typo.body1" Class="mb-6" Style="line-height: 1.75;">
-	Access administrative functions and testing tools for the JAIMES AF system.
-</MudText>
+	@* Header *@
+	<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
+		<MudStack Spacing="0">
+			<MudBreadcrumbs Items="_breadcrumbs" Separator=">" Class="pa-0" />
+			<MudText Typo="Typo.h5" Style="font-weight: 600;">Admin Dashboard</MudText>
+		</MudStack>
+	</MudStack>
 
-<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Pipeline Status</MudText>
-<PipelineStatusPanel Class="mb-4" />
-<MudGrid Spacing="3" Class="mb-6">
-	<MudItem xs="12" md="6">
-		<UserMessagePipelinePanel />
-	</MudItem>
-	<MudItem xs="12" md="6">
-		<AssistantMessagePipelinePanel />
-	</MudItem>
-</MudGrid>
+	@* Dashboard Row: Pipeline Status + Content Metrics *@
+	<MudGrid Spacing="3" Class="mb-3">
+		<MudItem xs="12" md="6">
+			<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Pipeline Status</MudText>
+			<PipelineStatusPanel Class="mb-4" />
+			<MudGrid Spacing="3" Class="mb-6">
+				<MudItem xs="12" md="6">
+					<UserMessagePipelinePanel />
+				</MudItem>
+				<MudItem xs="12" md="6">
+					<AssistantMessagePipelinePanel />
+				</MudItem>
+			</MudGrid>
+		</MudItem>
+		<MudItem xs="12" md="6">
+			<MudPaper Class="pa-3" Elevation="2" Style="height: 100%;">
+				<MudText Typo="Typo.subtitle2" Class="mb-2 text-muted">Content Overview</MudText>
+				<MudGrid Spacing="2">
+					<MudItem xs="6" sm="3">
+						<MudStack AlignItems="AlignItems.Center" Spacing="0">
+							<MudIcon Icon="@Icons.Material.Filled.SportsEsports" Color="Color.Primary" />
+							<MudText Typo="Typo.h6">@_gamesCount</MudText>
+							<MudText Typo="Typo.caption" Class="text-muted">Games</MudText>
+						</MudStack>
+					</MudItem>
+					<MudItem xs="6" sm="3">
+						<MudStack AlignItems="AlignItems.Center" Spacing="0">
+							<MudIcon Icon="@Icons.Material.Filled.MenuBook" Color="Color.Secondary" />
+							<MudText Typo="Typo.h6">@_scenariosCount</MudText>
+							<MudText Typo="Typo.caption" Class="text-muted">Scenarios</MudText>
+						</MudStack>
+					</MudItem>
+					<MudItem xs="6" sm="3">
+						<MudStack AlignItems="AlignItems.Center" Spacing="0">
+							<MudIcon Icon="@Icons.Material.Filled.Person" Color="Color.Info" />
+							<MudText Typo="Typo.h6">@_playersCount</MudText>
+							<MudText Typo="Typo.caption" Class="text-muted">Characters</MudText>
+						</MudStack>
+					</MudItem>
+					<MudItem xs="6" sm="3">
+						<MudStack AlignItems="AlignItems.Center" Spacing="0">
+							<MudIcon Icon="@Icons.Material.Filled.AutoStories" Color="Color.Success" />
+							<MudText Typo="Typo.h6">@_rulesetsCount</MudText>
+							<MudText Typo="Typo.caption" Class="text-muted">Rulesets</MudText>
+						</MudStack>
+					</MudItem>
+				</MudGrid>
+			</MudPaper>
+		</MudItem>
+	</MudGrid>
 
-<MudDivider Class="my-8"/>
+	@* AI Quality Summary *@
+	<MudPaper Class="pa-3 mb-3" Elevation="1">
+		<MudStack Row="true" Justify="Justify.SpaceAround" AlignItems="AlignItems.Center" Style="flex-wrap: wrap;">
+			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="pa-2">
+				<MudIcon Icon="@Icons.Material.Filled.Feedback" Color="Color.Primary" Size="Size.Large" />
+				<MudStack Spacing="0">
+					<MudText Typo="Typo.h6">@_feedbackCount</MudText>
+					<MudText Typo="Typo.caption" Class="text-muted">Feedback Items</MudText>
+				</MudStack>
+			</MudStack>
+			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="pa-2">
+				<MudIcon Icon="@Icons.Material.Filled.SentimentSatisfied" Color="Color.Secondary" Size="Size.Large" />
+				<MudStack Spacing="0">
+					<MudText Typo="Typo.h6">@_sentimentCount</MudText>
+					<MudText Typo="Typo.caption" Class="text-muted">Sentiments Analyzed</MudText>
+				</MudStack>
+			</MudStack>
+			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="pa-2">
+				<MudIcon Icon="@Icons.Material.Filled.Assessment" Color="Color.Info" Size="Size.Large" />
+				<MudStack Spacing="0">
+					<MudText Typo="Typo.h6">@_metricsCount</MudText>
+					<MudText Typo="Typo.caption" Class="text-muted">Evaluations</MudText>
+				</MudStack>
+			</MudStack>
+			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="pa-2">
+				<MudIcon Icon="@Icons.Material.Filled.Place" Color="Color.Success" Size="Size.Large" />
+				<MudStack Spacing="0">
+					<MudText Typo="Typo.h6">@_locationsCount</MudText>
+					<MudText Typo="Typo.caption" Class="text-muted">Locations</MudText>
+				</MudStack>
+			</MudStack>
+		</MudStack>
+	</MudPaper>
 
-<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Content Management</MudText>
-<MudGrid Spacing="3">
-	<MudItem xs="12" sm="6" md="3">
-		<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Games</MudText>
-			<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-				View and manage
-				active games.
-			</MudText>
-			<MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/games" Class="mt-auto"
-			           FullWidth="true">
-				Manage Games
-			</MudButton>
-		</MudPaper>
-	</MudItem>
+	@* Collapsible Tool Sections *@
+	<MudExpansionPanels Class="admin-expansion-panel" MultiExpansion="true">
 
-	<MudItem xs="12" sm="6" md="3">
-		<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Scenarios</MudText>
-			<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-				Create and edit
-				game scenarios with system prompts and initial instructions.
-			</MudText>
-			<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/scenarios" Class="mt-auto"
-			           FullWidth="true">
-				Manage Scenarios
-			</MudButton>
-		</MudPaper>
-	</MudItem>
+		@* Content Management *@
+		<MudExpansionPanel Text="Content Management" MaxHeight="400">
+			<TitleContent>
+				<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+					<MudIcon Icon="@Icons.Material.Filled.Folder" Color="Color.Primary" />
+					<MudText Typo="Typo.subtitle1" Style="font-weight: 500;">Content Management</MudText>
+					<MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">5</MudChip>
+				</MudStack>
+			</TitleContent>
+			<ChildContent>
+				<MudGrid Spacing="2">
+					<MudItem xs="6" sm="4" md="2">
+						<CompactLinkCard Icon="@Icons.Material.Filled.SportsEsports" IconColor="Color.Primary"
+						                 Title="Games" Href="/games" ButtonText="Manage" />
+					</MudItem>
+					<MudItem xs="6" sm="4" md="2">
+						<CompactLinkCard Icon="@Icons.Material.Filled.MenuBook" IconColor="Color.Secondary"
+						                 Title="Scenarios" Href="/scenarios" ButtonText="Manage" />
+					</MudItem>
+					<MudItem xs="6" sm="4" md="2">
+						<CompactLinkCard Icon="@Icons.Material.Filled.Person" IconColor="Color.Info"
+						                 Title="Players" Href="/players" ButtonText="Manage" />
+					</MudItem>
+					<MudItem xs="6" sm="4" md="2">
+						<CompactLinkCard Icon="@Icons.Material.Filled.AutoStories" IconColor="Color.Success"
+						                 Title="Rulesets" Href="/rulesets" ButtonText="Manage" />
+					</MudItem>
+					<MudItem xs="6" sm="4" md="2">
+						<CompactLinkCard Icon="@Icons.Material.Filled.Place" IconColor="Color.Warning"
+						                 Title="Locations" Href="/admin/locations" ButtonText="View" />
+					</MudItem>
+				</MudGrid>
+			</ChildContent>
+		</MudExpansionPanel>
 
-	<MudItem xs="12" sm="6" md="3">
-		<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Players</MudText>
-			<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-				Create and edit
-				player characters with names, descriptions, and ruleset assignments.
-			</MudText>
-			<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/players" Class="mt-auto"
-			           FullWidth="true">
-				Manage Players
-			</MudButton>
-		</MudPaper>
-	</MudItem>
+		@* Agent Management *@
+		<MudExpansionPanel Text="Agent Management" MaxHeight="400">
+			<TitleContent>
+				<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+					<MudIcon Icon="@Icons.Material.Filled.SmartToy" Color="Color.Secondary" />
+					<MudText Typo="Typo.subtitle1" Style="font-weight: 500;">Agent Management</MudText>
+					<MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Outlined">7</MudChip>
+				</MudStack>
+			</TitleContent>
+			<ChildContent>
+				<MudGrid Spacing="2">
+					<MudItem xs="6" sm="4" md="2">
+						<CompactLinkCard Icon="@Icons.Material.Filled.SmartToy" IconColor="Color.Secondary"
+						                 Title="Agents" Href="/agents" ButtonText="Manage" />
+					</MudItem>
+					<MudItem xs="6" sm="4" md="2">
+						<CompactLinkCard Icon="@Icons.Material.Filled.Build" IconColor="Color.Primary"
+						                 Title="Tool Usage" Href="/admin/tools" ButtonText="View" />
+					</MudItem>
+					<MudItem xs="6" sm="4" md="2">
+						<CompactLinkCard Icon="@Icons.Material.Filled.RateReview" IconColor="Color.Info"
+						                 Title="Evaluators" Href="/admin/evaluators" ButtonText="Manage" />
+					</MudItem>
+					<MudItem xs="6" sm="4" md="2">
+						<CompactLinkCard Icon="@Icons.Material.Filled.Assessment" IconColor="Color.Success"
+						                 Title="Metrics" Href="/admin/metrics" ButtonText="View" />
+					</MudItem>
+					<MudItem xs="6" sm="4" md="2">
+						<CompactLinkCard Icon="@Icons.Material.Filled.Feedback" IconColor="Color.Warning"
+						                 Title="Feedback" Href="/admin/feedback" ButtonText="View" />
+					</MudItem>
+					<MudItem xs="6" sm="4" md="2">
+						<CompactLinkCard Icon="@Icons.Material.Filled.SentimentSatisfied" IconColor="Color.Error"
+						                 Title="Sentiments" Href="/admin/sentiments" ButtonText="View" />
+					</MudItem>
+					<MudItem xs="6" sm="4" md="2">
+						<CompactLinkCard Icon="@Icons.Material.Filled.ModelTraining" IconColor="Color.Primary"
+						                 Title="ML Models" Href="/admin/classification-models" ButtonText="View" />
+					</MudItem>
+				</MudGrid>
+			</ChildContent>
+		</MudExpansionPanel>
 
-	<MudItem xs="12" sm="6" md="3">
-		<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Rulesets</MudText>
-			<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-				Create and edit
-				game rulesets that define different game systems and mechanics.
-			</MudText>
-			<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/rulesets" Class="mt-auto"
-			           FullWidth="true">
-				Manage Rulesets
-			</MudButton>
-		</MudPaper>
-	</MudItem>
+		@* Testing & Diagnostics *@
+		<MudExpansionPanel Text="Testing & Diagnostics" MaxHeight="500">
+			<TitleContent>
+				<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+					<MudIcon Icon="@Icons.Material.Filled.BugReport" Color="Color.Info" />
+					<MudText Typo="Typo.subtitle1" Style="font-weight: 500;">Testing & Diagnostics</MudText>
+					<MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">9</MudChip>
+				</MudStack>
+			</TitleContent>
+			<ChildContent>
+				<MudGrid Spacing="2">
+					<MudItem xs="6" sm="4" md="2">
+						<CompactLinkCard Icon="@Icons.Material.Filled.Science" IconColor="Color.Info"
+						                 Title="Tool Testing" Href="/admin/tool-test" ButtonText="Test" />
+					</MudItem>
+					<MudItem xs="6" sm="4" md="2">
+						<CompactLinkCard Icon="@Icons.Material.Filled.Search" IconColor="Color.Primary"
+						                 Title="Rules Search" Href="/tools/rules-search" ButtonText="Test" />
+					</MudItem>
+					<MudItem xs="6" sm="4" md="2">
+						<CompactLinkCard Icon="@Icons.Material.Filled.Forum" IconColor="Color.Secondary"
+						                 Title="Conversation Search" Href="/tools/conversation-search" ButtonText="Test" />
+					</MudItem>
+					<MudItem xs="6" sm="4" md="2">
+						<CompactLinkCard Icon="@Icons.Material.Filled.LocationOn" IconColor="Color.Success"
+						                 Title="Location Lookup" Href="/tools/location-lookup" ButtonText="Test" />
+					</MudItem>
+					<MudItem xs="6" sm="4" md="2">
+						<CompactLinkCard Icon="@Icons.Material.Filled.EditLocation" IconColor="Color.Warning"
+						                 Title="Location Mgmt" Href="/tools/location-management" ButtonText="Test" />
+					</MudItem>
+					<MudItem xs="6" sm="4" md="2">
+						<CompactLinkCard Icon="@Icons.Material.Filled.RateReview" IconColor="Color.Error"
+						                 Title="Test Evaluators" Href="/admin/evaluators/test" ButtonText="Test" />
+					</MudItem>
+					<MudItem xs="6" sm="4" md="2">
+						<CompactLinkCard Icon="@Icons.Material.Filled.Storage" IconColor="Color.Primary"
+						                 Title="RAG Collections" Href="/admin/rag-collections" ButtonText="View" />
+					</MudItem>
+					<MudItem xs="6" sm="4" md="2">
+						<CompactLinkCard Icon="@Icons.Material.Filled.Checklist" IconColor="Color.Success"
+						                 Title="Test Cases" Href="/admin/test-cases" ButtonText="Manage" />
+					</MudItem>
+					<MudItem xs="6" sm="4" md="2">
+						<CompactLinkCard Icon="@Icons.Material.Filled.Summarize" IconColor="Color.Info"
+						                 Title="Test Reports" Href="/admin/test-reports" ButtonText="View" />
+					</MudItem>
+				</MudGrid>
+			</ChildContent>
+		</MudExpansionPanel>
 
-	<MudItem xs="12" sm="6" md="3">
-		<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Locations</MudText>
-			<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-				Browse and edit
-				locations created by the AI during gameplay.
-			</MudText>
-			<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/admin/locations" Class="mt-auto"
-			           FullWidth="true">
-				View Locations
-			</MudButton>
-		</MudPaper>
-	</MudItem>
-</MudGrid>
+	</MudExpansionPanels>
 
-<MudDivider Class="my-8"/>
-
-<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Agent Management</MudText>
-<MudGrid Spacing="3">
-	<MudItem xs="12" sm="6" md="3">
-		<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Agents</MudText>
-			<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-				Create and manage
-				AI agents with their instruction versions.
-			</MudText>
-			<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/agents" Class="mt-auto"
-			           FullWidth="true">
-				Manage Agents
-			</MudButton>
-		</MudPaper>
-	</MudItem>
-
-	<MudItem xs="12" sm="6" md="3">
-		<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Tool Usage</MudText>
-			<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-				View tool call
-				statistics and usage metrics across all agents.
-			</MudText>
-			<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/admin/tools" Class="mt-auto"
-			           FullWidth="true">
-				View Tool Usage
-			</MudButton>
-		</MudPaper>
-	</MudItem>
-
-	<MudItem xs="12" sm="6" md="3">
-		<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Evaluators</MudText>
-			<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-				View registered
-				AI evaluators and their aggregate performance metrics.
-			</MudText>
-			<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/admin/evaluators" Class="mt-auto"
-			           FullWidth="true">
-				Manage Evaluators
-			</MudButton>
-		</MudPaper>
-	</MudItem>
-	<MudItem xs="12" sm="6" md="3">
-		<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Evaluation Metrics</MudText>
-			<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-				View AI response
-				evaluation metrics and quality scores.
-			</MudText>
-			<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/admin/metrics"
-			           Class="mt-auto" FullWidth="true">
-				View Metrics
-			</MudButton>
-		</MudPaper>
-	</MudItem>
-
-	<MudItem xs="12" sm="6" md="3">
-		<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Feedback</MudText>
-			<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-				View and manage
-				user feedback reports from game sessions.
-			</MudText>
-			<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/admin/feedback"
-			           Class="mt-auto" FullWidth="true">
-				View Feedback
-			</MudButton>
-		</MudPaper>
-	</MudItem>
-
-	<MudItem xs="12" sm="6" md="3">
-		<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Sentiments</MudText>
-			<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-				View and manage
-				user message sentiment analysis results.
-			</MudText>
-			<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/admin/sentiments"
-			           Class="mt-auto" FullWidth="true">
-				View Sentiments
-			</MudButton>
-		</MudPaper>
-	</MudItem>
-
-	<MudItem xs="12" sm="6" md="3">
-		<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Classification Models</MudText>
-			<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-				View ML classification
-				models stored in the database for sentiment analysis.
-			</MudText>
-			<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/admin/classification-models"
-			           Class="mt-auto" FullWidth="true">
-				View Models
-			</MudButton>
-		</MudPaper>
-	</MudItem>
-</MudGrid>
-
-<MudDivider Class="my-8"/>
-
-<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Testing & Diagnostics</MudText>
-<MudGrid Spacing="3">
-	<MudItem xs="12" sm="6" md="3">
-		<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Tool Testing</MudText>
-			<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-				Test any registered AI tool
-				with custom parameters and view raw results.
-			</MudText>
-			<MudButton Variant="Variant.Filled" Color="Color.Info" Href="/admin/tool-test"
-			           Class="mt-auto" FullWidth="true">
-				Test Tools
-			</MudButton>
-		</MudPaper>
-	</MudItem>
-
-	<MudItem xs="12" sm="6" md="3">
-		<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Rules Search Test</MudText>
-			<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-				Test and debug
-				RAG search capabilities for rulesets. View search results, citations, and documents.
-			</MudText>
-			<MudButton Variant="Variant.Filled" Color="Color.Info" Href="/tools/rules-search"
-			           Class="mt-auto" FullWidth="true">
-				Test Rules Search
-			</MudButton>
-		</MudPaper>
-	</MudItem>
-
-	<MudItem xs="12" sm="6" md="3">
-		<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Conversation Search Test</MudText>
-			<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-				Test and debug
-				conversation search capabilities. Search game transcripts using semantic search.
-			</MudText>
-			<MudButton Variant="Variant.Filled" Color="Color.Info" Href="/tools/conversation-search"
-			           Class="mt-auto" FullWidth="true">
-				Test Conversation Search
-			</MudButton>
-		</MudPaper>
-	</MudItem>
-
-	<MudItem xs="12" sm="6" md="3">
-		<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Location Lookup Test</MudText>
-			<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-				Test location lookup
-				and listing tools for AI storytelling.
-			</MudText>
-			<MudButton Variant="Variant.Filled" Color="Color.Info" Href="/tools/location-lookup"
-			           Class="mt-auto" FullWidth="true">
-				Test Location Lookup
-			</MudButton>
-		</MudPaper>
-	</MudItem>
-
-	<MudItem xs="12" sm="6" md="3">
-		<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Location Management Test</MudText>
-			<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-				Test location creation
-				and management tools.
-			</MudText>
-			<MudButton Variant="Variant.Filled" Color="Color.Info" Href="/tools/location-management"
-			           Class="mt-auto" FullWidth="true">
-				Test Location Management
-			</MudButton>
-		</MudPaper>
-	</MudItem>
-
-	<MudItem xs="12" sm="6" md="3">
-		<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Test Evaluators</MudText>
-			<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-				Test AI evaluators against sample responses
-				and debug evaluation behavior.
-			</MudText>
-			<MudButton Variant="Variant.Filled" Color="Color.Info" Href="/admin/evaluators/test"
-			           Class="mt-auto" FullWidth="true">
-				Test Evaluators
-			</MudButton>
-		</MudPaper>
-	</MudItem>
-
-	<MudItem xs="12" sm="6" md="3">
-		<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">RAG Collections</MudText>
-			<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-				View indexed documents, chunks, embeddings, and query statistics for RAG collections.
-			</MudText>
-			<MudButton Variant="Variant.Filled" Color="Color.Info" Href="/admin/rag-collections"
-			           Class="mt-auto" FullWidth="true">
-				View RAG Collections
-			</MudButton>
-		</MudPaper>
-	</MudItem>
-
-	<MudItem xs="12" sm="6" md="3">
-		<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Test Cases</MudText>
-			<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-				Manage test cases for agent evaluation. Run agents against specific messages to verify behavior.
-			</MudText>
-			<MudButton Variant="Variant.Filled" Color="Color.Success" Href="/admin/test-cases"
-			           Class="mt-auto" FullWidth="true">
-				Manage Test Cases
-			</MudButton>
-		</MudPaper>
-	</MudItem>
-
-	<MudItem xs="12" sm="6" md="3">
-		<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-			<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Test Reports</MudText>
-			<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-				Browse stored test execution reports and view evaluation diagnostics.
-			</MudText>
-			<MudButton Variant="Variant.Filled" Color="Color.Success" Href="/admin/test-reports"
-			           Class="mt-auto" FullWidth="true">
-				View Reports
-			</MudButton>
-		</MudPaper>
-	</MudItem>
-</MudGrid>
-</MudPaper>
 </MudContainer>
 
 @code {
 	private List<BreadcrumbItem> _breadcrumbs = new();
 
-	protected override void OnInitialized()
+	private int _gamesCount;
+	private int _scenariosCount;
+	private int _playersCount;
+	private int _rulesetsCount;
+	private int _feedbackCount;
+	private int _sentimentCount;
+	private int _metricsCount;
+	private int _locationsCount;
+
+	protected override async Task OnInitializedAsync()
 	{
 		_breadcrumbs = new List<BreadcrumbItem>
 		{
 			new BreadcrumbItem("Home", href: "/"),
 			new BreadcrumbItem("Admin", href: null, disabled: true)
 		};
+
+		await LoadMetricsAsync();
 	}
 
+	private async Task LoadMetricsAsync()
+	{
+		var logger = LoggerFactory.CreateLogger("Admin");
+
+		try
+		{
+			// Fetch content counts in parallel
+			var gamesTask = Http.GetFromJsonAsync<ListGamesResponse>("/games");
+			var scenariosTask = Http.GetFromJsonAsync<ScenarioListResponse>("/scenarios");
+			var playersTask = Http.GetFromJsonAsync<PlayerListResponse>("/players");
+			var rulesetsTask = Http.GetFromJsonAsync<RulesetListResponse>("/rulesets");
+			var feedbackTask = Http.GetFromJsonAsync<FeedbackListResponse>("/admin/feedback?pageSize=1");
+			var sentimentTask = Http.GetFromJsonAsync<SentimentListResponse>("/admin/sentiments?pageSize=1");
+			var metricsTask = Http.GetFromJsonAsync<EvaluationMetricListResponse>("/admin/metrics?pageSize=1");
+			var locationsTask = Http.GetFromJsonAsync<LocationListResponse>("/admin/locations");
+
+			await Task.WhenAll(gamesTask, scenariosTask, playersTask, rulesetsTask,
+			                   feedbackTask, sentimentTask, metricsTask, locationsTask);
+
+			_gamesCount = gamesTask.Result?.Games?.Length ?? 0;
+			_scenariosCount = scenariosTask.Result?.Scenarios?.Length ?? 0;
+			_playersCount = playersTask.Result?.Players?.Length ?? 0;
+			_rulesetsCount = rulesetsTask.Result?.Rulesets?.Length ?? 0;
+			_feedbackCount = feedbackTask.Result?.TotalCount ?? 0;
+			_sentimentCount = sentimentTask.Result?.TotalCount ?? 0;
+			_metricsCount = metricsTask.Result?.TotalCount ?? 0;
+			_locationsCount = locationsTask.Result?.Locations?.Length ?? 0;
+		}
+		catch (Exception ex)
+		{
+			logger.LogError(ex, "Failed to load admin metrics");
+		}
+	}
 }

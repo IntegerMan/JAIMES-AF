@@ -1,6 +1,6 @@
 ﻿@inherits LayoutComponentBase
 
-<MudThemeProvider/>
+<MudThemeProvider Theme="_theme"/>
 <MudPopoverProvider/>
 <MudDialogProvider/>
 <MudSnackbarProvider/>
@@ -37,3 +37,28 @@
 	<a href="" class="reload">Reload</a>
 	<a class="dismiss">🗙</a>
 </div>
+
+@code {
+	private readonly MudTheme _theme = new()
+	{
+		PaletteLight = new PaletteLight
+		{
+			Primary = "#7B2CBF",           // Purple
+			Secondary = "#4361EE",         // Blue
+			Tertiary = "#4CC9F0",          // Light Blue
+			Info = "#06D6A0",              // Sea Foam / Teal
+			Success = "#06D6A0",           // Green
+			Warning = "#FFD60A",           // Yellow
+			Error = "#EF476F",             // Red/Pink
+			Dark = "#2B2D42",              // Dark text
+			TextPrimary = "#2B2D42",
+			TextSecondary = "#6C757D",
+			Background = "#F8F9FA",
+			Surface = "#FFFFFF",
+			AppbarBackground = "#7B2CBF",
+			AppbarText = "#FFFFFF",
+			DrawerBackground = "#F8F9FA",
+			DrawerText = "#2B2D42"
+		}
+	};
+}

@@ -1,175 +1,190 @@
-﻿@page "/"
+@page "/"
 
-<PageTitle>Home</PageTitle>
+<PageTitle>JAIMES AF - AI Game Master</PageTitle>
 
 @inject HttpClient Http
 @inject ILoggerFactory LoggerFactory
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
-	<MudPaper Class="pa-8" Elevation="2">
-		<MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">Welcome to JAIMES AF</MudText>
-		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">
-			Join AI in Making Epic Stories —
-			Agent Framework edition
-		</MudText>
 
-		<MudText Typo="Typo.body1" Class="mb-6" Style="line-height: 1.75;">
-			JAIMES AF offers a single-player roleplaying experience powered by an AI game master. Create or select a
-			scenario, choose a player character, and start chatting with your AI Game Master. The AI will craft an
-			immersive story that adapts to your choices in real-time.
-		</MudText>
-
-		<MudGrid Class="mb-8" Justify="Justify.Center">
-			<MudItem xs="12" md="8" Class="text-center">
-				<MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" Href="/games/new"
-				           Class="px-8 py-4 mb-3 mr-3" Style="font-size: 1.1rem; font-weight: 500;">
-					Start New Game
-				</MudButton>
-
-				@if (_lastPlayedGame != null)
-				{
-					<MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Large"
-					           Href="@($"/games/{_lastPlayedGame.GameId}")"
-					           Class="px-8 py-4 mb-3" Style="font-size: 1.1rem; font-weight: 500;">
-						Continue: @_lastPlayedGame.Title
-					</MudButton>
-				}
-
-				<MudText Typo="Typo.body2" Class="text-muted mt-2">
-					or
-					<MudLink Href="/games" Typo="Typo.body2">view existing games</MudLink>
+	@* Hero Section *@
+	<MudPaper Class="hero-gradient pa-6 mb-4" Elevation="3">
+		<MudGrid>
+			<MudItem xs="12" md="8">
+				<MudText Typo="Typo.h3" Style="font-weight: 700; color: white;" Class="mb-2">
+					JAIMES AF
 				</MudText>
+				<MudText Typo="Typo.h6" Style="color: rgba(255,255,255,0.9); font-weight: 400;" Class="mb-3">
+					Join AI in Making Epic Stories — Agent Framework
+				</MudText>
+				<MudText Typo="Typo.body1" Style="color: rgba(255,255,255,0.85); max-width: 600px;" Class="mb-4">
+					Experience AI-powered tabletop roleplaying with an intelligent Game Master that adapts to your choices in real-time.
+				</MudText>
+				<MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+					<MudButton Variant="Variant.Filled" Size="Size.Large" Href="/games/new"
+					           StartIcon="@Icons.Material.Filled.PlayArrow"
+					           Style="font-weight: 600;">
+						Start New Game
+					</MudButton>
+					@if (_lastPlayedGame != null)
+					{
+						<MudButton Variant="Variant.Outlined" Size="Size.Large"
+						           Href="@($"/games/{_lastPlayedGame.GameId}")"
+						           StartIcon="@Icons.Material.Filled.Restore">
+							Continue: @_lastPlayedGame.Title
+						</MudButton>
+					}
+				</MudStack>
+			</MudItem>
+			<MudItem xs="12" md="4" Class="d-flex align-center justify-center">
+				<MudIcon Icon="@Icons.Material.Filled.AutoAwesome"
+				         Style="font-size: 120px; color: rgba(255,255,255,0.2);" />
 			</MudItem>
 		</MudGrid>
+	</MudPaper>
 
-		@code {
-			private GameInfoResponse? _lastPlayedGame;
+	@* Metrics Dashboard *@
+	<MudGrid Spacing="3" Class="mb-4">
+		<MudItem xs="6" md="3">
+			<MetricCard Icon="@Icons.Material.Filled.SportsEsports"
+			            IconColor="Color.Primary"
+			            Value="@_gamesCount.ToString()"
+			            Label="Active Games" />
+		</MudItem>
+		<MudItem xs="6" md="3">
+			<MetricCard Icon="@Icons.Material.Filled.MenuBook"
+			            IconColor="Color.Secondary"
+			            Value="@_scenariosCount.ToString()"
+			            Label="Scenarios" />
+		</MudItem>
+		<MudItem xs="6" md="3">
+			<MetricCard Icon="@Icons.Material.Filled.Person"
+			            IconColor="Color.Info"
+			            Value="@_playersCount.ToString()"
+			            Label="Characters" />
+		</MudItem>
+		<MudItem xs="6" md="3">
+			<MetricCard Icon="@Icons.Material.Filled.AutoStories"
+			            IconColor="Color.Success"
+			            Value="@_rulesetsCount.ToString()"
+			            Label="Rulesets" />
+		</MudItem>
+	</MudGrid>
 
-			protected override async Task OnInitializedAsync()
-			{
-				try
-				{
-					var response = await Http.GetAsync("/games/latest");
-					if (response.IsSuccessStatusCode)
-					{
-						_lastPlayedGame = await response.Content.ReadFromJsonAsync<GameInfoResponse>();
-					}
-				}
-				catch (Exception ex)
-				{
-					LoggerFactory.CreateLogger("Home").LogError(ex, "Failed to load last played game");
-				}
-			}
-
-		}
-
-		<MudDivider Class="my-8"/>
-
-		<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Manage Your Content</MudText>
-		<MudGrid Spacing="3">
-			<MudItem xs="12" sm="6" md="4">
-				<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-					<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Play Games</MudText>
-					<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-						Start a new
-						game or continue an existing one. Chat with your AI Game Master in real-time.
+	@* Quick Actions *@
+	<MudGrid Spacing="3" Class="mb-4">
+		<MudItem xs="12" md="4">
+			<MudPaper Class="quick-action-card pa-4" Elevation="2" Style="height: 100%;">
+				<MudStack Spacing="2">
+					<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+						<MudIcon Icon="@Icons.Material.Filled.SportsEsports" Color="Color.Primary" Size="Size.Large" />
+						<MudText Typo="Typo.h6">Play Games</MudText>
+					</MudStack>
+					<MudText Typo="Typo.body2" Class="text-muted">
+						Start new adventures or continue existing ones with your AI Game Master.
 					</MudText>
-					<MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/games" Class="mt-auto"
-					           FullWidth="true">
-						Continue Game
+					<MudSpacer />
+					<MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/games" FullWidth="true">
+						View Games
 					</MudButton>
-				</MudPaper>
-			</MudItem>
-
-			<MudItem xs="12" sm="6" md="4">
-				<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-					<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Scenarios</MudText>
-					<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-						Create and edit
-						game scenarios with system prompts and initial instructions.
+				</MudStack>
+			</MudPaper>
+		</MudItem>
+		<MudItem xs="12" md="4">
+			<MudPaper Class="quick-action-card pa-4" Elevation="2" Style="height: 100%;">
+				<MudStack Spacing="2">
+					<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+						<MudIcon Icon="@Icons.Material.Filled.MenuBook" Color="Color.Secondary" Size="Size.Large" />
+						<MudText Typo="Typo.h6">Scenarios</MudText>
+					</MudStack>
+					<MudText Typo="Typo.body2" Class="text-muted">
+						Create story seeds with prompts that guide the AI's storytelling.
 					</MudText>
-					<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/scenarios" Class="mt-auto"
-					           FullWidth="true">
+					<MudSpacer />
+					<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/scenarios" FullWidth="true">
 						Manage Scenarios
 					</MudButton>
-				</MudPaper>
-			</MudItem>
-
-			<MudItem xs="12" sm="6" md="4">
-				<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-					<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Players</MudText>
-					<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-						Create and edit
-						player characters with names, descriptions, and ruleset assignments.
+				</MudStack>
+			</MudPaper>
+		</MudItem>
+		<MudItem xs="12" md="4">
+			<MudPaper Class="quick-action-card pa-4" Elevation="2" Style="height: 100%;">
+				<MudStack Spacing="2">
+					<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+						<MudIcon Icon="@Icons.Material.Filled.Person" Color="Color.Info" Size="Size.Large" />
+						<MudText Typo="Typo.h6">Characters</MudText>
+					</MudStack>
+					<MudText Typo="Typo.body2" Class="text-muted">
+						Create player characters that the AI weaves into your story.
 					</MudText>
-					<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/players" Class="mt-auto"
-					           FullWidth="true">
-						Manage Players
+					<MudSpacer />
+					<MudButton Variant="Variant.Filled" Color="Color.Info" Href="/players" FullWidth="true">
+						Manage Characters
 					</MudButton>
-				</MudPaper>
-			</MudItem>
-		</MudGrid>
+				</MudStack>
+			</MudPaper>
+		</MudItem>
+	</MudGrid>
 
-		<MudDivider Class="my-8"/>
-
-		<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Administration</MudText>
-		<MudGrid Spacing="3" Class="mb-8">
-			<MudItem xs="12" sm="6" md="3">
-				<MudPaper Class="pa-5" Elevation="2" Style="height: 100%;">
-					<MudText Typo="Typo.h6" GutterBottom="true" Class="mb-3">Admin</MudText>
-					<MudText Typo="Typo.body2" Class="mb-4" Style="line-height: 1.6; min-height: 3.2em;">
-						Access
-						administrative tools, content management, and testing utilities.
-					</MudText>
-					<MudButton Variant="Variant.Filled" Color="Color.Info" Href="/admin" Class="mt-auto"
-					           FullWidth="true">
-						Admin Panel
-					</MudButton>
-				</MudPaper>
-			</MudItem>
-		</MudGrid>
-
-		<MudDivider Class="my-8"/>
-
-		<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">How It Works</MudText>
-		<MudList T="string" Dense="false" Class="mb-4">
-			<MudListItem T="string" Class="py-2">
-				<MudText Typo="Typo.body2" Style="line-height: 1.6;">
-					<strong>Rulesets:</strong> Define game systems and mechanics that the AI Game Master will use to run
-					your games.
-				</MudText>
-			</MudListItem>
-			<MudListItem T="string" Class="py-2">
-				<MudText Typo="Typo.body2" Style="line-height: 1.6;">
-					<strong>Scenarios:</strong> Create story seeds with system prompts and initial instructions that
-					guide the AI's storytelling.
-				</MudText>
-			</MudListItem>
-			<MudListItem T="string" Class="py-2">
-				<MudText Typo="Typo.body2" Style="line-height: 1.6;">
-					<strong>Players:</strong> Create player characters with names and descriptions that the AI will
-					incorporate into the story.
-				</MudText>
-			</MudListItem>
-			<MudListItem T="string" Class="py-2">
-				<MudText Typo="Typo.body2" Style="line-height: 1.6;">
-					<strong>Games:</strong> Start a new game by selecting a scenario and player. Chat with the AI Game
-					Master in real-time and watch your story unfold.
-				</MudText>
-			</MudListItem>
-			<MudListItem T="string" Class="py-2">
-				<MudText Typo="Typo.body2" Style="line-height: 1.6;">
-					<strong>AI-Powered:</strong> Built on Microsoft Agent Framework, the AI adapts the story dynamically
-					based on your choices and interactions.
-				</MudText>
-			</MudListItem>
-		</MudList>
-
-		<MudDivider Class="my-6"/>
-
-		<MudText Typo="Typo.caption" Class="text-muted text-center" Style="opacity: 0.7;">
-			Powered by .NET and Microsoft
-			Agent Framework
-		</MudText>
+	@* Feature Highlights *@
+	<MudPaper Class="feature-bar pa-3" Elevation="1">
+		<MudStack Row="true" Justify="Justify.SpaceAround" AlignItems="AlignItems.Center" Style="flex-wrap: wrap;">
+			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="feature-item">
+				<MudIcon Icon="@Icons.Material.Filled.Psychology" Color="Color.Primary" />
+				<MudText Typo="Typo.body2" Style="font-weight: 500;">AI-Powered Storytelling</MudText>
+			</MudStack>
+			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="feature-item">
+				<MudIcon Icon="@Icons.Material.Filled.Public" Color="Color.Secondary" />
+				<MudText Typo="Typo.body2" Style="font-weight: 500;">Dynamic Worlds</MudText>
+			</MudStack>
+			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="feature-item">
+				<MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Color="Color.Info" />
+				<MudText Typo="Typo.body2" Style="font-weight: 500;">Your Story, Your Way</MudText>
+			</MudStack>
+			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="feature-item">
+				<MudIcon Icon="@Icons.Material.Filled.Memory" Color="Color.Success" />
+				<MudText Typo="Typo.body2" Style="font-weight: 500;">Microsoft Agent Framework</MudText>
+			</MudStack>
+		</MudStack>
 	</MudPaper>
+
 </MudContainer>
+
+@code {
+	private GameInfoResponse? _lastPlayedGame;
+	private int _gamesCount;
+	private int _scenariosCount;
+	private int _playersCount;
+	private int _rulesetsCount;
+
+	protected override async Task OnInitializedAsync()
+	{
+		var logger = LoggerFactory.CreateLogger("Home");
+
+		// Fetch all metrics in parallel
+		var gamesTask = Http.GetFromJsonAsync<ListGamesResponse>("/games");
+		var scenariosTask = Http.GetFromJsonAsync<ScenarioListResponse>("/scenarios");
+		var playersTask = Http.GetFromJsonAsync<PlayerListResponse>("/players");
+		var rulesetsTask = Http.GetFromJsonAsync<RulesetListResponse>("/rulesets");
+		var latestGameTask = Http.GetAsync("/games/latest");
+
+		try
+		{
+			await Task.WhenAll(gamesTask, scenariosTask, playersTask, rulesetsTask, latestGameTask);
+
+			_gamesCount = gamesTask.Result?.Games?.Length ?? 0;
+			_scenariosCount = scenariosTask.Result?.Scenarios?.Length ?? 0;
+			_playersCount = playersTask.Result?.Players?.Length ?? 0;
+			_rulesetsCount = rulesetsTask.Result?.Rulesets?.Length ?? 0;
+
+			if (latestGameTask.Result.IsSuccessStatusCode)
+			{
+				_lastPlayedGame = await latestGameTask.Result.Content.ReadFromJsonAsync<GameInfoResponse>();
+			}
+		}
+		catch (Exception ex)
+		{
+			logger.LogError(ex, "Failed to load home page data");
+		}
+	}
+}

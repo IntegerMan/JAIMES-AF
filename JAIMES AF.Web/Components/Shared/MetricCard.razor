@@ -1,0 +1,16 @@
+@* Reusable metric display card for dashboard views *@
+
+<MudPaper Class="metric-card pa-4 text-center" Elevation="2">
+    <MudStack AlignItems="AlignItems.Center" Spacing="1">
+        <MudIcon Icon="@Icon" Size="Size.Large" Color="@IconColor" />
+        <MudText Typo="Typo.h4" Style="font-weight: 600;">@Value</MudText>
+        <MudText Typo="Typo.caption" Class="text-muted">@Label</MudText>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter] public string Icon { get; set; } = Icons.Material.Filled.Info;
+    [Parameter] public Color IconColor { get; set; } = Color.Primary;
+    [Parameter] public string Value { get; set; } = "0";
+    [Parameter] public string Label { get; set; } = string.Empty;
+}

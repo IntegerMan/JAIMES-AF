@@ -89,3 +89,130 @@ h1:focus {
     background-color: rgba(0, 0, 0, 0.05) !important;
     font-style: italic;
 }
+
+/* ======================================
+   Fantasy Theme Styles for JAIMES AF
+   ====================================== */
+
+/* Hero gradient section */
+.hero-gradient {
+    background: linear-gradient(135deg, #7B2CBF 0%, #4361EE 50%, #4CC9F0 100%);
+    color: white;
+    border-radius: 12px;
+}
+
+.hero-gradient .mud-button-root.mud-button-filled {
+    background-color: rgba(255, 255, 255, 0.95);
+    color: #7B2CBF;
+}
+
+.hero-gradient .mud-button-root.mud-button-filled:hover {
+    background-color: #ffffff;
+}
+
+.hero-gradient .mud-button-root.mud-button-outlined {
+    border-color: rgba(255, 255, 255, 0.8);
+    color: white;
+}
+
+.hero-gradient .mud-button-root.mud-button-outlined:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-color: white;
+}
+
+/* Metric card styling */
+.metric-card {
+    transition: transform 0.2s ease, border-color 0.2s ease;
+    border: 2px solid transparent;
+    border-radius: 8px;
+}
+
+.metric-card:hover {
+    transform: translateY(-4px);
+    border-color: #FFD60A;
+}
+
+/* Quick action cards */
+.quick-action-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-radius: 8px;
+    border-left: 4px solid #7B2CBF;
+}
+
+.quick-action-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(123, 44, 191, 0.15);
+}
+
+/* Feature bar */
+.feature-bar {
+    background: linear-gradient(to right, #f8f9fa, #ffffff);
+    border-left: 4px solid #7B2CBF;
+    border-radius: 8px;
+}
+
+.feature-item {
+    padding: 12px 24px;
+    border-right: 1px solid #e0e0e0;
+}
+
+.feature-item:last-child {
+    border-right: none;
+}
+
+/* Compact link cards for admin */
+.compact-link-card {
+    min-height: 110px;
+    transition: all 0.2s ease;
+    border-radius: 8px;
+}
+
+.compact-link-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+/* Admin dashboard sections */
+.admin-section-header {
+    border-bottom: 2px solid #7B2CBF;
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+}
+
+/* Expansion panel customization */
+.admin-expansion-panel .mud-expand-panel {
+    margin-bottom: 8px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.admin-expansion-panel .mud-expand-panel-header {
+    background: linear-gradient(to right, #f8f9fa, #ffffff);
+    border-left: 4px solid #4361EE;
+}
+
+.admin-expansion-panel .mud-expand-panel-header:hover {
+    background: linear-gradient(to right, #f0f0f0, #f8f9fa);
+}
+
+/* Dashboard metrics row */
+.dashboard-metrics-row {
+    background: linear-gradient(to right, rgba(123, 44, 191, 0.03), rgba(67, 97, 238, 0.03));
+    border-radius: 12px;
+    padding: 16px;
+}
+
+/* AI quality summary card */
+.ai-quality-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+}
+
+/* Accent color utilities */
+.text-seafoam { color: #06FFA5; }
+.text-lavender { color: #9D4EDD; }
+.text-yellow-accent { color: #FFD60A; }
+.border-yellow-accent { border-color: #FFD60A !important; }
+.bg-purple-light { background-color: rgba(123, 44, 191, 0.08); }
+.bg-blue-light { background-color: rgba(67, 97, 238, 0.08); }
