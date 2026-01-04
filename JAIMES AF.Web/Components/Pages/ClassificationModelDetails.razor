@@ -347,8 +347,9 @@
 	private static readonly string[] SentimentLabels = ["Negative", "Neutral", "Positive"];
 
 	/// <summary>
-	/// Normalizes the confusion matrix to always be 3x3 for sentiment classification.
-	/// If the source matrix is smaller (e.g., 2x2), missing classes are filled with zeros.
+	/// Returns the confusion matrix, ensuring it's 3x3 for display.
+	/// Training now always produces 3x3 matrices with correct class mapping.
+	/// This method handles legacy/edge cases where smaller matrices may exist.
 	/// </summary>
 	private int[][] GetNormalizedMatrix()
 	{
@@ -357,30 +358,17 @@
 
 		int size = sourceMatrix.Length;
 
-		// If already 3x3, return as-is
+		// If already 3x3, return as-is (normal case after fix)
 		if (size == 3) return sourceMatrix;
 
-		// If 2x2 (Negative/Positive only, no Neutral samples), expand to 3x3
-		// Source: [Neg, Pos] rows x [Neg, Pos] cols
-		// Target: [Neg, Neu, Pos] rows x [Neg, Neu, Pos] cols
-		if (size == 2)
+		// For legacy matrices smaller than 3x3, pad with zeros
+		// Note: New training always produces proper 3x3 matrices
+		int[][] normalized = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+		for (int i = 0; i < Math.Min(size, 3); i++)
 		{
-			return
-			[
-				[sourceMatrix[0][0], 0, sourceMatrix[0][1]], // Actual Negative: [Pred Neg, Pred Neu (0), Pred Pos]
-				[0, 0, 0], // Actual Neutral: all zeros (no samples)
-				[sourceMatrix[1][0], 0, sourceMatrix[1][1]] // Actual Positive: [Pred Neg, Pred Neu (0), Pred Pos]
-			];
-		}
-
-		// For other sizes, pad with zeros
-		int[][] normalized = new int[3][];
-		for (int i = 0; i < 3; i++)
-		{
-			normalized[i] = new int[3];
-			for (int j = 0; j < 3; j++)
+			for (int j = 0; j < Math.Min(sourceMatrix[i].Length, 3); j++)
 			{
-				normalized[i][j] = (i < size && j < size) ? sourceMatrix[i][j] : 0;
+				normalized[i][j] = sourceMatrix[i][j];
 			}
 		}
 

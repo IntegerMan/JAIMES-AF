@@ -134,8 +134,11 @@ public class ClassifierTrainingService(ILogger<ClassifierTrainingService> logger
                     predictions,
                     labelColumnName: nameof(SentimentTrainingData.Sentiment));
 
-                // Get confusion matrix
-                int[][] confusionMatrix = ExtractConfusionMatrix(metrics);
+                // Get unique labels sorted alphabetically (matching ML.NET's internal ordering)
+                var uniqueLabels = trainingData.Select(t => t.Sentiment).Distinct().Order().ToList();
+
+                // Get confusion matrix mapped to standard 3x3 format
+                int[][] confusionMatrix = ExtractConfusionMatrix(metrics, uniqueLabels);
 
                 // Save model to bytes
                 using MemoryStream modelStream = new();
@@ -168,34 +171,59 @@ public class ClassifierTrainingService(ILogger<ClassifierTrainingService> logger
         _ => MulticlassClassificationMetric.MacroAccuracy
     };
 
-    private static int[][] ExtractConfusionMatrix(MulticlassClassificationMetrics metrics)
+    private static int[][] ExtractConfusionMatrix(MulticlassClassificationMetrics metrics, List<string> classLabels)
     {
-        // Extract counts from confusion matrix
-        // For 3-class (negative=-1, neutral=0, positive=1), we'll create a 3x3 matrix
+        // Always produce a 3x3 matrix for [negative, neutral, positive] (alphabetical order)
+        // ML.NET orders classes alphabetically, matching our sorted classLabels
+        int[][] result = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+
         try
         {
             ConfusionMatrix? cm = metrics.ConfusionMatrix;
             if (cm == null)
             {
-                return [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+                return result;
             }
 
-            int numClasses = cm.NumberOfClasses;
-            int[][] matrix = new int[numClasses][];
-            for (int i = 0; i < numClasses; i++)
+            // Map class names to target indices: negative=0, neutral=1, positive=2
+            Dictionary<string, int> labelToIndex = new(StringComparer.OrdinalIgnoreCase)
             {
-                matrix[i] = new int[numClasses];
-                for (int j = 0; j < numClasses; j++)
+                ["negative"] = 0,
+                ["neutral"] = 1,
+                ["positive"] = 2
+            };
+
+            // Map source indices to target indices based on the labels present
+            int[] sourceToTarget = new int[classLabels.Count];
+            for (int i = 0; i < classLabels.Count; i++)
+            {
+                if (labelToIndex.TryGetValue(classLabels[i], out int targetIndex))
                 {
-                    matrix[i][j] = (int) cm.Counts[i][j];
+                    sourceToTarget[i] = targetIndex;
+                }
+                else
+                {
+                    // Unknown label - shouldn't happen for sentiment, but default to neutral
+                    sourceToTarget[i] = 1;
                 }
             }
 
-            return matrix;
+            // Copy confusion matrix values to correct positions
+            for (int i = 0; i < cm.NumberOfClasses && i < classLabels.Count; i++)
+            {
+                for (int j = 0; j < cm.NumberOfClasses && j < classLabels.Count; j++)
+                {
+                    int targetRow = sourceToTarget[i];
+                    int targetCol = sourceToTarget[j];
+                    result[targetRow][targetCol] = (int) cm.Counts[i][j];
+                }
+            }
+
+            return result;
         }
         catch
         {
-            return [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+            return result;
         }
     }
 

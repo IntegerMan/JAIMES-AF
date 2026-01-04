@@ -18,7 +18,7 @@ public class StartClassifierTrainingEndpoint : Endpoint<TrainClassifierRequest, 
         Post("/admin/classification-models/train");
         AllowAnonymous();
         Description(b => b
-            .Produces<StartTrainingResponse>(StatusCodes.Status201Created)
+            .Produces<StartTrainingResponse>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest)
             .WithTags("Admin"));
     }
