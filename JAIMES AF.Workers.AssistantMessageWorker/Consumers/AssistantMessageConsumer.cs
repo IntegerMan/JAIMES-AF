@@ -111,10 +111,12 @@ public class AssistantMessageConsumer(
 
             try
             {
-                // Load last 5 messages for conversation context (ordered by CreatedAt descending, take 5, reverse)
+                // Load last 5 messages for conversation context (ordered by CreatedAt, with ID as tiebreaker)
+                // Use CreatedAt < (not <=) to exclude the current message, with ID tiebreaker for concurrent inserts
                 List<Message> conversationContext = await context.Messages
-                    .Where(m => m.GameId == messageEntity.GameId && m.CreatedAt <= messageEntity.CreatedAt &&
-                                m.Id != messageEntity.Id)
+                    .Where(m => m.GameId == messageEntity.GameId && 
+                               (m.CreatedAt < messageEntity.CreatedAt || 
+                                (m.CreatedAt == messageEntity.CreatedAt && m.Id < messageEntity.Id)))
                     .OrderByDescending(m => m.CreatedAt)
                     .ThenByDescending(m => m.Id)
                     .Take(5)

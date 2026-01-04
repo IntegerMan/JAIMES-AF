@@ -99,8 +99,11 @@ public class EvaluatorTaskConsumer(
             }
 
             // Get conversation context (last 5 messages before this one, in chronological order)
+            // Use CreatedAt for accurate chronological ordering, with ID as tiebreaker for concurrent inserts
             List<Message> conversationContext = await context.Messages
-                .Where(m => m.GameId == messageEntity.GameId && m.Id < messageEntity.Id)
+                .Where(m => m.GameId == messageEntity.GameId && 
+                           (m.CreatedAt < messageEntity.CreatedAt || 
+                            (m.CreatedAt == messageEntity.CreatedAt && m.Id < messageEntity.Id)))
                 .OrderByDescending(m => m.CreatedAt)
                 .ThenByDescending(m => m.Id)
                 .Take(5)
