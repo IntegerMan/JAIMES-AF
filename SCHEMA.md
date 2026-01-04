@@ -64,6 +64,8 @@ erDiagram
     TestCaseRun }o--|| AgentInstructionVersion : "uses version"
     TestCaseRun |o--o| StoredFile : "has report"
 
+    ClassificationModel }o--|| StoredFile : "stored as"
+
     ScenarioAgent {
         string ScenarioId FK
         string AgentId FK
@@ -313,6 +315,26 @@ erDiagram
         jsonb Diagnostics "nullable"
         int EvaluationModelId FK "nullable"
     }
+
+    StoredFile {
+        int Id PK
+        string ItemKind
+        string FileName
+        string ContentType
+        string Content "nullable"
+        bytea BinaryContent "nullable"
+        datetime CreatedAt
+        long SizeBytes "nullable"
+    }
+
+    ClassificationModel {
+        int Id PK
+        string ModelType
+        string Name
+        string Description "nullable"
+        int StoredFileId FK
+        datetime CreatedAt
+    }
 ```
 
 ## Core Entities
@@ -396,6 +418,14 @@ Diagnostic record of a RAG search performed, including the query text and filter
 
 ### RagSearchResultChunk
 Records which `DocumentChunk`s were retrieved for a specific `RagSearchQuery` and their relevancy scores.
+
+## File Storage
+
+### StoredFile
+Generic file storage for binary or text content (reports, models, images). Uses `ItemKind` to categorize different file types.
+
+### ClassificationModel
+Tracking entity for ML classification models stored in the database. References a `StoredFile` for the actual binary model content (.zip file). Used by the UserMessageWorker for sentiment analysis.
 
 ## Location Tracking
 

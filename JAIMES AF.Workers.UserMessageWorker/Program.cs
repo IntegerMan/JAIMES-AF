@@ -34,15 +34,19 @@ builder.Services.AddJaimesRepositories(builder.Configuration);
 builder.Services.Configure<SentimentAnalysisOptions>(
     builder.Configuration.GetSection(SentimentAnalysisOptions.SectionName));
 
+// Register classification model service
+builder.Services.AddScoped<IClassificationModelService, ClassificationModelService>();
+
 // Register sentiment model service as singleton with dependencies for reclassification
 builder.Services.AddSingleton<SentimentModelService>(serviceProvider =>
 {
     ILogger<SentimentModelService> logger = serviceProvider.GetRequiredService<ILogger<SentimentModelService>>();
+    IServiceScopeFactory scopeFactory = serviceProvider.GetRequiredService<IServiceScopeFactory>();
     IDbContextFactory<JaimesDbContext> contextFactory =
         serviceProvider.GetRequiredService<IDbContextFactory<JaimesDbContext>>();
     IOptions<SentimentAnalysisOptions> options =
         serviceProvider.GetRequiredService<IOptions<SentimentAnalysisOptions>>();
-    return new SentimentModelService(logger, contextFactory, options);
+    return new SentimentModelService(logger, scopeFactory, contextFactory, options);
 });
 
 // Configure message consuming and publishing using RabbitMQ.Client (LavinMQ compatible)

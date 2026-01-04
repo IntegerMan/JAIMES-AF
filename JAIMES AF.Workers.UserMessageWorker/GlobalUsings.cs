@@ -6,6 +6,7 @@ global using MattEland.Jaimes.Repositories.Entities;
 global using MattEland.Jaimes.ServiceDefaults;
 global using MattEland.Jaimes.ServiceDefinitions.Messages;
 global using MattEland.Jaimes.ServiceDefinitions.Services;
+global using MattEland.Jaimes.ServiceLayer.Services;
 global using MattEland.Jaimes.Workers.UserMessageWorker.Consumers;
 global using Microsoft.EntityFrameworkCore;
 global using Microsoft.Extensions.AI;

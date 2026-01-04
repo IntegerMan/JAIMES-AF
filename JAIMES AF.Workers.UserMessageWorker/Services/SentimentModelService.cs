@@ -1,4 +1,7 @@
 using MattEland.Jaimes.Workers.UserMessageWorker.Options;
+using Microsoft.Extensions.DependencyInjection;
+using MattEland.Jaimes.ServiceDefinitions.Services;
+using MattEland.Jaimes.ServiceDefinitions.Responses;
 using Microsoft.Extensions.ObjectPool;
 using Microsoft.Extensions.Options;
 using Microsoft.ML;
@@ -13,6 +16,7 @@ namespace MattEland.Jaimes.Workers.UserMessageWorker.Services;
 /// </summary>
 public class SentimentModelService(
     ILogger<SentimentModelService> logger,
+    IServiceScopeFactory scopeFactory,
     IDbContextFactory<JaimesDbContext>? contextFactory = null,
     IOptions<SentimentAnalysisOptions>? sentimentOptions = null)
 {
@@ -25,16 +29,53 @@ public class SentimentModelService(
 
     /// <summary>
     /// Loads the trained model if it exists, otherwise trains a new model.
+    /// Checks the database first for the latest model.
     /// </summary>
     public async Task LoadOrTrainModelAsync(CancellationToken cancellationToken = default)
     {
         string modelPath = Path.Combine(AppContext.BaseDirectory, ModelFileName);
         string trainingDataPath = Path.Combine(AppContext.BaseDirectory, TrainingDataFileName);
 
+        // Create a scope to resolve the scoped classification model service
+        using IServiceScope scope = scopeFactory.CreateScope();
+        IClassificationModelService? classificationModelService =
+            scope.ServiceProvider.GetService<IClassificationModelService>();
+
+        // First, check database for latest model
+        if (classificationModelService != null)
+        {
+            bool downloadedFromDb =
+                await TryDownloadModelFromDatabaseAsync(classificationModelService, modelPath, cancellationToken);
+            if (downloadedFromDb)
+            {
+                return;
+            }
+        }
+
+        // Fall back to local model or training
         if (File.Exists(modelPath))
         {
-            _logger.LogInformation("Loading existing sentiment model from {ModelPath}", modelPath);
-            await LoadModelAsync(modelPath, cancellationToken);
+            try
+            {
+                _logger.LogInformation("Loading existing sentiment model from {ModelPath}", modelPath);
+                await LoadModelAsync(modelPath, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to load sentiment model from {ModelPath}. File may be corrupted. Deleting and training new model.",
+                    modelPath);
+                try
+                {
+                    File.Delete(modelPath);
+                }
+                catch
+                {
+                    /* Ignore deletion errors */
+                }
+
+                await TrainAndSaveModelAsync(trainingDataPath, modelPath, cancellationToken);
+            }
         }
         else
         {
@@ -43,6 +84,86 @@ public class SentimentModelService(
             await TrainAndSaveModelAsync(trainingDataPath, modelPath, cancellationToken);
         }
     }
+
+    /// <summary>
+    /// Attempts to download the model from the database if it is newer than the local copy.
+    /// </summary>
+    private async Task<bool> TryDownloadModelFromDatabaseAsync(
+        IClassificationModelService classificationModelService,
+        string localModelPath,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            ClassificationModelResponse? dbModel = await classificationModelService.GetLatestModelAsync(
+                ClassificationModelTypes.SentimentClassification,
+                cancellationToken);
+
+            if (dbModel == null)
+            {
+                _logger.LogInformation("No classification model found in database");
+                return false;
+            }
+
+            // Check if local model exists and compare timestamps
+            if (File.Exists(localModelPath))
+            {
+                FileInfo localFile = new(localModelPath);
+                if (localFile.LastWriteTimeUtc >= dbModel.CreatedAt)
+                {
+                    _logger.LogInformation(
+                        "Local model ({LocalTime:u}) is newer or same as database model ({DbTime:u}). Using local model.",
+                        localFile.LastWriteTimeUtc,
+                        dbModel.CreatedAt);
+                    await LoadModelAsync(localModelPath, cancellationToken);
+                    return true;
+                }
+
+                _logger.LogInformation(
+                    "Database model ({DbTime:u}) is newer than local model ({LocalTime:u}). Downloading from database.",
+                    dbModel.CreatedAt,
+                    localFile.LastWriteTimeUtc);
+            }
+            else
+            {
+                _logger.LogInformation("Downloading classification model from database (no local model exists)");
+            }
+
+            // Download model content from database using the model ID
+            byte[]? modelContent = await classificationModelService.GetModelContentAsync(
+                dbModel.Id,
+                cancellationToken);
+
+            if (modelContent == null || modelContent.Length == 0)
+            {
+                _logger.LogWarning("Failed to download model content from database");
+                return false;
+            }
+
+            // Save to local path
+            string? modelDir = Path.GetDirectoryName(localModelPath);
+            if (!string.IsNullOrEmpty(modelDir) && !Directory.Exists(modelDir))
+            {
+                Directory.CreateDirectory(modelDir);
+            }
+
+            await File.WriteAllBytesAsync(localModelPath, modelContent, cancellationToken);
+            _logger.LogInformation("Downloaded classification model to {ModelPath} ({Size} bytes)",
+                localModelPath,
+                modelContent.Length);
+
+            // Load the downloaded model
+            await LoadModelAsync(localModelPath, cancellationToken);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Failed to download or load model from database. Falling back to local/fresh model.");
+            return false;
+        }
+    }
+
 
     /// <summary>
     /// Predicts the sentiment of the given text.
@@ -56,7 +177,7 @@ public class SentimentModelService(
             throw new InvalidOperationException("Model has not been loaded. Call LoadOrTrainModelAsync first.");
         }
 
-        SentimentData input = new() { Text = text };
+        SentimentData input = new() {Text = text};
 
         // Get a prediction engine from the thread-safe pool
         PredictionEngine<SentimentData, SentimentPrediction> predictionEngine = _predictionEnginePool.Get();
@@ -224,20 +345,22 @@ public class SentimentModelService(
     private async Task LoadModelAsync(string modelPath, CancellationToken cancellationToken)
     {
         await Task.Run(() =>
-        {
-            _trainedModel = _mlContext.Model.Load(modelPath, out _);
+            {
+                _trainedModel = _mlContext.Model.Load(modelPath, out _);
 
-            // Create a thread-safe prediction engine pool using ObjectPool
-            DefaultObjectPoolProvider poolProvider = new();
-            _predictionEnginePool =
-                poolProvider.Create(new PredictionEnginePooledObjectPolicy(_mlContext, _trainedModel));
+                // Create a thread-safe prediction engine pool using ObjectPool
+                DefaultObjectPoolProvider poolProvider = new();
+                _predictionEnginePool =
+                    poolProvider.Create(new PredictionEnginePooledObjectPolicy(_mlContext, _trainedModel));
 
-            _logger.LogInformation("Successfully loaded sentiment model from {ModelPath} with thread-safe pool",
-                modelPath);
-        }, cancellationToken);
+                _logger.LogInformation("Successfully loaded sentiment model from {ModelPath} with thread-safe pool",
+                    modelPath);
+            },
+            cancellationToken);
     }
 
-    private async Task TrainAndSaveModelAsync(string trainingDataPath, string modelPath,
+    private async Task TrainAndSaveModelAsync(string trainingDataPath,
+        string modelPath,
         CancellationToken cancellationToken)
     {
         if (!File.Exists(trainingDataPath))
@@ -246,88 +369,89 @@ public class SentimentModelService(
         }
 
         await Task.Run(() =>
-        {
-            _logger.LogInformation("Loading training data from {TrainingDataPath}", trainingDataPath);
-            IDataView trainingData = _mlContext.Data.LoadFromTextFile<SentimentData>(
-                trainingDataPath,
-                separatorChar: ',',
-                hasHeader: true,
-                allowQuoting: true,
-                trimWhitespace: true);
-
-            // Configure AutoML experiment
-            MulticlassExperimentSettings experimentSettings = new()
             {
-                MaxExperimentTimeInSeconds = 60, // 1 minute for training
-                OptimizingMetric = MulticlassClassificationMetric.MacroAccuracy
-            };
+                _logger.LogInformation("Loading training data from {TrainingDataPath}", trainingDataPath);
+                IDataView trainingData = _mlContext.Data.LoadFromTextFile<SentimentData>(
+                    trainingDataPath,
+                    separatorChar: ',',
+                    hasHeader: true,
+                    allowQuoting: true,
+                    trimWhitespace: true);
 
-            // Verify the data schema
-            var schema = trainingData.Schema;
-            _logger.LogInformation("Training data schema - Column count: {ColumnCount}", schema.Count);
-            foreach (var column in schema)
-            {
-                _logger.LogDebug("Column: {ColumnName}, Type: {ColumnType}", column.Name, column.Type);
-            }
+                // Configure AutoML experiment
+                MulticlassExperimentSettings experimentSettings = new()
+                {
+                    MaxExperimentTimeInSeconds = 60, // 1 minute for training
+                    OptimizingMetric = MulticlassClassificationMetric.MacroAccuracy
+                };
 
-            // Verify we have the expected columns
-            if (schema.GetColumnOrNull(nameof(SentimentData.Text)) == null)
-            {
-                throw new InvalidOperationException(
-                    $"Training data does not contain required column: {nameof(SentimentData.Text)}");
-            }
+                // Verify the data schema
+                var schema = trainingData.Schema;
+                _logger.LogInformation("Training data schema - Column count: {ColumnCount}", schema.Count);
+                foreach (var column in schema)
+                {
+                    _logger.LogDebug("Column: {ColumnName}, Type: {ColumnType}", column.Name, column.Type);
+                }
 
-            if (schema.GetColumnOrNull(nameof(SentimentData.Sentiment)) == null)
-            {
-                throw new InvalidOperationException(
-                    $"Training data does not contain required column: {nameof(SentimentData.Sentiment)}");
-            }
+                // Verify we have the expected columns
+                if (schema.GetColumnOrNull(nameof(SentimentData.Text)) == null)
+                {
+                    throw new InvalidOperationException(
+                        $"Training data does not contain required column: {nameof(SentimentData.Text)}");
+                }
 
-            // Preprocess: Featurize the text column into a Features vector
-            // This is necessary because AutoML needs numeric features
-            _logger.LogInformation("Featurizing text data...");
-            IEstimator<ITransformer> textFeaturizer = _mlContext.Transforms.Text
-                .FeaturizeText("Features", nameof(SentimentData.Text));
+                if (schema.GetColumnOrNull(nameof(SentimentData.Sentiment)) == null)
+                {
+                    throw new InvalidOperationException(
+                        $"Training data does not contain required column: {nameof(SentimentData.Sentiment)}");
+                }
 
-            ITransformer textTransformer = textFeaturizer.Fit(trainingData);
-            IDataView featurizedData = textTransformer.Transform(trainingData);
+                // Preprocess: Featurize the text column into a Features vector
+                // This is necessary because AutoML needs numeric features
+                _logger.LogInformation("Featurizing text data...");
+                IEstimator<ITransformer> textFeaturizer = _mlContext.Transforms.Text
+                    .FeaturizeText("Features", nameof(SentimentData.Text));
 
-            // Update column information - AutoML will automatically use the Features column
-            ColumnInformation featurizedColumnInfo = new()
-            {
-                LabelColumnName = nameof(SentimentData.Sentiment)
-            };
+                ITransformer textTransformer = textFeaturizer.Fit(trainingData);
+                IDataView featurizedData = textTransformer.Transform(trainingData);
 
-            _logger.LogInformation(
-                "Starting AutoML experiment for sentiment classification with timeout of {Timeout} seconds...",
-                experimentSettings.MaxExperimentTimeInSeconds);
-            ExperimentResult<MulticlassClassificationMetrics> experimentResult = _mlContext.Auto()
-                .CreateMulticlassClassificationExperiment(experimentSettings)
-                .Execute(featurizedData, featurizedColumnInfo);
+                // Update column information - AutoML will automatically use the Features column
+                ColumnInformation featurizedColumnInfo = new()
+                {
+                    LabelColumnName = nameof(SentimentData.Sentiment)
+                };
 
-            // Combine the text featurizer with the AutoML model
-            ITransformer combinedModel = textTransformer.Append(experimentResult.BestRun.Model);
+                _logger.LogInformation(
+                    "Starting AutoML experiment for sentiment classification with timeout of {Timeout} seconds...",
+                    experimentSettings.MaxExperimentTimeInSeconds);
+                ExperimentResult<MulticlassClassificationMetrics> experimentResult = _mlContext.Auto()
+                    .CreateMulticlassClassificationExperiment(experimentSettings)
+                    .Execute(featurizedData, featurizedColumnInfo);
 
-            _logger.LogInformation(
-                "AutoML experiment completed. Best run: {TrainerName}, Accuracy: {Accuracy}",
-                experimentResult.BestRun.TrainerName,
-                experimentResult.BestRun.ValidationMetrics?.MacroAccuracy ?? 0);
+                // Combine the text featurizer with the AutoML model
+                ITransformer combinedModel = textTransformer.Append(experimentResult.BestRun.Model);
 
-            // Save the combined model (text featurizer + AutoML model)
-            string modelDirectory = Path.GetDirectoryName(modelPath) ??
-                                    throw new InvalidOperationException("Invalid model path");
-            Directory.CreateDirectory(modelDirectory);
-            _mlContext.Model.Save(combinedModel, trainingData.Schema, modelPath);
-            _logger.LogInformation("Trained model saved to {ModelPath}", modelPath);
+                _logger.LogInformation(
+                    "AutoML experiment completed. Best run: {TrainerName}, Accuracy: {Accuracy}",
+                    experimentResult.BestRun.TrainerName,
+                    experimentResult.BestRun.ValidationMetrics?.MacroAccuracy ?? 0);
 
-            // Store the model for pool creation
-            _trainedModel = combinedModel;
+                // Save the combined model (text featurizer + AutoML model)
+                string modelDirectory = Path.GetDirectoryName(modelPath) ??
+                                        throw new InvalidOperationException("Invalid model path");
+                Directory.CreateDirectory(modelDirectory);
+                _mlContext.Model.Save(combinedModel, trainingData.Schema, modelPath);
+                _logger.LogInformation("Trained model saved to {ModelPath}", modelPath);
 
-            // Create a thread-safe prediction engine pool for immediate use (using combined model)
-            DefaultObjectPoolProvider poolProvider = new();
-            _predictionEnginePool =
-                poolProvider.Create(new PredictionEnginePooledObjectPolicy(_mlContext, _trainedModel));
-        }, cancellationToken);
+                // Store the model for pool creation
+                _trainedModel = combinedModel;
+
+                // Create a thread-safe prediction engine pool for immediate use (using combined model)
+                DefaultObjectPoolProvider poolProvider = new();
+                _predictionEnginePool =
+                    poolProvider.Create(new PredictionEnginePooledObjectPolicy(_mlContext, _trainedModel));
+            },
+            cancellationToken);
     }
 
     /// <summary>
