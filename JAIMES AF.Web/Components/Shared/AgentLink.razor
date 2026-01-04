@@ -8,9 +8,10 @@
          Color="Color.Primary"
          Variant="Variant.Text"
          Icon="@Icons.Material.Filled.SmartToy"
-         Href="@($"/agents/{AgentId}")"
+         Href="@AgentHref"
+         Disabled="@(!HasAgentId)"
          Label="true">
-    @AgentName
+    @DisplayName
 </MudChip>
 
 @code {
@@ -18,11 +19,17 @@
     /// The agent's unique identifier.
     /// </summary>
     [Parameter, EditorRequired]
-    public string AgentId { get; set; } = string.Empty;
+    public string? AgentId { get; set; }
 
     /// <summary>
     /// Display name for the agent.
     /// </summary>
     [Parameter, EditorRequired]
-    public string AgentName { get; set; } = string.Empty;
+    public string? AgentName { get; set; }
+
+    private bool HasAgentId => !string.IsNullOrWhiteSpace(AgentId);
+
+    private string? AgentHref => HasAgentId ? $"/agents/{AgentId}" : null;
+
+    private string DisplayName => string.IsNullOrWhiteSpace(AgentName) ? "Unknown" : AgentName;
 }
