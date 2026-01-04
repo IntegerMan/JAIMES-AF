@@ -1,9 +1,11 @@
 using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
+using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceLayer.Mapping;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace MattEland.Jaimes.ServiceLayer.Services;
 
@@ -202,5 +204,155 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
         }
 
         return dtos;
+    }
+
+    public async Task<IEnumerable<JsonlExportRecord>> GetJsonlExportDataAsync(string agentId,
+        int versionId,
+        CancellationToken cancellationToken = default)
+    {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        // Retrieve all messages for this agent version with related data
+        var messages = await GetMessagesByAgentAsync(agentId, versionId, cancellationToken);
+
+        // Also need to load TestCase data which isn't included in GetMessagesByAgentAsync
+        var messageIds = messages.Select(m => m.Id).ToList();
+        var testCases = await context.TestCases
+            .AsNoTracking()
+            .Where(tc => messageIds.Contains(tc.MessageId))
+            .ToListAsync(cancellationToken);
+
+        var exportRecords = new List<JsonlExportRecord>();
+
+        // Group messages by GameId to maintain conversation context
+        var messagesByGame = messages.GroupBy(m => m.GameId);
+
+        foreach (var gameMessages in messagesByGame)
+        {
+            // Order messages chronologically within each game
+            var orderedMessages = gameMessages.OrderBy(m => m.CreatedAt).ToList();
+
+            MessageContextDto? pendingUserMessage = null;
+
+            foreach (var message in orderedMessages)
+            {
+                // Check if this is a user message (PlayerId is not null)
+                if (message.PlayerId != null)
+                {
+                    pendingUserMessage = message;
+                }
+                // Check if this is an agent response (PlayerId is null) and we have a pending user message
+                else if (pendingUserMessage != null)
+                {
+                    // Extract ground truth from TestCase if available
+                    string? groundTruth = null;
+                    var testCase = testCases.FirstOrDefault(tc => tc.MessageId == pendingUserMessage.Id);
+                    if (testCase != null && !string.IsNullOrWhiteSpace(testCase.Description))
+                    {
+                        groundTruth = testCase.Description;
+                    }
+
+                    // Extract context from tool calls
+                    string? extractedContext = ExtractContextFromToolCalls(message.ToolCalls);
+
+                    // Create export record
+                    var record = new JsonlExportRecord
+                    {
+                        Query = pendingUserMessage.Text,
+                        GroundTruth = groundTruth,
+                        Response = message.Text,
+                        Context = extractedContext
+                    };
+
+                    exportRecords.Add(record);
+
+                    // Clear pending user message after pairing
+                    pendingUserMessage = null;
+                }
+            }
+        }
+
+        return exportRecords;
+    }
+
+    /// <summary>
+    /// Extracts context information from message tool calls, particularly from RAG/search results.
+    /// </summary>
+    private static string? ExtractContextFromToolCalls(List<MessageToolCallResponse> toolCalls)
+    {
+        if (toolCalls == null || toolCalls.Count == 0)
+        {
+            return null;
+        }
+
+        var contextParts = toolCalls
+            .Where(tc => !string.IsNullOrWhiteSpace(tc.OutputJson))
+            .SelectMany(tc => ParseToolCallContext(tc.OutputJson!))
+            .ToList();
+
+        return contextParts.Count > 0 ? string.Join("\n\n", contextParts) : null;
+    }
+
+    /// <summary>
+    /// Parses a single tool call's output JSON to extract context information.
+    /// </summary>
+    private static IEnumerable<string> ParseToolCallContext(string outputJson)
+    {
+        JsonDocument? doc = null;
+        try
+        {
+            doc = JsonDocument.Parse(outputJson);
+            JsonElement root = doc.RootElement;
+
+            // Check if this looks like a search response with Results array
+            if (!root.TryGetProperty("Results", out JsonElement resultsElement) ||
+                resultsElement.ValueKind != JsonValueKind.Array)
+            {
+                return Enumerable.Empty<string>();
+            }
+
+            var contextItems = new List<string>();
+            foreach (JsonElement result in resultsElement.EnumerateArray())
+            {
+                var contextItem = ExtractContextItem(result);
+                if (contextItem != null)
+                {
+                    contextItems.Add(contextItem);
+                }
+            }
+
+            return contextItems;
+        }
+        catch (JsonException)
+        {
+            // If JSON parsing fails, return empty (skip this tool call)
+            // This is expected for tool calls that don't contain structured JSON
+            return Enumerable.Empty<string>();
+        }
+        finally
+        {
+            doc?.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Extracts a single context item from a search result JSON element.
+    /// </summary>
+    private static string? ExtractContextItem(JsonElement result)
+    {
+        string? documentName = result.TryGetProperty("DocumentName", out JsonElement docNameElement)
+            ? docNameElement.GetString()
+            : null;
+
+        string? text = result.TryGetProperty("Text", out JsonElement textElement)
+            ? textElement.GetString()
+            : null;
+
+        if (!string.IsNullOrWhiteSpace(documentName) && !string.IsNullOrWhiteSpace(text))
+        {
+            return $"{documentName}: {text}";
+        }
+
+        return null;
     }
 }

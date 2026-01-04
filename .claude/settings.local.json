@@ -4,7 +4,10 @@
       "Bash(dotnet build:*)",
       "Bash(dotnet run:*)",
       "Bash(dotnet test:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(dir /s /b *.tsx)",
+      "Bash(cat:*)",
+      "Bash(ls:*)"
     ]
   }
 }

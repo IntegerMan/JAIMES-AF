@@ -190,4 +190,35 @@ public partial class AgentVersionDetails
             NavigationManager.NavigateTo($"/admin/test-runs/compare?executions={Uri.EscapeDataString(executionName)}");
         }
     }
+
+    private async Task ExportJsonl()
+    {
+        if (string.IsNullOrEmpty(AgentId) || _version == null) return;
+
+        try
+        {
+            var url = $"/agents/{AgentId}/versions/{VersionId}/export-jsonl";
+            var response = await Http.GetAsync(url);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _errorMessage = "Failed to export data. No message pairs found for this version.";
+                StateHasChanged();
+                return;
+            }
+
+            var bytes = await response.Content.ReadAsByteArrayAsync();
+            var fileName = $"{AgentId}-v{VersionId}-{DateTime.UtcNow:yyyyMMdd-HHmmss}.jsonl";
+
+            // Use JavaScript Interop to trigger download
+            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/jsonl", Convert.ToBase64String(bytes));
+        }
+        catch (Exception ex)
+        {
+            LoggerFactory.CreateLogger("AgentVersionDetails")
+                .LogError(ex, "Failed to export JSONL");
+            _errorMessage = $"Failed to export data: {ex.Message}";
+            StateHasChanged();
+        }
+    }
 }

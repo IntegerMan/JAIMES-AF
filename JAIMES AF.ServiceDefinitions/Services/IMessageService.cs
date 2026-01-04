@@ -28,4 +28,15 @@ public interface IMessageService
     Task<IEnumerable<MessageContextDto>> GetMessagesByAgentAsync(string agentId,
         int? versionId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves JSONL export data for a specific agent version, pairing user queries with agent responses.
+    /// </summary>
+    /// <param name="agentId">The ID of the agent.</param>
+    /// <param name="versionId">The instruction version ID.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A list of JsonlExportRecord objects containing paired query-response data.</returns>
+    Task<IEnumerable<JsonlExportRecord>> GetJsonlExportDataAsync(string agentId,
+        int versionId,
+        CancellationToken cancellationToken = default);
 }

@@ -5,6 +5,7 @@
 @inject ILoggerFactory LoggerFactory
 @inject IDialogService DialogService
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 @using MattEland.Jaimes.Web.Components.Dialogs
 
 <PageTitle>Agent Version Details</PageTitle>
@@ -96,6 +97,13 @@
                            StartIcon="@Icons.Material.Filled.Science"
                            OnClick="RunTestsAsync">
                     Run Tests
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Info"
+                           Tooltip="Export all messages and responses for this version to a JSONL file for evaluation in Microsoft Foundry"
+                           StartIcon="@Icons.Material.Filled.Download"
+                           OnClick="ExportJsonl">
+                    Export
                 </MudButton>
             </MudStack>
 
