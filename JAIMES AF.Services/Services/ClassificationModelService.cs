@@ -308,14 +308,20 @@ public class ClassificationModelService(
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
+        // Include Admin sentiments - they are human-verified and represent highest quality training data
         int totalWithSentiment = await context.MessageSentiments
-            .Where(ms => ms.SentimentSource == SentimentSource.Model || ms.SentimentSource == SentimentSource.Player)
+            .Where(ms => ms.SentimentSource == SentimentSource.Model ||
+                         ms.SentimentSource == SentimentSource.Player ||
+                         ms.SentimentSource == SentimentSource.Admin)
             .CountAsync(cancellationToken);
 
         int aboveConfidence = await context.MessageSentiments
             .Where(ms =>
-                (ms.SentimentSource == SentimentSource.Model || ms.SentimentSource == SentimentSource.Player) &&
+                (ms.SentimentSource == SentimentSource.Model ||
+                 ms.SentimentSource == SentimentSource.Player ||
+                 ms.SentimentSource == SentimentSource.Admin) &&
                 (ms.SentimentSource == SentimentSource.Player ||
+                 ms.SentimentSource == SentimentSource.Admin ||
                  (ms.Confidence != null && ms.Confidence >= minConfidence)))
             .CountAsync(cancellationToken);
 

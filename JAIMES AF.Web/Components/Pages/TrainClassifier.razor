@@ -4,6 +4,7 @@
 @rendermode InteractiveServer
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
+@implements IDisposable
 
 <PageTitle>Train Classifier</PageTitle>
 
@@ -293,6 +294,11 @@
 		{
 			_submitting = false;
 		}
+	}
+
+	public void Dispose()
+	{
+		_debounceTimer?.Dispose();
 	}
 
 }

@@ -51,10 +51,12 @@ public class StartClassifierTrainingEndpoint : Endpoint<TrainClassifierRequest, 
         ThrowIfAnyErrors();
 
         // Check we have enough training data
-        TrainingDataCountResponse countResponse = await ClassificationModelService.GetTrainingDataCountAsync(req.MinConfidence, ct);
+        TrainingDataCountResponse countResponse =
+            await ClassificationModelService.GetTrainingDataCountAsync(req.MinConfidence, ct);
         if (countResponse.MessagesAboveConfidence < 20)
         {
-            AddError($"Insufficient training data. Need at least 20 messages above {req.MinConfidence:P0} confidence, but only found {countResponse.MessagesAboveConfidence}");
+            AddError(
+                $"Insufficient training data. Need at least 20 messages above {req.MinConfidence:P0} confidence, but only found {countResponse.MessagesAboveConfidence}");
             ThrowIfAnyErrors();
         }
 
@@ -78,9 +80,8 @@ public class StartClassifierTrainingEndpoint : Endpoint<TrainClassifierRequest, 
 
         await MessagePublisher.PublishAsync(message, ct);
 
-        await Send.CreatedAtAsync<GetClassificationModelDetailsEndpoint>(
-            new { id = jobId },
-            new StartTrainingResponse(jobId, "Queued"),
-            cancellation: ct);
+        // Return 200 OK with job info - training jobs don't have a dedicated GET endpoint
+        // The model doesn't exist until training completes, so CreatedAt would be misleading
+        await Send.OkAsync(new StartTrainingResponse(jobId, "Queued"), ct);
     }
 }
