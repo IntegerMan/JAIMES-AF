@@ -147,16 +147,57 @@ public class AssistantMessageConsumer(
                 evaluationActivity?.SetTag("evaluation.context_message_count", conversationContext.Count);
                 evaluationActivity?.SetTag("evaluation.system_prompt_length", systemPrompt.Length);
 
-                // Perform evaluation (optionally with filtered evaluators)
-                await evaluationService.EvaluateMessageAsync(
-                    messageEntity,
-                    systemPrompt,
-                    conversationContext,
-                    message.EvaluatorsToRun,
-                    cancellationToken);
+                // Get the list of evaluators to run
+                IReadOnlyList<string> availableEvaluators = evaluationService.GetAvailableEvaluatorNames();
+                IEnumerable<string> evaluatorsToRun = message.EvaluatorsToRun ?? availableEvaluators;
+                var evaluatorList = evaluatorsToRun.ToList();
+
+                if (evaluatorList.Count > 0)
+                {
+                    // Notify pipeline stage: Evaluation
+                    await messageUpdateNotifier.NotifyStageStartedAsync(
+                        messageEntity.Id,
+                        messageEntity.GameId,
+                        MessagePipelineType.Assistant,
+                        MessagePipelineStage.Evaluation,
+                        messageEntity.Text,
+                        cancellationToken);
+
+                    // Publish individual evaluator tasks for parallel processing
+                    Guid batchId = Guid.NewGuid();
+                    int totalEvaluators = evaluatorList.Count;
+
+                    for (int i = 0; i < totalEvaluators; i++)
+                    {
+                        EvaluatorTaskMessage evaluatorTask = new()
+                        {
+                            MessageId = messageEntity.Id,
+                            GameId = messageEntity.GameId,
+                            EvaluatorName = evaluatorList[i],
+                            EvaluatorIndex = i + 1,
+                            TotalEvaluators = totalEvaluators,
+                            BatchId = batchId
+                        };
+                        await messagePublisher.PublishAsync(evaluatorTask, cancellationToken);
+                    }
+
+                    logger.LogInformation(
+                        "Published {Count} evaluator tasks for message {MessageId} (BatchId: {BatchId})",
+                        totalEvaluators,
+                        messageEntity.Id,
+                        batchId);
+
+                    // Mark evaluation stage as completed (tasks are now distributed)
+                    await messageUpdateNotifier.NotifyStageCompletedAsync(
+                        messageEntity.Id,
+                        messageEntity.GameId,
+                        MessagePipelineType.Assistant,
+                        MessagePipelineStage.Evaluation,
+                        cancellationToken);
+                }
 
                 evaluationActivity?.SetStatus(ActivityStatusCode.Ok);
-                logger.LogDebug("Successfully evaluated message {MessageId}", messageEntity.Id);
+                logger.LogDebug("Successfully dispatched evaluators for message {MessageId}", messageEntity.Id);
             }
             catch (Exception ex)
             {

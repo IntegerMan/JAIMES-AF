@@ -39,7 +39,7 @@ Acts as the central nervous system. It receives events (like `ConversationMessag
 These are independent services that listen for specific events.
 
 - **UserMessageWorker (Sentiment)**: Analyzes the user's input to determine emotional tone (Positive/Negative). This helps agents adjust their future responses.
-- **AssistantMessageWorker (Evaluation)**: Uses a separate AI model to "grade" the assistant's response on metrics like coherence, relevance, and creativity.
+- **AssistantMessageWorker (Evaluation)**: Dispatches individual evaluator tasks to the message bus for parallel processing. Each evaluator (BrevityEvaluator, CoherenceEvaluator, etc.) runs as a separate task that can be picked up by any available worker instance.
 - **ConversationEmbeddingWorker (Memory)**: Generates vector embeddings for new messages and stores them in Qdrant, making them searchable for future context retrieval (RAG).
 
 ### 3. Real-Time Updates (SignalR)
@@ -70,7 +70,31 @@ sequenceDiagram
 **Per-Evaluator Progress:**
 The Assistant Message pipeline provides fine-grained progress during the Evaluation stage. Each evaluator triggers individual start/complete notifications with the evaluator name and index/total counts, enabling visualization of multi-evaluator runs.
 
-## Parallel Worker Execution
+## Parallel Evaluation Processing
+
+The assistant message worker uses a **fan-out pattern** for evaluation:
+
+```mermaid
+graph LR
+    A[ConversationMessageQueuedMessage] --> B[AssistantMessageConsumer]
+    B -->|Publish| C[EvaluatorTaskMessage - Brevity]
+    B -->|Publish| D[EvaluatorTaskMessage - Coherence]
+    B -->|Publish| E[EvaluatorTaskMessage - GameMechanics]
+    
+    C --> F[Worker Instance 1]
+    D --> G[Worker Instance 2]
+    E --> H[Worker Instance 3]
+```
+
+When an assistant message arrives:
+1. `AssistantMessageConsumer` loads the message and determines which evaluators to run
+2. It publishes individual `EvaluatorTaskMessage` for each evaluator
+3. Multiple worker instances can process these tasks **in parallel**
+4. Each `EvaluatorTaskConsumer` runs a single evaluator and stores results independently
+
+This enables true horizontal scaling: with 3 workers and 3 evaluators, all evaluators can run simultaneously on different workers.
+
+## Worker Replica Configuration
 
 Workers can run with multiple replicas for horizontal scaling. Aspire orchestration supports configurable replicas:
 
