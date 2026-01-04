@@ -1,4 +1,5 @@
 using MattEland.Jaimes.Workers.UserMessageWorker.Options;
+using Microsoft.Extensions.DependencyInjection;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using Microsoft.Extensions.ObjectPool;
@@ -15,7 +16,7 @@ namespace MattEland.Jaimes.Workers.UserMessageWorker.Services;
 /// </summary>
 public class SentimentModelService(
     ILogger<SentimentModelService> logger,
-    IClassificationModelService? classificationModelService = null,
+    IServiceScopeFactory scopeFactory,
     IDbContextFactory<JaimesDbContext>? contextFactory = null,
     IOptions<SentimentAnalysisOptions>? sentimentOptions = null)
 {
@@ -35,10 +36,16 @@ public class SentimentModelService(
         string modelPath = Path.Combine(AppContext.BaseDirectory, ModelFileName);
         string trainingDataPath = Path.Combine(AppContext.BaseDirectory, TrainingDataFileName);
 
+        // Create a scope to resolve the scoped classification model service
+        using IServiceScope scope = scopeFactory.CreateScope();
+        IClassificationModelService? classificationModelService =
+            scope.ServiceProvider.GetService<IClassificationModelService>();
+
         // First, check database for latest model
         if (classificationModelService != null)
         {
-            bool downloadedFromDb = await TryDownloadModelFromDatabaseAsync(modelPath, cancellationToken);
+            bool downloadedFromDb =
+                await TryDownloadModelFromDatabaseAsync(classificationModelService, modelPath, cancellationToken);
             if (downloadedFromDb)
             {
                 return;
@@ -81,12 +88,14 @@ public class SentimentModelService(
     /// <summary>
     /// Attempts to download the model from the database if it is newer than the local copy.
     /// </summary>
-    private async Task<bool> TryDownloadModelFromDatabaseAsync(string localModelPath,
+    private async Task<bool> TryDownloadModelFromDatabaseAsync(
+        IClassificationModelService classificationModelService,
+        string localModelPath,
         CancellationToken cancellationToken)
     {
         try
         {
-            ClassificationModelResponse? dbModel = await classificationModelService!.GetLatestModelAsync(
+            ClassificationModelResponse? dbModel = await classificationModelService.GetLatestModelAsync(
                 ClassificationModelTypes.SentimentClassification,
                 cancellationToken);
 
