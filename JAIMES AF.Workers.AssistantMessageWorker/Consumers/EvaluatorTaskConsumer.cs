@@ -90,11 +90,14 @@ public class EvaluatorTaskConsumer(
                 systemPrompt = "You are a helpful game master assistant.";
             }
 
-            // Get conversation context
+            // Get conversation context (last 5 messages before this one, in chronological order)
             List<Message> conversationContext = await context.Messages
                 .Where(m => m.GameId == messageEntity.GameId && m.Id < messageEntity.Id)
+                .OrderByDescending(m => m.CreatedAt)
+                .ThenByDescending(m => m.Id)
+                .Take(5)
                 .OrderBy(m => m.CreatedAt)
-                .Take(20)
+                .ThenBy(m => m.Id)
                 .ToListAsync(cancellationToken);
 
             // Run only the specified evaluator
