@@ -3,16 +3,18 @@
     Displays as a chip with a bot icon for consistent styling throughout the Admin UI.
 *@
 
-<MudChip T="string"
-         Size="Size.Small"
-         Color="Color.Primary"
-         Variant="Variant.Text"
-         Icon="@Icons.Material.Filled.SmartToy"
-         Href="@AgentHref"
-         Disabled="@(!HasAgentId)"
-         Label="true">
-    @DisplayName
-</MudChip>
+<MudTooltip Text="View Agent Details" Placement="Placement.Top">
+    <MudChip T="string"
+             Size="Size.Small"
+             Color="Color.Primary"
+             Variant="Variant.Text"
+             Icon="@Icons.Material.Filled.SmartToy"
+             Href="@AgentHref"
+             Disabled="@(!HasAgentId)"
+             Label="true">
+        @DisplayName
+    </MudChip>
+</MudTooltip>
 
 @code {
     /// <summary>
