@@ -491,6 +491,23 @@ h1:focus {
     transform: translateY(-2px);
 }
 
+/* Hero Admin Link - Absolute positioned top right */
+.admin-link-hero {
+    position: absolute;
+    top: 20px;
+    right: 24px;
+    color: rgba(255, 255, 255, 0.7);
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.admin-link-hero:hover {
+    color: white;
+    transform: scale(1.05);
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
 /* Glassmorphism Cards */
 .glass-card {
     background: var(--color-glass);
@@ -555,6 +572,24 @@ h1:focus {
 
 .stat-card:hover {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* Clickable stat cards */
+.stat-card-link {
+    text-decoration: none !important;
+    display: block;
+}
+
+.stat-card-link:hover .stat-card {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+    border-left-width: 6px;
+}
+
+.stat-card-link:hover .stat-value,
+.stat-card-link:hover .stat-value-compact {
+    transform: scale(1.05);
+    transition: transform 0.2s ease;
 }
 
 .stat-card-primary {

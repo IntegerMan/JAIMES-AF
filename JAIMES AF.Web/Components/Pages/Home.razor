@@ -20,7 +20,7 @@
 		</div>
 		
 		<MudGrid Style="position: relative; z-index: 1;">
-			<MudItem xs="12" md="8">
+			<MudItem xs="12" md="12">
 				<MudStack Spacing="2">
 					<h1 class="hero-title">JAIMES AF</h1>
 					<p class="hero-subtitle">Join AI in Making Epic Stories — Agent Framework</p>
@@ -42,13 +42,13 @@
 					}
 				</MudStack>
 			</MudItem>
-			<MudItem xs="12" md="4" Class="d-flex justify-end align-center">
-				<MudButton Variant="Variant.Text" Href="/admin" Size="Size.Small"
-				           StartIcon="@Icons.Material.Filled.AdminPanelSettings"
-				           Style="color: rgba(255,255,255,0.85);">
-					Admin Portal
-				</MudButton>
-			</MudItem>
+			
+			<MudLink Href="/admin" Class="admin-link-hero pa-2">
+				<MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+					<MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Size="Size.Small" />
+					<MudText Typo="Typo.button" Style="font-size: 0.75rem; font-weight: 600;">Admin Portal</MudText>
+				</MudStack>
+			</MudLink>
 		</MudGrid>
 	</div>
 
@@ -156,51 +156,59 @@
 				<MudGrid Spacing="2">
 					@* Content Stats *@
 					<MudItem xs="6">
-						<div class="stat-card stat-card-primary">
-							<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-								<MudIcon Icon="@Icons.Material.Filled.SportsEsports" Color="Color.Primary" />
-								<MudStack Spacing="0">
-									<MudText Typo="Typo.caption" Class="text-muted">Active Games</MudText>
-									<span class="stat-value">@_gamesCount</span>
+						<MudLink Href="/games" Class="stat-card-link">
+							<div class="stat-card stat-card-primary">
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+									<MudIcon Icon="@Icons.Material.Filled.SportsEsports" Color="Color.Primary" />
+									<MudStack Spacing="0">
+										<MudText Typo="Typo.caption" Class="text-muted">Active Games</MudText>
+										<span class="stat-value">@_gamesCount</span>
+									</MudStack>
 								</MudStack>
-							</MudStack>
-						</div>
+							</div>
+						</MudLink>
 					</MudItem>
 					
 					<MudItem xs="6">
-						<div class="stat-card stat-card-secondary">
-							<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-								<MudIcon Icon="@Icons.Material.Filled.MenuBook" Color="Color.Secondary" />
-								<MudStack Spacing="0">
-									<MudText Typo="Typo.caption" Class="text-muted">Scenarios</MudText>
-									<span class="stat-value">@_scenariosCount</span>
+						<MudLink Href="/scenarios" Class="stat-card-link">
+							<div class="stat-card stat-card-secondary">
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+									<MudIcon Icon="@Icons.Material.Filled.MenuBook" Color="Color.Secondary" />
+									<MudStack Spacing="0">
+										<MudText Typo="Typo.caption" Class="text-muted">Scenarios</MudText>
+										<span class="stat-value">@_scenariosCount</span>
+									</MudStack>
 								</MudStack>
-							</MudStack>
-						</div>
+							</div>
+						</MudLink>
 					</MudItem>
 					
 					<MudItem xs="6">
-						<div class="stat-card stat-card-tertiary">
-							<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-								<MudIcon Icon="@Icons.Material.Filled.Person" Color="Color.Tertiary" />
-								<MudStack Spacing="0">
-									<MudText Typo="Typo.caption" Class="text-muted">Characters</MudText>
-									<span class="stat-value">@_playersCount</span>
+						<MudLink Href="/players" Class="stat-card-link">
+							<div class="stat-card stat-card-tertiary">
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+									<MudIcon Icon="@Icons.Material.Filled.Person" Color="Color.Tertiary" />
+									<MudStack Spacing="0">
+										<MudText Typo="Typo.caption" Class="text-muted">Characters</MudText>
+										<span class="stat-value">@_playersCount</span>
+									</MudStack>
 								</MudStack>
-							</MudStack>
-						</div>
+							</div>
+						</MudLink>
 					</MudItem>
 					
 					<MudItem xs="6">
-						<div class="stat-card stat-card-accent">
-							<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-								<MudIcon Icon="@Icons.Material.Filled.AutoStories" Color="Color.Success" />
-								<MudStack Spacing="0">
-									<MudText Typo="Typo.caption" Class="text-muted">Rulesets</MudText>
-									<span class="stat-value">@_rulesetsCount</span>
+						<MudLink Href="/rulesets" Class="stat-card-link">
+							<div class="stat-card stat-card-accent">
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+									<MudIcon Icon="@Icons.Material.Filled.AutoStories" Color="Color.Success" />
+									<MudStack Spacing="0">
+										<MudText Typo="Typo.caption" Class="text-muted">Rulesets</MudText>
+										<span class="stat-value">@_rulesetsCount</span>
+									</MudStack>
 								</MudStack>
-							</MudStack>
-						</div>
+							</div>
+						</MudLink>
 					</MudItem>
 				</MudGrid>
 				
@@ -210,27 +218,31 @@
 				<MudText Typo="Typo.caption" Class="text-muted mb-2" Style="font-weight: 600; letter-spacing: 0.5px;">PLATFORM</MudText>
 				<MudGrid Spacing="2">
 					<MudItem xs="6">
-						<div class="stat-card stat-card-platform">
-							<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-								<MudIcon Icon="@Icons.Material.Filled.SmartToy" Style="color: #9D4EDD;" />
-								<MudStack Spacing="0">
-									<MudText Typo="Typo.caption" Class="text-muted">Agents / Versions</MudText>
-									<span class="stat-value-compact">@_agentsCount <span class="stat-separator">•</span> @_versionsCount</span>
+						<MudLink Href="/agents" Class="stat-card-link">
+							<div class="stat-card stat-card-platform">
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+									<MudIcon Icon="@Icons.Material.Filled.SmartToy" Style="color: #9D4EDD;" />
+									<MudStack Spacing="0">
+										<MudText Typo="Typo.caption" Class="text-muted">Agents / Versions</MudText>
+										<span class="stat-value-compact">@_agentsCount <span class="stat-separator">•</span> @_versionsCount</span>
+									</MudStack>
 								</MudStack>
-							</MudStack>
-						</div>
+							</div>
+						</MudLink>
 					</MudItem>
 					
 					<MudItem xs="6">
-						<div class="stat-card stat-card-mlnet">
-							<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-								<MudIcon Icon="@Icons.Material.Filled.ModelTraining" Style="color: #EF476F;" />
-								<MudStack Spacing="0">
-									<MudText Typo="Typo.caption" Class="text-muted">ML Models</MudText>
-									<span class="stat-value">@_mlModelsCount</span>
+						<MudLink Href="/admin/test-cases" Class="stat-card-link">
+							<div class="stat-card stat-card-mlnet">
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+									<MudIcon Icon="@Icons.Material.Filled.ModelTraining" Style="color: #EF476F;" />
+									<MudStack Spacing="0">
+										<MudText Typo="Typo.caption" Class="text-muted">ML Models</MudText>
+										<span class="stat-value">@_mlModelsCount</span>
+									</MudStack>
 								</MudStack>
-							</MudStack>
-						</div>
+							</div>
+						</MudLink>
 					</MudItem>
 				</MudGrid>
 				
@@ -240,51 +252,59 @@
 				<MudText Typo="Typo.caption" Class="text-muted mb-2" Style="font-weight: 600; letter-spacing: 0.5px;">AI QUALITY</MudText>
 				<MudGrid Spacing="2">
 					<MudItem xs="6">
-						<div class="stat-card stat-card-warning">
-							<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-								<MudIcon Icon="@Icons.Material.Filled.Forum" Style="color: #F59E0B;" />
-								<MudStack Spacing="0">
-									<MudText Typo="Typo.caption" Class="text-muted">Messages</MudText>
-									<span class="stat-value">@_messagesCount</span>
+						<MudLink Href="/tools/conversation-search" Class="stat-card-link">
+							<div class="stat-card stat-card-warning">
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+									<MudIcon Icon="@Icons.Material.Filled.Forum" Style="color: #F59E0B;" />
+									<MudStack Spacing="0">
+										<MudText Typo="Typo.caption" Class="text-muted">Messages</MudText>
+										<span class="stat-value">@_messagesCount</span>
+									</MudStack>
 								</MudStack>
-							</MudStack>
-						</div>
+							</div>
+						</MudLink>
 					</MudItem>
 					
 					<MudItem xs="6">
-						<div class="stat-card stat-card-error">
-							<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-								<MudIcon Icon="@Icons.Material.Filled.SentimentSatisfied" Style="color: #EF476F;" />
-								<MudStack Spacing="0">
-									<MudText Typo="Typo.caption" Class="text-muted">Sentiments</MudText>
-									<span class="stat-value">@_sentimentCount</span>
+						<MudLink Href="/tools/player-sentiment" Class="stat-card-link">
+							<div class="stat-card stat-card-error">
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+									<MudIcon Icon="@Icons.Material.Filled.SentimentSatisfied" Style="color: #EF476F;" />
+									<MudStack Spacing="0">
+										<MudText Typo="Typo.caption" Class="text-muted">Sentiments</MudText>
+										<span class="stat-value">@_sentimentCount</span>
+									</MudStack>
 								</MudStack>
-							</MudStack>
-						</div>
+							</div>
+						</MudLink>
 					</MudItem>
 					
 					<MudItem xs="6">
-						<div class="stat-card stat-card-primary">
-							<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-								<MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Primary" />
-								<MudStack Spacing="0">
-									<MudText Typo="Typo.caption" Class="text-muted">Feedback</MudText>
-									<span class="stat-value">@_feedbackCount</span>
+						<MudLink Href="/admin/feedback" Class="stat-card-link">
+							<div class="stat-card stat-card-primary">
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+									<MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Primary" />
+									<MudStack Spacing="0">
+										<MudText Typo="Typo.caption" Class="text-muted">Feedback</MudText>
+										<span class="stat-value">@_feedbackCount</span>
+									</MudStack>
 								</MudStack>
-							</MudStack>
-						</div>
+							</div>
+						</MudLink>
 					</MudItem>
 					
 					<MudItem xs="6">
-						<div class="stat-card stat-card-secondary">
-							<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-								<MudIcon Icon="@Icons.Material.Filled.Assessment" Color="Color.Secondary" />
-								<MudStack Spacing="0">
-									<MudText Typo="Typo.caption" Class="text-muted">Evaluations</MudText>
-									<span class="stat-value">@_metricsCount</span>
+						<MudLink Href="/admin/metrics" Class="stat-card-link">
+							<div class="stat-card stat-card-secondary">
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+									<MudIcon Icon="@Icons.Material.Filled.Assessment" Color="Color.Secondary" />
+									<MudStack Spacing="0">
+										<MudText Typo="Typo.caption" Class="text-muted">Evaluations</MudText>
+										<span class="stat-value">@_metricsCount</span>
+									</MudStack>
 								</MudStack>
-							</MudStack>
-						</div>
+							</div>
+						</MudLink>
 					</MudItem>
 				</MudGrid>
 			</MudPaper>
