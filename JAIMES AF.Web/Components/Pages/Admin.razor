@@ -8,20 +8,39 @@
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
 
-	@* Header *@
-	<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
-		<MudStack Spacing="0">
-			<MudBreadcrumbs Items="_breadcrumbs" Separator=">" Class="pa-0" />
-			<MudText Typo="Typo.h5" Style="font-weight: 600;">Admin Dashboard</MudText>
+	@* Premium Admin Hero Section *@
+	<div class="admin-hero pa-4 mb-4">
+		@* Floating Particles *@
+		<div class="hero-particles">
+			<div class="particle"></div>
+			<div class="particle"></div>
+			<div class="particle"></div>
+			<div class="particle"></div>
+		</div>
+		
+		<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="position: relative; z-index: 1;">
+			<MudStack Spacing="1">
+				<MudBreadcrumbs Items="_breadcrumbs" Separator=">" Class="pa-0 admin-breadcrumbs" />
+				<h1 class="admin-hero-title">Admin Dashboard</h1>
+				<p class="admin-hero-subtitle">System management and monitoring</p>
+			</MudStack>
+			<MudLink Href="/" Class="admin-home-link pa-2">
+				<MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+					<MudIcon Icon="@Icons.Material.Filled.Home" Size="Size.Small" />
+					<MudText Typo="Typo.button" Style="font-size: 0.75rem; font-weight: 600;">Back to Home</MudText>
+				</MudStack>
+			</MudLink>
 		</MudStack>
-	</MudStack>
+	</div>
 
 	@* Dashboard Row: Pipeline Status + Content Metrics *@
-	<MudGrid Spacing="3" Class="mb-3">
-		<MudItem xs="12" md="6">
-			<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Pipeline Status</MudText>
+	<MudGrid Spacing="3" Class="mb-4">
+		<MudItem xs="12" lg="7">
+			<MudText Typo="Typo.overline" Class="mb-3" Style="letter-spacing: 1.5px; color: #7B2CBF; font-weight: 600;">
+				PIPELINE STATUS
+			</MudText>
 			<PipelineStatusPanel Class="mb-4" />
-			<MudGrid Spacing="3" Class="mb-6">
+			<MudGrid Spacing="3">
 				<MudItem xs="12" md="6">
 					<UserMessagePipelinePanel />
 				</MudItem>
@@ -30,204 +49,272 @@
 				</MudItem>
 			</MudGrid>
 		</MudItem>
-		<MudItem xs="12" md="6">
-			<MudPaper Class="pa-3" Elevation="2" Style="height: 100%;">
-				<MudText Typo="Typo.subtitle2" Class="mb-2 text-muted">Content Overview</MudText>
+		
+		<MudItem xs="12" lg="5">
+			<MudText Typo="Typo.overline" Class="mb-3" Style="letter-spacing: 1.5px; color: #7B2CBF; font-weight: 600;">
+				CONTENT OVERVIEW
+			</MudText>
+			<MudPaper Elevation="0" Class="pa-3" Style="background: linear-gradient(to bottom right, #f8f9fa, #ffffff); border-radius: 16px; border: 1px solid #e8e8e8;">
 				<MudGrid Spacing="2">
-					<MudItem xs="6" sm="3">
-						<MudStack AlignItems="AlignItems.Center" Spacing="0">
-							<MudIcon Icon="@Icons.Material.Filled.SportsEsports" Color="Color.Primary" />
-							<MudText Typo="Typo.h6">@_gamesCount</MudText>
-							<MudText Typo="Typo.caption" Class="text-muted">Games</MudText>
-						</MudStack>
+					<MudItem xs="6">
+						<MudLink Href="/games" Class="stat-card-link">
+							<div class="stat-card stat-card-primary">
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+									<MudIcon Icon="@Icons.Material.Filled.SportsEsports" Color="Color.Primary" />
+									<MudStack Spacing="0">
+										<MudText Typo="Typo.caption" Class="text-muted">Active Games</MudText>
+										<span class="stat-value">@_gamesCount</span>
+									</MudStack>
+								</MudStack>
+							</div>
+						</MudLink>
 					</MudItem>
-					<MudItem xs="6" sm="3">
-						<MudStack AlignItems="AlignItems.Center" Spacing="0">
-							<MudIcon Icon="@Icons.Material.Filled.MenuBook" Color="Color.Secondary" />
-							<MudText Typo="Typo.h6">@_scenariosCount</MudText>
-							<MudText Typo="Typo.caption" Class="text-muted">Scenarios</MudText>
-						</MudStack>
+					
+					<MudItem xs="6">
+						<MudLink Href="/scenarios" Class="stat-card-link">
+							<div class="stat-card stat-card-secondary">
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+									<MudIcon Icon="@Icons.Material.Filled.MenuBook" Color="Color.Secondary" />
+									<MudStack Spacing="0">
+										<MudText Typo="Typo.caption" Class="text-muted">Scenarios</MudText>
+										<span class="stat-value">@_scenariosCount</span>
+									</MudStack>
+								</MudStack>
+							</div>
+						</MudLink>
 					</MudItem>
-					<MudItem xs="6" sm="3">
-						<MudStack AlignItems="AlignItems.Center" Spacing="0">
-							<MudIcon Icon="@Icons.Material.Filled.Person" Color="Color.Info" />
-							<MudText Typo="Typo.h6">@_playersCount</MudText>
-							<MudText Typo="Typo.caption" Class="text-muted">Characters</MudText>
-						</MudStack>
+					
+					<MudItem xs="6">
+						<MudLink Href="/players" Class="stat-card-link">
+							<div class="stat-card stat-card-tertiary">
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+									<MudIcon Icon="@Icons.Material.Filled.Person" Color="Color.Tertiary" />
+									<MudStack Spacing="0">
+										<MudText Typo="Typo.caption" Class="text-muted">Characters</MudText>
+										<span class="stat-value">@_playersCount</span>
+									</MudStack>
+								</MudStack>
+							</div>
+						</MudLink>
 					</MudItem>
-					<MudItem xs="6" sm="3">
-						<MudStack AlignItems="AlignItems.Center" Spacing="0">
-							<MudIcon Icon="@Icons.Material.Filled.AutoStories" Color="Color.Success" />
-							<MudText Typo="Typo.h6">@_rulesetsCount</MudText>
-							<MudText Typo="Typo.caption" Class="text-muted">Rulesets</MudText>
-						</MudStack>
+					
+					<MudItem xs="6">
+						<MudLink Href="/rulesets" Class="stat-card-link">
+							<div class="stat-card stat-card-accent">
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+									<MudIcon Icon="@Icons.Material.Filled.AutoStories" Color="Color.Success" />
+									<MudStack Spacing="0">
+										<MudText Typo="Typo.caption" Class="text-muted">Rulesets</MudText>
+										<span class="stat-value">@_rulesetsCount</span>
+									</MudStack>
+								</MudStack>
+							</div>
+						</MudLink>
 					</MudItem>
 				</MudGrid>
 			</MudPaper>
 		</MudItem>
 	</MudGrid>
 
-	@* AI Quality Summary *@
-	<MudPaper Class="pa-3 mb-3" Elevation="1">
-		<MudStack Row="true" Justify="Justify.SpaceAround" AlignItems="AlignItems.Center" Style="flex-wrap: wrap;">
-			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="pa-2">
-				<MudIcon Icon="@Icons.Material.Filled.Feedback" Color="Color.Primary" Size="Size.Large" />
-				<MudStack Spacing="0">
-					<MudText Typo="Typo.h6">@_feedbackCount</MudText>
-					<MudText Typo="Typo.caption" Class="text-muted">Feedback Items</MudText>
-				</MudStack>
-			</MudStack>
-			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="pa-2">
-				<MudIcon Icon="@Icons.Material.Filled.SentimentSatisfied" Color="Color.Secondary" Size="Size.Large" />
-				<MudStack Spacing="0">
-					<MudText Typo="Typo.h6">@_sentimentCount</MudText>
-					<MudText Typo="Typo.caption" Class="text-muted">Sentiments Analyzed</MudText>
-				</MudStack>
-			</MudStack>
-			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="pa-2">
-				<MudIcon Icon="@Icons.Material.Filled.Assessment" Color="Color.Info" Size="Size.Large" />
-				<MudStack Spacing="0">
-					<MudText Typo="Typo.h6">@_metricsCount</MudText>
-					<MudText Typo="Typo.caption" Class="text-muted">Evaluations</MudText>
-				</MudStack>
-			</MudStack>
-			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="pa-2">
-				<MudIcon Icon="@Icons.Material.Filled.Place" Color="Color.Success" Size="Size.Large" />
-				<MudStack Spacing="0">
-					<MudText Typo="Typo.h6">@_locationsCount</MudText>
-					<MudText Typo="Typo.caption" Class="text-muted">Locations</MudText>
-				</MudStack>
-			</MudStack>
-		</MudStack>
-	</MudPaper>
+	@* AI Quality Summary - Enhanced Glass Card *@
+	<MudText Typo="Typo.overline" Class="mb-3" Style="letter-spacing: 1.5px; color: #7B2CBF; font-weight: 600;">
+		AI QUALITY METRICS
+	</MudText>
+	<div class="glass-card pa-4 mb-4">
+		<MudGrid Spacing="3">
+			<MudItem xs="6" sm="3">
+				<MudLink Href="/admin/feedback" Class="stat-card-link">
+					<div class="stat-card stat-card-primary" style="text-align: center;">
+						<MudStack AlignItems="AlignItems.Center" Spacing="1">
+							<div class="icon-badge icon-badge-primary" style="width: 42px; height: 42px; border-radius: 10px;">
+								<MudIcon Icon="@Icons.Material.Filled.Feedback" Style="color: white; font-size: 1.25rem;" />
+							</div>
+							<span class="stat-value">@_feedbackCount</span>
+							<MudText Typo="Typo.caption" Class="text-muted">Feedback Items</MudText>
+						</MudStack>
+					</div>
+				</MudLink>
+			</MudItem>
+			<MudItem xs="6" sm="3">
+				<MudLink Href="/admin/sentiments" Class="stat-card-link">
+					<div class="stat-card stat-card-secondary" style="text-align: center;">
+						<MudStack AlignItems="AlignItems.Center" Spacing="1">
+							<div class="icon-badge icon-badge-secondary" style="width: 42px; height: 42px; border-radius: 10px;">
+								<MudIcon Icon="@Icons.Material.Filled.SentimentSatisfied" Style="color: white; font-size: 1.25rem;" />
+							</div>
+							<span class="stat-value">@_sentimentCount</span>
+							<MudText Typo="Typo.caption" Class="text-muted">Sentiments</MudText>
+						</MudStack>
+					</div>
+				</MudLink>
+			</MudItem>
+			<MudItem xs="6" sm="3">
+				<MudLink Href="/admin/metrics" Class="stat-card-link">
+					<div class="stat-card stat-card-tertiary" style="text-align: center;">
+						<MudStack AlignItems="AlignItems.Center" Spacing="1">
+							<div class="icon-badge icon-badge-tertiary" style="width: 42px; height: 42px; border-radius: 10px;">
+								<MudIcon Icon="@Icons.Material.Filled.Assessment" Style="color: white; font-size: 1.25rem;" />
+							</div>
+							<span class="stat-value">@_metricsCount</span>
+							<MudText Typo="Typo.caption" Class="text-muted">Evaluations</MudText>
+						</MudStack>
+					</div>
+				</MudLink>
+			</MudItem>
+			<MudItem xs="6" sm="3">
+				<MudLink Href="/admin/locations" Class="stat-card-link">
+					<div class="stat-card stat-card-accent" style="text-align: center;">
+						<MudStack AlignItems="AlignItems.Center" Spacing="1">
+							<div class="icon-badge icon-badge-accent" style="width: 42px; height: 42px; border-radius: 10px;">
+								<MudIcon Icon="@Icons.Material.Filled.Place" Style="color: white; font-size: 1.25rem;" />
+							</div>
+							<span class="stat-value">@_locationsCount</span>
+							<MudText Typo="Typo.caption" Class="text-muted">Locations</MudText>
+						</MudStack>
+					</div>
+				</MudLink>
+			</MudItem>
+		</MudGrid>
+	</div>
+
+	@* Tool Sections Header *@
+	<MudText Typo="Typo.overline" Class="mb-3" Style="letter-spacing: 1.5px; color: #7B2CBF; font-weight: 600;">
+		ADMIN TOOLS
+	</MudText>
 
 	@* Collapsible Tool Sections *@
-	<MudExpansionPanels Class="admin-expansion-panel" MultiExpansion="true">
+	<MudExpansionPanels Class="admin-expansion-panel-enhanced" MultiExpansion="true">
 
 		@* Content Management *@
-		<MudExpansionPanel Text="Content Management" MaxHeight="400" Expanded="true">
+		<MudExpansionPanel MaxHeight="400" Expanded="true" Class="admin-panel-content">
 			<TitleContent>
 				<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-					<MudIcon Icon="@Icons.Material.Filled.Folder" Color="Color.Primary" />
-					<MudText Typo="Typo.subtitle1" Style="font-weight: 500;">Content Management</MudText>
-					<MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">5</MudChip>
+					<div class="panel-icon-badge panel-icon-content">
+						<MudIcon Icon="@Icons.Material.Filled.Folder" Style="color: white; font-size: 1rem;" />
+					</div>
+					<MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Content Management</MudText>
+					<MudChip T="string" Size="Size.Small" Style="background: linear-gradient(135deg, #7B2CBF, #9D4EDD); color: white;">5</MudChip>
 				</MudStack>
 			</TitleContent>
 			<ChildContent>
-				<MudGrid Spacing="2">
+				<MudGrid Spacing="2" Class="pa-2">
 					<MudItem xs="6" sm="4" md="2">
 						<CompactLinkCard Icon="@Icons.Material.Filled.SportsEsports" IconColor="Color.Primary"
-						                 Title="Games" Href="/games"  />
+						                 Title="Games" Href="/games" />
 					</MudItem>
 					<MudItem xs="6" sm="4" md="2">
 						<CompactLinkCard Icon="@Icons.Material.Filled.MenuBook" IconColor="Color.Secondary"
-						                 Title="Scenarios" Href="/scenarios"  />
+						                 Title="Scenarios" Href="/scenarios" />
 					</MudItem>
 					<MudItem xs="6" sm="4" md="2">
 						<CompactLinkCard Icon="@Icons.Material.Filled.Person" IconColor="Color.Info"
-						                 Title="Players" Href="/players"  />
+						                 Title="Players" Href="/players" />
 					</MudItem>
 					<MudItem xs="6" sm="4" md="2">
 						<CompactLinkCard Icon="@Icons.Material.Filled.AutoStories" IconColor="Color.Success"
-						                 Title="Rulesets" Href="/rulesets"  />
+						                 Title="Rulesets" Href="/rulesets" />
 					</MudItem>
 					<MudItem xs="6" sm="4" md="2">
 						<CompactLinkCard Icon="@Icons.Material.Filled.Place" IconColor="Color.Warning"
-						                 Title="Locations" Href="/admin/locations"  />
+						                 Title="Locations" Href="/admin/locations" />
 					</MudItem>
 				</MudGrid>
 			</ChildContent>
 		</MudExpansionPanel>
 
 		@* Agent Management *@
-		<MudExpansionPanel Text="Agent Management" MaxHeight="400" Expanded="true">
+		<MudExpansionPanel MaxHeight="400" Expanded="true" Class="admin-panel-agents">
 			<TitleContent>
 				<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-					<MudIcon Icon="@Icons.Material.Filled.SmartToy" Color="Color.Secondary" />
-					<MudText Typo="Typo.subtitle1" Style="font-weight: 500;">Agent Management</MudText>
-					<MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Outlined">7</MudChip>
+					<div class="panel-icon-badge panel-icon-agents">
+						<MudIcon Icon="@Icons.Material.Filled.SmartToy" Style="color: white; font-size: 1rem;" />
+					</div>
+					<MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Agent Management</MudText>
+					<MudChip T="string" Size="Size.Small" Style="background: linear-gradient(135deg, #4361EE, #5A78EE); color: white;">7</MudChip>
 				</MudStack>
 			</TitleContent>
 			<ChildContent>
-				<MudGrid Spacing="2">
+				<MudGrid Spacing="2" Class="pa-2">
 					<MudItem xs="6" sm="4" md="2">
 						<CompactLinkCard Icon="@Icons.Material.Filled.SmartToy" IconColor="Color.Secondary"
-						                 Title="Agents" Href="/agents"  />
+						                 Title="Agents" Href="/agents" />
 					</MudItem>
 					<MudItem xs="6" sm="4" md="2">
 						<CompactLinkCard Icon="@Icons.Material.Filled.Build" IconColor="Color.Primary"
-						                 Title="Tool Usage" Href="/admin/tools"  />
+						                 Title="Tool Usage" Href="/admin/tools" />
 					</MudItem>
 					<MudItem xs="6" sm="4" md="2">
 						<CompactLinkCard Icon="@Icons.Material.Filled.RateReview" IconColor="Color.Info"
-						                 Title="Evaluators" Href="/admin/evaluators"  />
+						                 Title="Evaluators" Href="/admin/evaluators" />
 					</MudItem>
 					<MudItem xs="6" sm="4" md="2">
 						<CompactLinkCard Icon="@Icons.Material.Filled.Assessment" IconColor="Color.Success"
-						                 Title="Metrics" Href="/admin/metrics"  />
+						                 Title="Metrics" Href="/admin/metrics" />
 					</MudItem>
 					<MudItem xs="6" sm="4" md="2">
 						<CompactLinkCard Icon="@Icons.Material.Filled.Feedback" IconColor="Color.Warning"
-						                 Title="Feedback" Href="/admin/feedback"  />
+						                 Title="Feedback" Href="/admin/feedback" />
 					</MudItem>
 					<MudItem xs="6" sm="4" md="2">
 						<CompactLinkCard Icon="@Icons.Material.Filled.SentimentSatisfied" IconColor="Color.Error"
-						                 Title="Sentiments" Href="/admin/sentiments"  />
+						                 Title="Sentiments" Href="/admin/sentiments" />
 					</MudItem>
 					<MudItem xs="6" sm="4" md="2">
 						<CompactLinkCard Icon="@Icons.Material.Filled.ModelTraining" IconColor="Color.Primary"
-						                 Title="ML Models" Href="/admin/classification-models"  />
+						                 Title="ML Models" Href="/admin/classification-models" />
 					</MudItem>
 				</MudGrid>
 			</ChildContent>
 		</MudExpansionPanel>
 
 		@* Testing & Diagnostics *@
-		<MudExpansionPanel Text="Testing & Diagnostics" MaxHeight="500" Expanded="true">
+		<MudExpansionPanel MaxHeight="500" Expanded="true" Class="admin-panel-testing">
 			<TitleContent>
 				<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-					<MudIcon Icon="@Icons.Material.Filled.BugReport" Color="Color.Info" />
-					<MudText Typo="Typo.subtitle1" Style="font-weight: 500;">Testing & Diagnostics</MudText>
-					<MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">9</MudChip>
+					<div class="panel-icon-badge panel-icon-testing">
+						<MudIcon Icon="@Icons.Material.Filled.BugReport" Style="color: white; font-size: 1rem;" />
+					</div>
+					<MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Testing & Diagnostics</MudText>
+					<MudChip T="string" Size="Size.Small" Style="background: linear-gradient(135deg, #4CC9F0, #70D6F4); color: #1a1a2e;">9</MudChip>
 				</MudStack>
 			</TitleContent>
 			<ChildContent>
-				<MudGrid Spacing="2">
+				<MudGrid Spacing="2" Class="pa-2">
 					<MudItem xs="6" sm="4" md="2">
 						<CompactLinkCard Icon="@Icons.Material.Filled.Science" IconColor="Color.Info"
-						                 Title="Tool Testing" Href="/admin/tool-test"  />
+						                 Title="Tool Testing" Href="/admin/tool-test" />
 					</MudItem>
 					<MudItem xs="6" sm="4" md="2">
 						<CompactLinkCard Icon="@Icons.Material.Filled.Search" IconColor="Color.Primary"
-						                 Title="Rules Search" Href="/tools/rules-search"  />
+						                 Title="Rules Search" Href="/tools/rules-search" />
 					</MudItem>
 					<MudItem xs="6" sm="4" md="2">
 						<CompactLinkCard Icon="@Icons.Material.Filled.Forum" IconColor="Color.Secondary"
-						                 Title="Conversation Search" Href="/tools/conversation-search"  />
+						                 Title="Conv. Search" Href="/tools/conversation-search" />
 					</MudItem>
 					<MudItem xs="6" sm="4" md="2">
 						<CompactLinkCard Icon="@Icons.Material.Filled.LocationOn" IconColor="Color.Success"
-						                 Title="Location Lookup" Href="/tools/location-lookup"  />
+						                 Title="Location Lookup" Href="/tools/location-lookup" />
 					</MudItem>
 					<MudItem xs="6" sm="4" md="2">
 						<CompactLinkCard Icon="@Icons.Material.Filled.EditLocation" IconColor="Color.Warning"
-						                 Title="Location Mgmt" Href="/tools/location-management"  />
+						                 Title="Location Mgmt" Href="/tools/location-management" />
 					</MudItem>
 					<MudItem xs="6" sm="4" md="2">
 						<CompactLinkCard Icon="@Icons.Material.Filled.RateReview" IconColor="Color.Error"
-						                 Title="Test Evaluators" Href="/admin/evaluators/test"  />
+						                 Title="Test Evaluators" Href="/admin/evaluators/test" />
 					</MudItem>
 					<MudItem xs="6" sm="4" md="2">
 						<CompactLinkCard Icon="@Icons.Material.Filled.Storage" IconColor="Color.Primary"
-						                 Title="RAG Collections" Href="/admin/rag-collections"  />
+						                 Title="RAG Collections" Href="/admin/rag-collections" />
 					</MudItem>
 					<MudItem xs="6" sm="4" md="2">
 						<CompactLinkCard Icon="@Icons.Material.Filled.Checklist" IconColor="Color.Success"
-						                 Title="Test Cases" Href="/admin/test-cases"  />
+						                 Title="Test Cases" Href="/admin/test-cases" />
 					</MudItem>
 					<MudItem xs="6" sm="4" md="2">
 						<CompactLinkCard Icon="@Icons.Material.Filled.Summarize" IconColor="Color.Info"
-						                 Title="Test Reports" Href="/admin/test-reports"  />
+						                 Title="Test Reports" Href="/admin/test-reports" />
 					</MudItem>
 				</MudGrid>
 			</ChildContent>

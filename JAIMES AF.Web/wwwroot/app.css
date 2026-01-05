@@ -876,3 +876,182 @@ h1:focus {
         height: 48px;
     }
 }
+
+/* ======================================
+   ADMIN DASHBOARD PREMIUM STYLES
+   ====================================== */
+
+/* Admin Hero Section - Darker/Professional variant */
+.admin-hero {
+    background: linear-gradient(135deg, #2B2D42 0%, #3D3F5F 50%, #4A4C6D 100%);
+    background-size: 200% 200%;
+    animation: gradientShift 12s ease infinite;
+    position: relative;
+    overflow: hidden;
+    border-radius: 16px;
+    border: 1px solid rgba(123, 44, 191, 0.3);
+}
+
+.admin-hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(123, 44, 191, 0.15) 0%, transparent 50%);
+    animation: heroGlow 8s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.admin-hero-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: white;
+    margin: 0;
+}
+
+.admin-hero-subtitle {
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 400;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.admin-breadcrumbs .mud-breadcrumb-item,
+.admin-breadcrumbs .mud-breadcrumb-separator {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.admin-home-link {
+    color: rgba(255, 255, 255, 0.8) !important;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+}
+
+.admin-home-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white !important;
+    transform: scale(1.02);
+}
+
+.admin-home-link .mud-icon-root,
+.admin-home-link .mud-typography {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.admin-home-link:hover .mud-icon-root,
+.admin-home-link:hover .mud-typography {
+    color: white !important;
+}
+
+/* Enhanced Admin Expansion Panels */
+.admin-expansion-panel-enhanced .mud-expand-panel {
+    margin-bottom: 12px;
+    border-radius: 12px !important;
+    overflow: hidden;
+    border: 1px solid #e8e8e8;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    transition: all 0.3s ease;
+}
+
+.admin-expansion-panel-enhanced .mud-expand-panel:hover {
+    box-shadow: 0 4px 16px rgba(123, 44, 191, 0.1);
+    border-color: rgba(123, 44, 191, 0.2);
+}
+
+.admin-expansion-panel-enhanced .mud-expand-panel-header {
+    background: linear-gradient(to right, #f9f9fb, #ffffff) !important;
+    padding: 12px 16px !important;
+}
+
+.admin-expansion-panel-enhanced .mud-expand-panel-content {
+    background: #fafafa;
+}
+
+/* Panel Icon Badges */
+.panel-icon-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.panel-icon-content {
+    background: linear-gradient(135deg, #7B2CBF 0%, #9D4EDD 100%);
+}
+
+.panel-icon-agents {
+    background: linear-gradient(135deg, #4361EE 0%, #5A78EE 100%);
+}
+
+.panel-icon-testing {
+    background: linear-gradient(135deg, #4CC9F0 0%, #70D6F4 100%);
+}
+
+/* Enhanced Compact Link Cards */
+.compact-link-card-enhanced {
+    background: white;
+    border: 1px solid #e8e8e8;
+    border-radius: 10px;
+    padding: 10px 12px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.compact-link-card-enhanced:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(123, 44, 191, 0.12);
+    border-color: rgba(123, 44, 191, 0.3);
+    background: linear-gradient(to right, rgba(123, 44, 191, 0.02), white);
+}
+
+/* Compact Icon Badges */
+.compact-icon-badge {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.compact-link-card-enhanced:hover .compact-icon-badge {
+    transform: scale(1.1);
+}
+
+.compact-badge-primary {
+    background: linear-gradient(135deg, #7B2CBF 0%, #9D4EDD 100%);
+    box-shadow: 0 2px 6px rgba(123, 44, 191, 0.3);
+}
+
+.compact-badge-secondary {
+    background: linear-gradient(135deg, #4361EE 0%, #5A78EE 100%);
+    box-shadow: 0 2px 6px rgba(67, 97, 238, 0.3);
+}
+
+.compact-badge-info {
+    background: linear-gradient(135deg, #4CC9F0 0%, #70D6F4 100%);
+    box-shadow: 0 2px 6px rgba(76, 201, 240, 0.3);
+}
+
+.compact-badge-success {
+    background: linear-gradient(135deg, #06D6A0 0%, #2FE6B5 100%);
+    box-shadow: 0 2px 6px rgba(6, 214, 160, 0.3);
+}
+
+.compact-badge-warning {
+    background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%);
+    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+}
+
+.compact-badge-error {
+    background: linear-gradient(135deg, #EF476F 0%, #F47791 100%);
+    box-shadow: 0 2px 6px rgba(239, 71, 111, 0.3);
+}
