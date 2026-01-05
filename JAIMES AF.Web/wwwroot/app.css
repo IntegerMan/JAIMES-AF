@@ -64,8 +64,23 @@ body::-webkit-scrollbar-thumb,
 html::-webkit-scrollbar-thumb:hover,
 body::-webkit-scrollbar-thumb:hover,
 .mud-drawer::-webkit-scrollbar-thumb:hover,
-.mud-main-content::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, #9D4EDD 0%, #FFD60A 100%);
+.mud-main-content::-webkit-scrollbar-thumb:hover,
+html::-webkit-scrollbar-thumb:active,
+body::-webkit-scrollbar-thumb:active,
+.mud-drawer::-webkit-scrollbar-thumb:active,
+.mud-main-content::-webkit-scrollbar-thumb:active {
+    background: #FFD60A;
+}
+
+/* Firefox scrollbar hover */
+@supports (scrollbar-color: yellow black) {
+
+    html:hover,
+    body:hover,
+    .mud-drawer:hover,
+    .mud-main-content:hover {
+        scrollbar-color: #FFD60A #2B2D42;
+    }
 }
 
 /* Firefox scrollbar */
@@ -77,10 +92,24 @@ body,
     scrollbar-color: #7B2CBF #2B2D42;
 }
 
-/* Compact AppBar Override */
+/* Compact AppBar Override & Layout Flushness */
 .mud-appbar {
     height: 40px !important;
     min-height: 40px !important;
+}
+
+.mud-drawer-fixed {
+    top: 40px !important;
+    height: calc(100% - 40px) !important;
+}
+
+.mud-main-content {
+    margin-top: 40px !important;
+    padding-top: 0 !important;
+}
+
+.mud-container {
+    padding-top: 8px !important;
 }
 
 a,
