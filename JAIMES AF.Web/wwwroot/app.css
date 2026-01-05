@@ -445,7 +445,7 @@ h1:focus {
 
 /* Hero Title with gradient text */
 .hero-title {
-    font-size: 2.5rem;
+    font-size: 2.2rem;
     font-weight: 800;
     letter-spacing: -1px;
     background: linear-gradient(90deg, #ffffff 0%, rgba(255, 255, 255, 0.9) 100%);
@@ -458,7 +458,7 @@ h1:focus {
 .hero-subtitle {
     color: rgba(255, 255, 255, 0.9);
     font-weight: 400;
-    font-size: 1.1rem;
+    font-size: 1.0rem;
     letter-spacing: 0.5px;
 }
 
@@ -546,11 +546,11 @@ h1:focus {
 /* Stats Dashboard Cards */
 .stat-card {
     background: white;
-    border-radius: 12px;
-    padding: 16px;
-    border-left: 4px solid transparent;
+    border-radius: 10px;
+    padding: 10px 14px;
+    border-left: 3px solid transparent;
     transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
 .stat-card:hover {
@@ -590,7 +590,7 @@ h1:focus {
 }
 
 .stat-value {
-    font-size: 1.75rem;
+    font-size: 1.5rem;
     font-weight: 700;
     line-height: 1;
     background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
@@ -600,7 +600,7 @@ h1:focus {
 }
 
 .stat-value-compact {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     font-weight: 700;
     line-height: 1;
     background: linear-gradient(135deg, #9D4EDD 0%, var(--color-secondary) 100%);
@@ -699,13 +699,13 @@ h1:focus {
 
 /* Enhanced nav items - Dark Theme */
 .mud-navmenu .mud-nav-link {
-    padding: 10px 16px;
+    padding: 8px 16px;
     border-radius: 8px;
-    margin: 2px 8px;
-    font-size: 0.875rem;
+    margin: 1px 8px;
+    font-size: 0.85rem;
     font-weight: 500;
     transition: all 0.2s ease;
-    color: rgba(248, 249, 250, 0.85);
+    color: rgba(248, 249, 250, 0.8);
 }
 
 .mud-navmenu .mud-nav-link:hover {

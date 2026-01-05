@@ -22,36 +22,32 @@ public class GetDashboardStatsEndpoint : EndpointWithoutRequest<DashboardStatsRe
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        // Execute all count queries in parallel for optimal performance
-        var gamesTask = DbContext.Games.CountAsync(ct);
-        var scenariosTask = DbContext.Scenarios.CountAsync(ct);
-        var playersTask = DbContext.Players.CountAsync(ct);
-        var rulesetsTask = DbContext.Rulesets.CountAsync(ct);
-        var agentsTask = DbContext.Agents.CountAsync(ct);
-        var versionsTask = DbContext.AgentInstructionVersions.CountAsync(ct);
-        var messagesTask = DbContext.Messages.CountAsync(ct);
-        var mlModelsTask = DbContext.ClassificationModels.CountAsync(ct);
-        var sentimentsTask = DbContext.MessageSentiments.CountAsync(ct);
-        var feedbackTask = DbContext.MessageFeedbacks.CountAsync(ct);
-        var evaluationsTask = DbContext.MessageEvaluationMetrics.CountAsync(ct);
-
-        await Task.WhenAll(gamesTask, scenariosTask, playersTask, rulesetsTask,
-            agentsTask, versionsTask, messagesTask, mlModelsTask,
-            sentimentsTask, feedbackTask, evaluationsTask);
+        // Execute queries sequentially. DbContext is not thread-safe for parallel operations.
+        int gamesCount = await DbContext.Games.CountAsync(ct);
+        int scenariosCount = await DbContext.Scenarios.CountAsync(ct);
+        int playersCount = await DbContext.Players.CountAsync(ct);
+        int rulesetsCount = await DbContext.Rulesets.CountAsync(ct);
+        int agentsCount = await DbContext.Agents.CountAsync(ct);
+        int versionsCount = await DbContext.AgentInstructionVersions.CountAsync(ct);
+        int messagesCount = await DbContext.Messages.CountAsync(ct);
+        int mlModelsCount = await DbContext.ClassificationModels.CountAsync(ct);
+        int sentimentsCount = await DbContext.MessageSentiments.CountAsync(ct);
+        int feedbackCount = await DbContext.MessageFeedbacks.CountAsync(ct);
+        int evaluationsCount = await DbContext.MessageEvaluationMetrics.CountAsync(ct);
 
         await Send.OkAsync(new DashboardStatsResponse
         {
-            GamesCount = gamesTask.Result,
-            ScenariosCount = scenariosTask.Result,
-            PlayersCount = playersTask.Result,
-            RulesetsCount = rulesetsTask.Result,
-            AgentsCount = agentsTask.Result,
-            VersionsCount = versionsTask.Result,
-            MessagesCount = messagesTask.Result,
-            MlModelsCount = mlModelsTask.Result,
-            SentimentsCount = sentimentsTask.Result,
-            FeedbackCount = feedbackTask.Result,
-            EvaluationsCount = evaluationsTask.Result
+            GamesCount = gamesCount,
+            ScenariosCount = scenariosCount,
+            PlayersCount = playersCount,
+            RulesetsCount = rulesetsCount,
+            AgentsCount = agentsCount,
+            VersionsCount = versionsCount,
+            MessagesCount = messagesCount,
+            MlModelsCount = mlModelsCount,
+            SentimentsCount = sentimentsCount,
+            FeedbackCount = feedbackCount,
+            EvaluationsCount = evaluationsCount
         }, ct);
     }
 }
