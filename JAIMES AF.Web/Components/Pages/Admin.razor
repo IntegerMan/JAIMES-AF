@@ -8,39 +8,37 @@
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
 
-	@* Premium Admin Hero Section *@
-	<div class="admin-hero pa-4 mb-4">
-		@* Floating Particles *@
-		<div class="hero-particles">
-			<div class="particle"></div>
-			<div class="particle"></div>
-			<div class="particle"></div>
-			<div class="particle"></div>
-		</div>
-		
+	@* Compact Admin Hero Section *@
+	<div class="admin-hero admin-hero-compact pa-3 mb-3">
 		<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="position: relative; z-index: 1;">
-			<MudStack Spacing="1">
-				<MudBreadcrumbs Items="_breadcrumbs" Separator=">" Class="pa-0 admin-breadcrumbs" />
-				<h1 class="admin-hero-title">Admin Dashboard</h1>
-				<p class="admin-hero-subtitle">System management and monitoring</p>
+			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+				<MudStack Spacing="0">
+					<h1 class="admin-hero-title" style="font-size: 1.4rem;">Admin Dashboard</h1>
+					<p class="admin-hero-subtitle" style="font-size: 0.8rem;">System management and monitoring</p>
+				</MudStack>
 			</MudStack>
 			<MudLink Href="/" Class="admin-home-link pa-2">
 				<MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
 					<MudIcon Icon="@Icons.Material.Filled.Home" Size="Size.Small" />
-					<MudText Typo="Typo.button" Style="font-size: 0.75rem; font-weight: 600;">Back to Home</MudText>
+					<MudText Typo="Typo.button" Style="font-size: 0.7rem; font-weight: 600;">Home</MudText>
 				</MudStack>
 			</MudLink>
 		</MudStack>
 	</div>
 
-	@* Dashboard Row: Pipeline Status + Content Metrics *@
-	<MudGrid Spacing="3" Class="mb-4">
-		<MudItem xs="12" lg="7">
-			<MudText Typo="Typo.overline" Class="mb-3" Style="letter-spacing: 1.5px; color: #7B2CBF; font-weight: 600;">
+	@* Main Dashboard: 66:33 Split - Pipelines Left, Stats Right *@
+	<MudGrid Spacing="3" Class="mb-3">
+		@* Left Column (66%) - Stacked Pipeline Panels *@
+		<MudItem xs="12" lg="8">
+			<MudText Typo="Typo.overline" Class="mb-2" Style="letter-spacing: 1.5px; color: #7B2CBF; font-weight: 600;">
 				PIPELINE STATUS
 			</MudText>
-			<PipelineStatusPanel Class="mb-4" />
-			<MudGrid Spacing="3">
+			
+			@* Document Processing Pipeline *@
+			<PipelineStatusPanel Class="mb-2" />
+			
+			@* Message Pipelines Row *@
+			<MudGrid Spacing="2">
 				<MudItem xs="12" md="6">
 					<UserMessagePipelinePanel />
 				</MudItem>
@@ -50,62 +48,122 @@
 			</MudGrid>
 		</MudItem>
 		
-		<MudItem xs="12" lg="5">
-			<MudText Typo="Typo.overline" Class="mb-3" Style="letter-spacing: 1.5px; color: #7B2CBF; font-weight: 600;">
+		@* Right Column (33%) - Stats Dashboard *@
+		<MudItem xs="12" lg="4">
+			@* Content Overview *@
+			<MudText Typo="Typo.overline" Class="mb-2" Style="letter-spacing: 1.5px; color: #7B2CBF; font-weight: 600;">
 				CONTENT OVERVIEW
 			</MudText>
-			<MudPaper Elevation="0" Class="pa-3" Style="background: linear-gradient(to bottom right, #f8f9fa, #ffffff); border-radius: 16px; border: 1px solid #e8e8e8;">
-				<MudGrid Spacing="2">
+			<MudPaper Elevation="0" Class="pa-2 mb-3" Style="background: linear-gradient(to bottom right, #f8f9fa, #ffffff); border-radius: 12px; border: 1px solid #e8e8e8;">
+				<MudGrid Spacing="1">
 					<MudItem xs="6">
 						<MudLink Href="/games" Class="stat-card-link">
 							<div class="stat-card stat-card-primary">
 								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-									<MudIcon Icon="@Icons.Material.Filled.SportsEsports" Color="Color.Primary" />
+									<MudIcon Icon="@Icons.Material.Filled.SportsEsports" Color="Color.Primary" Size="Size.Small" />
 									<MudStack Spacing="0">
-										<MudText Typo="Typo.caption" Class="text-muted">Active Games</MudText>
-										<span class="stat-value">@_gamesCount</span>
+										<span class="stat-value-sm">@_gamesCount</span>
+										<MudText Typo="Typo.caption" Class="text-muted">Games</MudText>
 									</MudStack>
 								</MudStack>
 							</div>
 						</MudLink>
 					</MudItem>
-					
 					<MudItem xs="6">
 						<MudLink Href="/scenarios" Class="stat-card-link">
 							<div class="stat-card stat-card-secondary">
 								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-									<MudIcon Icon="@Icons.Material.Filled.MenuBook" Color="Color.Secondary" />
+									<MudIcon Icon="@Icons.Material.Filled.MenuBook" Color="Color.Secondary" Size="Size.Small" />
 									<MudStack Spacing="0">
+										<span class="stat-value-sm">@_scenariosCount</span>
 										<MudText Typo="Typo.caption" Class="text-muted">Scenarios</MudText>
-										<span class="stat-value">@_scenariosCount</span>
 									</MudStack>
 								</MudStack>
 							</div>
 						</MudLink>
 					</MudItem>
-					
 					<MudItem xs="6">
 						<MudLink Href="/players" Class="stat-card-link">
 							<div class="stat-card stat-card-tertiary">
 								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-									<MudIcon Icon="@Icons.Material.Filled.Person" Color="Color.Tertiary" />
+									<MudIcon Icon="@Icons.Material.Filled.Person" Color="Color.Tertiary" Size="Size.Small" />
 									<MudStack Spacing="0">
+										<span class="stat-value-sm">@_playersCount</span>
 										<MudText Typo="Typo.caption" Class="text-muted">Characters</MudText>
-										<span class="stat-value">@_playersCount</span>
 									</MudStack>
 								</MudStack>
 							</div>
 						</MudLink>
 					</MudItem>
-					
 					<MudItem xs="6">
 						<MudLink Href="/rulesets" Class="stat-card-link">
 							<div class="stat-card stat-card-accent">
 								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-									<MudIcon Icon="@Icons.Material.Filled.AutoStories" Color="Color.Success" />
+									<MudIcon Icon="@Icons.Material.Filled.AutoStories" Color="Color.Success" Size="Size.Small" />
 									<MudStack Spacing="0">
+										<span class="stat-value-sm">@_rulesetsCount</span>
 										<MudText Typo="Typo.caption" Class="text-muted">Rulesets</MudText>
-										<span class="stat-value">@_rulesetsCount</span>
+									</MudStack>
+								</MudStack>
+							</div>
+						</MudLink>
+					</MudItem>
+				</MudGrid>
+			</MudPaper>
+			
+			@* AI Quality Metrics *@
+			<MudText Typo="Typo.overline" Class="mb-2" Style="letter-spacing: 1.5px; color: #7B2CBF; font-weight: 600;">
+				AI QUALITY METRICS
+			</MudText>
+			<MudPaper Elevation="0" Class="pa-2" Style="background: linear-gradient(to bottom right, #f8f9fa, #ffffff); border-radius: 12px; border: 1px solid #e8e8e8;">
+				<MudGrid Spacing="1">
+					<MudItem xs="6">
+						<MudLink Href="/admin/feedback" Class="stat-card-link">
+							<div class="stat-card stat-card-primary">
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+									<MudIcon Icon="@Icons.Material.Filled.Feedback" Color="Color.Primary" Size="Size.Small" />
+									<MudStack Spacing="0">
+										<span class="stat-value-sm">@_feedbackCount</span>
+										<MudText Typo="Typo.caption" Class="text-muted">Feedback</MudText>
+									</MudStack>
+								</MudStack>
+							</div>
+						</MudLink>
+					</MudItem>
+					<MudItem xs="6">
+						<MudLink Href="/admin/sentiments" Class="stat-card-link">
+							<div class="stat-card stat-card-secondary">
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+									<MudIcon Icon="@Icons.Material.Filled.SentimentSatisfied" Color="Color.Secondary" Size="Size.Small" />
+									<MudStack Spacing="0">
+										<span class="stat-value-sm">@_sentimentCount</span>
+										<MudText Typo="Typo.caption" Class="text-muted">Sentiments</MudText>
+									</MudStack>
+								</MudStack>
+							</div>
+						</MudLink>
+					</MudItem>
+					<MudItem xs="6">
+						<MudLink Href="/admin/metrics" Class="stat-card-link">
+							<div class="stat-card stat-card-tertiary">
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+									<MudIcon Icon="@Icons.Material.Filled.Assessment" Color="Color.Tertiary" Size="Size.Small" />
+									<MudStack Spacing="0">
+										<span class="stat-value-sm">@_metricsCount</span>
+										<MudText Typo="Typo.caption" Class="text-muted">Evaluations</MudText>
+									</MudStack>
+								</MudStack>
+							</div>
+						</MudLink>
+					</MudItem>
+					<MudItem xs="6">
+						<MudLink Href="/admin/locations" Class="stat-card-link">
+							<div class="stat-card stat-card-accent">
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+									<MudIcon Icon="@Icons.Material.Filled.Place" Color="Color.Success" Size="Size.Small" />
+									<MudStack Spacing="0">
+										<span class="stat-value-sm">@_locationsCount</span>
+										<MudText Typo="Typo.caption" Class="text-muted">Locations</MudText>
 									</MudStack>
 								</MudStack>
 							</div>
@@ -115,67 +173,6 @@
 			</MudPaper>
 		</MudItem>
 	</MudGrid>
-
-	@* AI Quality Summary - Enhanced Glass Card *@
-	<MudText Typo="Typo.overline" Class="mb-3" Style="letter-spacing: 1.5px; color: #7B2CBF; font-weight: 600;">
-		AI QUALITY METRICS
-	</MudText>
-	<div class="glass-card pa-4 mb-4">
-		<MudGrid Spacing="3">
-			<MudItem xs="6" sm="3">
-				<MudLink Href="/admin/feedback" Class="stat-card-link">
-					<div class="stat-card stat-card-primary" style="text-align: center;">
-						<MudStack AlignItems="AlignItems.Center" Spacing="1">
-							<div class="icon-badge icon-badge-primary" style="width: 42px; height: 42px; border-radius: 10px;">
-								<MudIcon Icon="@Icons.Material.Filled.Feedback" Style="color: white; font-size: 1.25rem;" />
-							</div>
-							<span class="stat-value">@_feedbackCount</span>
-							<MudText Typo="Typo.caption" Class="text-muted">Feedback Items</MudText>
-						</MudStack>
-					</div>
-				</MudLink>
-			</MudItem>
-			<MudItem xs="6" sm="3">
-				<MudLink Href="/admin/sentiments" Class="stat-card-link">
-					<div class="stat-card stat-card-secondary" style="text-align: center;">
-						<MudStack AlignItems="AlignItems.Center" Spacing="1">
-							<div class="icon-badge icon-badge-secondary" style="width: 42px; height: 42px; border-radius: 10px;">
-								<MudIcon Icon="@Icons.Material.Filled.SentimentSatisfied" Style="color: white; font-size: 1.25rem;" />
-							</div>
-							<span class="stat-value">@_sentimentCount</span>
-							<MudText Typo="Typo.caption" Class="text-muted">Sentiments</MudText>
-						</MudStack>
-					</div>
-				</MudLink>
-			</MudItem>
-			<MudItem xs="6" sm="3">
-				<MudLink Href="/admin/metrics" Class="stat-card-link">
-					<div class="stat-card stat-card-tertiary" style="text-align: center;">
-						<MudStack AlignItems="AlignItems.Center" Spacing="1">
-							<div class="icon-badge icon-badge-tertiary" style="width: 42px; height: 42px; border-radius: 10px;">
-								<MudIcon Icon="@Icons.Material.Filled.Assessment" Style="color: white; font-size: 1.25rem;" />
-							</div>
-							<span class="stat-value">@_metricsCount</span>
-							<MudText Typo="Typo.caption" Class="text-muted">Evaluations</MudText>
-						</MudStack>
-					</div>
-				</MudLink>
-			</MudItem>
-			<MudItem xs="6" sm="3">
-				<MudLink Href="/admin/locations" Class="stat-card-link">
-					<div class="stat-card stat-card-accent" style="text-align: center;">
-						<MudStack AlignItems="AlignItems.Center" Spacing="1">
-							<div class="icon-badge icon-badge-accent" style="width: 42px; height: 42px; border-radius: 10px;">
-								<MudIcon Icon="@Icons.Material.Filled.Place" Style="color: white; font-size: 1.25rem;" />
-							</div>
-							<span class="stat-value">@_locationsCount</span>
-							<MudText Typo="Typo.caption" Class="text-muted">Locations</MudText>
-						</MudStack>
-					</div>
-				</MudLink>
-			</MudItem>
-		</MudGrid>
-	</div>
 
 	@* Tool Sections Header *@
 	<MudText Typo="Typo.overline" Class="mb-3" Style="letter-spacing: 1.5px; color: #7B2CBF; font-weight: 600;">
