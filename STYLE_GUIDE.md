@@ -2,7 +2,7 @@
 
 This document defines the UI conventions, patterns, and reusable components used throughout the JAIMES AF Blazor application. It is intended to help AI agents and developers maintain consistency when creating or modifying UI code.
 
-**Primary Reference Pages**: `Home.razor` and `Admin.razor` are the gold standard for styling conventions. The sidebar (`NavMenu.razor`) demonstrates navigation patterns.
+**Primary Reference Pages**: `Home.razor` and `Admin.razor` are the gold standard for dashboard styling. `Games.razor` is the gold standard for list pages. The sidebar (`NavMenu.razor`) demonstrates navigation patterns.
 
 ---
 
@@ -12,13 +12,14 @@ When building UI, follow these patterns:
 
 - **Displaying an agent name** → Use `<AgentLink>` component
 - **Displaying agent + version together** → Use `<AgentVersionDisplay>` component
-- **Displaying a version number alone** → Use `<AgentVersionLink>` component
+- **Displaying a version number alone** → Use `<AgentVersionLink>` component (handles null versions with "Latest" chip)
 - **Icon buttons** → Always wrap in `<MudTooltip Placement="Placement.Top">`
 - **Tooltips** → Always use `Placement.Top` for better visibility
 - **Agent/bot icon** → `Icons.Material.Filled.SmartToy` with `Color.Secondary`
 - **Page titles** → Use `Typo.h4` inside a `MudPaper` container
 - **Section labels** → Use `Typo.overline` with purple color and letter-spacing
 - **Chat messages** → Use the `PlayerMessage`, `AssistantMessage`, or `ErrorMessage` components
+- **List pages** → Follow the List Page Pattern (`Games.razor` is the gold standard)
 
 ---
 
@@ -59,8 +60,8 @@ Use these components instead of building custom displays. They are located in `J
 
 | Component | Purpose |
 |-----------|---------|
-| `AgentLink.razor` | Displays agent name as a linked chip with bot icon (`SmartToy`). Use whenever showing an agent name. |
-| `AgentVersionLink.razor` | Displays version number as a linked chip with update icon. Use for standalone version references. |
+| `AgentLink.razor` | Displays agent name as a linked chip with bot icon (`SmartToy`). Use whenever showing an agent name. Has "View Agent Details" tooltip. |
+| `AgentVersionLink.razor` | Displays version number as a linked chip. When `VersionId` is null, shows "Latest" chip (Primary, Filled) that links to agent page. Has appropriate tooltips. |
 | `AgentVersionDisplay.razor` | Combined agent name + version number display. Use when showing both together. |
 | `CompactLinkCard.razor` | Navigation card with colored icon badge. Use for dashboard/home page links. |
 | `SentimentIcon.razor` | Sentiment indicator (thumbs up/down/neutral) with optional edit menu. Use in chat footers. |
@@ -309,6 +310,86 @@ Assistant message footers should include:
         </MudItem>
     </MudGrid>
 </div>
+```
+
+### List Page Pattern
+
+**Reference page:** `Games.razor` — the gold standard for list pages.
+
+List pages should include these elements:
+
+#### Compact Hero Section
+
+A lightweight header with entity icon, item count, and primary action:
+
+```razor
+<div class="games-hero pa-4 mb-4" style="background: linear-gradient(135deg, var(--color-primary) 0%, #9b4dca 100%); border-radius: 12px;">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+            <div class="icon-badge-primary">
+                <MudIcon Icon="@Icons.Material.Filled.SportsEsports" Size="Size.Large" />
+            </div>
+            <div>
+                <MudText Typo="Typo.h5" Style="color: white;">Page Title</MudText>
+                <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.85);">
+                    @(_items?.Length ?? 0) items found
+                </MudText>
+            </div>
+        </MudStack>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                   Href="/items/new">New Item</MudButton>
+    </MudStack>
+</div>
+```
+
+#### Table Action Buttons
+
+Use icon buttons with tooltips instead of text buttons. Standard pattern for row actions:
+
+```razor
+<MudTd Style="text-align: right;">
+    <MudTooltip Text="View Details" Placement="Placement.Top">
+        <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Color="Color.Primary" Size="Size.Small"
+                       Href="@($"/items/{context.Id}")" />
+    </MudTooltip>
+    <MudTooltip Text="Delete Item" Placement="Placement.Top">
+        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                       OnClick="@(() => DeleteItemAsync(context.Id))"/>
+    </MudTooltip>
+</MudTd>
+```
+
+#### Agent Version Display
+
+Use `AgentVersionLink` to display agent versions - it handles null versions by showing a "Latest" chip:
+
+```razor
+<AgentLink AgentId="@context.AgentId" AgentName="@context.AgentName" />
+<AgentVersionLink AgentId="@context.AgentId" 
+                  VersionId="@context.InstructionVersionId" 
+                  VersionNumber="@context.VersionNumber" />
+```
+
+When `VersionId` is null, displays "Latest" with `Color.Primary` and links to agent page.
+
+#### Empty State
+
+Show an engaging empty state when no items exist:
+
+```razor
+@if (_items?.Length == 0)
+{
+    <div class="glass-card pa-6" style="text-align: center;">
+        <MudIcon Icon="@Icons.Material.Filled.SportsEsports" Size="Size.Large" 
+                 Color="Color.Primary" Class="mb-3" Style="font-size: 4rem; opacity: 0.6;" />
+        <MudText Typo="Typo.h6" Class="mb-2">No items yet</MudText>
+        <MudText Class="mb-4 text-muted">Description encouraging action.</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" 
+                   StartIcon="@Icons.Material.Filled.Add" Href="/items/new">
+            Create Your First Item
+        </MudButton>
+    </div>
+}
 ```
 
 ### Section Headers

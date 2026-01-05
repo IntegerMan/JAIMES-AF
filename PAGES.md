@@ -66,12 +66,14 @@ Pages for managing game content including scenarios, characters, rulesets, and l
 Lists available game scenarios (story seeds) that can be used to start new games.
 
 **Style Guide Violations:**
+- ⚠️ Apply List Page Pattern from `Games.razor` (compact hero, icon action buttons, empty state)
 - Review for proper entity icon usage and tooltip placements
 
 **Improvement Ideas:**
+- Add compact hero section with scenario count and "New Scenario" button
+- Replace text buttons with icon buttons + tooltips
+- Add engaging empty state for when no scenarios exist
 - Add scenario preview or description column
-- Consider card-based layout for better visual appeal
-- Add scenario category/genre filtering
 
 ---
 
@@ -81,12 +83,14 @@ Lists available game scenarios (story seeds) that can be used to start new games
 Lists player characters that can be used across different games.
 
 **Style Guide Violations:**
+- ⚠️ Apply List Page Pattern from `Games.razor` (compact hero, icon action buttons, empty state)
 - Review for proper entity icon usage and tooltip placements
 
 **Improvement Ideas:**
+- Add compact hero section with player count and "New Character" button
+- Replace text buttons with icon buttons + tooltips
+- Add engaging empty state for when no characters exist
 - Add character portrait/avatar display
-- Include character class/role column
-- Add filtering by game or character type
 
 ---
 
@@ -96,16 +100,17 @@ Lists player characters that can be used across different games.
 Lists game rulesets for managing game mechanics and rules.
 
 **Style Guide Violations:**
+- ⚠️ Apply List Page Pattern from `Games.razor` (compact hero, icon action buttons, empty state)
 - ❌ Uses text "Edit" button instead of icon buttons with tooltips (line 55-58)
 - ❌ Missing view details icon button
 - ❌ "ID" column shows raw database IDs — could use more user-friendly display
 
 **Improvement Ideas:**
-- Replace text "Edit" button with icon button wrapped in tooltip
+- Add compact hero section with ruleset count and "New Ruleset" button
+- Replace text "Edit" button with icon button + tooltip
 - Add "View Details" icon button
-- Add ruleset description column
+- Add engaging empty state for when no rulesets exist
 - Remove or hide raw ID column
-- Consider adding source count or related games column
 
 ---
 
@@ -153,6 +158,7 @@ Lists AI agents with their roles and action buttons for viewing, improving promp
 **Style Guide Compliance:** ✅ Good — Uses proper tooltip placement and icon conventions
 
 **Improvement Ideas:**
+- ⚠️ Add compact hero section with agent count (following List Page Pattern from `Games.razor`)
 - Add version count column
 - Add last activity or creation date
 - Consider adding agent status indicators
@@ -274,6 +280,7 @@ Lists test cases for agent evaluation with run counts, status, and source agent 
 **Style Guide Compliance:** ✅ Good — Uses `AgentLink` component and proper tooltip placements
 
 **Improvement Ideas:**
+- ⚠️ Add compact hero section with test case count (following List Page Pattern from `Games.razor`)
 - Add bulk selection for batch operations
 - Include test case grouping/tagging
 - Add last run date column
@@ -300,11 +307,12 @@ Detailed view of a specific test case including run history and results.
 Lists test execution reports with agent versions, evaluator counts, and results.
 
 **Style Guide Violations:**
+- ⚠️ Apply List Page Pattern from `Games.razor` (compact hero, icon action buttons)
 - Review for tooltip placements and icon usage
 
 **Improvement Ideas:**
+- Add compact hero section with report count and summary stats
 - Add report comparison shortcuts
-- Include summary statistics in header
 - Add report status indicators (passed/failed/mixed)
 
 ---
