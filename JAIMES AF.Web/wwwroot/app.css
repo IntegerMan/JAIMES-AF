@@ -35,61 +35,39 @@ body {
     font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
-/* Custom Scrollbar Styling */
-html::-webkit-scrollbar,
-body::-webkit-scrollbar,
-.mud-drawer::-webkit-scrollbar,
-.mud-main-content::-webkit-scrollbar {
+/* Custom Scrollbar Styling - Global */
+*::-webkit-scrollbar {
     width: 10px;
     height: 10px;
 }
 
-html::-webkit-scrollbar-track,
-body::-webkit-scrollbar-track,
-.mud-drawer::-webkit-scrollbar-track,
-.mud-main-content::-webkit-scrollbar-track {
+*::-webkit-scrollbar-track {
     background: #2B2D42;
     border-radius: 5px;
 }
 
-html::-webkit-scrollbar-thumb,
-body::-webkit-scrollbar-thumb,
-.mud-drawer::-webkit-scrollbar-thumb,
-.mud-main-content::-webkit-scrollbar-thumb {
+*::-webkit-scrollbar-thumb {
     background: linear-gradient(180deg, #7B2CBF 0%, #FFD60A 100%);
     border-radius: 5px;
     border: 2px solid #2B2D42;
 }
 
-html::-webkit-scrollbar-thumb:hover,
-body::-webkit-scrollbar-thumb:hover,
-.mud-drawer::-webkit-scrollbar-thumb:hover,
-.mud-main-content::-webkit-scrollbar-thumb:hover,
-html::-webkit-scrollbar-thumb:active,
-body::-webkit-scrollbar-thumb:active,
-.mud-drawer::-webkit-scrollbar-thumb:active,
-.mud-main-content::-webkit-scrollbar-thumb:active {
-    background: #FFD60A;
+*::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:active {
+    background: #FFD60A !important;
+}
+
+/* Firefox scrollbar */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #7B2CBF #2B2D42;
 }
 
 /* Firefox scrollbar hover */
 @supports (scrollbar-color: yellow black) {
-
-    html:hover,
-    body:hover,
-    .mud-drawer:hover,
-    .mud-main-content:hover {
+    *:hover {
         scrollbar-color: #FFD60A #2B2D42;
     }
-}
-
-/* Firefox scrollbar */
-html,
-body,
-.mud-drawer,
-.mud-main-content {
-    scrollbar-width: thin;
-    scrollbar-color: #7B2CBF #2B2D42;
 }
 
 /* Compact AppBar Override & Layout Flushness */
