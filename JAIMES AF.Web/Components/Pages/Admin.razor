@@ -108,6 +108,32 @@
 							</div>
 						</MudLink>
 					</MudItem>
+					<MudItem xs="6">
+						<MudLink Href="/admin/rag-collections?category=rules" Class="stat-card-link">
+							<div class="stat-card stat-card-warning">
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+									<MudIcon Icon="@Icons.Material.Filled.LibraryBooks" Style="color: #F59E0B;" Size="Size.Small" />
+									<MudStack Spacing="0">
+										<span class="stat-value-sm">@_sourcebooksCount</span>
+										<MudText Typo="Typo.caption" Class="text-muted">Sources</MudText>
+									</MudStack>
+								</MudStack>
+							</div>
+						</MudLink>
+					</MudItem>
+					<MudItem xs="6">
+						<MudLink Href="/admin/rag-collections?category=transcripts" Class="stat-card-link">
+							<div class="stat-card stat-card-tertiary">
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+									<MudIcon Icon="@Icons.Material.Filled.Forum" Color="Color.Tertiary" Size="Size.Small" />
+									<MudStack Spacing="0">
+										<span class="stat-value-sm">@_messagesCount</span>
+										<MudText Typo="Typo.caption" Class="text-muted">Messages</MudText>
+									</MudStack>
+								</MudStack>
+							</div>
+						</MudLink>
+					</MudItem>
 				</MudGrid>
 			</MudPaper>
 			
@@ -164,6 +190,32 @@
 									<MudStack Spacing="0">
 										<span class="stat-value-sm">@_locationsCount</span>
 										<MudText Typo="Typo.caption" Class="text-muted">Locations</MudText>
+									</MudStack>
+								</MudStack>
+							</div>
+						</MudLink>
+					</MudItem>
+					<MudItem xs="6">
+						<MudLink Href="/admin/test-cases" Class="stat-card-link">
+							<div class="stat-card stat-card-warning">
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+									<MudIcon Icon="@Icons.Material.Filled.Checklist" Style="color: #F59E0B;" Size="Size.Small" />
+									<MudStack Spacing="0">
+										<span class="stat-value-sm">@_testCasesCount</span>
+										<MudText Typo="Typo.caption" Class="text-muted">Test Cases</MudText>
+									</MudStack>
+								</MudStack>
+							</div>
+						</MudLink>
+					</MudItem>
+					<MudItem xs="6">
+						<MudLink Href="/admin/test-reports" Class="stat-card-link">
+							<div class="stat-card stat-card-primary">
+								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+									<MudIcon Icon="@Icons.Material.Filled.Summarize" Color="Color.Primary" Size="Size.Small" />
+									<MudStack Spacing="0">
+										<span class="stat-value-sm">@_testReportsCount</span>
+										<MudText Typo="Typo.caption" Class="text-muted">Reports</MudText>
 									</MudStack>
 								</MudStack>
 							</div>
@@ -257,7 +309,7 @@
 						                 Title="Sentiments" Href="/admin/sentiments" />
 					</MudItem>
 					<MudItem xs="6" sm="4" md="2">
-						<CompactLinkCard Icon="@Icons.Material.Filled.ModelTraining" IconColor="Color.Primary"
+						<CompactLinkCard Icon="@Icons.Material.Filled.Psychology" IconColor="Color.Primary"
 						                 Title="ML Models" Href="/admin/classification-models" />
 					</MudItem>
 				</MudGrid>
@@ -328,10 +380,14 @@
 	private int _scenariosCount;
 	private int _playersCount;
 	private int _rulesetsCount;
+	private int _sourcebooksCount;
+	private int _messagesCount;
 	private int _feedbackCount;
 	private int _sentimentCount;
 	private int _metricsCount;
 	private int _locationsCount;
+	private int _testCasesCount;
+	private int _testReportsCount;
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -350,27 +406,22 @@
 
 		try
 		{
-			// Fetch content counts in parallel
-			var gamesTask = Http.GetFromJsonAsync<ListGamesResponse>("/games");
-			var scenariosTask = Http.GetFromJsonAsync<ScenarioListResponse>("/scenarios");
-			var playersTask = Http.GetFromJsonAsync<PlayerListResponse>("/players");
-			var rulesetsTask = Http.GetFromJsonAsync<RulesetListResponse>("/rulesets");
-			var feedbackTask = Http.GetFromJsonAsync<FeedbackListResponse>("/admin/feedback?pageSize=1");
-			var sentimentTask = Http.GetFromJsonAsync<SentimentListResponse>("/admin/sentiments?pageSize=1");
-			var metricsTask = Http.GetFromJsonAsync<EvaluationMetricListResponse>("/admin/metrics?pageSize=1");
-			var locationsTask = Http.GetFromJsonAsync<LocationListResponse>("/admin/locations");
-
-			await Task.WhenAll(gamesTask, scenariosTask, playersTask, rulesetsTask,
-			                   feedbackTask, sentimentTask, metricsTask, locationsTask);
-
-			_gamesCount = gamesTask.Result?.Games?.Length ?? 0;
-			_scenariosCount = scenariosTask.Result?.Scenarios?.Length ?? 0;
-			_playersCount = playersTask.Result?.Players?.Length ?? 0;
-			_rulesetsCount = rulesetsTask.Result?.Rulesets?.Length ?? 0;
-			_feedbackCount = feedbackTask.Result?.TotalCount ?? 0;
-			_sentimentCount = sentimentTask.Result?.TotalCount ?? 0;
-			_metricsCount = metricsTask.Result?.TotalCount ?? 0;
-			_locationsCount = locationsTask.Result?.Locations?.Length ?? 0;
+			var stats = await Http.GetFromJsonAsync<DashboardStatsResponse>("/admin/dashboard/stats");
+			if (stats != null)
+			{
+				_gamesCount = stats.GamesCount;
+				_scenariosCount = stats.ScenariosCount;
+				_playersCount = stats.PlayersCount;
+				_rulesetsCount = stats.RulesetsCount;
+				_sourcebooksCount = stats.SourcebooksCount;
+				_messagesCount = stats.MessagesCount;
+				_feedbackCount = stats.FeedbackCount;
+				_sentimentCount = stats.SentimentsCount;
+				_metricsCount = stats.EvaluationsCount;
+				_locationsCount = stats.LocationsCount;
+				_testCasesCount = stats.TestCasesCount;
+				_testReportsCount = stats.TestReportsCount;
+			}
 		}
 		catch (Exception ex)
 		{

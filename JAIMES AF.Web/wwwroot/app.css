@@ -778,7 +778,8 @@ h1:focus {
     border-left: 3px solid var(--color-primary-light);
 }
 
-.nav-section-header.content {
+.nav-section-header.content,
+.nav-section-header.adventure {
     background: linear-gradient(to right, rgba(67, 97, 238, 0.25), rgba(76, 201, 240, 0.15));
     color: #B8C5FF;
     border-left-color: var(--color-secondary);
@@ -788,6 +789,18 @@ h1:focus {
     background: linear-gradient(to right, rgba(76, 201, 240, 0.25), rgba(6, 214, 160, 0.15));
     color: #A8E8E8;
     border-left-color: var(--color-tertiary);
+}
+
+.nav-section-header.verification {
+    background: linear-gradient(to right, rgba(245, 158, 11, 0.25), rgba(123, 44, 191, 0.15));
+    color: #FFE5B4;
+    border-left-color: #F59E0B;
+}
+
+.nav-section-header.platform {
+    background: linear-gradient(to right, rgba(157, 78, 221, 0.25), rgba(123, 44, 191, 0.15));
+    color: #E8D5F2;
+    border-left-color: #9D4EDD;
 }
 
 .nav-section-header.admin {
@@ -814,11 +827,15 @@ h1:focus {
 }
 
 .mud-navmenu .mud-nav-link.active {
-    background: linear-gradient(to right, rgba(123, 44, 191, 0.35), rgba(123, 44, 191, 0.2));
-    font-weight: 600;
-    border-left: 3px solid var(--color-primary-light);
-    margin-left: 5px;
-    color: #fff;
+    background: linear-gradient(to right, rgba(123, 44, 191, 0.45), rgba(123, 44, 191, 0.25));
+    font-weight: 700;
+    border-left: 4px solid #FFD60A;
+    margin-left: 4px;
+    color: #FFD60A !important;
+}
+
+.mud-navmenu .mud-nav-link.active .mud-nav-link-icon-default {
+    color: #FFD60A !important;
 }
 
 /* Nav Groups with Visual Enhancement */

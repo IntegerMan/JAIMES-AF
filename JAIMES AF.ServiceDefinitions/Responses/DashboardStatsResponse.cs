@@ -19,4 +19,5 @@ public record DashboardStatsResponse
     public int TestCasesCount { get; init; }
     public int TestReportsCount { get; init; }
     public int SourcebooksCount { get; init; }
+    public int LocationsCount { get; init; }
 }

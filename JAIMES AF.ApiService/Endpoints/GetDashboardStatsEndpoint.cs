@@ -39,6 +39,7 @@ public class GetDashboardStatsEndpoint : EndpointWithoutRequest<DashboardStatsRe
         int testReportsCount = await DbContext.StoredFiles.CountAsync(f => f.ItemKind == "TestReport", ct);
         int sourcebooksCount =
             await DbContext.CrackedDocuments.CountAsync(d => d.DocumentKind == DocumentKinds.Sourcebook, ct);
+        int locationsCount = await DbContext.Locations.CountAsync(ct);
 
         await Send.OkAsync(new DashboardStatsResponse
         {
@@ -55,7 +56,8 @@ public class GetDashboardStatsEndpoint : EndpointWithoutRequest<DashboardStatsRe
             EvaluationsCount = evaluationsCount,
             TestCasesCount = testCasesCount,
             TestReportsCount = testReportsCount,
-            SourcebooksCount = sourcebooksCount
+            SourcebooksCount = sourcebooksCount,
+            LocationsCount = locationsCount
         }, ct);
     }
 }
