@@ -1131,3 +1131,40 @@ h1:focus {
 .compact-pipeline .mud-typography-h6 {
     font-size: 0.9rem !important;
 }
+
+/* Admin Page Column Layout */
+.admin-column-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    border-left: 3px solid transparent;
+}
+
+.admin-column-header.adventure {
+    background: linear-gradient(to right, rgba(67, 97, 238, 0.1), transparent);
+    color: #4361EE;
+    border-left-color: #4361EE;
+}
+
+.admin-column-header.platform {
+    background: linear-gradient(to right, rgba(157, 78, 221, 0.1), transparent);
+    color: #9D4EDD;
+    border-left-color: #9D4EDD;
+}
+
+.admin-column-header.verification {
+    background: linear-gradient(to right, rgba(245, 158, 11, 0.1), transparent);
+    color: #F59E0B;
+    border-left-color: #F59E0B;
+}
+
+.admin-column-header.tools {
+    background: linear-gradient(to right, rgba(76, 201, 240, 0.1), transparent);
+    color: #4CC9F0;
+    border-left-color: #4CC9F0;
+}

@@ -6,16 +6,17 @@
 
     @* Adventure Section *@
     <div class="nav-section-header adventure">
-        <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Small" />
-        Adventure
+        <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Small"/>
+        Content
     </div>
     <MudNavLink Href="/scenarios" Icon="@Icons.Material.Filled.MenuBook" IconColor="Color.Secondary">Scenarios</MudNavLink>
     <MudNavLink Href="/players" Icon="@Icons.Material.Filled.Person" IconColor="Color.Tertiary">Characters</MudNavLink>
     <MudNavLink Href="/rulesets" Icon="@Icons.Material.Filled.AutoStories" IconColor="Color.Success">Rulesets</MudNavLink>
+    <MudNavLink Href="/locations" Icon="@Icons.Material.Filled.Place" IconColor="Color.Warning">Locations</MudNavLink>
 
     @* Platform Section - Intelligence & Data *@
     <div class="nav-section-header platform">
-        <MudIcon Icon="@Icons.Material.Filled.SettingsInputComponent" Size="Size.Small" />
+        <MudIcon Icon="@Icons.Material.Filled.SettingsInputComponent" Size="Size.Small"/>
         Platform
     </div>
     <MudNavLink Href="/agents" Icon="@Icons.Material.Filled.SmartToy" IconColor="Color.Secondary">Agents</MudNavLink>
@@ -24,20 +25,22 @@
 
     @* Verification Section - Testing & Quality *@
     <div class="nav-section-header verification">
-        <MudIcon Icon="@Icons.Material.Filled.FactCheck" Size="Size.Small" />
+        <MudIcon Icon="@Icons.Material.Filled.FactCheck" Size="Size.Small"/>
         Verification
     </div>
-    <MudNavLink Href="/admin/test-cases" Icon="@Icons.Material.Filled.Checklist" IconColor="Color.Success">Test Cases</MudNavLink>
+    <MudNavLink Href="/admin/evaluators" Icon="@Icons.Material.Filled.RateReview" IconColor="Color.Primary">Evaluators</MudNavLink>
     <MudNavLink Href="/admin/metrics" Icon="@Icons.Material.Filled.PieChart" IconColor="Color.Secondary">Evaluations</MudNavLink>
-    <MudNavLink Href="/admin/sentiments" Icon="@Icons.Material.Filled.SentimentSatisfied" IconColor="Color.Warning">Sentiments</MudNavLink>
-    <MudNavLink Href="/admin/feedback" Icon="@Icons.Material.Filled.ThumbUp" IconColor="Color.Primary">Feedback</MudNavLink>
-
-    @* Tools Section - Diagnostics *@
-    <div class="nav-section-header tools">
-        <MudIcon Icon="@Icons.Material.Filled.Build" Size="Size.Small" />
-        Diagnostics
-    </div>
-    <MudNavLink Href="/admin/tool-test" Icon="@Icons.Material.Filled.Science" IconColor="Color.Info">Tool Testing</MudNavLink>
     <MudNavLink Href="/admin/evaluators/test" Icon="@Icons.Material.Filled.RateReview" IconColor="Color.Error">Test Evaluators</MudNavLink>
-    <MudNavLink Href="/tools/location-management" Icon="@Icons.Material.Filled.EditLocation" IconColor="Color.Warning">Location Mgmt</MudNavLink>
+    <MudNavLink Href="/admin/test-cases" Icon="@Icons.Material.Filled.Checklist" IconColor="Color.Success">Test Cases</MudNavLink>
+    <MudNavLink Href="/admin/test-reports" Icon="@Icons.Material.Filled.Summarize" IconColor="Color.Info">Test Reports</MudNavLink>
+
+    @* Tools Section *@
+    <div class="nav-section-header tools">
+        <MudIcon Icon="@Icons.Material.Filled.Build" Size="Size.Small"/>
+        Tools and Feedback
+    </div>
+    <MudNavLink Href="/admin/feedback" Icon="@Icons.Material.Filled.ThumbUp" IconColor="Color.Primary">Feedback</MudNavLink>
+    <MudNavLink Href="/admin/sentiments" Icon="@Icons.Material.Filled.SentimentSatisfied" IconColor="Color.Warning">Sentiments</MudNavLink>
+    <MudNavLink Href="/admin/tools" Icon="@Icons.Material.Filled.Build" IconColor="Color.Primary">Tool Usage</MudNavLink>
+    <MudNavLink Href="/admin/tool-test" Icon="@Icons.Material.Filled.Science" IconColor="Color.Info">Tool Testing</MudNavLink>
 </MudNavMenu>

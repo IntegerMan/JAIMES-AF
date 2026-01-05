@@ -226,150 +226,87 @@
 		</MudItem>
 	</MudGrid>
 
-	@* Tool Sections Header *@
-	<MudText Typo="Typo.overline" Class="mb-3" Style="letter-spacing: 1.5px; color: #7B2CBF; font-weight: 600;">
-		ADMIN TOOLS
-	</MudText>
+	@* Admin Tools Grid *@
+	<MudGrid Spacing="3" Class="mb-6">
+		@* Column 1: Adventure & Content *@
+		<MudItem xs="12" sm="6" lg="3">
+			<MudStack Spacing="3">
+				<div class="admin-column-header adventure">
+					<MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Small" />
+					<MudText Typo="Typo.subtitle2">ADVENTURE</MudText>
+				</div>
+				<CompactLinkCard Icon="@Icons.Material.Filled.SportsEsports" IconColor="Color.Primary" Title="Games" Href="/games" />
+				<CompactLinkCard Icon="@Icons.Material.Filled.MenuBook" IconColor="Color.Secondary" Title="Scenarios" Href="/scenarios" />
+				<CompactLinkCard Icon="@Icons.Material.Filled.Person" IconColor="Color.Info" Title="Characters" Href="/players" />
+				<CompactLinkCard Icon="@Icons.Material.Filled.AutoStories" IconColor="Color.Success" Title="Rulesets" Href="/rulesets" />
+				<CompactLinkCard Icon="@Icons.Material.Filled.Place" IconColor="Color.Warning" Title="Locations" Href="/admin/locations" />
+			</MudStack>
+		</MudItem>
 
-	@* Collapsible Tool Sections *@
-	<MudExpansionPanels Class="admin-expansion-panel-enhanced" MultiExpansion="true">
+		@* Column 2: Platform & Intelligence *@
+		<MudItem xs="12" sm="6" lg="3">
+			<MudStack Spacing="3">
+				<div class="admin-column-header platform">
+					<MudIcon Icon="@Icons.Material.Filled.SettingsInputComponent" Size="Size.Small" />
+					<MudText Typo="Typo.subtitle2">PLATFORM</MudText>
+				</div>
+				<CompactLinkCard Icon="@Icons.Material.Filled.SmartToy" IconColor="Color.Secondary" Title="Agents" Href="/agents" />
+				<CompactLinkCard Icon="@Icons.Material.Filled.Psychology" IconColor="Color.Error" Title="ML Models" Href="/admin/classification-models" />
+				<CompactLinkCard Icon="@Icons.Material.Filled.Inventory2" IconColor="Color.Info" Title="Sources / Transcripts" Href="/admin/rag-collections" />
+			</MudStack>
+		</MudItem>
 
-		@* Content Management *@
-		<MudExpansionPanel MaxHeight="400" Expanded="true" Class="admin-panel-content">
-			<TitleContent>
-				<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-					<div class="panel-icon-badge panel-icon-content">
-						<MudIcon Icon="@Icons.Material.Filled.Folder" Style="color: white; font-size: 1rem;" />
-					</div>
-					<MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Content Management</MudText>
-					<MudChip T="string" Size="Size.Small" Style="background: linear-gradient(135deg, #7B2CBF, #9D4EDD); color: white;">5</MudChip>
-				</MudStack>
-			</TitleContent>
-			<ChildContent>
-				<MudGrid Spacing="2" Class="pa-2">
-					<MudItem xs="6" sm="4" md="2">
-						<CompactLinkCard Icon="@Icons.Material.Filled.SportsEsports" IconColor="Color.Primary"
-						                 Title="Games" Href="/games" />
-					</MudItem>
-					<MudItem xs="6" sm="4" md="2">
-						<CompactLinkCard Icon="@Icons.Material.Filled.MenuBook" IconColor="Color.Secondary"
-						                 Title="Scenarios" Href="/scenarios" />
-					</MudItem>
-					<MudItem xs="6" sm="4" md="2">
-						<CompactLinkCard Icon="@Icons.Material.Filled.Person" IconColor="Color.Info"
-						                 Title="Players" Href="/players" />
-					</MudItem>
-					<MudItem xs="6" sm="4" md="2">
-						<CompactLinkCard Icon="@Icons.Material.Filled.AutoStories" IconColor="Color.Success"
-						                 Title="Rulesets" Href="/rulesets" />
-					</MudItem>
-					<MudItem xs="6" sm="4" md="2">
-						<CompactLinkCard Icon="@Icons.Material.Filled.Place" IconColor="Color.Warning"
-						                 Title="Locations" Href="/admin/locations" />
-					</MudItem>
-				</MudGrid>
-			</ChildContent>
-		</MudExpansionPanel>
+		@* Column 3: Verification & Quality *@
+		<MudItem xs="12" sm="6" lg="3">
+			<MudStack Spacing="3">
+				<div class="admin-column-header verification">
+					<MudIcon Icon="@Icons.Material.Filled.FactCheck" Size="Size.Small" />
+					<MudText Typo="Typo.subtitle2">EVALUATION</MudText>
+				</div>
+				<CompactLinkCard Icon="@Icons.Material.Filled.RateReview" IconColor="Color.Info" Title="Evaluators" Href="/admin/evaluators" />
+				<CompactLinkCard Icon="@Icons.Material.Filled.RateReview" IconColor="Color.Error" Title="Test Evaluators" Href="/admin/evaluators/test" />
+				<CompactLinkCard Icon="@Icons.Material.Filled.PieChart" IconColor="Color.Secondary" Title="Evaluations" Href="/admin/metrics" />
+				<CompactLinkCard Icon="@Icons.Material.Filled.Checklist" IconColor="Color.Success" Title="Test Cases" Href="/admin/test-cases" />
+				<CompactLinkCard Icon="@Icons.Material.Filled.Summarize" IconColor="Color.Info" Title="Test Reports" Href="/admin/test-reports" />
+			</MudStack>
+		</MudItem>
 
-		@* Agent Management *@
-		<MudExpansionPanel MaxHeight="400" Expanded="true" Class="admin-panel-agents">
-			<TitleContent>
-				<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-					<div class="panel-icon-badge panel-icon-agents">
-						<MudIcon Icon="@Icons.Material.Filled.SmartToy" Style="color: white; font-size: 1rem;" />
-					</div>
-					<MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Agent Management</MudText>
-					<MudChip T="string" Size="Size.Small" Style="background: linear-gradient(135deg, #4361EE, #5A78EE); color: white;">7</MudChip>
-				</MudStack>
-			</TitleContent>
-			<ChildContent>
-				<MudGrid Spacing="2" Class="pa-2">
-					<MudItem xs="6" sm="4" md="2">
-						<CompactLinkCard Icon="@Icons.Material.Filled.SmartToy" IconColor="Color.Secondary"
-						                 Title="Agents" Href="/agents" />
-					</MudItem>
-					<MudItem xs="6" sm="4" md="2">
-						<CompactLinkCard Icon="@Icons.Material.Filled.Build" IconColor="Color.Primary"
-						                 Title="Tool Usage" Href="/admin/tools" />
-					</MudItem>
-					<MudItem xs="6" sm="4" md="2">
-						<CompactLinkCard Icon="@Icons.Material.Filled.RateReview" IconColor="Color.Info"
-						                 Title="Evaluators" Href="/admin/evaluators" />
-					</MudItem>
-					<MudItem xs="6" sm="4" md="2">
-						<CompactLinkCard Icon="@Icons.Material.Filled.Assessment" IconColor="Color.Success"
-						                 Title="Metrics" Href="/admin/metrics" />
-					</MudItem>
-					<MudItem xs="6" sm="4" md="2">
-						<CompactLinkCard Icon="@Icons.Material.Filled.Feedback" IconColor="Color.Warning"
-						                 Title="Feedback" Href="/admin/feedback" />
-					</MudItem>
-					<MudItem xs="6" sm="4" md="2">
-						<CompactLinkCard Icon="@Icons.Material.Filled.SentimentSatisfied" IconColor="Color.Error"
-						                 Title="Sentiments" Href="/admin/sentiments" />
-					</MudItem>
-					<MudItem xs="6" sm="4" md="2">
-						<CompactLinkCard Icon="@Icons.Material.Filled.Psychology" IconColor="Color.Primary"
-						                 Title="ML Models" Href="/admin/classification-models" />
-					</MudItem>
-				</MudGrid>
-			</ChildContent>
-		</MudExpansionPanel>
+		@* Column 4: Diagnostics & Tools *@
+		<MudItem xs="12" sm="6" lg="3">
+			<MudStack Spacing="3">
+				<div class="admin-column-header tools">
+					<MudIcon Icon="@Icons.Material.Filled.Build" Size="Size.Small" />
+					<MudText Typo="Typo.subtitle2">TOOLS AND FEEDBACK</MudText>
+				</div>
+				<CompactLinkCard Icon="@Icons.Material.Filled.ThumbUp" IconColor="Color.Primary" Title="Feedback" Href="/admin/feedback" />
+				<CompactLinkCard Icon="@Icons.Material.Filled.SentimentSatisfied" IconColor="Color.Warning" Title="Sentiments" Href="/admin/sentiments" />
+				<CompactLinkCard Icon="@Icons.Material.Filled.Build" IconColor="Color.Primary" Title="Tool Usage" Href="/admin/tools" />
+				<CompactLinkCard Icon="@Icons.Material.Filled.Science" IconColor="Color.Info" Title="Tool Testing" Href="/admin/tool-test" />
+			</MudStack>
+		</MudItem>
+	</MudGrid>
 
-		@* Testing & Diagnostics *@
-		<MudExpansionPanel MaxHeight="500" Expanded="true" Class="admin-panel-testing">
-			<TitleContent>
-				<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-					<div class="panel-icon-badge panel-icon-testing">
-						<MudIcon Icon="@Icons.Material.Filled.BugReport" Style="color: white; font-size: 1rem;" />
-					</div>
-					<MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Testing & Diagnostics</MudText>
-					<MudChip T="string" Size="Size.Small" Style="background: linear-gradient(135deg, #4CC9F0, #70D6F4); color: #1a1a2e;">9</MudChip>
-				</MudStack>
-			</TitleContent>
-			<ChildContent>
-				<MudGrid Spacing="2" Class="pa-2">
-					<MudItem xs="6" sm="4" md="2">
-						<CompactLinkCard Icon="@Icons.Material.Filled.Science" IconColor="Color.Info"
-						                 Title="Tool Testing" Href="/admin/tool-test" />
-					</MudItem>
-					<MudItem xs="6" sm="4" md="2">
-						<CompactLinkCard Icon="@Icons.Material.Filled.Search" IconColor="Color.Primary"
-						                 Title="Rules Search" Href="/tools/rules-search" />
-					</MudItem>
-					<MudItem xs="6" sm="4" md="2">
-						<CompactLinkCard Icon="@Icons.Material.Filled.Forum" IconColor="Color.Secondary"
-						                 Title="Conv. Search" Href="/tools/conversation-search" />
-					</MudItem>
-					<MudItem xs="6" sm="4" md="2">
-						<CompactLinkCard Icon="@Icons.Material.Filled.LocationOn" IconColor="Color.Success"
-						                 Title="Location Lookup" Href="/tools/location-lookup" />
-					</MudItem>
-					<MudItem xs="6" sm="4" md="2">
-						<CompactLinkCard Icon="@Icons.Material.Filled.EditLocation" IconColor="Color.Warning"
-						                 Title="Location Mgmt" Href="/tools/location-management" />
-					</MudItem>
-					<MudItem xs="6" sm="4" md="2">
-						<CompactLinkCard Icon="@Icons.Material.Filled.RateReview" IconColor="Color.Error"
-						                 Title="Test Evaluators" Href="/admin/evaluators/test" />
-					</MudItem>
-					<MudItem xs="6" sm="4" md="2">
-						<CompactLinkCard Icon="@Icons.Material.Filled.Storage" IconColor="Color.Primary"
-						                 Title="RAG Collections" Href="/admin/rag-collections" />
-					</MudItem>
-					<MudItem xs="6" sm="4" md="2">
-						<CompactLinkCard Icon="@Icons.Material.Filled.Checklist" IconColor="Color.Success"
-						                 Title="Test Cases" Href="/admin/test-cases" />
-					</MudItem>
-					<MudItem xs="6" sm="4" md="2">
-						<CompactLinkCard Icon="@Icons.Material.Filled.Summarize" IconColor="Color.Info"
-						                 Title="Test Reports" Href="/admin/test-reports" />
-					</MudItem>
-				</MudGrid>
-			</ChildContent>
-		</MudExpansionPanel>
-
-	</MudExpansionPanels>
+	@* Advanced search section - Older pieces of content *@
+	<div class="mt-8 mb-4">
+		<MudText Typo="Typo.overline" Class="mb-3" Style="letter-spacing: 1.5px; color: #7B2CBF; font-weight: 600; opacity: 0.7;">
+			OTHER TOOLS
+		</MudText>
+		<MudDivider Class="mb-4" Style="opacity: 0.1;" />
+		<MudGrid Spacing="2">
+			<MudItem xs="12" sm="3">
+				<CompactLinkCard Icon="@Icons.Material.Filled.Search" IconColor="Color.Default" Title="Rules Search" Href="/tools/rules-search" />
+			</MudItem>
+			<MudItem xs="12" sm="3">
+				<CompactLinkCard Icon="@Icons.Material.Filled.Forum" IconColor="Color.Default" Title="Conv. Search" Href="/tools/conversation-search" />
+			</MudItem>
+			<MudItem xs="12" sm="3">
+				<CompactLinkCard Icon="@Icons.Material.Filled.LocationOn" IconColor="Color.Default" Title="Location Lookup" Href="/tools/location-lookup" />
+			</MudItem>
+			<MudItem xs="12" sm="3">
+				<CompactLinkCard Icon="@Icons.Material.Filled.EditLocation" IconColor="Color.Default" Title="Location Mgmt" Href="/tools/location-management" />
+			</MudItem>
+		</MudGrid>
+	</div>
 
 </MudContainer>
 
