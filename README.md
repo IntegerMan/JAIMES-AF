@@ -21,6 +21,7 @@ JAIMES AF is a .NET Aspire solution that coordinates FastEndpoints APIs, Blazor 
 - **[Database Schema](SCHEMA.md)** - Database schema and entity relationships.
 - **[Technical Topics](TECHNICAL_DETAILS.md)** - Comprehensive index of technical topics.
 - **[UI Style Guide](STYLE_GUIDE.md)** - UI conventions, reusable components, and styling patterns for the Blazor frontend.
+- **[Pages](PAGES.md)** - Comprehensive index of pages in the Blazor frontend with style guide compliance and improvement suggestions.
 
 ## Solution Topology
 
