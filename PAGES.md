@@ -48,9 +48,9 @@ System administration dashboard featuring pipeline status panels, content overvi
 
 **Type:** List
 
-![Games Page](Images/Games.png)
-
 Lists in-progress games with agent version, creation date, and last played timestamp. Features a compact hero section with game count badge. Games using the latest agent version display a "Latest" chip.
+
+![Games Page](Images/Games.png)
 
 **Style Guide Compliance:** ✅ Good - this is a gold standard reference page for lists
 
@@ -63,7 +63,11 @@ Pages for managing game content including scenarios, characters, rulesets, and l
 ### [Scenarios.razor](JAIMES%20AF.Web/Components/Pages/Scenarios.razor)
 **Route:** `/scenarios`
 
+**Type:** List
+
 Lists available game scenarios (story seeds) that can be used to start new games.
+
+![Scenarios Page](Images/Scenarios.png)
 
 **Style Guide Compliance:** ✅ Good
 
@@ -72,16 +76,15 @@ Lists available game scenarios (story seeds) that can be used to start new games
 ### [Players.razor](JAIMES%20AF.Web/Components/Pages/Players.razor)
 **Route:** `/players`
 
-Lists player characters that can be used across different games.
+**Type:** List
 
-**Style Guide Violations:**
-- ⚠️ Apply List Page Pattern from `Games.razor` (compact hero, icon action buttons, empty state)
-- Review for proper entity icon usage and tooltip placements
+Lists player characters that can be used across different games. Features a compact hero section with player count, RulesetLink integration, and icon action buttons.
+
+![Players Page](Images/Players.png)
+
+**Style Guide Compliance:** ✅ Good - follows List Page Pattern
 
 **Improvement Ideas:**
-- Add compact hero section with player count and "New Character" button
-- Replace text buttons with icon buttons + tooltips
-- Add engaging empty state for when no characters exist
 - Add character portrait/avatar display
 
 ---
@@ -89,7 +92,11 @@ Lists player characters that can be used across different games.
 ### [Rulesets.razor](JAIMES%20AF.Web/Components/Pages/Rulesets.razor)
 **Route:** `/rulesets`
 
+**Type:** List
+
 Lists game rulesets for managing game mechanics and rules.
+
+![Rulesets Page](Images/Rulesets.png)
 
 **Style Guide Violations:**
 - ⚠️ Apply List Page Pattern from `Games.razor` (compact hero, icon action buttons, empty state)

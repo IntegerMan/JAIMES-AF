@@ -8,17 +8,40 @@
 
 <PageTitle>Players</PageTitle>
 
-<MudPaper Class="pa-4">
-        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-            <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
-        </MudStack>
-	<MudText Typo="Typo.h4">Players</MudText>
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
 
-	<MudText Class="mb-4">Manage your game players. Create new players or edit existing ones.</MudText>
+	@* Compact Hero Section for Players *@
+	<div class="players-hero pa-3 mb-4" style="background: linear-gradient(135deg, rgba(76, 201, 240, 0.1) 0%, rgba(67, 97, 238, 0.1) 100%); 
+		border-radius: 16px; border: 1px solid rgba(76, 201, 240, 0.2);">
+		<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+				<div class="icon-badge icon-badge-tertiary">
+					<MudIcon Icon="@Icons.Material.Filled.Person" Style="color: white; font-size: 1.5rem;"/>
+				</div>
+				<MudStack Spacing="0">
+					<MudText Typo="Typo.h5" Style="font-weight: 600; color: #4CC9F0;">Your Players</MudText>
+					<MudText Typo="Typo.caption" Class="text-muted">
+						@if (_players is not null && _players.Length > 0)
+						{
+							<span>@_players.Length player@(_players.Length != 1 ? "s" : "") available</span>
+						}
+						else
+						{
+							<span>Create your first player</span>
+						}
+					</MudText>
+				</MudStack>
+			</MudStack>
+			<MudButton Variant="Variant.Filled" Color="Color.Tertiary" Href="/players/new"
+			           StartIcon="@Icons.Material.Filled.Add">
+				New Player
+			</MudButton>
+		</MudStack>
+	</div>
 
-	<MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/players/new" Class="mb-4">
-		New Player
-	</MudButton>
+	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+	</MudStack>
 
 	<div style="position: relative; min-height: 200px;">
 		@if (_isLoading)
@@ -30,38 +53,53 @@
 
 		@if (!_isLoading && !string.IsNullOrEmpty(_errorMessage))
 		{
-			<MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
+			<MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
 		}
 
 		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && (_players is null || _players.Length == 0))
 		{
-			<MudText Class="mb-4">No players yet.
-				<MudLink Href="/players/new">Create a new player</MudLink>
-			</MudText>
+			<div class="glass-card pa-6" style="text-align: center;">
+				<MudStack AlignItems="AlignItems.Center" Spacing="3">
+					<MudIcon Icon="@Icons.Material.Filled.Person" Color="Color.Tertiary"
+					         Style="font-size: 4rem; opacity: 0.5;"/>
+					<MudText Typo="Typo.h6">No players yet</MudText>
+					<MudText Class="text-muted mb-4">Create your first player character to begin your adventures!</MudText>
+					<MudButton Variant="Variant.Filled" Color="Color.Tertiary" Size="Size.Large"
+					           Href="/players/new" StartIcon="@Icons.Material.Filled.PersonAdd">
+						Create Your First Player
+					</MudButton>
+				</MudStack>
+			</div>
 		}
 
 		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && _players is not null && _players.Length > 0)
 		{
-			<MudTable Items="_players" Dense="true" Hover="true">
-				<HeaderContent>
-					<MudTh>Name</MudTh>
-					<MudTh>Description</MudTh>
-					<MudTh>Ruleset ID</MudTh>
-					<MudTh align="Align.Right">Actions</MudTh>
-				</HeaderContent>
-				<RowTemplate>
-					<MudTd>@context.Name</MudTd>
-					<MudTd>@(context.Description ?? "-")</MudTd>
-					<MudTd>@context.RulesetId</MudTd>
-					<MudTd align="Align.Right">
-						<MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-						           Href="@($"/players/{context.Id}/edit")" Class="me-2">
-							Edit
-						</MudButton>
-					</MudTd>
-				</RowTemplate>
-			</MudTable>
+			<MudPaper Elevation="0" Class="pa-0" Style="background: transparent;">
+				<MudTable Items="_players" Dense="true" Hover="true">
+					<HeaderContent>
+						<MudTh>Name</MudTh>
+						<MudTh>Description</MudTh>
+						<MudTh>Ruleset</MudTh>
+						<MudTh Style="text-align: right;">Actions</MudTh>
+					</HeaderContent>
+					<RowTemplate>
+						<MudTd>
+							<MudLink Href="@($"/players/{context.Id}/edit")">@context.Name</MudLink>
+						</MudTd>
+						<MudTd>@(context.Description ?? "-")</MudTd>
+						<MudTd>
+							<MattEland.Jaimes.Web.Components.Shared.RulesetLink 
+								RulesetId="@context.RulesetId" />
+						</MudTd>
+						<MudTd Style="text-align: right;">
+							<MudTooltip Text="Edit Player" Placement="Placement.Top">
+								<MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Default" Size="Size.Small"
+								               Href="@($"/players/{context.Id}/edit")"/>
+							</MudTooltip>
+						</MudTd>
+					</RowTemplate>
+				</MudTable>
+			</MudPaper>
 		}
 	</div>
-</MudPaper>
-
+</MudContainer>
