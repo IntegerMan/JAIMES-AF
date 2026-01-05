@@ -52,10 +52,10 @@
 		</MudGrid>
 	</div>
 
-	@* Main Content Grid *@
+	@* Main Content Grid - Widened left column for better use of large screens *@
 	<MudGrid Spacing="4">
 		@* Left Column: Quick Actions & About *@
-		<MudItem xs="12" md="7">
+		<MudItem xs="12" md="8">
 			<MudText Typo="Typo.overline" Class="mb-3" Style="letter-spacing: 1.5px; color: #7B2CBF; font-weight: 600;">
 				GET STARTED
 			</MudText>
@@ -137,13 +137,17 @@
 							<MudIcon Icon="@Icons.Material.Filled.Memory" Style="color: #06D6A0;" Size="Size.Small" />
 							Agent Framework
 						</span>
+						<span class="feature-pill">
+							<MudIcon Icon="@Icons.Material.Filled.ModelTraining" Style="color: #EF476F;" Size="Size.Small" />
+							ML.NET
+						</span>
 					</MudStack>
 				</MudStack>
 			</div>
 		</MudItem>
 
 		@* Right Column: Expanded Stats Dashboard *@
-		<MudItem xs="12" md="5">
+		<MudItem xs="12" md="4">
 			<MudText Typo="Typo.overline" Class="mb-3" Style="letter-spacing: 1.5px; color: #7B2CBF; font-weight: 600;">
 				STATS DASHBOARD
 			</MudText>
@@ -194,6 +198,36 @@
 								<MudStack Spacing="0">
 									<MudText Typo="Typo.caption" Class="text-muted">Rulesets</MudText>
 									<span class="stat-value">@_rulesetsCount</span>
+								</MudStack>
+							</MudStack>
+						</div>
+					</MudItem>
+				</MudGrid>
+				
+				<MudDivider Class="my-3" />
+				
+				@* Platform Stats *@
+				<MudText Typo="Typo.caption" Class="text-muted mb-2" Style="font-weight: 600; letter-spacing: 0.5px;">PLATFORM</MudText>
+				<MudGrid Spacing="2">
+					<MudItem xs="6">
+						<div class="stat-card stat-card-platform">
+							<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+								<MudIcon Icon="@Icons.Material.Filled.SmartToy" Style="color: #9D4EDD;" />
+								<MudStack Spacing="0">
+									<MudText Typo="Typo.caption" Class="text-muted">Agents / Versions</MudText>
+									<span class="stat-value-compact">@_agentsCount <span class="stat-separator">•</span> @_versionsCount</span>
+								</MudStack>
+							</MudStack>
+						</div>
+					</MudItem>
+					
+					<MudItem xs="6">
+						<div class="stat-card stat-card-mlnet">
+							<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+								<MudIcon Icon="@Icons.Material.Filled.ModelTraining" Style="color: #EF476F;" />
+								<MudStack Spacing="0">
+									<MudText Typo="Typo.caption" Class="text-muted">ML Models</MudText>
+									<span class="stat-value">@_mlModelsCount</span>
 								</MudStack>
 							</MudStack>
 						</div>
@@ -265,7 +299,10 @@
 	private int _scenariosCount;
 	private int _playersCount;
 	private int _rulesetsCount;
+	private int _agentsCount;
+	private int _versionsCount;
 	private int _messagesCount;
+	private int _mlModelsCount;
 	private int _sentimentCount;
 	private int _feedbackCount;
 	private int _metricsCount;
@@ -274,30 +311,29 @@
 	{
 		var logger = LoggerFactory.CreateLogger("Home");
 
-		// Fetch all metrics in parallel
-		var gamesTask = Http.GetFromJsonAsync<ListGamesResponse>("/games");
-		var scenariosTask = Http.GetFromJsonAsync<ScenarioListResponse>("/scenarios");
-		var playersTask = Http.GetFromJsonAsync<PlayerListResponse>("/players");
-		var rulesetsTask = Http.GetFromJsonAsync<RulesetListResponse>("/rulesets");
+		// Fetch dashboard stats and latest game in parallel
+		var dashboardTask = Http.GetFromJsonAsync<DashboardStatsResponse>("/admin/dashboard/stats");
 		var latestGameTask = Http.GetAsync("/games/latest");
-		var sentimentTask = Http.GetFromJsonAsync<SentimentListResponse>("/admin/sentiments?pageSize=1");
-		var feedbackTask = Http.GetFromJsonAsync<FeedbackListResponse>("/admin/feedback?pageSize=1");
-		var metricsTask = Http.GetFromJsonAsync<EvaluationMetricListResponse>("/admin/metrics?pageSize=1");
 
 		try
 		{
-			await Task.WhenAll(gamesTask, scenariosTask, playersTask, rulesetsTask, 
-			                   latestGameTask, sentimentTask, feedbackTask, metricsTask);
+			await Task.WhenAll(dashboardTask, latestGameTask);
 
-			var games = gamesTask.Result?.Games ?? [];
-			_gamesCount = games.Length;
-			_scenariosCount = scenariosTask.Result?.Scenarios?.Length ?? 0;
-			_playersCount = playersTask.Result?.Players?.Length ?? 0;
-			_rulesetsCount = rulesetsTask.Result?.Rulesets?.Length ?? 0;
-			_messagesCount = 0; // Message count not available on summary response
-			_sentimentCount = sentimentTask.Result?.TotalCount ?? 0;
-			_feedbackCount = feedbackTask.Result?.TotalCount ?? 0;
-			_metricsCount = metricsTask.Result?.TotalCount ?? 0;
+			var stats = dashboardTask.Result;
+			if (stats != null)
+			{
+				_gamesCount = stats.GamesCount;
+				_scenariosCount = stats.ScenariosCount;
+				_playersCount = stats.PlayersCount;
+				_rulesetsCount = stats.RulesetsCount;
+				_agentsCount = stats.AgentsCount;
+				_versionsCount = stats.VersionsCount;
+				_messagesCount = stats.MessagesCount;
+				_mlModelsCount = stats.MlModelsCount;
+				_sentimentCount = stats.SentimentsCount;
+				_feedbackCount = stats.FeedbackCount;
+				_metricsCount = stats.EvaluationsCount;
+			}
 
 			if (latestGameTask.Result.IsSuccessStatusCode)
 			{

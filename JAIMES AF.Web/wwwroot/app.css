@@ -581,6 +581,14 @@ h1:focus {
     border-left-color: #EF476F;
 }
 
+.stat-card-platform {
+    border-left-color: #9D4EDD;
+}
+
+.stat-card-mlnet {
+    border-left-color: #EF476F;
+}
+
 .stat-value {
     font-size: 1.75rem;
     font-weight: 700;
@@ -589,6 +597,22 @@ h1:focus {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+}
+
+.stat-value-compact {
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1;
+    background: linear-gradient(135deg, #9D4EDD 0%, var(--color-secondary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-separator {
+    -webkit-text-fill-color: #9D4EDD;
+    margin: 0 4px;
+    font-weight: 400;
 }
 
 /* About Section with Strong Grouping */
@@ -635,12 +659,12 @@ h1:focus {
 }
 
 /* ======================================
-   ENHANCED SIDEBAR STYLES
+   ENHANCED SIDEBAR STYLES (Dark Theme)
    ====================================== */
 
-/* Sidebar Section Headers */
+/* Sidebar Section Headers - Dark Theme */
 .nav-section-header {
-    background: linear-gradient(to right, rgba(123, 44, 191, 0.08), rgba(67, 97, 238, 0.04));
+    background: linear-gradient(to right, rgba(123, 44, 191, 0.25), rgba(67, 97, 238, 0.15));
     border-radius: 8px;
     margin: 8px;
     padding: 8px 12px;
@@ -651,29 +675,29 @@ h1:focus {
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: var(--color-primary);
-    border-left: 3px solid var(--color-primary);
+    color: #E8D5F2;
+    border-left: 3px solid var(--color-primary-light);
 }
 
 .nav-section-header.content {
-    background: linear-gradient(to right, rgba(67, 97, 238, 0.08), rgba(76, 201, 240, 0.04));
-    color: var(--color-secondary);
+    background: linear-gradient(to right, rgba(67, 97, 238, 0.25), rgba(76, 201, 240, 0.15));
+    color: #B8C5FF;
     border-left-color: var(--color-secondary);
 }
 
 .nav-section-header.tools {
-    background: linear-gradient(to right, rgba(76, 201, 240, 0.08), rgba(6, 214, 160, 0.04));
-    color: #0891B2;
+    background: linear-gradient(to right, rgba(76, 201, 240, 0.25), rgba(6, 214, 160, 0.15));
+    color: #A8E8E8;
     border-left-color: var(--color-tertiary);
 }
 
 .nav-section-header.admin {
-    background: linear-gradient(to right, rgba(43, 45, 66, 0.08), rgba(123, 44, 191, 0.04));
-    color: var(--color-admin);
-    border-left-color: var(--color-admin);
+    background: linear-gradient(to right, rgba(100, 100, 130, 0.25), rgba(123, 44, 191, 0.15));
+    color: #C8C8D8;
+    border-left-color: #888;
 }
 
-/* Enhanced nav items */
+/* Enhanced nav items - Dark Theme */
 .mud-navmenu .mud-nav-link {
     padding: 10px 16px;
     border-radius: 8px;
@@ -681,18 +705,21 @@ h1:focus {
     font-size: 0.875rem;
     font-weight: 500;
     transition: all 0.2s ease;
+    color: rgba(248, 249, 250, 0.85);
 }
 
 .mud-navmenu .mud-nav-link:hover {
-    background-color: rgba(123, 44, 191, 0.08);
+    background-color: rgba(123, 44, 191, 0.2);
     transform: translateX(2px);
+    color: #fff;
 }
 
 .mud-navmenu .mud-nav-link.active {
-    background: linear-gradient(to right, rgba(123, 44, 191, 0.15), rgba(123, 44, 191, 0.08));
+    background: linear-gradient(to right, rgba(123, 44, 191, 0.35), rgba(123, 44, 191, 0.2));
     font-weight: 600;
-    border-left: 3px solid var(--color-primary);
+    border-left: 3px solid var(--color-primary-light);
     margin-left: 5px;
+    color: #fff;
 }
 
 /* Nav Groups with Visual Enhancement */
