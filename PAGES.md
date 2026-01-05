@@ -65,15 +65,7 @@ Pages for managing game content including scenarios, characters, rulesets, and l
 
 Lists available game scenarios (story seeds) that can be used to start new games.
 
-**Style Guide Violations:**
-- ⚠️ Apply List Page Pattern from `Games.razor` (compact hero, icon action buttons, empty state)
-- Review for proper entity icon usage and tooltip placements
-
-**Improvement Ideas:**
-- Add compact hero section with scenario count and "New Scenario" button
-- Replace text buttons with icon buttons + tooltips
-- Add engaging empty state for when no scenarios exist
-- Add scenario preview or description column
+**Style Guide Compliance:** ✅ Good
 
 ---
 
