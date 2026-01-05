@@ -121,26 +121,36 @@
 					
 					@* Feature Pills - Integrated within About *@
 					<MudStack Row="true" Style="flex-wrap: wrap; gap: 12px;" Class="mt-2">
-						<span class="feature-pill">
-							<MudIcon Icon="@Icons.Material.Filled.Psychology" Style="color: #7B2CBF;" Size="Size.Small" />
-							AI Storytelling
-						</span>
-						<span class="feature-pill">
-							<MudIcon Icon="@Icons.Material.Filled.Public" Style="color: #4361EE;" Size="Size.Small" />
-							Dynamic Worlds
-						</span>
-						<span class="feature-pill">
-							<MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Style="color: #4CC9F0;" Size="Size.Small" />
-							Adaptive Narratives
-						</span>
-						<span class="feature-pill">
-							<MudIcon Icon="@Icons.Material.Filled.Memory" Style="color: #06D6A0;" Size="Size.Small" />
-							Agent Framework
-						</span>
-						<span class="feature-pill">
-							<MudIcon Icon="@Icons.Material.Filled.ModelTraining" Style="color: #EF476F;" Size="Size.Small" />
-							ML.NET
-						</span>
+						<MudLink Href="/scenarios" Underline="Underline.None">
+							<span class="feature-pill">
+								<MudIcon Icon="@Icons.Material.Filled.Psychology" Style="color: #7B2CBF;" Size="Size.Small" />
+								AI Storytelling
+							</span>
+						</MudLink>
+						<MudLink Href="/tools/location-lookup" Underline="Underline.None">
+							<span class="feature-pill">
+								<MudIcon Icon="@Icons.Material.Filled.Public" Style="color: #4361EE;" Size="Size.Small" />
+								Dynamic Worlds
+							</span>
+						</MudLink>
+						<MudLink Href="/admin/sentiments" Underline="Underline.None">
+							<span class="feature-pill">
+								<MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Style="color: #4CC9F0;" Size="Size.Small" />
+								Adaptive Narratives
+							</span>
+						</MudLink>
+						<MudLink Href="/agents" Underline="Underline.None">
+							<span class="feature-pill">
+								<MudIcon Icon="@Icons.Material.Filled.Memory" Style="color: #06D6A0;" Size="Size.Small" />
+								Agent Framework
+							</span>
+						</MudLink>
+						<MudLink Href="/admin/classification-models" Underline="Underline.None">
+							<span class="feature-pill">
+								<MudIcon Icon="@Icons.Material.Filled.ModelTraining" Style="color: #EF476F;" Size="Size.Small" />
+								ML.NET
+							</span>
+						</MudLink>
 					</MudStack>
 				</MudStack>
 			</div>
@@ -232,7 +242,7 @@
 					</MudItem>
 					
 					<MudItem xs="6">
-						<MudLink Href="/admin/test-cases" Class="stat-card-link">
+						<MudLink Href="/admin/classification-models" Class="stat-card-link">
 							<div class="stat-card stat-card-mlnet">
 								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
 									<MudIcon Icon="@Icons.Material.Filled.ModelTraining" Style="color: #EF476F;" />
@@ -252,7 +262,7 @@
 				<MudText Typo="Typo.caption" Class="text-muted mb-2" Style="font-weight: 600; letter-spacing: 0.5px;">AI QUALITY</MudText>
 				<MudGrid Spacing="2">
 					<MudItem xs="6">
-						<MudLink Href="/tools/conversation-search" Class="stat-card-link">
+						<MudLink Href="/admin/rag-collections?category=transcripts" Class="stat-card-link">
 							<div class="stat-card stat-card-warning">
 								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
 									<MudIcon Icon="@Icons.Material.Filled.Forum" Style="color: #F59E0B;" />
@@ -266,7 +276,7 @@
 					</MudItem>
 					
 					<MudItem xs="6">
-						<MudLink Href="/tools/player-sentiment" Class="stat-card-link">
+						<MudLink Href="/admin/sentiments" Class="stat-card-link">
 							<div class="stat-card stat-card-error">
 								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
 									<MudIcon Icon="@Icons.Material.Filled.SentimentSatisfied" Style="color: #EF476F;" />
