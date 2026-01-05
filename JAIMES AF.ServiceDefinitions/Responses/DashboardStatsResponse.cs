@@ -16,4 +16,7 @@ public record DashboardStatsResponse
     public int SentimentsCount { get; init; }
     public int FeedbackCount { get; init; }
     public int EvaluationsCount { get; init; }
+    public int TestCasesCount { get; init; }
+    public int TestReportsCount { get; init; }
+    public int SourcebooksCount { get; init; }
 }

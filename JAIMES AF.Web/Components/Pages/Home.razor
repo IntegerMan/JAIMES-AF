@@ -123,7 +123,7 @@
 					<MudStack Row="true" Style="flex-wrap: wrap; gap: 12px;" Class="mt-2">
 						<MudLink Href="/scenarios" Underline="Underline.None">
 							<span class="feature-pill">
-								<MudIcon Icon="@Icons.Material.Filled.Psychology" Style="color: #7B2CBF;" Size="Size.Small" />
+								<MudIcon Icon="@Icons.Material.Filled.ElectricBolt" Style="color: #7B2CBF;" Size="Size.Small" />
 								AI Storytelling
 							</span>
 						</MudLink>
@@ -141,8 +141,14 @@
 						</MudLink>
 						<MudLink Href="/agents" Underline="Underline.None">
 							<span class="feature-pill">
-								<MudIcon Icon="@Icons.Material.Filled.Memory" Style="color: #06D6A0;" Size="Size.Small" />
+								<MudIcon Icon="@Icons.Material.Filled.SmartToy" Style="color: #06D6A0;" Size="Size.Small" />
 								Agent Framework
+							</span>
+						</MudLink>
+						<MudLink Href="/admin/rag-collections" Underline="Underline.None">
+							<span class="feature-pill">
+								<MudIcon Icon="@Icons.Material.Filled.Storage" Style="color: #F15BB5;" Size="Size.Small" />
+								Qdrant Vector Storage
 							</span>
 						</MudLink>
 						<MudLink Href="/admin/classification-models" Underline="Underline.None">
@@ -194,13 +200,13 @@
 					</MudItem>
 					
 					<MudItem xs="6">
-						<MudLink Href="/players" Class="stat-card-link">
+						<MudLink Href="/admin/rag-collections?category=transcripts" Class="stat-card-link">
 							<div class="stat-card stat-card-tertiary">
 								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-									<MudIcon Icon="@Icons.Material.Filled.Person" Color="Color.Tertiary" />
+									<MudIcon Icon="@Icons.Material.Filled.Forum" Color="Color.Tertiary" />
 									<MudStack Spacing="0">
-										<MudText Typo="Typo.caption" Class="text-muted">Characters</MudText>
-										<span class="stat-value">@_playersCount</span>
+										<MudText Typo="Typo.caption" Class="text-muted">Messages</MudText>
+										<span class="stat-value">@_messagesCount</span>
 									</MudStack>
 								</MudStack>
 							</div>
@@ -213,8 +219,8 @@
 								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
 									<MudIcon Icon="@Icons.Material.Filled.AutoStories" Color="Color.Success" />
 									<MudStack Spacing="0">
-										<MudText Typo="Typo.caption" Class="text-muted">Rulesets</MudText>
-										<span class="stat-value">@_rulesetsCount</span>
+										<MudText Typo="Typo.caption" Class="text-muted">Systems / Sources</MudText>
+										<span class="stat-value-compact">@_rulesetsCount <span class="stat-separator">•</span> @_sourcebooksCount</span>
 									</MudStack>
 								</MudStack>
 							</div>
@@ -245,7 +251,7 @@
 						<MudLink Href="/admin/classification-models" Class="stat-card-link">
 							<div class="stat-card stat-card-mlnet">
 								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-									<MudIcon Icon="@Icons.Material.Filled.ModelTraining" Style="color: #EF476F;" />
+									<MudIcon Icon="@Icons.Material.Filled.Psychology" Style="color: #EF476F;" />
 									<MudStack Spacing="0">
 										<MudText Typo="Typo.caption" Class="text-muted">ML Models</MudText>
 										<span class="stat-value">@_mlModelsCount</span>
@@ -262,13 +268,13 @@
 				<MudText Typo="Typo.caption" Class="text-muted mb-2" Style="font-weight: 600; letter-spacing: 0.5px;">AI QUALITY</MudText>
 				<MudGrid Spacing="2">
 					<MudItem xs="6">
-						<MudLink Href="/admin/rag-collections?category=transcripts" Class="stat-card-link">
+						<MudLink Href="/admin/test-cases" Class="stat-card-link">
 							<div class="stat-card stat-card-warning">
 								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-									<MudIcon Icon="@Icons.Material.Filled.Forum" Style="color: #F59E0B;" />
+									<MudIcon Icon="@Icons.Material.Filled.Checklist" Style="color: #F59E0B;" />
 									<MudStack Spacing="0">
-										<MudText Typo="Typo.caption" Class="text-muted">Messages</MudText>
-										<span class="stat-value">@_messagesCount</span>
+										<MudText Typo="Typo.caption" Class="text-muted">Test Cases / Reports</MudText>
+										<span class="stat-value-compact">@_testCasesCount <span class="stat-separator">•</span> @_testReportsCount</span>
 									</MudStack>
 								</MudStack>
 							</div>
@@ -290,13 +296,13 @@
 					</MudItem>
 					
 					<MudItem xs="6">
-						<MudLink Href="/admin/feedback" Class="stat-card-link">
-							<div class="stat-card stat-card-primary">
+						<MudLink Href="/admin/metrics" Class="stat-card-link">
+							<div class="stat-card stat-card-secondary">
 								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-									<MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Primary" />
+									<MudIcon Icon="@Icons.Material.Filled.PieChart" Color="Color.Secondary" />
 									<MudStack Spacing="0">
-										<MudText Typo="Typo.caption" Class="text-muted">Feedback</MudText>
-										<span class="stat-value">@_feedbackCount</span>
+										<MudText Typo="Typo.caption" Class="text-muted">Evaluations</MudText>
+										<span class="stat-value">@_metricsCount</span>
 									</MudStack>
 								</MudStack>
 							</div>
@@ -304,13 +310,13 @@
 					</MudItem>
 					
 					<MudItem xs="6">
-						<MudLink Href="/admin/metrics" Class="stat-card-link">
-							<div class="stat-card stat-card-secondary">
+						<MudLink Href="/admin/feedback" Class="stat-card-link">
+							<div class="stat-card stat-card-primary">
 								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-									<MudIcon Icon="@Icons.Material.Filled.Assessment" Color="Color.Secondary" />
+									<MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Primary" />
 									<MudStack Spacing="0">
-										<MudText Typo="Typo.caption" Class="text-muted">Evaluations</MudText>
-										<span class="stat-value">@_metricsCount</span>
+										<MudText Typo="Typo.caption" Class="text-muted">Feedback</MudText>
+										<span class="stat-value">@_feedbackCount</span>
 									</MudStack>
 								</MudStack>
 							</div>
@@ -336,6 +342,9 @@
 	private int _sentimentCount;
 	private int _feedbackCount;
 	private int _metricsCount;
+	private int _testCasesCount;
+	private int _testReportsCount;
+	private int _sourcebooksCount;
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -363,6 +372,9 @@
 				_sentimentCount = stats.SentimentsCount;
 				_feedbackCount = stats.FeedbackCount;
 				_metricsCount = stats.EvaluationsCount;
+				_testCasesCount = stats.TestCasesCount;
+				_testReportsCount = stats.TestReportsCount;
+				_sourcebooksCount = stats.SourcebooksCount;
 			}
 
 			if (latestGameTask.Result.IsSuccessStatusCode)

@@ -1,3 +1,4 @@
+using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using Microsoft.EntityFrameworkCore;
@@ -34,6 +35,10 @@ public class GetDashboardStatsEndpoint : EndpointWithoutRequest<DashboardStatsRe
         int sentimentsCount = await DbContext.MessageSentiments.CountAsync(ct);
         int feedbackCount = await DbContext.MessageFeedbacks.CountAsync(ct);
         int evaluationsCount = await DbContext.MessageEvaluationMetrics.CountAsync(ct);
+        int testCasesCount = await DbContext.TestCases.CountAsync(ct);
+        int testReportsCount = await DbContext.StoredFiles.CountAsync(f => f.ItemKind == "TestReport", ct);
+        int sourcebooksCount =
+            await DbContext.CrackedDocuments.CountAsync(d => d.DocumentKind == DocumentKinds.Sourcebook, ct);
 
         await Send.OkAsync(new DashboardStatsResponse
         {
@@ -47,7 +52,10 @@ public class GetDashboardStatsEndpoint : EndpointWithoutRequest<DashboardStatsRe
             MlModelsCount = mlModelsCount,
             SentimentsCount = sentimentsCount,
             FeedbackCount = feedbackCount,
-            EvaluationsCount = evaluationsCount
+            EvaluationsCount = evaluationsCount,
+            TestCasesCount = testCasesCount,
+            TestReportsCount = testReportsCount,
+            SourcebooksCount = sourcebooksCount
         }, ct);
     }
 }

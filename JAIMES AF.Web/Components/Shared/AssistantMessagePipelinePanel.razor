@@ -5,7 +5,7 @@
 @inject IHttpClientFactory HttpClientFactory
 @inject ISnackbar Snackbar
 
-<MudPaper Class="@CombinedClass" Elevation="2">
+<MudPaper Class="@CombinedClass" Style="@Style" Elevation="2">
     <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
         <MudText Typo="Typo.h6">Assistant Message Processing Pipeline</MudText>
         <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
@@ -224,6 +224,12 @@
     /// </summary>
     [Parameter]
     public string? Class { get; set; }
+
+    /// <summary>
+    /// Additional CSS style to apply to the component.
+    /// </summary>
+    [Parameter]
+    public string? Style { get; set; }
 
     private string CombinedClass => string.IsNullOrEmpty(Class) ? "pa-4" : $"pa-4 {Class}";
 
