@@ -16,6 +16,9 @@ public partial class RagCollections
     private List<BreadcrumbItem> _breadcrumbs = new();
     private string _filterType = "All";
 
+    [SupplyParameterFromQuery(Name = "category")]
+    public string? Category { get; set; }
+
     private RagCollectionDocumentInfo[] FilteredDocuments =>
         _statistics?.Documents
             .Where(d => _filterType == "All" ||
@@ -31,6 +34,17 @@ public partial class RagCollections
             new BreadcrumbItem("Admin", href: "/admin"),
             new BreadcrumbItem("RAG Collections", href: null, disabled: true)
         };
+
+        // Initialize filter from query parameter
+        if (!string.IsNullOrEmpty(Category))
+        {
+            _filterType = Category.ToLowerInvariant() switch
+            {
+                "transcripts" or "transcript" => "Transcript",
+                "sourcebooks" or "sourcebook" => "Sourcebook",
+                _ => "All"
+            };
+        }
 
         await LoadStatisticsAsync();
     }

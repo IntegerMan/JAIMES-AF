@@ -5,7 +5,7 @@
 @inject IHttpClientFactory HttpClientFactory
 @inject ISnackbar Snackbar
 
-<MudPaper Class="@CombinedClass" Elevation="2">
+<MudPaper Class="@CombinedClass" Style="@Style" Elevation="2">
     <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
         <MudText Typo="Typo.h6">Assistant Message Processing Pipeline</MudText>
         <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
@@ -23,7 +23,7 @@
         </MudStack>
     </MudStack>
 
-    @if (_activeMessages.Count == 0)
+    @if (_activeMessages.Count == 0 || !ShowActiveMessages)
     {
         @* Show empty state pipeline diagram *@
         <MudPaper Class="pa-3 mb-4" Elevation="1" Style="background-color: var(--mud-palette-background-grey);">
@@ -31,8 +31,8 @@
                 @* Loading Stage *@
                 <MudPaper Class="pa-2" Elevation="0" Style="min-width: 70px; text-align: center; background-color: transparent;">
                     <MudStack AlignItems="AlignItems.Center" Spacing="0">
-                        <MudIcon Icon="@Icons.Material.Filled.CloudDownload" Size="Size.Medium" Color="Color.Default" />
-                        <MudText Typo="Typo.caption">Load</MudText>
+                        <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Medium" Color="Color.Default" />
+                        <MudText Typo="Typo.caption">Waiting</MudText>
                     </MudStack>
                 </MudPaper>
 
@@ -41,11 +41,7 @@
                 @* Evaluation Stage *@
                 <MudPaper Class="pa-2" Elevation="0" Style="text-align: center; background-color: transparent;">
                     <MudStack AlignItems="AlignItems.Center" Spacing="0">
-                        <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
-                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">Brevity</MudChip>
-                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">Coherence</MudChip>
-                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">...</MudChip>
-                        </MudStack>
+                        <MudIcon Icon="@Icons.Material.Filled.Assessment" Size="Size.Medium" Color="Color.Default" />
                         <MudText Typo="Typo.caption" Class="mt-1">Evaluation</MudText>
                     </MudStack>
                 </MudPaper>
@@ -72,10 +68,20 @@
             </MudStack>
         </MudPaper>
 
-        <MudText Typo="Typo.body2" Color="Color.Default" Class="text-center">
-            <MudIcon Icon="@Icons.Material.Filled.HourglassEmpty" Size="Size.Small" Style="vertical-align: middle;" />
-            Waiting for assistant messages to evaluate...
-        </MudText>
+        @if (_activeMessages.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Default" Class="text-center">
+                <MudIcon Icon="@Icons.Material.Filled.HourglassEmpty" Size="Size.Small" Style="vertical-align: middle;" />
+                Waiting for assistant messages to evaluate...
+            </MudText>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Color="Color.Default" Class="text-center">
+                <MudIcon Icon="@Icons.Material.Filled.HourglassFull" Size="Size.Small" Style="vertical-align: middle; margin-right: 4px;" />
+                Currently processing @_activeMessages.Count active messages...
+            </MudText>
+        }
     }
     else
     {
@@ -109,39 +115,31 @@
                     </MudStack>
 
                     <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Justify="Justify.Center" Class="flex-wrap">
-                        @* Loading Stage *@
+                        @* Waiting Stage *@
                         <MudPaper Class="pa-2" Elevation="0" Style="min-width: 70px; text-align: center; background-color: transparent;">
                             <MudStack AlignItems="AlignItems.Center" Spacing="0">
-                                <MudIcon Icon="@Icons.Material.Filled.CloudDownload" Size="Size.Medium" Color="@GetStageColor(msg, MessagePipelineStage.Loading)" />
-                                <MudText Typo="Typo.caption">Load</MudText>
+                                <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Medium" Color="@GetStageColor(msg, MessagePipelineStage.Loading)" />
+                                <MudText Typo="Typo.caption">Waiting</MudText>
                             </MudStack>
                         </MudPaper>
 
                         <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" Class="text-muted" />
 
-                        @* Evaluation Stage with individual evaluators *@
+                        @* Evaluation Stage *@
                         <MudPaper Class="pa-2" Elevation="0" Style="text-align: center; background-color: transparent;">
                             <MudStack AlignItems="AlignItems.Center" Spacing="0">
-                                @if (msg.CurrentStage == MessagePipelineStage.Evaluation && msg.TotalEvaluators > 0)
+                                @if (msg.CurrentStage == MessagePipelineStage.Evaluation)
                                 {
-                                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
-                                        @for (int i = 1; i <= msg.TotalEvaluators; i++)
-                                        {
-                                            var evalIndex = i;
-                                            var evalName = msg.EvaluatorNames.TryGetValue(i, out var name) ? name : $"Eval {i}";
-                                            var shortName = GetShortEvaluatorName(evalName);
-                                            <MudTooltip Text="@evalName">
-                                                <MudChip T="string" 
-                                                         Size="Size.Small" 
-                                                         Color="@GetEvaluatorColor(msg, evalIndex)"
-                                                         Variant="Variant.Filled"
-                                                         Class="@(msg.CurrentEvaluatorIndex == evalIndex && !msg.CompletedEvaluators.Contains(evalIndex) ? "pulse-animation" : "")">
-                                                    @shortName
-                                                </MudChip>
-                                            </MudTooltip>
-                                        }
-                                    </MudStack>
-                                    <MudText Typo="Typo.caption" Class="mt-1">@msg.CurrentEvaluatorIndex/@msg.TotalEvaluators Evaluators</MudText>
+                                    <MudBadge Content="@($"{msg.CompletedEvaluators.Count}/{msg.TotalEvaluators}")" 
+                                              Color="@GetStageColor(msg, MessagePipelineStage.Evaluation)" 
+                                              Overlap="true" 
+                                              Bordered="true">
+                                        <MudIcon Icon="@Icons.Material.Filled.Assessment" 
+                                                 Size="Size.Medium" 
+                                                 Color="@GetStageColor(msg, MessagePipelineStage.Evaluation)" 
+                                                 Class="pulse-animation" />
+                                    </MudBadge>
+                                    <MudText Typo="Typo.caption" Class="mt-1">Evaluating</MudText>
                                 }
                                 else if (msg.CompletedStages.Contains(MessagePipelineStage.Evaluation))
                                 {
@@ -224,6 +222,18 @@
     /// </summary>
     [Parameter]
     public string? Class { get; set; }
+
+    /// <summary>
+    /// Additional CSS style to apply to the component.
+    /// </summary>
+    [Parameter]
+    public string? Style { get; set; }
+
+    /// <summary>
+    /// Whether to show the detailed active messages or just a summary.
+    /// </summary>
+    [Parameter]
+    public bool ShowActiveMessages { get; set; } = false;
 
     private string CombinedClass => string.IsNullOrEmpty(Class) ? "pa-4" : $"pa-4 {Class}";
 

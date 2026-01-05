@@ -1,0 +1,30 @@
+@* Enhanced compact clickable card for admin tool links with glass effect *@
+
+<MudLink Href="@Href" Underline="Underline.None" Style="display: block; height: 100%;">
+    <div class="compact-link-card-enhanced" style="cursor: pointer; height: 100%;">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <div class="compact-icon-badge @GetIconBadgeClass()">
+                <MudIcon Icon="@Icon" Style="color: white; font-size: 0.9rem;" />
+            </div>
+            <MudText Typo="Typo.body2" Style="font-weight: 500;">@Title</MudText>
+        </MudStack>
+    </div>
+</MudLink>
+
+@code {
+    [Parameter] public string Icon { get; set; } = Icons.Material.Filled.OpenInNew;
+    [Parameter] public Color IconColor { get; set; } = Color.Primary;
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string Href { get; set; } = "#";
+
+    private string GetIconBadgeClass() => IconColor switch
+    {
+        Color.Primary => "compact-badge-primary",
+        Color.Secondary => "compact-badge-secondary",
+        Color.Info => "compact-badge-info",
+        Color.Success => "compact-badge-success",
+        Color.Warning => "compact-badge-warning",
+        Color.Error => "compact-badge-error",
+        _ => "compact-badge-primary"
+    };
+}

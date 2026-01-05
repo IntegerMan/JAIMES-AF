@@ -5,7 +5,7 @@
 @inject IHttpClientFactory HttpClientFactory
 @inject ISnackbar Snackbar
 
-<MudPaper Class="@CombinedClass" Elevation="2">
+<MudPaper Class="@CombinedClass" Style="@Style" Elevation="2">
     <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
         <MudText Typo="Typo.h6">User Message Processing Pipeline</MudText>
         <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
@@ -23,16 +23,16 @@
         </MudStack>
     </MudStack>
 
-    @if (_activeMessages.Count == 0)
+    @if (_activeMessages.Count == 0 || !ShowActiveMessages)
     {
         @* Show empty state pipeline diagram *@
         <MudPaper Class="pa-3 mb-4" Elevation="1" Style="background-color: var(--mud-palette-background-grey);">
             <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Justify="Justify.Center">
-                @* Loading Stage *@
+                @* Waiting Stage *@
                 <MudPaper Class="pa-2" Elevation="0" Style="min-width: 90px; text-align: center; background-color: transparent;">
                     <MudStack AlignItems="AlignItems.Center" Spacing="0">
-                        <MudIcon Icon="@Icons.Material.Filled.CloudDownload" Size="Size.Medium" Color="Color.Default" />
-                        <MudText Typo="Typo.caption">Loading</MudText>
+                        <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Medium" Color="Color.Default" />
+                        <MudText Typo="Typo.caption">Waiting</MudText>
                     </MudStack>
                 </MudPaper>
 
@@ -68,10 +68,20 @@
             </MudStack>
         </MudPaper>
 
-        <MudText Typo="Typo.body2" Color="Color.Default" Class="text-center">
-            <MudIcon Icon="@Icons.Material.Filled.HourglassEmpty" Size="Size.Small" Style="vertical-align: middle;" />
-            Waiting for user messages to process...
-        </MudText>
+        @if (_activeMessages.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Default" Class="text-center">
+                <MudIcon Icon="@Icons.Material.Filled.HourglassEmpty" Size="Size.Small" Style="vertical-align: middle;" />
+                Waiting for user messages to process...
+            </MudText>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Color="Color.Default" Class="text-center">
+                <MudIcon Icon="@Icons.Material.Filled.HourglassFull" Size="Size.Small" Style="vertical-align: middle; margin-right: 4px;" />
+                Currently processing @_activeMessages.Count active messages...
+            </MudText>
+        }
     }
     else
     {
@@ -105,11 +115,11 @@
                     </MudStack>
 
                     <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Justify="Justify.Center">
-                        @* Loading Stage *@
+                        @* Waiting Stage *@
                         <MudPaper Class="pa-2" Elevation="0" Style="min-width: 90px; text-align: center; background-color: transparent;">
                             <MudStack AlignItems="AlignItems.Center" Spacing="0">
-                                <MudIcon Icon="@Icons.Material.Filled.CloudDownload" Size="Size.Medium" Color="@GetStageColor(msg, MessagePipelineStage.Loading)" />
-                                <MudText Typo="Typo.caption">Loading</MudText>
+                                <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Medium" Color="@GetStageColor(msg, MessagePipelineStage.Loading)" />
+                                <MudText Typo="Typo.caption">Waiting</MudText>
                             </MudStack>
                         </MudPaper>
 
@@ -191,6 +201,18 @@
     /// </summary>
     [Parameter]
     public string? Class { get; set; }
+
+    /// <summary>
+    /// Additional CSS style to apply to the component.
+    /// </summary>
+    [Parameter]
+    public string? Style { get; set; }
+
+    /// <summary>
+    /// Whether to show the detailed active messages or just a summary.
+    /// </summary>
+    [Parameter]
+    public bool ShowActiveMessages { get; set; } = false;
 
     private string CombinedClass => string.IsNullOrEmpty(Class) ? "pa-4" : $"pa-4 {Class}";
 
