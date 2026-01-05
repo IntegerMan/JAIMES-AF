@@ -5,163 +5,257 @@
 @inject HttpClient Http
 @inject ILoggerFactory LoggerFactory
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
 
-	@* Hero Section *@
-	<MudPaper Class="hero-gradient pa-6 mb-4" Elevation="3">
-		<MudGrid>
+	@* Premium Hero Section with Animated Gradient *@
+	<div class="hero-premium pa-6 mb-5" style="min-height: 180px;">
+		@* Floating Particles *@
+		<div class="hero-particles">
+			<div class="particle"></div>
+			<div class="particle"></div>
+			<div class="particle"></div>
+			<div class="particle"></div>
+			<div class="particle"></div>
+			<div class="particle"></div>
+		</div>
+		
+		<MudGrid Style="position: relative; z-index: 1;">
 			<MudItem xs="12" md="8">
-				<MudText Typo="Typo.h3" Style="font-weight: 700; color: white;" Class="mb-2">
-					JAIMES AF
-				</MudText>
-				<MudText Typo="Typo.h6" Style="color: rgba(255,255,255,0.9); font-weight: 400;" Class="mb-3">
-					Join AI in Making Epic Stories — Agent Framework
-				</MudText>
-				<MudText Typo="Typo.body1" Style="color: rgba(255,255,255,0.85); max-width: 600px;" Class="mb-4">
-					Experience AI-powered tabletop roleplaying with an intelligent Game Master that adapts to your choices in real-time.
-				</MudText>
-				<MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+				<MudStack Spacing="2">
+					<h1 class="hero-title">JAIMES AF</h1>
+					<p class="hero-subtitle">Join AI in Making Epic Stories — Agent Framework</p>
+				</MudStack>
+				<MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mt-5">
 					<MudButton Variant="Variant.Filled" Size="Size.Large" Href="/games/new"
 					           StartIcon="@Icons.Material.Filled.PlayArrow"
-					           Style="font-weight: 600;">
+					           Class="btn-hero-primary">
 						Start New Game
 					</MudButton>
 					@if (_lastPlayedGame != null)
 					{
 						<MudButton Variant="Variant.Outlined" Size="Size.Large"
 						           Href="@($"/games/{_lastPlayedGame.GameId}")"
-						           StartIcon="@Icons.Material.Filled.Restore">
+						           StartIcon="@Icons.Material.Filled.Restore"
+						           Class="btn-hero-secondary">
 							Continue: @_lastPlayedGame.Title
 						</MudButton>
 					}
 				</MudStack>
 			</MudItem>
-			<MudItem xs="12" md="4" Class="d-flex flex-column align-end justify-space-between">
-				<MudButton Variant="Variant.Text" Href="/admin"
+			<MudItem xs="12" md="4" Class="d-flex justify-end align-center">
+				<MudButton Variant="Variant.Text" Href="/admin" Size="Size.Small"
 				           StartIcon="@Icons.Material.Filled.AdminPanelSettings"
-				           Style="color: rgba(255,255,255,0.8);">
+				           Style="color: rgba(255,255,255,0.85);">
 					Admin Portal
 				</MudButton>
-				<MudIcon Icon="@Icons.Material.Filled.AutoAwesome"
-				         Style="font-size: 100px; color: rgba(255,255,255,0.2);" />
 			</MudItem>
 		</MudGrid>
-	</MudPaper>
+	</div>
 
-	@* Quick Actions - Now First *@
-	<MudGrid Spacing="3" Class="mb-4">
-		<MudItem xs="12" md="4">
-			<MudPaper Class="quick-action-card pa-4" Elevation="2" Style="height: 100%;">
-				<MudStack Spacing="2">
+	@* Main Content Grid *@
+	<MudGrid Spacing="4">
+		@* Left Column: Quick Actions & About *@
+		<MudItem xs="12" md="7">
+			<MudText Typo="Typo.overline" Class="mb-3" Style="letter-spacing: 1.5px; color: #7B2CBF; font-weight: 600;">
+				GET STARTED
+			</MudText>
+			<MudGrid Spacing="3">
+				@* Games Card *@
+				<MudItem xs="12" sm="4">
+					<MudLink Href="/games" Underline="Underline.None" Style="display: block;">
+						<div class="glass-card pa-4" style="cursor: pointer; height: 100%;">
+							<MudStack AlignItems="AlignItems.Center" Spacing="2">
+								<div class="icon-badge icon-badge-primary">
+									<MudIcon Icon="@Icons.Material.Filled.SportsEsports" Style="color: white; font-size: 1.5rem;" />
+								</div>
+								<MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Games</MudText>
+								<MudText Typo="Typo.caption" Class="text-muted" Align="Align.Center">Play adventures</MudText>
+							</MudStack>
+						</div>
+					</MudLink>
+				</MudItem>
+				
+				@* Scenarios Card *@
+				<MudItem xs="12" sm="4">
+					<MudLink Href="/scenarios" Underline="Underline.None" Style="display: block;">
+						<div class="glass-card pa-4" style="cursor: pointer; height: 100%;">
+							<MudStack AlignItems="AlignItems.Center" Spacing="2">
+								<div class="icon-badge icon-badge-secondary">
+									<MudIcon Icon="@Icons.Material.Filled.MenuBook" Style="color: white; font-size: 1.5rem;" />
+								</div>
+								<MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Scenarios</MudText>
+								<MudText Typo="Typo.caption" Class="text-muted" Align="Align.Center">Story seeds</MudText>
+							</MudStack>
+						</div>
+					</MudLink>
+				</MudItem>
+				
+				@* Characters Card *@
+				<MudItem xs="12" sm="4">
+					<MudLink Href="/players" Underline="Underline.None" Style="display: block;">
+						<div class="glass-card pa-4" style="cursor: pointer; height: 100%;">
+							<MudStack AlignItems="AlignItems.Center" Spacing="2">
+								<div class="icon-badge icon-badge-tertiary">
+									<MudIcon Icon="@Icons.Material.Filled.Person" Style="color: white; font-size: 1.5rem;" />
+								</div>
+								<MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Characters</MudText>
+								<MudText Typo="Typo.caption" Class="text-muted" Align="Align.Center">Your heroes</MudText>
+							</MudStack>
+						</div>
+					</MudLink>
+				</MudItem>
+			</MudGrid>
+
+			@* Unified About + Features Section *@
+			<div class="about-section pa-4 mt-4">
+				<MudStack Spacing="3">
 					<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-						<MudIcon Icon="@Icons.Material.Filled.SportsEsports" Color="Color.Primary" Size="Size.Large" />
-						<MudText Typo="Typo.h6">Play Games</MudText>
+						<MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Color="Color.Primary" />
+						<MudText Typo="Typo.subtitle1" Style="font-weight: 600; color: #7B2CBF;">About JAIMES AF</MudText>
 					</MudStack>
-					<MudText Typo="Typo.body2" Class="text-muted">
-						Start new adventures or continue existing ones with your AI Game Master.
+					<MudText Typo="Typo.body2" Style="line-height: 1.7; color: #444;">
+						JAIMES AF is an AI-powered single-player roleplaying platform built on Microsoft's Agent Framework.
+						It uses Azure OpenAI to create an intelligent Game Master that crafts immersive narratives,
+						remembers your story context, and adapts dynamically to your choices.
 					</MudText>
-					<MudSpacer />
-					<MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/games" FullWidth="true">
-						View Games
-					</MudButton>
+					
+					@* Feature Pills - Integrated within About *@
+					<MudStack Row="true" Style="flex-wrap: wrap; gap: 12px;" Class="mt-2">
+						<span class="feature-pill">
+							<MudIcon Icon="@Icons.Material.Filled.Psychology" Style="color: #7B2CBF;" Size="Size.Small" />
+							AI Storytelling
+						</span>
+						<span class="feature-pill">
+							<MudIcon Icon="@Icons.Material.Filled.Public" Style="color: #4361EE;" Size="Size.Small" />
+							Dynamic Worlds
+						</span>
+						<span class="feature-pill">
+							<MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Style="color: #4CC9F0;" Size="Size.Small" />
+							Adaptive Narratives
+						</span>
+						<span class="feature-pill">
+							<MudIcon Icon="@Icons.Material.Filled.Memory" Style="color: #06D6A0;" Size="Size.Small" />
+							Agent Framework
+						</span>
+					</MudStack>
 				</MudStack>
-			</MudPaper>
+			</div>
 		</MudItem>
-		<MudItem xs="12" md="4">
-			<MudPaper Class="quick-action-card pa-4" Elevation="2" Style="height: 100%;">
-				<MudStack Spacing="2">
-					<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-						<MudIcon Icon="@Icons.Material.Filled.MenuBook" Color="Color.Secondary" Size="Size.Large" />
-						<MudText Typo="Typo.h6">Scenarios</MudText>
-					</MudStack>
-					<MudText Typo="Typo.body2" Class="text-muted">
-						Create story seeds with prompts that guide the AI's storytelling.
-					</MudText>
-					<MudSpacer />
-					<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/scenarios" FullWidth="true">
-						Manage Scenarios
-					</MudButton>
-				</MudStack>
-			</MudPaper>
-		</MudItem>
-		<MudItem xs="12" md="4">
-			<MudPaper Class="quick-action-card pa-4" Elevation="2" Style="height: 100%;">
-				<MudStack Spacing="2">
-					<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-						<MudIcon Icon="@Icons.Material.Filled.Person" Color="Color.Info" Size="Size.Large" />
-						<MudText Typo="Typo.h6">Characters</MudText>
-					</MudStack>
-					<MudText Typo="Typo.body2" Class="text-muted">
-						Create player characters that the AI weaves into your story.
-					</MudText>
-					<MudSpacer />
-					<MudButton Variant="Variant.Filled" Color="Color.Info" Href="/players" FullWidth="true">
-						Manage Characters
-					</MudButton>
-				</MudStack>
+
+		@* Right Column: Expanded Stats Dashboard *@
+		<MudItem xs="12" md="5">
+			<MudText Typo="Typo.overline" Class="mb-3" Style="letter-spacing: 1.5px; color: #7B2CBF; font-weight: 600;">
+				STATS DASHBOARD
+			</MudText>
+			
+			<MudPaper Elevation="0" Class="pa-3" Style="background: linear-gradient(to bottom right, #f8f9fa, #ffffff); border-radius: 16px; border: 1px solid #e8e8e8;">
+				<MudGrid Spacing="2">
+					@* Content Stats *@
+					<MudItem xs="6">
+						<div class="stat-card stat-card-primary">
+							<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+								<MudIcon Icon="@Icons.Material.Filled.SportsEsports" Color="Color.Primary" />
+								<MudStack Spacing="0">
+									<MudText Typo="Typo.caption" Class="text-muted">Active Games</MudText>
+									<span class="stat-value">@_gamesCount</span>
+								</MudStack>
+							</MudStack>
+						</div>
+					</MudItem>
+					
+					<MudItem xs="6">
+						<div class="stat-card stat-card-secondary">
+							<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+								<MudIcon Icon="@Icons.Material.Filled.MenuBook" Color="Color.Secondary" />
+								<MudStack Spacing="0">
+									<MudText Typo="Typo.caption" Class="text-muted">Scenarios</MudText>
+									<span class="stat-value">@_scenariosCount</span>
+								</MudStack>
+							</MudStack>
+						</div>
+					</MudItem>
+					
+					<MudItem xs="6">
+						<div class="stat-card stat-card-tertiary">
+							<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+								<MudIcon Icon="@Icons.Material.Filled.Person" Color="Color.Tertiary" />
+								<MudStack Spacing="0">
+									<MudText Typo="Typo.caption" Class="text-muted">Characters</MudText>
+									<span class="stat-value">@_playersCount</span>
+								</MudStack>
+							</MudStack>
+						</div>
+					</MudItem>
+					
+					<MudItem xs="6">
+						<div class="stat-card stat-card-accent">
+							<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+								<MudIcon Icon="@Icons.Material.Filled.AutoStories" Color="Color.Success" />
+								<MudStack Spacing="0">
+									<MudText Typo="Typo.caption" Class="text-muted">Rulesets</MudText>
+									<span class="stat-value">@_rulesetsCount</span>
+								</MudStack>
+							</MudStack>
+						</div>
+					</MudItem>
+				</MudGrid>
+				
+				<MudDivider Class="my-3" />
+				
+				@* AI Metrics *@
+				<MudText Typo="Typo.caption" Class="text-muted mb-2" Style="font-weight: 600; letter-spacing: 0.5px;">AI QUALITY</MudText>
+				<MudGrid Spacing="2">
+					<MudItem xs="6">
+						<div class="stat-card stat-card-warning">
+							<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+								<MudIcon Icon="@Icons.Material.Filled.Forum" Style="color: #F59E0B;" />
+								<MudStack Spacing="0">
+									<MudText Typo="Typo.caption" Class="text-muted">Messages</MudText>
+									<span class="stat-value">@_messagesCount</span>
+								</MudStack>
+							</MudStack>
+						</div>
+					</MudItem>
+					
+					<MudItem xs="6">
+						<div class="stat-card stat-card-error">
+							<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+								<MudIcon Icon="@Icons.Material.Filled.SentimentSatisfied" Style="color: #EF476F;" />
+								<MudStack Spacing="0">
+									<MudText Typo="Typo.caption" Class="text-muted">Sentiments</MudText>
+									<span class="stat-value">@_sentimentCount</span>
+								</MudStack>
+							</MudStack>
+						</div>
+					</MudItem>
+					
+					<MudItem xs="6">
+						<div class="stat-card stat-card-primary">
+							<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+								<MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Primary" />
+								<MudStack Spacing="0">
+									<MudText Typo="Typo.caption" Class="text-muted">Feedback</MudText>
+									<span class="stat-value">@_feedbackCount</span>
+								</MudStack>
+							</MudStack>
+						</div>
+					</MudItem>
+					
+					<MudItem xs="6">
+						<div class="stat-card stat-card-secondary">
+							<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+								<MudIcon Icon="@Icons.Material.Filled.Assessment" Color="Color.Secondary" />
+								<MudStack Spacing="0">
+									<MudText Typo="Typo.caption" Class="text-muted">Evaluations</MudText>
+									<span class="stat-value">@_metricsCount</span>
+								</MudStack>
+							</MudStack>
+						</div>
+					</MudItem>
+				</MudGrid>
 			</MudPaper>
 		</MudItem>
 	</MudGrid>
-
-	@* Metrics Dashboard - Now Second *@
-	<MudGrid Spacing="3" Class="mb-4">
-		<MudItem xs="6" md="3">
-			<MetricCard Icon="@Icons.Material.Filled.SportsEsports"
-			            IconColor="Color.Primary"
-			            Value="@_gamesCount.ToString()"
-			            Label="Active Games" />
-		</MudItem>
-		<MudItem xs="6" md="3">
-			<MetricCard Icon="@Icons.Material.Filled.MenuBook"
-			            IconColor="Color.Secondary"
-			            Value="@_scenariosCount.ToString()"
-			            Label="Scenarios" />
-		</MudItem>
-		<MudItem xs="6" md="3">
-			<MetricCard Icon="@Icons.Material.Filled.Person"
-			            IconColor="Color.Info"
-			            Value="@_playersCount.ToString()"
-			            Label="Characters" />
-		</MudItem>
-		<MudItem xs="6" md="3">
-			<MetricCard Icon="@Icons.Material.Filled.AutoStories"
-			            IconColor="Color.Success"
-			            Value="@_rulesetsCount.ToString()"
-			            Label="Rulesets" />
-		</MudItem>
-	</MudGrid>
-
-	@* Summary Paragraph *@
-	<MudPaper Class="pa-4 mb-4" Elevation="1" Style="background: linear-gradient(to right, rgba(123, 44, 191, 0.05), rgba(67, 97, 238, 0.05));">
-		<MudText Typo="Typo.body1" Style="line-height: 1.7;" Align="Align.Center">
-			JAIMES AF is an AI-powered single-player roleplaying platform built on Microsoft's Agent Framework.
-			It uses Azure OpenAI to create an intelligent Game Master that crafts immersive narratives,
-			remembers your story context, and adapts dynamically to your choices. Upload your favorite rulebooks,
-			create scenarios, and let the AI bring your adventures to life.
-		</MudText>
-	</MudPaper>
-
-	@* Feature Highlights *@
-	<MudPaper Class="feature-bar pa-3" Elevation="1">
-		<MudStack Row="true" Justify="Justify.SpaceAround" AlignItems="AlignItems.Center" Style="flex-wrap: wrap;">
-			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="feature-item">
-				<MudIcon Icon="@Icons.Material.Filled.Psychology" Color="Color.Primary" />
-				<MudText Typo="Typo.body2" Style="font-weight: 500;">AI-Powered Storytelling</MudText>
-			</MudStack>
-			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="feature-item">
-				<MudIcon Icon="@Icons.Material.Filled.Public" Color="Color.Secondary" />
-				<MudText Typo="Typo.body2" Style="font-weight: 500;">Dynamic Worlds</MudText>
-			</MudStack>
-			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="feature-item">
-				<MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Color="Color.Info" />
-				<MudText Typo="Typo.body2" Style="font-weight: 500;">Your Story, Your Way</MudText>
-			</MudStack>
-			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="feature-item">
-				<MudIcon Icon="@Icons.Material.Filled.Memory" Color="Color.Success" />
-				<MudText Typo="Typo.body2" Style="font-weight: 500;">Microsoft Agent Framework</MudText>
-			</MudStack>
-		</MudStack>
-	</MudPaper>
 
 </MudContainer>
 
@@ -171,6 +265,10 @@
 	private int _scenariosCount;
 	private int _playersCount;
 	private int _rulesetsCount;
+	private int _messagesCount;
+	private int _sentimentCount;
+	private int _feedbackCount;
+	private int _metricsCount;
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -182,15 +280,24 @@
 		var playersTask = Http.GetFromJsonAsync<PlayerListResponse>("/players");
 		var rulesetsTask = Http.GetFromJsonAsync<RulesetListResponse>("/rulesets");
 		var latestGameTask = Http.GetAsync("/games/latest");
+		var sentimentTask = Http.GetFromJsonAsync<SentimentListResponse>("/admin/sentiments?pageSize=1");
+		var feedbackTask = Http.GetFromJsonAsync<FeedbackListResponse>("/admin/feedback?pageSize=1");
+		var metricsTask = Http.GetFromJsonAsync<EvaluationMetricListResponse>("/admin/metrics?pageSize=1");
 
 		try
 		{
-			await Task.WhenAll(gamesTask, scenariosTask, playersTask, rulesetsTask, latestGameTask);
+			await Task.WhenAll(gamesTask, scenariosTask, playersTask, rulesetsTask, 
+			                   latestGameTask, sentimentTask, feedbackTask, metricsTask);
 
-			_gamesCount = gamesTask.Result?.Games?.Length ?? 0;
+			var games = gamesTask.Result?.Games ?? [];
+			_gamesCount = games.Length;
 			_scenariosCount = scenariosTask.Result?.Scenarios?.Length ?? 0;
 			_playersCount = playersTask.Result?.Players?.Length ?? 0;
 			_rulesetsCount = rulesetsTask.Result?.Rulesets?.Length ?? 0;
+			_messagesCount = 0; // Message count not available on summary response
+			_sentimentCount = sentimentTask.Result?.TotalCount ?? 0;
+			_feedbackCount = feedbackTask.Result?.TotalCount ?? 0;
+			_metricsCount = metricsTask.Result?.TotalCount ?? 0;
 
 			if (latestGameTask.Result.IsSuccessStatusCode)
 			{

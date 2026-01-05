@@ -1,36 +1,37 @@
 <MudNavMenu Color="Color.Primary">
+    @* Primary Navigation *@
     <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home" IconColor="Color.Primary">Home</MudNavLink>
-    <MudNavLink Href="/games" Icon="@Icons.Material.Filled.SportsEsports" IconColor="Color.Secondary">Games</MudNavLink>
+    <MudNavLink Href="/games" Icon="@Icons.Material.Filled.SportsEsports" IconColor="Color.Primary">Games</MudNavLink>
 
-    <MudNavGroup Title="Content" Icon="@Icons.Material.Filled.Folder" IconColor="Color.Tertiary" Expanded="false">
-        <MudNavLink Href="/scenarios" Icon="@Icons.Material.Filled.MenuBook" IconColor="Color.Secondary">Scenarios</MudNavLink>
-        <MudNavLink Href="/players" Icon="@Icons.Material.Filled.Person" IconColor="Color.Info">Players</MudNavLink>
-    </MudNavGroup>
+    @* Content Section *@
+    <div class="nav-section-header content">
+        <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" />
+        Content
+    </div>
+    <MudNavLink Href="/scenarios" Icon="@Icons.Material.Filled.MenuBook" IconColor="Color.Secondary">Scenarios</MudNavLink>
+    <MudNavLink Href="/players" Icon="@Icons.Material.Filled.Person" IconColor="Color.Tertiary">Characters</MudNavLink>
+    <MudNavLink Href="/rulesets" Icon="@Icons.Material.Filled.AutoStories" IconColor="Color.Success">Rulesets</MudNavLink>
 
-    <MudNavGroup Title="Tools" Icon="@Icons.Material.Filled.Build" IconColor="Color.Warning" Expanded="false">
-        <MudNavLink Href="/tools/rules-search" Icon="@Icons.Material.Filled.Search" IconColor="Color.Primary">Rules Search</MudNavLink>
-        <MudNavLink Href="/tools/conversation-search" Icon="@Icons.Material.Filled.Chat" IconColor="Color.Secondary">Conversation Search</MudNavLink>
-        <MudNavLink Href="/tools/player-sentiment" Icon="@Icons.Material.Filled.SentimentSatisfied" IconColor="Color.Success">Player Sentiment</MudNavLink>
-        <MudNavLink Href="/tools/player-info" Icon="@Icons.Material.Filled.Person" IconColor="Color.Info">Player Info</MudNavLink>
-        <MudNavLink Href="/tools/location-lookup" Icon="@Icons.Material.Filled.Place" IconColor="Color.Warning">Location Lookup</MudNavLink>
-        <MudNavLink Href="/tools/location-management" Icon="@Icons.Material.Filled.EditLocation" IconColor="Color.Error">Location Management</MudNavLink>
-    </MudNavGroup>
+    @* Tools Section *@
+    <div class="nav-section-header tools">
+        <MudIcon Icon="@Icons.Material.Filled.Build" Size="Size.Small" />
+        Tools
+    </div>
+    <MudNavLink Href="/tools/rules-search" Icon="@Icons.Material.Filled.Search">Rules Search</MudNavLink>
+    <MudNavLink Href="/tools/conversation-search" Icon="@Icons.Material.Filled.Chat">Conversation Search</MudNavLink>
+    <MudNavLink Href="/tools/player-sentiment" Icon="@Icons.Material.Filled.SentimentSatisfied">Player Sentiment</MudNavLink>
+    <MudNavLink Href="/tools/player-info" Icon="@Icons.Material.Filled.Person">Player Info</MudNavLink>
+    <MudNavLink Href="/tools/location-lookup" Icon="@Icons.Material.Filled.Place">Location Lookup</MudNavLink>
 
-    <MudNavGroup Title="Admin" Icon="@Icons.Material.Filled.AdminPanelSettings" IconColor="Color.Error" Expanded="false">
-        <MudNavLink Href="/admin" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard" IconColor="Color.Primary">Admin Dashboard</MudNavLink>
-        <MudNavLink Href="/rulesets" Icon="@Icons.Material.Filled.Rule" IconColor="Color.Success">Rulesets</MudNavLink>
-        <MudNavLink Href="/agents" Icon="@Icons.Material.Filled.SmartToy" IconColor="Color.Secondary">Agents</MudNavLink>
-        <MudNavLink Href="/admin/locations" Icon="@Icons.Material.Filled.Place" IconColor="Color.Warning">Locations</MudNavLink>
-        <MudNavLink Href="/admin/evaluators" Icon="@Icons.Material.Filled.Assessment" IconColor="Color.Info">Evaluators</MudNavLink>
-        <MudNavLink Href="/admin/evaluators/test" Icon="@Icons.Material.Filled.Science" IconColor="Color.Tertiary">Test Evaluators</MudNavLink>
-        <MudNavLink Href="/admin/metrics" Icon="@Icons.Material.Filled.PieChart" IconColor="Color.Primary">Evaluation Metrics</MudNavLink>
-        <MudNavLink Href="/admin/feedback" Icon="@Icons.Material.Filled.Feedback" IconColor="Color.Success">Feedback</MudNavLink>
-        <MudNavLink Href="/admin/sentiments" Icon="@Icons.Material.Filled.Mood" IconColor="Color.Secondary">Sentiments</MudNavLink>
-        <MudNavLink Href="/admin/classification-models" Icon="@Icons.Material.Filled.Psychology" IconColor="Color.Info">Classification Models</MudNavLink>
-        <MudNavLink Href="/admin/tools" Icon="@Icons.Material.Filled.Construction" IconColor="Color.Warning">Tool Usage</MudNavLink>
-        <MudNavLink Href="/admin/test-cases" Icon="@Icons.Material.Filled.Checklist" IconColor="Color.Success">Test Cases</MudNavLink>
-        <MudNavLink Href="/admin/test-reports" Icon="@Icons.Material.Filled.Description" IconColor="Color.Info">Test Reports</MudNavLink>
-        <MudNavLink Href="/admin/tool-test" Icon="@Icons.Material.Filled.Science" IconColor="Color.Tertiary">Tool Testing</MudNavLink>
-        <MudNavLink Href="/admin/rag-collections" Icon="@Icons.Material.Filled.Storage" IconColor="Color.Primary">RAG Collections</MudNavLink>
-    </MudNavGroup>
+    @* Admin Section *@
+    <div class="nav-section-header admin">
+        <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Size="Size.Small" />
+        Admin
+    </div>
+    <MudNavLink Href="/admin" Icon="@Icons.Material.Filled.Dashboard">Dashboard</MudNavLink>
+    <MudNavLink Href="/agents" Icon="@Icons.Material.Filled.SmartToy" IconColor="Color.Secondary">Agents</MudNavLink>
+    <MudNavLink Href="/admin/feedback" Icon="@Icons.Material.Filled.Feedback" IconColor="Color.Warning">Feedback</MudNavLink>
+    <MudNavLink Href="/admin/metrics" Icon="@Icons.Material.Filled.Assessment" IconColor="Color.Info">Metrics</MudNavLink>
+    <MudNavLink Href="/admin/test-cases" Icon="@Icons.Material.Filled.Checklist" IconColor="Color.Success">Test Cases</MudNavLink>
+    <MudNavLink Href="/admin/test-reports" Icon="@Icons.Material.Filled.Summarize" IconColor="Color.Primary">Test Reports</MudNavLink>
 </MudNavMenu>
