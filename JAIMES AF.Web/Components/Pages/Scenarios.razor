@@ -8,17 +8,40 @@
 
 <PageTitle>Scenarios</PageTitle>
 
-<MudPaper Class="pa-4">
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
+
+	@* Compact Hero Section for Scenarios *@
+	<div class="scenarios-hero pa-3 mb-4" style="background: linear-gradient(135deg, rgba(67, 97, 238, 0.1) 0%, rgba(76, 201, 240, 0.1) 100%); 
+		border-radius: 16px; border: 1px solid rgba(67, 97, 238, 0.2);">
+		<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+				<div class="icon-badge icon-badge-secondary">
+					<MudIcon Icon="@Icons.Material.Filled.MenuBook" Style="color: white; font-size: 1.5rem;"/>
+				</div>
+				<MudStack Spacing="0">
+					<MudText Typo="Typo.h5" Style="font-weight: 600; color: #4361EE;">Your Scenarios</MudText>
+					<MudText Typo="Typo.caption" Class="text-muted">
+						@if (_scenarios is not null && _scenarios.Length > 0)
+						{
+							<span>@_scenarios.Length scenario@(_scenarios.Length != 1 ? "s" : "") available</span>
+						}
+						else
+						{
+							<span>Create story seeds for your adventures</span>
+						}
+					</MudText>
+				</MudStack>
+			</MudStack>
+			<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/scenarios/new"
+			           StartIcon="@Icons.Material.Filled.Add">
+				New Scenario
+			</MudButton>
+		</MudStack>
+	</div>
+
 	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
 		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
 	</MudStack>
-	<MudText Typo="Typo.h4">Scenarios</MudText>
-
-	<MudText Class="mb-4">Manage your game scenarios. Create new scenarios or edit existing ones.</MudText>
-
-	<MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/scenarios/new" Class="mb-4">
-		New Scenario
-	</MudButton>
 
 	<div style="position: relative; min-height: 200px;">
 		@if (_isLoading)
@@ -30,57 +53,75 @@
 
 		@if (!_isLoading && !string.IsNullOrEmpty(_errorMessage))
 		{
-			<MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
+			<MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
 		}
 
 		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && (_scenarios is null || _scenarios.Length == 0))
 		{
-			<MudText Class="mb-4">
-				No scenarios yet.
-				<MudLink Href="/scenarios/new">Create a new scenario</MudLink>
-			</MudText>
+			<div class="glass-card pa-6" style="text-align: center;">
+				<MudStack AlignItems="AlignItems.Center" Spacing="3">
+					<MudIcon Icon="@Icons.Material.Filled.MenuBook" Color="Color.Secondary"
+					         Style="font-size: 4rem; opacity: 0.5;"/>
+					<MudText Typo="Typo.h6">No scenarios yet</MudText>
+					<MudText Class="text-muted mb-4">Scenarios are story seeds that define the starting point of your adventures.</MudText>
+					<MudButton Variant="Variant.Filled" Color="Color.Secondary" Size="Size.Large"
+					           Href="/scenarios/new" StartIcon="@Icons.Material.Filled.Add">
+						Create Your First Scenario
+					</MudButton>
+				</MudStack>
+			</div>
 		}
 
 		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && _scenarios is not null && _scenarios.Length > 0)
 		{
-			<MudTable Items="_scenarios" Dense="true" Hover="true">
-				<HeaderContent>
-					<MudTh>Name</MudTh>
-					<MudTh>Description</MudTh>
-					<MudTh>Ruleset ID</MudTh>
-					<MudTh>Agents</MudTh>
-					<MudTh align="Align.Right">Actions</MudTh>
-				</HeaderContent>
-				<RowTemplate>
-					<MudTd>@context.Name</MudTd>
-					<MudTd>@(context.Description ?? "-")</MudTd>
-					<MudTd>@context.RulesetId</MudTd>
-					<MudTd>
-						@if (GetScenarioAgentsDisplay(context.Id).Any())
-						{
-							@foreach (var agentInfo in GetScenarioAgentsDisplay(context.Id))
+			<MudPaper Elevation="0" Class="pa-0" Style="background: transparent;">
+				<MudTable Items="_scenarios" Dense="true" Hover="true">
+					<HeaderContent>
+						<MudTh>Name</MudTh>
+						<MudTh>Description</MudTh>
+						<MudTh>Ruleset</MudTh>
+						<MudTh>Agents</MudTh>
+						<MudTh Style="text-align: right;">Actions</MudTh>
+					</HeaderContent>
+					<RowTemplate>
+						<MudTd>
+							<MudLink Href="@($"/scenarios/{context.Id}/edit")">@context.Name</MudLink>
+						</MudTd>
+						<MudTd>@(context.Description ?? "-")</MudTd>
+						<MudTd>
+							<MattEland.Jaimes.Web.Components.Shared.RulesetLink 
+								RulesetId="@context.RulesetId" />
+						</MudTd>
+						<MudTd>
+							@if (GetScenarioAgentsDisplay(context.Id).Any())
 							{
-								<MattEland.Jaimes.Web.Components.Shared.AgentVersionDisplay 
-									AgentId="@agentInfo.AgentId" 
-									AgentName="@agentInfo.AgentName" 
-									VersionId="@agentInfo.VersionId"
-									VersionNumber="@agentInfo.VersionNumber" />
+								@foreach (var agentInfo in GetScenarioAgentsDisplay(context.Id))
+								{
+									<MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Style="display: inline-flex;">
+										<MattEland.Jaimes.Web.Components.Shared.AgentLink
+											AgentId="@agentInfo.AgentId"
+											AgentName="@agentInfo.AgentName"/>
+										<MattEland.Jaimes.Web.Components.Shared.AgentVersionLink 
+											AgentId="@agentInfo.AgentId" 
+											VersionId="@agentInfo.VersionId"
+											VersionNumber="@agentInfo.VersionNumber" />
+									</MudStack>
+								}
 							}
-						}
-						else
-						{
-							<span class="text-muted">No agents</span>
-						}
-					</MudTd>
-					<MudTd align="Align.Right">
-						<MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-						           Href="@($"/scenarios/{context.Id}/edit")" Class="me-2">
-							Edit
-						</MudButton>
-					</MudTd>
-				</RowTemplate>
-			</MudTable>
+							else
+							{
+								<span class="text-muted">No agents</span>
+							}
+						</MudTd>
+						<MudTd Style="text-align: right;">
+							<MudTooltip Text="Edit Scenario" Placement="Placement.Top">
+								<MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Default" Size="Size.Small"
+								               Href="@($"/scenarios/{context.Id}/edit")"/>
+							</MudTooltip>
+						</MudTd>
+					</RowTemplate>
+				</MudTable>
+			</MudPaper>
 		}
 	</div>
-</MudPaper>
-
+</MudContainer>
