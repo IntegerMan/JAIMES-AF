@@ -17,7 +17,7 @@
                 @context.Item.CreatedAt.ToLocalTime().ToString("g")
             </CellTemplate>
         </PropertyColumn>
-        <PropertyColumn Property="x => x.MessagePreview" Title="Message Preview">
+        <PropertyColumn Property="x => x.MessagePreview" Title="Message">
             <CellTemplate>
                 <MudLink Href="@($"/admin/sentiments/{context.Item.MessageId}")" Typo="Typo.body2" Underline="Underline.Hover">
                     @(TruncateMessage(context.Item.MessagePreview ?? "", 70))
@@ -29,14 +29,17 @@
                 <SentimentIcon Sentiment="@context.Item.Sentiment" ReadOnly="true" ShowViewDetails="false"/>
             </CellTemplate>
         </PropertyColumn>
-        <PropertyColumn Property="x => x.Confidence" Title="Confidence">
+        <PropertyColumn Property="x => x.Confidence" Title="Confidence" Sortable="false">
             <CellTemplate>
                 @if (context.Item.Confidence.HasValue)
                 {
-                    <MudProgressLinear Color="Color.Primary"
-                                       Value="@(context.Item.Confidence.Value * 100)"
-                                       Max="100"
-                                       Style="width: 80px; height: 8px;"/>
+                    <div class="d-flex align-center gap-2">
+                        <MudProgressLinear Color="Color.Primary"
+                                           Value="@(context.Item.Confidence.Value * 100)"
+                                           Max="100"
+                                           Style="width: 80px; height: 8px;"/>
+                        <MudText Typo="Typo.caption">@($"{context.Item.Confidence.Value:P0}")</MudText>
+                    </div>
                 }
                 else
                 {
@@ -49,7 +52,7 @@
                 @context.Item.UpdatedAt.ToLocalTime().ToString("g")
             </CellTemplate>
         </PropertyColumn>
-        <PropertyColumn Property="x => x.SentimentSource" Title="Source">
+        <PropertyColumn Property="x => x.SentimentSource" Title="Source" Sortable="false">
             <CellTemplate>
                 @{
                     var (label, color) = context.Item.SentimentSource switch
@@ -62,24 +65,22 @@
                 <MudChip T="string" Color="@color" Size="Size.Small">@label</MudChip>
             </CellTemplate>
         </PropertyColumn>
-        <TemplateColumn Title="Prior Message Feedback">
+        <PropertyColumn Property="x => x.GamePlayerName" Title="Player" Sortable="false"/>
+        <PropertyColumn Property="x => x.GameScenarioName" Title="Scenario"/>
+        <TemplateColumn Title="Agent">
             <CellTemplate>
-                @if (context.Item.HasFeedback)
+                @if (!string.IsNullOrWhiteSpace(context.Item.AgentId))
                 {
-                    @if (context.Item.FeedbackIsPositive == true)
-                    {
-                        <MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Success" Size="Size.Small"/>
-                    }
-                    else
-                    {
-                        <MudIcon Icon="@Icons.Material.Filled.ThumbDown" Color="Color.Error" Size="Size.Small"/>
-                    }
+                    <AgentLink AgentId="@context.Item.AgentId"
+                               AgentName="@(context.Item.AgentId ?? "Unknown")" />
+                }
+                else
+                {
+                    <MudText Typo="Typo.caption" Class="text-muted">None</MudText>
                 }
             </CellTemplate>
         </TemplateColumn>
-        <PropertyColumn Property="x => x.GamePlayerName" Title="Player"/>
-        <PropertyColumn Property="x => x.GameScenarioName" Title="Scenario"/>
-        <PropertyColumn Property="x => x.AgentVersion" Title="Agent Version">
+        <PropertyColumn Property="x => x.AgentVersion" Title="Version">
             <CellTemplate>
                 @if (!string.IsNullOrEmpty(context.Item.AgentId))
                 {
