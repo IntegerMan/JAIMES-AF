@@ -4,11 +4,15 @@
 <PageTitle>Edit Scenario</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-	<MudPaper Class="pa-4">
-        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+	<FormPageHeader Title="@(_isLoading ? "Edit Scenario" : $"Edit: {_name}")"
+	                Icon="@Icons.Material.Filled.TheaterComedy"
+	                Theme="FormPageHeader.HeroTheme.Secondary"
+	                Subtitle="Modify scenario configuration" />
+
+	<MudPaper Class="pa-6" Elevation="2">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
             <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
         </MudStack>
-		<MudText Typo="Typo.h4" Class="mb-4">Edit Scenario</MudText>
 
 		@if (_isLoading)
 		{
@@ -146,12 +150,12 @@
 					<MudText Typo="Typo.body2" Class="mb-4 text-secondary">All available agents are already assigned to this scenario.</MudText>
 				}
 
-				<div class="d-flex gap-2">
+				<div class="d-flex gap-2 mt-4">
 					<MudButton Variant="Variant.Filled"
-					           Color="Color.Primary"
+					           Color="Color.Secondary"
 					           OnClick="UpdateScenarioAsync"
 					           Disabled="_isSaving || !IsFormValid()"
-					           Class="mt-2">
+					           StartIcon="@Icons.Material.Filled.Check">
 						@if (_isSaving)
 						{
 							<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
@@ -165,9 +169,8 @@
 
 					<MudButton Variant="Variant.Text"
 					           Color="Color.Default"
-					           OnClick="Cancel"
-					           Disabled="_isSaving"
-					           Class="mt-2">
+					           Href="@($"/scenarios/{ScenarioId}")"
+					           Disabled="_isSaving">
 						Cancel
 					</MudButton>
 				</div>

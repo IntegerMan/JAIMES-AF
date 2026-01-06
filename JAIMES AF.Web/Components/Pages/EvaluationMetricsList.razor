@@ -9,10 +9,17 @@
 <PageTitle>Evaluation Metrics</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <CompactHeroSection Title="Evaluation Metrics"
+                        Icon="@Icons.Material.Filled.Analytics"
+                        Theme="CompactHeroSection.HeroTheme.Info"
+                        Subtitle="Browse and analyze AI response quality scores"
+                        ActionText="View Evaluators"
+                        ActionHref="/admin/evaluators"
+                        ActionIcon="@Icons.Material.Filled.List"/>
+
     <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
         <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
     </MudStack>
-    <MudText Typo="Typo.h4" Class="mb-2">Evaluation Metrics</MudText>
 
     <AssistantMessagePipelinePanel Class="mb-4" ShowActiveMessages="true" />
 

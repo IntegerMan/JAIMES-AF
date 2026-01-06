@@ -3,12 +3,16 @@
 
 <PageTitle>Edit Ruleset</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-	<MudPaper Class="pa-4">
-        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+	<FormPageHeader Title="@(_isLoading ? "Edit Ruleset" : $"Edit: {_name}")"
+	                Icon="@Icons.Material.Filled.AutoStories"
+	                Theme="FormPageHeader.HeroTheme.Accent"
+	                Subtitle="Modify ruleset configuration" />
+
+	<MudPaper Class="pa-6" Elevation="2">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
             <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
         </MudStack>
-		<MudText Typo="Typo.h4" Class="mb-4">Edit Ruleset</MudText>
 
 		@if (_isLoading)
 		{
@@ -52,12 +56,12 @@
 				              Lines="3"
 				              HelperText="Optional description for this ruleset"/>
 
-				<div class="d-flex gap-2">
+				<div class="d-flex gap-2 mt-4">
 					<MudButton Variant="Variant.Filled"
-					           Color="Color.Primary"
+					           Color="Color.Success"
 					           OnClick="UpdateRulesetAsync"
 					           Disabled="_isSaving || !IsFormValid()"
-					           Class="mt-2">
+					           StartIcon="@Icons.Material.Filled.Check">
 						@if (_isSaving)
 						{
 							<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
@@ -71,9 +75,8 @@
 
 					<MudButton Variant="Variant.Text"
 					           Color="Color.Default"
-					           OnClick="Cancel"
-					           Disabled="_isSaving"
-					           Class="mt-2">
+					           Href="@($"/rulesets/{RulesetId}")"
+					           Disabled="_isSaving">
 						Cancel
 					</MudButton>
 				</div>

@@ -4,22 +4,22 @@
 <PageTitle>Test Evaluators</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+    <CompactHeroSection Title="Test Evaluators"
+                        Icon="@Icons.Material.Filled.Science"
+                        Theme="CompactHeroSection.HeroTheme.Info"
+                        Subtitle="Test AI response evaluators against sample data"
+                        ActionText="View Evaluators"
+                        ActionHref="/admin/evaluators"
+                        ActionIcon="@Icons.Material.Filled.List"/>
+
     <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
         <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
     </MudStack>
-    <MudPaper Class="pa-8" Elevation="2">
-        <MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">Test Evaluators</MudText>
-        <MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">
-            Test AI response evaluators against sample data
-        </MudText>
-
-        <MudText Typo="Typo.body1" Class="mb-6" Style="line-height: 1.75;">
-            Use this tool to test how evaluators score AI assistant responses. Select an agent instruction version
-            to provide the system prompt context, optionally select a ruleset for game mechanics evaluation,
+    <MudPaper Class="pa-6" Elevation="2">
+        <MudText Typo="Typo.body1" Class="mb-4" Style="line-height: 1.75;">
+            Select an agent instruction version to provide the system prompt context, optionally select a ruleset for game mechanics evaluation,
             and enter the conversation to evaluate.
         </MudText>
-
-        <MudDivider Class="my-6" />
 
         @* Configuration Section *@
         <MudPaper Class="pa-4 mb-4" Elevation="1">
@@ -123,10 +123,12 @@
                                           Lines="2" />
                         </MudItem>
                         <MudItem xs="1">
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                           Color="Color.Error"
-                                           Size="Size.Small"
-                                           OnClick="@(() => RemoveMessage(index))" />
+                            <MudTooltip Text="Remove Message" Placement="Placement.Top">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Color="Color.Error"
+                                               Size="Size.Small"
+                                               OnClick="@(() => RemoveMessage(index))" />
+                            </MudTooltip>
                         </MudItem>
                     </MudGrid>
                 </MudPaper>

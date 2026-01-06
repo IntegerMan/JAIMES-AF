@@ -11,39 +11,40 @@
 
 <PageTitle>Test Reports</PageTitle>
 
-<MudPaper Class="pa-4">
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
+    <CompactHeroSection Title="Test Reports"
+                        Icon="@Icons.Material.Filled.Assessment"
+                        Theme="CompactHeroSection.HeroTheme.Info"
+                        ItemCount="@_reports?.Count"
+                        ItemName="report"
+                        Subtitle="available"
+                        SubtitleNoItems="Run tests to generate reports"
+                        ActionText="Run Tests"
+                        ActionHref="/admin/run-tests"
+                        ActionIcon="@Icons.Material.Filled.PlayArrow"/>
+
     <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
         <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
     </MudStack>
-
-    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
-        <MudText Typo="Typo.h4" GutterBottom="false">Test Reports</MudText>
-        <MudButton Variant="Variant.Outlined"
-                   Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.Checklist"
-                   Href="/admin/test-cases">
-            View Test Cases
-        </MudButton>
-    </MudStack>
-    <MudText Typo="Typo.body2" Class="text-muted mb-4">
-        Browse stored test execution reports.
-    </MudText>
 
     @if (_isLoading)
     {
         <MudProgressCircular Indeterminate="true"/>
     }
-    else if (_reports.Count == 0)
+    else if (_reports is null || _reports.Count == 0)
     {
-        <MudAlert Severity="Severity.Info" Class="mb-4">
-            No stored reports found. Run tests to generate reports.
-        </MudAlert>
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Success"
-                   StartIcon="@Icons.Material.Filled.PlayArrow"
-                   Href="/admin/test-cases">
-            Go to Test Cases
-        </MudButton>
+        <div class="glass-card pa-6" style="text-align: center;">
+            <MudStack AlignItems="AlignItems.Center" Spacing="3">
+                <MudIcon Icon="@Icons.Material.Filled.Assessment" Color="Color.Info"
+                         Style="font-size: 4rem; opacity: 0.5;"/>
+                <MudText Typo="Typo.h6">No reports yet</MudText>
+                <MudText Class="text-muted mb-4">Run tests to generate reports and track agent performance.</MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Info" Size="Size.Large"
+                           Href="/admin/run-tests" StartIcon="@Icons.Material.Filled.PlayArrow">
+                    Run Tests
+                </MudButton>
+            </MudStack>
+        </div>
     }
     else
     {
@@ -141,7 +142,7 @@
                            Color="Color.Primary"/>
         </MudStack>
     }
-</MudPaper>
+</MudContainer>
 
 @* Report Dialog *@
 <MudDialog @bind-Visible="_showReportDialog" Options="_reportDialogOptions">

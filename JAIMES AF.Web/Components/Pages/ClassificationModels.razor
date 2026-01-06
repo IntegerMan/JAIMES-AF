@@ -9,72 +9,119 @@
 
 <PageTitle>Classification Models</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
-	<MudPaper Class="pa-8" Elevation="2">
-		<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-			<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
-		</MudStack>
-		<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
-			<MudText Typo="Typo.h3" GutterBottom="true">Classification Models</MudText>
-			<MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ModelTraining"
-			           OnClick="NavigateToTraining">
-				Train New Classifier
-			</MudButton>
-		</MudStack>
-		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">
-			Machine learning models stored in the database for inference.
-		</MudText>
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
 
+	@* Compact Hero Section for ML Models *@
+	<div class="models-hero pa-3 mb-4" style="background: linear-gradient(135deg, rgba(239, 71, 111, 0.1) 0%, rgba(123, 44, 191, 0.1) 100%); 
+		border-radius: 16px; border: 1px solid rgba(239, 71, 111, 0.2);">
+		<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+				<div class="icon-badge icon-badge-error">
+					<MudIcon Icon="@Icons.Material.Filled.Psychology" Style="color: white; font-size: 1.5rem;"/>
+				</div>
+				<MudStack Spacing="0">
+					<MudText Typo="Typo.h5" Style="font-weight: 600; color: #EF476F;">Classification Models</MudText>
+					<MudText Typo="Typo.caption" Class="text-muted">
+						@if (_models.Count > 0)
+						{
+							<span>@_models.Count model@(_models.Count != 1 ? "s" : "") available</span>
+						}
+						else
+						{
+							<span>Train your first model</span>
+						}
+					</MudText>
+				</MudStack>
+			</MudStack>
+			<MudTooltip Text="Train a new sentiment classification model" Placement="Placement.Top">
+				<MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ModelTraining"
+				           OnClick="NavigateToTraining">
+					Train New Classifier
+				</MudButton>
+			</MudTooltip>
+		</MudStack>
+	</div>
+
+	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+	</MudStack>
+
+	<div style="position: relative; min-height: 200px;">
 		@if (_loading)
 		{
-			<MudProgressCircular Indeterminate="true" Class="mb-4"/>
+			<div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+				<MudProgressCircular Indeterminate="true"/>
+			</div>
 		}
-		else if (_models.Count == 0)
+
+		@if (!_loading && !string.IsNullOrEmpty(_error))
 		{
-			<MudAlert Severity="Severity.Info" Class="mb-4">
-				No classification models have been uploaded to the database yet.
-				The DatabaseMigration worker will upload the sentiment model on startup if a bundled model is available.
-			</MudAlert>
+			<MudAlert Severity="Severity.Error" Class="mb-4">@_error</MudAlert>
 		}
-		else
+
+		@if (!_loading && string.IsNullOrEmpty(_error) && _models.Count == 0)
 		{
-			<MudDataGrid Items="@_models" Dense="true" Hover="true" Striped="true" Class="mb-4" T="ClassificationModelResponse"
-			             RowClick="@(row => NavigateToDetails(row.Item))" RowStyle="cursor: pointer;">
-				<Columns>
-					<PropertyColumn Property="x => x.Id" Title="ID"/>
-					<TemplateColumn Title="Name">
-						<CellTemplate>
-							@if (context.Item.Id > 0)
+			<div class="glass-card pa-6" style="text-align: center;">
+				<MudStack AlignItems="AlignItems.Center" Spacing="3">
+					<MudIcon Icon="@Icons.Material.Filled.Psychology" Color="Color.Error"
+					         Style="font-size: 4rem; opacity: 0.5;"/>
+					<MudText Typo="Typo.h6">No models yet</MudText>
+					<MudText Class="text-muted mb-4">
+						Train your first sentiment classification model to enable AI-powered feedback analysis.
+					</MudText>
+					<MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+					           OnClick="NavigateToTraining" StartIcon="@Icons.Material.Filled.ModelTraining">
+						Train Your First Model
+					</MudButton>
+				</MudStack>
+			</div>
+		}
+
+		@if (!_loading && string.IsNullOrEmpty(_error) && _models.Count > 0)
+		{
+			<MudPaper Elevation="0" Class="pa-0" Style="background: transparent;">
+				<MudTable Items="_models" Dense="true" Hover="true">
+					<HeaderContent>
+						<MudTh>ID</MudTh>
+						<MudTh>Name</MudTh>
+						<MudTh>Type</MudTh>
+						<MudTh>Status</MudTh>
+						<MudTh>Size</MudTh>
+						<MudTh>Created</MudTh>
+						<MudTh Style="text-align: right;">Actions</MudTh>
+					</HeaderContent>
+					<RowTemplate>
+						<MudTd>@context.Id</MudTd>
+						<MudTd>
+							@if (context.Id > 0)
 							{
-								<MudLink Color="Color.Primary" Underline="Underline.Hover" Class="cursor-pointer">
-									@context.Item.Name
+								<MudLink Href="@($"/admin/classification-models/{context.Id}")" Color="Color.Primary" Underline="Underline.Hover">
+									@context.Name
 								</MudLink>
 							}
 							else
 							{
-								<MudText>@context.Item.Name</MudText>
+								<MudText>@context.Name</MudText>
 							}
-						</CellTemplate>
-					</TemplateColumn>
-					<PropertyColumn Property="x => x.ModelType" Title="Type"/>
-					<TemplateColumn Title="Status">
-						<CellTemplate>
-							@if (context.Item.IsActive)
+						</MudTd>
+						<MudTd>@context.ModelType</MudTd>
+						<MudTd>
+							@if (context.IsActive)
 							{
 								<MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">Active</MudChip>
 							}
-							else if (context.Item.Status == "Training...")
+							else if (context.Status == "Training...")
 							{
 								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
 									<MudProgressCircular Size="@Size.Small" Indeterminate="true" Style="width: 16px; height: 16px;"/>
 									<MudText Typo="Typo.body2" Color="Color.Info">Training...</MudText>
 								</MudStack>
 							}
-							else if (context.Item.Status == "Queued")
+							else if (context.Status == "Queued")
 							{
 								<MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">Queued</MudChip>
 							}
-							else if (context.Item.Status == "Failed")
+							else if (context.Status == "Failed")
 							{
 								<MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Filled">Failed</MudChip>
 							}
@@ -82,27 +129,23 @@
 							{
 								<MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">Ready</MudChip>
 							}
-						</CellTemplate>
-					</TemplateColumn>
-					<TemplateColumn Title="Size">
-						<CellTemplate>
-							@FormatFileSize(context.Item.SizeBytes)
-						</CellTemplate>
-					</TemplateColumn>
-					<TemplateColumn Title="Created">
-						<CellTemplate>
-							@context.Item.CreatedAt.ToString("g")
-						</CellTemplate>
-					</TemplateColumn>
-				</Columns>
-			</MudDataGrid>
+						</MudTd>
+						<MudTd>@FormatFileSize(context.SizeBytes)</MudTd>
+						<MudTd>@context.CreatedAt.ToString("g")</MudTd>
+						<MudTd Style="text-align: right;">
+							@if (context.Id > 0)
+							{
+								<MudTooltip Text="View Details" Placement="Placement.Top">
+									<MudIconButton Icon="@Icons.Material.Filled.Visibility" Color="Color.Primary" Size="Size.Small"
+									               Href="@($"/admin/classification-models/{context.Id}")"/>
+								</MudTooltip>
+							}
+						</MudTd>
+					</RowTemplate>
+				</MudTable>
+			</MudPaper>
 		}
-
-		@if (!string.IsNullOrEmpty(_error))
-		{
-			<MudAlert Severity="Severity.Error" Class="mt-4">@_error</MudAlert>
-		}
-	</MudPaper>
+	</div>
 </MudContainer>
 
 @code {

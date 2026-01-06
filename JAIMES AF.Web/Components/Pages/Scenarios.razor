@@ -10,34 +10,15 @@
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
 
-	@* Compact Hero Section for Scenarios *@
-	<div class="scenarios-hero pa-3 mb-4" style="background: linear-gradient(135deg, rgba(67, 97, 238, 0.1) 0%, rgba(76, 201, 240, 0.1) 100%); 
-		border-radius: 16px; border: 1px solid rgba(67, 97, 238, 0.2);">
-		<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
-				<div class="icon-badge icon-badge-secondary">
-					<MudIcon Icon="@Icons.Material.Filled.MenuBook" Style="color: white; font-size: 1.5rem;"/>
-				</div>
-				<MudStack Spacing="0">
-					<MudText Typo="Typo.h5" Style="font-weight: 600; color: #4361EE;">Your Scenarios</MudText>
-					<MudText Typo="Typo.caption" Class="text-muted">
-						@if (_scenarios is not null && _scenarios.Length > 0)
-						{
-							<span>@_scenarios.Length scenario@(_scenarios.Length != 1 ? "s" : "") available</span>
-						}
-						else
-						{
-							<span>Create story seeds for your adventures</span>
-						}
-					</MudText>
-				</MudStack>
-			</MudStack>
-			<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/scenarios/new"
-			           StartIcon="@Icons.Material.Filled.Add">
-				New Scenario
-			</MudButton>
-		</MudStack>
-	</div>
+	<CompactHeroSection Title="Your Scenarios"
+	                    Icon="@Icons.Material.Filled.MenuBook"
+	                    Theme="CompactHeroSection.HeroTheme.Secondary"
+	                    ItemCount="@_scenarios?.Length"
+	                    ItemName="scenario"
+	                    Subtitle="available"
+	                    SubtitleNoItems="Create story seeds for your adventures"
+	                    ActionText="New Scenario"
+	                    ActionHref="/scenarios/new"/>
 
 	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
 		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>

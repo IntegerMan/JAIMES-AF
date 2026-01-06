@@ -7,6 +7,259 @@ This document provides a comprehensive inventory of all pages in the JAIMES AF a
 
 ---
 
+## Reusable Components
+
+### CompactHeroSection Component
+
+The `<CompactHeroSection>` component provides a consistent hero section for list and tool pages. Use it instead of inline hero markup.
+
+**Location:** `JAIMES AF.Web/Components/Shared/CompactHeroSection.razor`
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `Title` | `string` | Main title displayed in the hero section (required) |
+| `Subtitle` | `string?` | Text appended after item count (e.g., "in progress") |
+| `SubtitleNoItems` | `string?` | Fallback subtitle when ItemCount is 0 or null |
+| `ItemCount` | `int?` | Optional count to display (e.g., "5 games") |
+| `ItemName` | `string` | Name for pluralization (default: "item") |
+| `Icon` | `string` | Icon from `Icons.Material.Filled.*` |
+| `Theme` | `HeroTheme` | Color theme (see below) |
+| `ActionText` | `string?` | Text for action button (if null, button hidden) |
+| `ActionHref` | `string?` | Navigation href for action button |
+| `ActionIcon` | `string` | Icon for action button (default: Add) |
+| `ActionColor` | `Color?` | Override button color (defaults to theme) |
+| `OnActionClick` | `EventCallback` | Click handler for in-page actions |
+| `ActionDisabled` | `bool` | Whether action button is disabled |
+| `SubtitleContent` | `RenderFragment?` | Custom subtitle content |
+
+**Theme Options:**
+
+| Theme | Color | Use Case | Icon Badge Class |
+|-------|-------|----------|------------------|
+| `Primary` | Purple | Games | `icon-badge-primary` |
+| `Secondary` | Blue | Scenarios, Agents | `icon-badge-secondary` |
+| `Tertiary` | Cyan | Characters/Players | `icon-badge-tertiary` |
+| `Accent` | Green | Rulesets | `icon-badge-accent` |
+| `Success` | Green | Reserved (low contrast - avoid for heroes) | `icon-badge-success` |
+| `Info` | Light Blue | Evaluations, Tests, Tools | `icon-badge-info` |
+
+**Usage Examples:**
+
+```razor
+@* List page with item count and navigation action *@
+<CompactHeroSection Title="Your Adventures"
+                    Icon="@Icons.Material.Filled.SportsEsports"
+                    Theme="CompactHeroSection.HeroTheme.Primary"
+                    ItemCount="@_games?.Length"
+                    ItemName="game"
+                    Subtitle="in progress"
+                    SubtitleNoItems="Start a new adventure"
+                    ActionText="New Game"
+                    ActionHref="/games/new"/>
+
+@* Tool page with subtle hero (no action or info-only) *@
+<CompactHeroSection Title="Test Evaluators"
+                    Icon="@Icons.Material.Filled.Science"
+                    Theme="CompactHeroSection.HeroTheme.Success"
+                    Subtitle="Test AI response evaluators against sample data"
+                    ActionText="View Evaluators"
+                    ActionHref="/admin/evaluators"
+                    ActionIcon="@Icons.Material.Filled.List"/>
+
+@* Action page with dynamic subtitle and in-page action *@
+<CompactHeroSection Title="Run Tests"
+                    Icon="@Icons.Material.Filled.PlayArrow"
+                    Theme="CompactHeroSection.HeroTheme.Success">
+    <SubtitleContent>
+        @if (CanRun)
+        {
+            <span>@_selectedTests.Count test(s) ready</span>
+        }
+        else
+        {
+            <span>Select items to run tests</span>
+        }
+    </SubtitleContent>
+</CompactHeroSection>
+```
+
+---
+
+### FormPageHeader Component
+
+The `<FormPageHeader>` component provides a consistent header for create and edit form pages. It matches the styling of `CompactHeroSection` but is optimized for form pages (no action button, simpler layout).
+
+**Location:** `JAIMES AF.Web/Components/Shared/FormPageHeader.razor`
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `Title` | `string` | Main title (required). For create pages: "Create New {Entity}". For edit pages: "Edit: {EntityName}" |
+| `Subtitle` | `string?` | Optional subtitle text (e.g., "Define a new AI agent") |
+| `Icon` | `string` | Icon from `Icons.Material.Filled.*` |
+| `Theme` | `HeroTheme` | Color theme (see below) |
+
+**Theme Options:**
+
+| Theme | Color | Use Case | Icon Badge Class |
+|-------|-------|----------|------------------|
+| `Primary` | Purple | Games | `icon-badge-primary` |
+| `Secondary` | Blue | Scenarios, Agents | `icon-badge-secondary` |
+| `Tertiary` | Cyan | Characters/Players | `icon-badge-tertiary` |
+| `Accent` | Green | Rulesets | `icon-badge-accent` |
+| `Success` | Green | Evaluations, Tests | `icon-badge-success` |
+| `Warning` | Orange | Locations | `icon-badge-warning` |
+| `Info` | Light Blue | Tools, Info pages | `icon-badge-info` |
+
+**Usage Examples:**
+
+```razor
+@* Create page - static title *@
+<FormPageHeader Title="Create New Game"
+                Icon="@Icons.Material.Filled.SportsEsports"
+                Theme="FormPageHeader.HeroTheme.Primary"
+                Subtitle="Start a new adventure" />
+
+@* Edit page - dynamic title showing entity name *@
+<FormPageHeader Title="@(_isLoading ? "Edit Agent" : $"Edit: {_name}")"
+                Icon="@Icons.Material.Filled.SmartToy"
+                Theme="FormPageHeader.HeroTheme.Secondary"
+                Subtitle="Modify agent configuration" />
+
+@* Location edit - Warning theme *@
+<FormPageHeader Title="@($"Edit: {_location?.Name ?? "Location"}")"
+                Icon="@Icons.Material.Filled.Place"
+                Theme="FormPageHeader.HeroTheme.Warning"
+                Subtitle="Modify location details" />
+```
+
+---
+
+## Page Patterns
+
+### List Page Pattern
+
+Used for pages that display a collection of items in a table.
+
+**Reference Page:** `Games.razor`
+
+**Structure:**
+1. `<CompactHeroSection>` with item count and "New" action button
+2. `<MudBreadcrumbs>` below hero
+3. Loading state with centered `<MudProgressCircular>`
+4. Empty state using `glass-card` styling with icon and CTA
+5. `<MudTable>` with `Dense="true"` and `Hover="true"`
+6. Icon action buttons wrapped in `<MudTooltip Placement="Placement.Top">`
+
+**Pages using this pattern:** Games, Scenarios, Rulesets, Players, TestCases, TestReports, Evaluators
+
+---
+
+### Tool Test Page Pattern
+
+Used for pages where users configure inputs and run an action to see results.
+
+**Reference Page:** `EvaluatorTest.razor`
+
+**Structure:**
+1. `<CompactHeroSection>` with subtle informational styling (optional link action)
+2. `<MudBreadcrumbs>` below hero
+3. `<MudPaper Class="pa-6" Elevation="2">` containing:
+   - Brief description text
+   - Nested `<MudPaper Class="pa-4" Elevation="1">` sections for form groups
+   - Action button(s) below form sections
+   - Results section (shown after action completes)
+
+**Pages using this pattern:** EvaluatorTest, RulesSearchTest, ConversationSearch, ToolTest
+
+---
+
+### Action Page Pattern
+
+Used for pages focused on executing a multi-selection action.
+
+**Reference Page:** `RunTests.razor`
+
+**Structure:**
+1. `<CompactHeroSection>` with dynamic subtitle (e.g., selection count)
+2. `<MudBreadcrumbs>` below hero
+3. Primary action button (large, prominent, below hero)
+4. Multi-column selection panels using `<MudGrid>` and `<MudPaper>`
+5. Running state with progress indicator
+
+**Pages using this pattern:** RunTests
+
+---
+
+### Form Page Pattern (New/Edit)
+
+Used for creating or editing a single entity.
+
+**Reference Pages:** NewGame, NewAgent, EditAgent, EditPlayer
+
+**Structure:**
+1. `<FormPageHeader>` with entity icon and themed styling
+2. `<MudContainer MaxWidth="MaxWidth.Medium">` (or `MaxWidth.Large` for complex multi-column forms)
+3. `<MudPaper Class="pa-6" Elevation="2">` containing:
+   - `<MudBreadcrumbs>` with `mb-4` spacing
+   - `<MudForm>` with `Variant.Outlined` fields
+   - Action buttons at bottom with `mt-4` gap styling
+
+**Button Conventions:**
+- **Create pages**: Primary button uses `StartIcon="@Icons.Material.Filled.Add"` with entity-specific color
+- **Edit pages**: Primary button uses `StartIcon="@Icons.Material.Filled.Check"` with entity-specific color
+- **Cancel button**: Uses `Variant.Text`, `Color.Default`, and `Href` to navigate back
+
+**Entity-Specific Button Colors:**
+| Entity | Button Color |
+|--------|--------------|
+| Games | `Color.Primary` |
+| Agents, Scenarios | `Color.Secondary` |
+| Players | `Color.Tertiary` |
+| Rulesets | `Color.Success` |
+| Locations | `Color.Warning` |
+
+**Usage Example:**
+```razor
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <FormPageHeader Title="Create New Agent"
+                    Icon="@Icons.Material.Filled.SmartToy"
+                    Theme="FormPageHeader.HeroTheme.Secondary"
+                    Subtitle="Define a new AI agent" />
+
+    <MudPaper Class="pa-6" Elevation="2">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+            <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+        </MudStack>
+
+        <MudForm>
+            <MudTextField @bind-Value="_name" Label="Name" 
+                          Variant="Variant.Outlined" Class="mb-4" />
+            
+            <div class="d-flex gap-2 mt-4">
+                <MudButton Variant="Variant.Filled" 
+                           Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Filled.Add">
+                    Create Agent
+                </MudButton>
+                <MudButton Variant="Variant.Text" 
+                           Color="Color.Default"
+                           Href="/agents">
+                    Cancel
+                </MudButton>
+            </div>
+        </MudForm>
+    </MudPaper>
+</MudContainer>
+```
+
+**Pages using this pattern:** NewGame, NewAgent, NewScenario, NewPlayer, NewRuleset, EditAgent, EditScenario, EditPlayer, EditRuleset, EditLocation
+
+---
+
 ## Primary Navigation
 
 These are the top-level pages accessible directly from the main navigation.
@@ -190,13 +443,24 @@ Detailed view of a specific agent instruction version with its prompt content an
 
 Lists ML.NET classification models used for sentiment analysis and other ML tasks.
 
-**Style Guide Violations:**
-- Review for tooltip and icon consistency
+**Style Guide Compliance:** ✅ Good — Uses compact hero section, MudTable with action buttons, glass-card empty state, proper tooltip placement
 
 **Improvement Ideas:**
-- Add model accuracy metrics display
-- Include training status indicators
-- Add model comparison view
+- Add model comparison feature for side-by-side metric and confusion matrix analysis
+- Add bulk delete for failed training jobs
+
+---
+
+### [ClassificationModelDetails.razor](JAIMES%20AF.Web/Components/Pages/ClassificationModelDetails.razor)
+**Route:** `/admin/classification-models/{id}`
+
+Detailed view of a specific ML classification model including training parameters, evaluation metrics, and confusion matrix.
+
+**Style Guide Compliance:** ✅ Good — Uses compact hero section, stat-card metrics, overline section headers, enhanced confusion matrix with tooltips
+
+**Improvement Ideas:**
+- Add model download/export functionality
+- Add re-training option with adjusted parameters
 
 ---
 

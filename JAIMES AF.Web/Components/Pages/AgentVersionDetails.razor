@@ -39,14 +39,14 @@
                         <MudChip T="string" Color="Color.Success" Class="mr-4">Active Version</MudChip>
                     }
 
-                    <MudTooltip Text="Previous Version">
+                    <MudTooltip Text="Previous Version" Placement="Placement.Top">
                         <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft"
                                        Color="Color.Primary"
                                        Disabled="@(!_previousVersionId.HasValue)"
                                        Href="@(_previousVersionId.HasValue ? $"/agents/{AgentId}/versions/{_previousVersionId}" : null)"/>
                     </MudTooltip>
 
-                    <MudTooltip Text="Next Version">
+                    <MudTooltip Text="Next Version" Placement="Placement.Top">
                         <MudIconButton Icon="@Icons.Material.Filled.ChevronRight"
                                        Color="Color.Primary"
                                        Disabled="@(!_nextVersionId.HasValue)"
@@ -55,7 +55,7 @@
                 </MudStack>
             </MudStack>
 
-            <MudGrid Spacing="3" Class="mb-4">
+            <MudGrid Class="mb-4">
                 <MudItem xs="12" sm="6" md="4">
                     <MudText Typo="Typo.caption" Class="text-muted">Agent</MudText>
                     <MudLink Href="@($"/agents/{AgentId}")" Typo="Typo.body1">

@@ -17,7 +17,7 @@
             {
                 <MudChip T="string" Color="Color.Warning" Size="Size.Small" Icon="@Icons.Material.Filled.SignalCellularOff">Connecting...</MudChip>
             }
-            <MudTooltip Text="Clear completed messages">
+            <MudTooltip Text="Clear completed messages" Placement="Placement.Top">
                 <MudIconButton Icon="@Icons.Material.Filled.ClearAll" OnClick="ClearCompleted" Size="Size.Small" />
             </MudTooltip>
         </MudStack>
@@ -103,7 +103,7 @@
                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                             @if (msg.IsStale)
                             {
-                                <MudTooltip Text="Processing is taking longer than expected">
+                                <MudTooltip Text="Processing is taking longer than expected" Placement="Placement.Top">
                                     <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Size="Size.Small" Class="pulse-animation" />
                                 </MudTooltip>
                             }

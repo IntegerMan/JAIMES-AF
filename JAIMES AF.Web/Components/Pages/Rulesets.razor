@@ -10,34 +10,15 @@
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
 
-	@* Compact Hero Section for Rulesets *@
-	<div class="rulesets-hero pa-3 mb-4" style="background: linear-gradient(135deg, rgba(6, 214, 160, 0.1) 0%, rgba(67, 97, 238, 0.1) 100%); 
-		border-radius: 16px; border: 1px solid rgba(6, 214, 160, 0.2);">
-		<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
-				<div class="icon-badge icon-badge-accent">
-					<MudIcon Icon="@Icons.Material.Filled.AutoStories" Style="color: white; font-size: 1.5rem;"/>
-				</div>
-				<MudStack Spacing="0">
-					<MudText Typo="Typo.h5" Style="font-weight: 600; color: #06D6A0;">Your Rulesets</MudText>
-					<MudText Typo="Typo.caption" Class="text-muted">
-						@if (_rulesets is not null && _rulesets.Length > 0)
-						{
-							<span>@_rulesets.Length ruleset@(_rulesets.Length != 1 ? "s" : "") available</span>
-						}
-						else
-						{
-							<span>Create your first ruleset</span>
-						}
-					</MudText>
-				</MudStack>
-			</MudStack>
-			<MudButton Variant="Variant.Filled" Color="Color.Success" Href="/rulesets/new"
-			           StartIcon="@Icons.Material.Filled.Add">
-				New Ruleset
-			</MudButton>
-		</MudStack>
-	</div>
+	<CompactHeroSection Title="Your Rulesets"
+	                    Icon="@Icons.Material.Filled.AutoStories"
+	                    Theme="CompactHeroSection.HeroTheme.Accent"
+	                    ItemCount="@_rulesets?.Length"
+	                    ItemName="ruleset"
+	                    Subtitle="available"
+	                    SubtitleNoItems="Create your first ruleset"
+	                    ActionText="New Ruleset"
+	                    ActionHref="/rulesets/new"/>
 
 	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
 		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
