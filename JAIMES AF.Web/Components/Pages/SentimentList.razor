@@ -11,37 +11,16 @@
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
 
-    @* Compact Hero Section *@
-    <div class="sentiments-hero pa-3 mb-4" style="background: linear-gradient(135deg, rgba(123, 44, 191, 0.14) 0%, rgba(67, 97, 238, 0.16) 100%);
-        border-radius: 16px; border: 1px solid rgba(67, 97, 238, 0.28);">
-        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
-                <div class="icon-badge icon-badge-primary" style="box-shadow: 0 6px 18px rgba(0,0,0,0.08);">
-                    <MudIcon Icon="@Icons.Material.Filled.Mood" Style="color: white; font-size: 1.6rem;"/>
-                </div>
-                <MudStack Spacing="0">
-                    <MudText Typo="Typo.h5" Style="font-weight: 700; color: #1F2A44;">Sentiment Analysis</MudText>
-                    <MudText Typo="Typo.caption" Class="text-muted">
-                        @if (_summary is not null)
-                        {
-                            <span>@_summary.TotalCount sentiment record@(_summary.TotalCount != 1 ? "s" : "") analyzed</span>
-                        }
-                        else
-                        {
-                            <span>Loading sentiment data...</span>
-                        }
-                    </MudText>
-                </MudStack>
-            </MudStack>
-            <MudTooltip Text="Train sentiment classification models" Placement="Placement.Top">
-                <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                           Href="/admin/classification-models"
-                           StartIcon="@Icons.Material.Filled.Psychology">
-                    Classification Models
-                </MudButton>
-            </MudTooltip>
-        </MudStack>
-    </div>
+    <CompactHeroSection Title="Sentiment Analysis"
+                        Icon="@Icons.Material.Filled.Mood"
+                        Theme="CompactHeroSection.HeroTheme.Primary"
+                        ItemCount="@_summary?.TotalCount"
+                        ItemName="sentiment record"
+                        Subtitle="analyzed"
+                        SubtitleNoItems="Loading sentiment data..."
+                        ActionText="Classification Models"
+                        ActionHref="/admin/classification-models"
+                        ActionIcon="@Icons.Material.Filled.Psychology"/>
 
     @* Sentiment Summary Stats Row *@
     @if (_summary is not null)

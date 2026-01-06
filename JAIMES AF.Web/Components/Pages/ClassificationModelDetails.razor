@@ -1,5 +1,6 @@
 @page "/admin/classification-models/{Id:int}"
 @using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Shared
 @rendermode InteractiveServer
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
@@ -35,45 +36,21 @@
 	}
 	else
 	{
-		@* Compact Hero Section for Model Details *@
-		<div class="models-hero pa-3 mb-4" style="background: linear-gradient(135deg, rgba(239, 71, 111, 0.1) 0%, rgba(123, 44, 191, 0.1) 100%); 
-			border-radius: 16px; border: 1px solid rgba(239, 71, 111, 0.2);">
-			<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-				<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
-					<div class="icon-badge icon-badge-error">
-						<MudIcon Icon="@Icons.Material.Filled.Psychology" Style="color: white; font-size: 1.5rem;"/>
-					</div>
-					<MudStack Spacing="0">
-						<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-							<MudText Typo="Typo.h5" Style="font-weight: 600; color: #EF476F;">@_model.Name</MudText>
-							@if (_model.IsActive)
-							{
-								<MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">Active</MudChip>
-							}
-						</MudStack>
-						<MudText Typo="Typo.caption" Class="text-muted">
-							@_model.ModelType • @FormatFileSize(_model.SizeBytes) • Created @_model.CreatedAt.ToString("g")
-						</MudText>
-					</MudStack>
-				</MudStack>
-				<MudStack Row="true" Spacing="2">
-					@if (!_model.IsActive)
-					{
-						<MudTooltip Text="Set as active model for sentiment classification" Placement="Placement.Top">
-							<MudButton Variant="Variant.Filled" Color="Color.Primary"
-							           StartIcon="@Icons.Material.Filled.CheckCircle"
-							           OnClick="ConfirmActivation">
-								Activate
-							</MudButton>
-						</MudTooltip>
-					}
-					<MudTooltip Text="Back to all models" Placement="Placement.Top">
-						<MudIconButton Icon="@Icons.Material.Filled.ArrowBack" Color="Color.Default"
-						               Href="/admin/classification-models"/>
-					</MudTooltip>
-				</MudStack>
-			</MudStack>
-		</div>
+		<CompactHeroSection Title="@_model.Name"
+		                    Icon="@Icons.Material.Filled.Psychology"
+		                    Theme="CompactHeroSection.HeroTheme.Error"
+		                    Subtitle="@($"{_model.ModelType} • {FormatFileSize(_model.SizeBytes)} • Created {_model.CreatedAt:g}")"
+		                    ActionText="@(_model.IsActive ? null : "Activate")"
+		                    ActionIcon="@Icons.Material.Filled.CheckCircle"
+		                    OnActionClick="ConfirmActivation">
+			<SubtitleContent>
+				@if (_model.IsActive)
+				{
+					<MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled" Class="ml-2">Active</MudChip>
+				}
+				<span class="ml-2">@_model.ModelType • @FormatFileSize(_model.SizeBytes) • Created @_model.CreatedAt.ToString("g")</span>
+			</SubtitleContent>
+		</CompactHeroSection>
 
 		@* Model Information Section *@
 		<MudText Typo="Typo.overline" Class="mb-3" Style="letter-spacing: 1.5px; color: #EF476F; font-weight: 600;">

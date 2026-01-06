@@ -1,5 +1,6 @@
 @page "/admin/classification-models"
 @using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Shared
 @using Microsoft.AspNetCore.SignalR.Client
 @rendermode InteractiveServer
 @inject HttpClient Http
@@ -11,36 +12,16 @@
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
 
-	@* Compact Hero Section for ML Models *@
-	<div class="models-hero pa-3 mb-4" style="background: linear-gradient(135deg, rgba(239, 71, 111, 0.1) 0%, rgba(123, 44, 191, 0.1) 100%); 
-		border-radius: 16px; border: 1px solid rgba(239, 71, 111, 0.2);">
-		<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
-				<div class="icon-badge icon-badge-error">
-					<MudIcon Icon="@Icons.Material.Filled.Psychology" Style="color: white; font-size: 1.5rem;"/>
-				</div>
-				<MudStack Spacing="0">
-					<MudText Typo="Typo.h5" Style="font-weight: 600; color: #EF476F;">Classification Models</MudText>
-					<MudText Typo="Typo.caption" Class="text-muted">
-						@if (_models.Count > 0)
-						{
-							<span>@_models.Count model@(_models.Count != 1 ? "s" : "") available</span>
-						}
-						else
-						{
-							<span>Train your first model</span>
-						}
-					</MudText>
-				</MudStack>
-			</MudStack>
-			<MudTooltip Text="Train a new sentiment classification model" Placement="Placement.Top">
-				<MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ModelTraining"
-				           OnClick="NavigateToTraining">
-					Train New Classifier
-				</MudButton>
-			</MudTooltip>
-		</MudStack>
-	</div>
+	<CompactHeroSection Title="Classification Models"
+	                    Icon="@Icons.Material.Filled.Psychology"
+	                    Theme="CompactHeroSection.HeroTheme.Error"
+	                    ItemCount="@_models.Count"
+	                    ItemName="model"
+	                    Subtitle="available"
+	                    SubtitleNoItems="Train your first model"
+	                    ActionText="Train New Classifier"
+	                    ActionIcon="@Icons.Material.Filled.ModelTraining"
+	                    OnActionClick="NavigateToTraining"/>
 
 	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
 		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>

@@ -1,0 +1,62 @@
+@*
+    ViewModeToggle.razor - Reusable toggle component for switching between view modes.
+    Wraps MudToggleGroup with standardized styling for consistent UX across comparison and grouping views.
+    
+    Usage:
+    <ViewModeToggle TValue="string" 
+                    @bind-Value="_groupBy"
+                    Options="@_viewOptions" />
+    
+    where _viewOptions = new[] { new ViewOption("agent", "Group by Agent"), new ViewOption("testcase", "Group by Test Case") }
+*@
+
+@typeparam TValue
+
+<MudToggleGroup T="TValue" 
+                Value="@Value" 
+                ValueChanged="@ValueChanged" 
+                Color="Color.Primary" 
+                Size="Size.Small"
+                SelectionMode="SelectionMode.SingleSelection">
+    @foreach (var option in Options)
+    {
+        <MudToggleItem T="TValue" Value="@option.Value">
+            @if (!string.IsNullOrEmpty(option.Icon))
+            {
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudIcon Icon="@option.Icon" Size="Size.Small" />
+                    <span>@option.Text</span>
+                </MudStack>
+            }
+            else
+            {
+                @option.Text
+            }
+        </MudToggleItem>
+    }
+</MudToggleGroup>
+
+@code {
+    /// <summary>
+    /// The currently selected value.
+    /// </summary>
+    [Parameter]
+    public TValue? Value { get; set; }
+
+    /// <summary>
+    /// Callback when the value changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<TValue?> ValueChanged { get; set; }
+
+    /// <summary>
+    /// The available options to display in the toggle.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public IEnumerable<ViewModeOption<TValue>> Options { get; set; } = [];
+
+    /// <summary>
+    /// Represents a single option in the view mode toggle.
+    /// </summary>
+    public record ViewModeOption<T>(T Value, string Text, string? Icon = null);
+}

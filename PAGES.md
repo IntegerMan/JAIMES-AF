@@ -443,7 +443,7 @@ Detailed view of a specific agent instruction version with its prompt content an
 
 Lists ML.NET classification models used for sentiment analysis and other ML tasks.
 
-**Style Guide Compliance:** ✅ Good — Uses compact hero section, MudTable with action buttons, glass-card empty state, proper tooltip placement
+**Style Guide Compliance:** ✅ Good — Uses CompactHeroSection with Error theme, MudTable with action buttons, glass-card empty state, proper tooltip placement
 
 **Improvement Ideas:**
 - Add model comparison feature for side-by-side metric and confusion matrix analysis
@@ -456,7 +456,7 @@ Lists ML.NET classification models used for sentiment analysis and other ML task
 
 Detailed view of a specific ML classification model including training parameters, evaluation metrics, and confusion matrix.
 
-**Style Guide Compliance:** ✅ Good — Uses compact hero section, stat-card metrics, overline section headers, enhanced confusion matrix with tooltips
+**Style Guide Compliance:** ✅ Good — Uses CompactHeroSection with Error theme, stat-card metrics, overline section headers, enhanced confusion matrix with tooltips
 
 **Improvement Ideas:**
 - Add model download/export functionality
@@ -585,8 +585,7 @@ Lists test cases for agent evaluation with run counts, status, and source agent 
 
 Detailed view of a specific test case including run history and results.
 
-**Style Guide Violations:**
-- Review for tooltip consistency
+**Style Guide Compliance:** ✅ Good — Uses CompactHeroSection with Info theme, MetricCard for stats (Total Runs, Avg Score, Avg Duration), MudExpansionPanel for context, breadcrumbs below hero.
 
 **Improvement Ideas:**
 - Add pass/fail trend visualization
@@ -599,12 +598,9 @@ Detailed view of a specific test case including run history and results.
 
 Lists test execution reports with agent versions, evaluator counts, and results.
 
-**Style Guide Violations:**
-- ⚠️ Apply List Page Pattern from `Games.razor` (compact hero, icon action buttons)
-- Review for tooltip placements and icon usage
+**Style Guide Compliance:** ✅ Good — Uses CompactHeroSection with Info theme, includes report count and action button.
 
 **Improvement Ideas:**
-- Add compact hero section with report count and summary stats
 - Add report comparison shortcuts
 - Add report status indicators (passed/failed/mixed)
 
@@ -626,15 +622,11 @@ Interface for running test cases against selected agent versions with evaluator 
 ---
 
 ### [TestRunComparison.razor](JAIMES%20AF.Web/Components/Pages/TestRunComparison.razor)
-**Route:** `/admin/test-reports/{id}/compare`
+**Route:** `/admin/test-runs/compare`
 
 Matrix comparison view of test results across multiple agent versions.
 
-**Style Guide Violations:**
-- Review for tooltip placements on metric displays
-
-**Improvement Ideas:**
-- Add visual highlighting for best/worst performers
+**Style Guide Compliance:** ✅ Good — Uses CompactHeroSection with Info theme, ViewModeToggle for grouping, ComparisonMatrix for metrics display with color-coded scores and tooltips.
 - Include export to CSV/Excel functionality
 
 ---
@@ -680,11 +672,12 @@ Detailed view of specific feedback including message context and response.
 
 **Type:** List
 
-Lists sentiment analysis results across messages. Features a compact hero section with total record count, sentiment summary stat cards (positive/neutral/negative breakdown with clickable filters), and a link to Classification Models.
+Lists sentiment analysis results across messages. Features CompactHeroSection with Primary theme, sentiment summary stat cards (positive/neutral/negative breakdown with clickable filters), and a link to Classification Models.
 
-**Style Guide Compliance:** ✅ Good - follows List Page Pattern with hero section, stat cards, and consistent component usage
+**Style Guide Compliance:** ✅ Good — Uses CompactHeroSection, follows List Page Pattern with hero section, stat cards, and consistent component usage
 
 **Improvement Ideas:**
+- Migrate stat-cards to MetricCard components
 - Add sentiment trend chart
 - Add time-based filtering
 - Add export functionality for sentiment data
@@ -696,8 +689,7 @@ Lists sentiment analysis results across messages. Features a compact hero sectio
 
 Detailed view of a specific sentiment analysis including message context.
 
-**Style Guide Violations:**
-- Review for chat message component usage
+**Style Guide Compliance:** ✅ Good — Uses CompactHeroSection with Primary theme, breadcrumbs, MudCard for sentiment info
 
 **Improvement Ideas:**
 - Add comparison with similar messages
@@ -1028,12 +1020,11 @@ Multi-step wizard for AI-assisted prompt improvement.
 ---
 
 ### [TrainClassifier.razor](JAIMES%20AF.Web/Components/Pages/TrainClassifier.razor)
-**Route:** `/admin/classification-models/{id}/train`
+**Route:** `/admin/classification-models/train`
 
-Interface for training ML classification models.
+Interface for training ML classification models with confidence threshold, model type selection, and training data preview.
 
-**Style Guide Violations:**
-- Review for form and progress display consistency
+**Style Guide Compliance:** ✅ Good — Uses CompactHeroSection with Error theme, MudPaper form container, breadcrumbs, MudSlider for confidence threshold
 
 **Improvement Ideas:**
 - Add training progress visualization

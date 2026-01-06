@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 
 @using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Shared
 @inject HttpClient Http
 @inject ILoggerFactory LoggerFactory
 @inject NavigationManager NavigationManager
@@ -9,11 +10,7 @@
 
 <PageTitle>Test Run Results</PageTitle>
 
-<MudPaper Class="pa-4">
-    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
-    </MudStack>
-
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
     @if (_isLoading)
     {
         <div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
@@ -26,44 +23,47 @@
     }
     else if (_runs is not null && _runs.Count > 0)
     {
-        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
-            <MudStack>
-                <MudText Typo="Typo.h4">Test Run Results</MudText>
-                <MudText Typo="Typo.body2" Class="text-muted">Execution: @ExecutionName</MudText>
-            </MudStack>
-            <MudStack Row="true" Spacing="2">
-                <MudButton Variant="Variant.Outlined" 
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.Visibility"
-                           OnClick="ViewReport">
-                    View Report
-                </MudButton>
-                <MudButton Variant="Variant.Filled" 
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.Download"
-                           OnClick="DownloadReport">
-                    Download Report
-                </MudButton>
-            </MudStack>
-        </MudStack>
+        <CompactHeroSection Title="Test Run Results"
+                            Icon="@Icons.Material.Filled.Assessment"
+                            Theme="CompactHeroSection.HeroTheme.Info"
+                            Subtitle="@($"Execution: {ExecutionName}")"
+                            ActionText="View Report"
+                            ActionIcon="@Icons.Material.Filled.Visibility"
+                            OnActionClick="ViewReport" />
 
-        @* Summary Stats *@
-        <MudPaper Class="pa-4 mb-4" Elevation="2">
-            <MudStack Row="true" Spacing="6" Justify="Justify.Center">
-                <MudStack AlignItems="AlignItems.Center">
-                    <MudText Typo="Typo.h4" Color="Color.Primary">@_runs.Count</MudText>
-                    <MudText Typo="Typo.caption" Class="text-muted">Test Cases</MudText>
-                </MudStack>
-                <MudStack AlignItems="AlignItems.Center">
-                    <MudText Typo="Typo.h4" Color="Color.Success">@_avgDuration.ToString("F0")ms</MudText>
-                    <MudText Typo="Typo.caption" Class="text-muted">Avg Duration</MudText>
-                </MudStack>
-                <MudStack AlignItems="AlignItems.Center">
-                    <MudText Typo="Typo.h4" Color="Color.Info">@_avgScore.ToString("F2")</MudText>
-                    <MudText Typo="Typo.caption" Class="text-muted">Avg Score</MudText>
-                </MudStack>
-            </MudStack>
-        </MudPaper>
+        <MudBreadcrumbs Items="_breadcrumbs" Separator=">" Class="mb-4"></MudBreadcrumbs>
+
+        @* Summary Stats using MetricCard *@
+        <MudGrid Spacing="3" Class="mb-4">
+            <MudItem xs="12" sm="4">
+                <MetricCard Icon="@Icons.Material.Filled.Science"
+                            Value="@_runs.Count.ToString()"
+                            Label="Test Cases"
+                            ColorVariant="MetricCard.MetricColorVariant.Info" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MetricCard Icon="@Icons.Material.Filled.Timer"
+                            Value="@($"{_avgDuration:F0}ms")"
+                            Label="Avg Duration"
+                            ColorVariant="MetricCard.MetricColorVariant.Success" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MetricCard Icon="@Icons.Material.Filled.Score"
+                            Value="@_avgScore.ToString("F2")"
+                            Label="Avg Score"
+                            ColorVariant="@GetScoreColorVariant(_avgScore)" />
+            </MudItem>
+        </MudGrid>
+
+        @* Action Buttons *@
+        <MudStack Row="true" Spacing="2" Class="mb-4">
+            <MudButton Variant="Variant.Filled" 
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Download"
+                       OnClick="DownloadReport">
+                Download Report
+            </MudButton>
+        </MudStack>
 
         @* Results Table *@
         <MudTable Items="_runs" Dense="true" Hover="true">
@@ -136,9 +136,16 @@
     }
     else
     {
+        <CompactHeroSection Title="Test Run Results"
+                            Icon="@Icons.Material.Filled.Assessment"
+                            Theme="CompactHeroSection.HeroTheme.Info"
+                            Subtitle="@($"Execution: {ExecutionName}")" />
+        
+        <MudBreadcrumbs Items="_breadcrumbs" Separator=">" Class="mb-4"></MudBreadcrumbs>
+        
         <MudAlert Severity="Severity.Info">No test runs found for this execution.</MudAlert>
     }
-</MudPaper>
+</MudContainer>
 
 @code {
     [Parameter] public string ExecutionName { get; set; } = "";
@@ -213,4 +220,11 @@
         if (string.IsNullOrEmpty(text)) return "";
         return text.Length <= maxLength ? text : text.Substring(0, maxLength) + "...";
     }
+
+    private static MetricCard.MetricColorVariant GetScoreColorVariant(double score) => score switch
+    {
+        >= 0.8 => MetricCard.MetricColorVariant.Success,
+        >= 0.5 => MetricCard.MetricColorVariant.Warning,
+        _ => MetricCard.MetricColorVariant.Error
+    };
 }

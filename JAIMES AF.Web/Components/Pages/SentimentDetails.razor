@@ -12,10 +12,7 @@
 <PageTitle>Sentiment Details</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
-    </MudStack>
-
+    
     @if (_loading)
     {
         <MudProgressCircular Indeterminate="true" Class="d-block mx-auto mt-4" />
@@ -26,19 +23,16 @@
     }
     else
     {
-        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
-            <MudText Typo="Typo.h4">Sentiment Details</MudText>
-            
-            <MudStack Row="true" Spacing="2">
-                @if (_sentiment.GameId != Guid.Empty)
-                {
-                    <MudButton StartIcon="@Icons.Material.Filled.Games" 
-                               Color="Color.Secondary" 
-                               Href="@($"/games/{_sentiment.GameId}")">
-                        View Game
-                    </MudButton>
-                }
-            </MudStack>
+        <CompactHeroSection Title="Sentiment Details"
+                            Icon="@Icons.Material.Filled.Mood"
+                            Theme="CompactHeroSection.HeroTheme.Primary"
+                            Subtitle="@($"Record #{Id}")"
+                            ActionText="@(_sentiment.GameId != Guid.Empty ? "View Game" : null)"
+                            ActionHref="@(_sentiment.GameId != Guid.Empty ? $"/games/{_sentiment.GameId}" : null)"
+                            ActionIcon="@Icons.Material.Filled.Games"/>
+        
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+            <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
         </MudStack>
         
         <MudGrid>

@@ -1,16 +1,158 @@
-@* Reusable metric display card for dashboard views *@
+@*
+    MetricCard.razor - Reusable metric display card for dashboard and summary views.
+    Provides consistent styling for statistics with optional click handling and tooltips.
+    
+    Usage:
+    <MetricCard Icon="@Icons.Material.Filled.Assessment" 
+                Value="42" 
+                Label="Test Cases" 
+                ColorVariant="MetricCard.MetricColorVariant.Info"
+                Tooltip="Total number of test cases"
+                OnClick="@HandleClick" />
+    
+    Or with navigation:
+    <MetricCard Icon="@Icons.Material.Filled.Assessment" 
+                Value="42" 
+                Label="Test Cases" 
+                Href="/admin/test-cases" />
+*@
 
-<MudPaper Class="metric-card pa-4 text-center" Elevation="2">
-    <MudStack AlignItems="AlignItems.Center" Spacing="1">
-        <MudIcon Icon="@Icon" Size="Size.Large" Color="@IconColor" />
-        <MudText Typo="Typo.h4" Style="font-weight: 600;">@Value</MudText>
-        <MudText Typo="Typo.caption" Class="text-muted">@Label</MudText>
-    </MudStack>
-</MudPaper>
+@inject NavigationManager NavigationManager
+
+@if (!string.IsNullOrEmpty(Href))
+{
+    <MudPaper Class="@CardClass" Elevation="2" Style="cursor: pointer;" @onclick="NavigateToHref">
+        @CardContent
+    </MudPaper>
+}
+else if (OnClick.HasDelegate)
+{
+    <MudPaper Class="@CardClass" Elevation="2" Style="cursor: pointer;" @onclick="OnClick">
+        @CardContent
+    </MudPaper>
+}
+else
+{
+    <MudPaper Class="@CardClass" Elevation="2">
+        @CardContent
+    </MudPaper>
+}
 
 @code {
-    [Parameter] public string Icon { get; set; } = Icons.Material.Filled.Info;
-    [Parameter] public Color IconColor { get; set; } = Color.Primary;
-    [Parameter] public string Value { get; set; } = "0";
-    [Parameter] public string Label { get; set; } = string.Empty;
+    /// <summary>
+    /// Color variant options for the metric card, matching the design system.
+    /// </summary>
+    public enum MetricColorVariant
+    {
+        Primary,
+        Secondary,
+        Tertiary,
+        Accent,
+        Success,
+        Warning,
+        Error,
+        Info
+    }
+
+    /// <summary>
+    /// Icon to display. Use Icons.Material.Filled.* constants.
+    /// </summary>
+    [Parameter] 
+    public string Icon { get; set; } = Icons.Material.Filled.Info;
+
+    /// <summary>
+    /// The main value to display prominently.
+    /// </summary>
+    [Parameter] 
+    public string Value { get; set; } = "0";
+
+    /// <summary>
+    /// Label text shown below the value.
+    /// </summary>
+    [Parameter] 
+    public string Label { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Color variant for the card styling. Defaults to Primary.
+    /// </summary>
+    [Parameter]
+    public MetricColorVariant ColorVariant { get; set; } = MetricColorVariant.Primary;
+
+    /// <summary>
+    /// Optional tooltip text shown on hover.
+    /// </summary>
+    [Parameter]
+    public string? Tooltip { get; set; }
+
+    /// <summary>
+    /// Optional click handler. When provided, the card becomes clickable.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+
+    /// <summary>
+    /// Optional navigation URL. When provided, clicking the card navigates to this URL.
+    /// </summary>
+    [Parameter]
+    public string? Href { get; set; }
+
+    /// <summary>
+    /// Additional CSS class to apply to the card.
+    /// </summary>
+    [Parameter]
+    public string? Class { get; set; }
+
+    private string CardClass => $"metric-card pa-4 text-center {Class}".Trim();
+
+    private void NavigateToHref()
+    {
+        if (!string.IsNullOrEmpty(Href))
+        {
+            NavigationManager.NavigateTo(Href);
+        }
+    }
+
+    private Color IconColor => ColorVariant switch
+    {
+        MetricColorVariant.Primary => Color.Primary,
+        MetricColorVariant.Secondary => Color.Secondary,
+        MetricColorVariant.Tertiary => Color.Tertiary,
+        MetricColorVariant.Accent => Color.Success,
+        MetricColorVariant.Success => Color.Success,
+        MetricColorVariant.Warning => Color.Warning,
+        MetricColorVariant.Error => Color.Error,
+        MetricColorVariant.Info => Color.Info,
+        _ => Color.Primary
+    };
+
+    private string BorderColor => ColorVariant switch
+    {
+        MetricColorVariant.Primary => "var(--color-primary)",
+        MetricColorVariant.Secondary => "var(--color-secondary)",
+        MetricColorVariant.Tertiary => "var(--color-tertiary)",
+        MetricColorVariant.Accent => "var(--color-accent)",
+        MetricColorVariant.Success => "var(--color-accent)",
+        MetricColorVariant.Warning => "#FFD60A",
+        MetricColorVariant.Error => "#EF476F",
+        MetricColorVariant.Info => "#2196F3",
+        _ => "var(--color-primary)"
+    };
+
+    private RenderFragment CardContent => __builder =>
+    {
+        <MudStack AlignItems="AlignItems.Center" Spacing="1">
+            @if (!string.IsNullOrEmpty(Tooltip))
+            {
+                <MudTooltip Text="@Tooltip" Placement="Placement.Top">
+                    <MudIcon Icon="@Icon" Size="Size.Large" Color="@IconColor" />
+                </MudTooltip>
+            }
+            else
+            {
+                <MudIcon Icon="@Icon" Size="Size.Large" Color="@IconColor" />
+            }
+            <MudText Typo="Typo.h4" Style="@($"font-weight: 600; color: {BorderColor};")">@Value</MudText>
+            <MudText Typo="Typo.caption" Class="text-muted">@Label</MudText>
+        </MudStack>
+    };
 }
