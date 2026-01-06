@@ -4,35 +4,65 @@
 
 @* Pie chart that shows evaluation metric progress with color-coded wedges *@
 
-<svg class="evaluation-pie" width="@Size" height="@Size" viewBox="0 0 100 100" style="display: inline-block; vertical-align: middle; margin-top: 4px;">
-    @if (TotalSegments == 1)
-    {
-        @* Single segment - render as a full circle since SVG arcs can't render 360 degrees *@
-        var singleWedge = GetWedge(0, 0, 360);
-        <circle cx="50" cy="50" r="48" fill="@singleWedge.Color" class="@(singleWedge.IsCompleted ? "wedge-completed" : "")"/>
-    }
-    else if (TotalSegments > 1)
-    {
-        @* Render pie wedges *@
-        double startAngle = 0;
-        double anglePerSegment = 360.0 / TotalSegments;
-        
-        @for (int i = 0; i < TotalSegments; i++)
+@* Pie chart that shows evaluation metric progress with color-coded wedges *@
+
+<MudTooltip Placement="Placement.Top">
+    <TooltipContent>
+        @if (_hoveredMetric != null)
         {
-            var wedge = GetWedge(i, startAngle, anglePerSegment);
-            <path d="@wedge.Path" fill="@wedge.Color" class="@(wedge.IsCompleted ? "wedge-completed" : "")"/>
-            startAngle += anglePerSegment;
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="pa-1">
+                <div style="width: 10px; height: 100%; min-height: 12px; border-radius: 4px; background-color: @GetMetricColor(_hoveredMetric.Score);"></div>
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.caption" Style="font-weight: 700;">@_hoveredMetric.MetricName</MudText>
+                    <MudText Typo="Typo.caption">@_hoveredMetric.Score.ToString("F1") / 5.0</MudText>
+                </MudStack>
+            </MudStack>
         }
-        
-        @* Optional center dot for visual balance *@
-        <circle cx="50" cy="50" r="8" fill="var(--mud-palette-background)"/>
-    }
-    else
-    {
-        @* Empty state - gray circle *@
-        <circle cx="50" cy="50" r="48" fill="var(--mud-palette-grey-lighter)"/>
-    }
-</svg>
+        else
+        {
+            <MudText Typo="Typo.caption">Hover for details</MudText>
+        }
+    </TooltipContent>
+    <ChildContent>
+        <svg class="evaluation-pie" width="@Size" height="@Size" viewBox="0 0 100 100" 
+             style="display: inline-block; vertical-align: middle; margin-top: 4px; cursor: pointer;">
+            @if (TotalSegments == 1)
+            {
+                @* Single segment - render as a full circle since SVG arcs can't render 360 degrees *@
+                var metric = Metrics?.FirstOrDefault();
+                var singleWedge = GetWedge(0, 0, 360);
+                <circle cx="50" cy="50" r="48" fill="@singleWedge.Color" 
+                        class="@(singleWedge.IsCompleted ? "wedge-completed" : "")"
+                        @onmouseover="@(() => _hoveredMetric = metric)" />
+            }
+            else if (TotalSegments > 1)
+            {
+                @* Render pie wedges *@
+                double startAngle = 0;
+                double anglePerSegment = 360.0 / TotalSegments;
+                
+                @for (int i = 0; i < TotalSegments; i++)
+                {
+                    int index = i;
+                    var metric = (Metrics != null && index < Metrics.Count) ? Metrics[index] : null;
+                    var wedge = GetWedge(index, startAngle, anglePerSegment);
+                    <path d="@wedge.Path" fill="@wedge.Color" 
+                          class="@(wedge.IsCompleted ? "wedge-completed" : "")"
+                          @onmouseover="@(() => _hoveredMetric = metric)" />
+                    startAngle += anglePerSegment;
+                }
+                
+                @* Optional center dot for visual balance *@
+                <circle cx="50" cy="50" r="8" fill="var(--mud-palette-background)"/>
+            }
+            else
+            {
+                @* Empty state - gray circle *@
+                <circle cx="50" cy="50" r="48" fill="var(--mud-palette-grey-lighter)"/>
+            }
+        </svg>
+    </ChildContent>
+</MudTooltip>
 
 <style>
     .evaluation-pie {
@@ -41,6 +71,12 @@
     
     .wedge-completed {
         transition: fill 0.3s ease-in-out;
+    }
+    
+    .wedge-completed:hover {
+        filter: brightness(1.1);
+        stroke: rgba(255,255,255,0.5);
+        stroke-width: 1px;
     }
 </style>
 
@@ -75,6 +111,8 @@
     [Parameter]
     public bool IsProcessing { get; set; }
 
+    private MessageEvaluationMetricResponse? _hoveredMetric;
+
     private int CompletedCount => Metrics?.Count ?? 0;
     private bool HasError => ErrorsByMetric?.Any() ?? false;
 
@@ -96,8 +134,7 @@
             }
             else
             {
-                var scoreColor = MetricColorHelper.GetScoreColor(metric.Score);
-                color = GetMudColor(scoreColor);
+                color = GetMetricColor(metric.Score);
             }
             isCompleted = true;
         }
@@ -111,6 +148,12 @@
         string path = CreatePieSlicePath(50, 50, 48, startAngle, angleSize);
         
         return new WedgeInfo(path, color, isCompleted);
+    }
+
+    private string GetMetricColor(double score)
+    {
+        var scoreColor = MetricColorHelper.GetScoreColor(score);
+        return GetMudColor(scoreColor);
     }
 
     private static string CreatePieSlicePath(double cx, double cy, double r, double startAngle, double angleSize)

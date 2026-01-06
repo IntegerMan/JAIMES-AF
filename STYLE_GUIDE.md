@@ -157,6 +157,32 @@ For tooltips with structured content, use `TooltipContent`:
 </MudTooltip>
 ```
 
+#### Interactive Chart Tooltips
+
+For charts (like Pie charts or Sparklines), use dynamic tooltips that update based on mouse hover:
+- **Per-Segment Detail**: Show the specific metric name and raw value.
+- **Visual Aid**: Include a small colored indicator matching the chart segment.
+- **Format**: Use `Metric Name: Value / Max` for clarity.
+
+```razor
+<MudTooltip Placement="Placement.Top">
+    <TooltipContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="pa-1">
+            <div style="width: 10px; height: 12px; border-radius: 4px; background-color: @Color;"></div>
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.caption" Style="font-weight: 700;">@MetricName</MudText>
+                <MudText Typo="Typo.caption">@Score / 5.0</MudText>
+            </MudStack>
+        </MudStack>
+    </TooltipContent>
+    <ChildContent>
+        <svg ... @onmouseover="@(() => _hoveredMetric = metric)">
+            <!-- Chart content -->
+        </svg>
+    </ChildContent>
+</MudTooltip>
+```
+
 ---
 
 ## Anti-Patterns
@@ -400,6 +426,8 @@ Show an engaging empty state when no items exist:
 ```
 
 ### Section Headers
+
+Use these for grouping content within a page. Prefer left alignment and ALL CAPS HEADERS.
 
 ```razor
 <MudText Typo="Typo.overline" Class="mb-3" 
