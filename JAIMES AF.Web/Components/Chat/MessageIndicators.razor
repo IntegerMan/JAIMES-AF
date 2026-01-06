@@ -75,7 +75,8 @@
                             Metrics="Metrics"
                             ErrorsByMetric="ErrorsByMetric"
                             IsProcessing="true"
-                            Size="20"/>
+                            Size="20"
+                            OnSliceClick="HandleSliceClick"/>
                     </div>
                 }
                 else
@@ -87,7 +88,8 @@
                             Metrics="Metrics"
                             ErrorsByMetric="ErrorsByMetric"
                             IsProcessing="false"
-                            Size="20"/>
+                            Size="20"
+                            OnSliceClick="HandleSliceClick"/>
                     </div>
                 }
             </ChildContent>
@@ -355,4 +357,17 @@
         }
     }
 
+    private void HandleSliceClick(MessageEvaluationMetricResponse metric)
+    {
+        // Navigate to the specific evaluation details page
+        if (metric.Id > 0)
+        {
+            NavigationManager.NavigateTo($"/admin/evaluations/{metric.Id}");
+        }
+        else if (metric.EvaluatorId.HasValue)
+        {
+            // Fallback: if no specific evaluation ID, navigate to evaluator page filtered by message
+            NavigationManager.NavigateTo($"/admin/evaluators/{metric.EvaluatorId}");
+        }
+    }
 }

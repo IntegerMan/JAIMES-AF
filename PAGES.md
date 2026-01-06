@@ -500,6 +500,43 @@ Lists registered evaluators with their aggregate metrics including pass/fail cou
 
 ---
 
+### [EvaluatorDetails.razor](JAIMES%20AF.Web/Components/Pages/EvaluatorDetails.razor)
+**Route:** `/admin/evaluators/{EvaluatorId:int}`
+
+**Query Parameters:**
+- `agentId` - Optional filter by agent
+- `versionId` - Optional filter by instruction version
+- `gameId` - Optional filter by game
+
+Detailed view of a specific evaluator showing aggregate statistics (pass/fail counts, average score) and an embedded MetricsGrid filtered to that evaluator. Supports contextual filtering when navigated from agent or game contexts.
+
+**Style Guide Compliance:** ✅ Good — Uses hero section, stat cards, glass-card patterns
+
+**Features:**
+- Aggregate stats cards (total evaluations, pass/fail counts, average score)
+- Filter context display with clear filters button
+- Embedded MetricsGrid with inherited filters
+- Link to evaluator test page
+
+---
+
+### [EvaluationDetails.razor](JAIMES%20AF.Web/Components/Pages/EvaluationDetails.razor)
+**Route:** `/admin/evaluations/{EvaluationId:int}`
+
+Detailed view of a single evaluation result showing the score, pass/fail status, evaluator remarks, message context, and raw diagnostics data. Provides links to the source message and the evaluator that produced the result.
+
+**Style Guide Compliance:** ✅ Good — Uses hero section with dynamic styling based on pass/fail, stat cards, expansion panels
+
+**Features:**
+- Dynamic hero styling based on pass/fail status
+- Score display with visual indicators
+- Agent and game context cards
+- Evaluator remarks section
+- Message preview with link to full message
+- Collapsible diagnostics JSON viewer
+
+---
+
 ### [EvaluationMetricsList.razor](JAIMES%20AF.Web/Components/Pages/EvaluationMetricsList.razor)
 **Route:** `/admin/metrics`
 

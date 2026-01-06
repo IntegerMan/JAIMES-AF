@@ -19,6 +19,7 @@ public record AgentStatsResponse
 
 public record AgentEvaluatorMetricSummaryDto
 {
+    public int? EvaluatorId { get; init; }
     public required string MetricName { get; init; }
     public double AverageScore { get; init; }
 }
