@@ -11,14 +11,73 @@
     <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
         <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
     </MudStack>
-    <MudText Typo="Typo.h4" Class="mb-4">Tool Usage Statistics</MudText>
-    <MudText Typo="Typo.body2" Class="mb-4 text-muted">
-        View tool call statistics and usage metrics across all agents. Click a tool name for detailed call history.
-    </MudText>
 
-    <ToolUsageGrid AgentId="@AgentId"
+    <CompactHeroSection Title="Tool Usage Statistics"
+                        Icon="@Icons.Material.Filled.Build"
+                        Theme="CompactHeroSection.HeroTheme.Info"
+                        ItemCount="@_stats?.TotalCount"
+                        ItemName="tool"
+                        Subtitle="tracked"
+                        SubtitleNoItems="No tools registered yet"
+                        ActionText="Test Tools"
+                        ActionHref="/admin/tool-test"
+                        ActionIcon="@Icons.Material.Filled.Science" />
+
+    @if (_stats != null)
+    {
+        <MudGrid Class="mb-4" Spacing="3">
+            <MudItem xs="6" sm="3">
+                <div class="stat-card stat-card-platform">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.Functions" Color="Color.Info" />
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.caption" Class="text-muted">Total Calls</MudText>
+                            <span class="stat-value">@_stats.TotalCalls.ToString("N0")</span>
+                        </MudStack>
+                    </MudStack>
+                </div>
+            </MudItem>
+            <MudItem xs="6" sm="3">
+                <div class="stat-card stat-card-accent">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Success" />
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.caption" Class="text-muted">Helpful</MudText>
+                            <span class="stat-value">@_stats.TotalHelpful.ToString("N0")</span>
+                        </MudStack>
+                    </MudStack>
+                </div>
+            </MudItem>
+            <MudItem xs="6" sm="3">
+                <div class="stat-card stat-card-error">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.ThumbDown" Color="Color.Error" />
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.caption" Class="text-muted">Unhelpful</MudText>
+                            <span class="stat-value">@_stats.TotalUnhelpful.ToString("N0")</span>
+                        </MudStack>
+                    </MudStack>
+                </div>
+            </MudItem>
+            <MudItem xs="6" sm="3">
+                <div class="stat-card stat-card-secondary">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Color="Color.Secondary" />
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.caption" Class="text-muted">Avg Usage</MudText>
+                            <span class="stat-value">@_stats.AverageUsagePercentage.ToString("F1")%</span>
+                        </MudStack>
+                    </MudStack>
+                </div>
+            </MudItem>
+        </MudGrid>
+    }
+
+    <ToolUsageGrid @ref="_grid"
+                   AgentId="@AgentId"
                    InstructionVersionId="@InstructionVersionId"
-                   GameId="@GameId"/>
+                   GameId="@GameId"
+                   OnStatsLoaded="OnStatsLoaded" />
 </MudContainer>
 
 @code {
@@ -45,6 +104,8 @@
     public Guid? GameId { get; set; }
 
     private List<BreadcrumbItem> _breadcrumbs = new();
+    private ToolUsageGrid? _grid;
+    private ToolUsageListResponse? _stats;
 
     protected override void OnInitialized()
     {
@@ -56,4 +117,9 @@
         };
     }
 
+    private void OnStatsLoaded(ToolUsageListResponse stats)
+    {
+        _stats = stats;
+        StateHasChanged();
+    }
 }

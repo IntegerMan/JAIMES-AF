@@ -350,7 +350,49 @@ public class LocationService(IDbContextFactory<JaimesDbContext> contextFactory) 
             cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task<LocationsSummaryResponse> GetLocationsSummaryAsync(Guid? gameId = null, CancellationToken cancellationToken = default)
+    {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        IQueryable<Location> query = context.Locations
+            .Include(l => l.Events)
+            .Include(l => l.NearbyLocationsAsSource)
+            .Include(l => l.NearbyLocationsAsTarget)
+            .Include(l => l.Game);
+
+        if (gameId.HasValue)
+        {
+            query = query.Where(l => l.GameId == gameId.Value);
+        }
+
+        List<Location> locations = await query.ToListAsync(cancellationToken);
+
+        int totalCount = locations.Count;
+        int withEventsCount = locations.Count(l => l.Events.Count > 0);
+        int orphanedCount = locations.Count(l => l.NearbyLocationsAsSource.Count == 0 && l.NearbyLocationsAsTarget.Count == 0);
+
+        var byGame = locations
+            .GroupBy(l => l.GameId)
+            .ToDictionary(
+                g => g.Key,
+                g => new GameLocationCount
+                {
+                    GameTitle = g.First().Game?.Title ?? "Unknown",
+                    LocationCount = g.Count()
+                });
+
+        return new LocationsSummaryResponse
+        {
+            TotalCount = totalCount,
+            WithEventsCount = withEventsCount,
+            OrphanedCount = orphanedCount,
+            ByGame = byGame
+        };
+    }
+
     private static LocationResponse MapToResponse(Location location)
+
     {
         return new LocationResponse
         {

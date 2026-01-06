@@ -1,6 +1,7 @@
 @page "/admin/tools/{ToolName}"
 @using MattEland.Jaimes.ServiceDefinitions.Responses
 @using MattEland.Jaimes.Web.Components.Pages
+@using MattEland.Jaimes.Web.Components.Shared
 @using MudBlazor
 @inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager NavigationManager
@@ -13,15 +14,14 @@
         <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
     </MudStack>
 
-
-    <MudText Typo="Typo.h4" Class="mb-2">@ToolName</MudText>
-    
-    @if (!string.IsNullOrEmpty(_toolDescription))
-    {
-        <MudText Typo="Typo.body2" Class="mb-4 text-muted">
-            @_toolDescription
-        </MudText>
-    }
+    <CompactHeroSection Title="@ToolName"
+                        Icon="@Icons.Material.Filled.Build"
+                        Theme="CompactHeroSection.HeroTheme.Info"
+                        Subtitle="@_toolDescription"
+                        SubtitleNoItems="Tool call history"
+                        ActionText="All Tools"
+                        ActionHref="/admin/tools"
+                        ActionIcon="@Icons.Material.Filled.List" />
 
     <MudDataGrid T="ToolCallDetailDto"
                  ServerData="ServerReload"
@@ -76,7 +76,7 @@
                         var color = isPositive ? Color.Success : Color.Error;
                         var feedbackUrl = $"/admin/feedback?toolName={Uri.EscapeDataString(ToolName)}&isPositive={isPositive}";
 
-                        <MudTooltip Text="@(context.Item.FeedbackComment ?? (isPositive ? "Helpful" : "Unhelpful"))">
+                        <MudTooltip Text="@(context.Item.FeedbackComment ?? (isPositive ? "Helpful" : "Unhelpful"))" Placement="Placement.Top">
                             <MudIconButton Icon="@icon"
                                            Color="@color"
                                            Size="Size.Small"
@@ -92,7 +92,7 @@
             <TemplateColumn Title="Actions">
                 <CellTemplate>
                     <MudStack Row="true" Spacing="0">
-                        <MudTooltip Text="View Details">
+                        <MudTooltip Text="View Details" Placement="Placement.Top">
                             <MudIconButton Icon="@Icons.Material.Filled.Info" 
                                            Color="Color.Primary" 
                                            Size="Size.Small"
@@ -100,7 +100,7 @@
                         </MudTooltip>
                         @if (context.Item.GameId.HasValue)
                         {
-                            <MudTooltip Text="Go to Game">
+                            <MudTooltip Text="Go to Game" Placement="Placement.Top">
                                 <MudIconButton Icon="@Icons.Material.Filled.Gamepad" 
                                                Color="Color.Secondary" 
                                                Size="Size.Small"

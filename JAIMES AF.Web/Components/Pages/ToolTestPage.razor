@@ -1,21 +1,25 @@
 @page "/admin/tool-test"
 @using MattEland.Jaimes.ServiceDefinitions.Requests
 @using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Shared
 @using MudBlazor
 @rendermode InteractiveServer
 
 <PageTitle>Tool Testing</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+	<CompactHeroSection Title="Tool Testing"
+	                    Icon="@Icons.Material.Filled.Science"
+	                    Theme="CompactHeroSection.HeroTheme.Info"
+	                    Subtitle="Test AI agent tools with custom parameters"
+	                    ActionText="View Tool Usage"
+	                    ActionHref="/admin/tools"
+	                    ActionIcon="@Icons.Material.Filled.BarChart"/>
+
 	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
 		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
 	</MudStack>
-	<MudPaper Class="pa-8" Elevation="2">
-		<MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">Tool Testing</MudText>
-		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">
-			Test AI agent tools with custom parameters
-		</MudText>
-
+	<MudPaper Class="pa-6" Elevation="2">
 		<MudText Typo="Typo.body1" Class="mb-6" Style="line-height: 1.75;">
 			Select a tool to test, provide the required parameters, and execute it to see the raw output.
 			Tool executions from this page are not logged for diagnostics.

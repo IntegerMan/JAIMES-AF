@@ -4,17 +4,118 @@
 @using MudBlazor
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
+@inject IHttpClientFactory HttpClientFactory
 @rendermode InteractiveServer
 
 <PageTitle>Sentiment Analysis</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+
+    @* Compact Hero Section *@
+    <div class="sentiments-hero pa-3 mb-4" style="background: linear-gradient(135deg, rgba(123, 44, 191, 0.14) 0%, rgba(67, 97, 238, 0.16) 100%);
+        border-radius: 16px; border: 1px solid rgba(67, 97, 238, 0.28);">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                <div class="icon-badge icon-badge-primary" style="box-shadow: 0 6px 18px rgba(0,0,0,0.08);">
+                    <MudIcon Icon="@Icons.Material.Filled.Mood" Style="color: white; font-size: 1.6rem;"/>
+                </div>
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.h5" Style="font-weight: 700; color: #1F2A44;">Sentiment Analysis</MudText>
+                    <MudText Typo="Typo.caption" Class="text-muted">
+                        @if (_summary is not null)
+                        {
+                            <span>@_summary.TotalCount sentiment record@(_summary.TotalCount != 1 ? "s" : "") analyzed</span>
+                        }
+                        else
+                        {
+                            <span>Loading sentiment data...</span>
+                        }
+                    </MudText>
+                </MudStack>
+            </MudStack>
+            <MudTooltip Text="Train sentiment classification models" Placement="Placement.Top">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           Href="/admin/classification-models"
+                           StartIcon="@Icons.Material.Filled.Psychology">
+                    Classification Models
+                </MudButton>
+            </MudTooltip>
+        </MudStack>
+    </div>
+
+    @* Sentiment Summary Stats Row *@
+    @if (_summary is not null)
+    {
+        <MudGrid Spacing="3" Class="mb-4">
+            <MudItem xs="12" sm="3">
+                <MudLink Underline="Underline.None" Class="stat-card-link" Style="display: block;" OnClick="@(() => ApplySentimentFilter(1))">
+                    <div class="stat-card stat-card-success" style="cursor: pointer;">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <SentimentIcon Sentiment="1" ReadOnly="true"/>
+                            <MudStack Spacing="0">
+                                <MudText Typo="Typo.caption" Class="text-muted">Positive</MudText>
+                                <span class="stat-value">@_summary.PositiveCount</span>
+                            </MudStack>
+                        </MudStack>
+                    </div>
+                </MudLink>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudLink Underline="Underline.None" Class="stat-card-link" Style="display: block;" OnClick="@(() => ApplySentimentFilter(0))">
+                    <div class="stat-card stat-card-default" style="cursor: pointer;">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <SentimentIcon Sentiment="0" ReadOnly="true"/>
+                            <MudStack Spacing="0">
+                                <MudText Typo="Typo.caption" Class="text-muted">Neutral</MudText>
+                                <span class="stat-value">@_summary.NeutralCount</span>
+                            </MudStack>
+                        </MudStack>
+                    </div>
+                </MudLink>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudLink Underline="Underline.None" Class="stat-card-link" Style="display: block;" OnClick="@(() => ApplySentimentFilter(-1))">
+                    <div class="stat-card stat-card-error" style="cursor: pointer;">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <SentimentIcon Sentiment="-1" ReadOnly="true"/>
+                            <MudStack Spacing="0">
+                                <MudText Typo="Typo.caption" Class="text-muted">Negative</MudText>
+                                <span class="stat-value">@_summary.NegativeCount</span>
+                            </MudStack>
+                        </MudStack>
+                    </div>
+                </MudLink>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <div class="stat-card stat-card-info" style="cursor: default;">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.Leaderboard" Color="Color.Info" />
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.caption" Class="text-muted">Avg Confidence</MudText>
+                            @if (_summary.AverageConfidence.HasValue)
+                            {
+                                <span class="stat-value">@($"{_summary.AverageConfidence.Value * 100:0.0}%")</span>
+                            }
+                            else
+                            {
+                                <span class="stat-value text-muted">N/A</span>
+                            }
+                        </MudStack>
+                    </MudStack>
+                </div>
+            </MudItem>
+        </MudGrid>
+    }
+    else if (_isLoading)
+    {
+        <div style="display: flex; justify-content: center; align-items: center; min-height: 80px;" class="mb-4">
+            <MudProgressCircular Indeterminate="true" Size="Size.Small"/>
+        </div>
+    }
+
     <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
         <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
     </MudStack>
-    <MudText Typo="Typo.h4" Class="mb-2">Sentiment Analysis</MudText>
-
-    <UserMessagePipelinePanel Class="mb-4" ShowActiveMessages="true" />
 
     <AdminFilters GameId="@GameId"
                   ToolName="@ToolName"
@@ -46,21 +147,69 @@
 
     [Parameter] [SupplyParameterFromQuery] public bool? HasFeedback { get; set; }
 
-    private List<BreadcrumbItem> _breadcrumbs = new();
+    private List<BreadcrumbItem> _breadcrumbs = [];
+    private SentimentSummaryResponse? _summary;
+    private bool _isLoading = true;
 
     protected override void OnInitialized()
     {
-        _breadcrumbs = new List<BreadcrumbItem>
-        {
+        _breadcrumbs =
+        [
             new BreadcrumbItem("Home", href: "/"),
             new BreadcrumbItem("Admin", href: "/admin"),
             new BreadcrumbItem("Sentiments", href: null, disabled: true)
-        };
+        ];
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSummaryAsync();
+    }
+
+    private async Task LoadSummaryAsync()
+    {
+        try
+        {
+            _isLoading = true;
+            HttpClient client = HttpClientFactory.CreateClient("Api");
+            string summaryUrl = BuildSummaryUrl();
+            _summary = await client.GetFromJsonAsync<SentimentSummaryResponse>(summaryUrl);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading sentiment summary: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private string BuildSummaryUrl()
+    {
+        var queryParams = new List<string>();
+
+        if (!string.IsNullOrEmpty(AgentId)) queryParams.Add($"agentId={Uri.EscapeDataString(AgentId)}");
+        if (InstructionVersionId.HasValue) queryParams.Add($"instructionVersionId={InstructionVersionId.Value}");
+        if (GameId.HasValue) queryParams.Add($"gameId={GameId.Value}");
+        if (!string.IsNullOrEmpty(ToolName)) queryParams.Add($"toolName={Uri.EscapeDataString(ToolName)}");
+        if (Sentiment.HasValue) queryParams.Add($"sentiment={Sentiment.Value}");
+        if (HasFeedback.HasValue) queryParams.Add($"hasFeedback={HasFeedback.Value.ToString().ToLower()}");
+
+        string query = queryParams.Count > 0 ? "?" + string.Join("&", queryParams) : string.Empty;
+        return $"/admin/sentiments/summary{query}";
     }
 
     private void ClearFilters()
     {
         NavigationManager.NavigateTo("/admin/sentiments");
+    }
+
+    private void ApplySentimentFilter(int? sentiment)
+    {
+        Sentiment = sentiment;
+        string target = sentiment.HasValue ? $"/admin/sentiments?sentiment={sentiment}" : "/admin/sentiments";
+        NavigationManager.NavigateTo(target, forceLoad: true);
     }
 
 }
