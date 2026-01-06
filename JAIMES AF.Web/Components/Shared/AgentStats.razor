@@ -165,6 +165,13 @@ else
 
     private async Task LoadStatsAsync()
     {
+        // Guard against empty AgentId
+        if (string.IsNullOrEmpty(AgentId))
+        {
+            _isLoading = false;
+            return;
+        }
+
         _isLoading = true;
         _errorMessage = null;
         try
