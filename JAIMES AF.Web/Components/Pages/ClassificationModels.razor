@@ -140,12 +140,6 @@
 									               Href="@($"/admin/classification-models/{context.Id}")"/>
 								</MudTooltip>
 							}
-							@if (context.IsActive)
-							{
-								<MudTooltip Text="Active Model" Placement="Placement.Top">
-									<MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" Class="ml-2"/>
-								</MudTooltip>
-							}
 						</MudTd>
 					</RowTemplate>
 				</MudTable>
