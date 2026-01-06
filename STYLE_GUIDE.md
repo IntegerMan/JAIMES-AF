@@ -166,6 +166,45 @@ For tooltips with structured content, use `TooltipContent`:
 
 ---
 
+## Link Styling
+
+All navigational links should use **`Color.Primary`** (purple `#7B2CBF`) for consistency. This applies to:
+
+- Entity names that navigate to detail pages (e.g., tool names, model names)
+- Text links in data grids
+- Inline navigation links
+
+### Standard MudLink Pattern
+
+```razor
+<MudLink Href="@($"/items/{context.Id}")" 
+         Color="Color.Primary" 
+         Underline="Underline.Hover">
+    @context.Name
+</MudLink>
+```
+
+### When NOT to use Color.Primary for links
+
+- **Semantic feedback links**: Use `Color.Success` or `Color.Error` when the link represents positive/negative feedback navigation
+- **Component links** (AgentLink, RulesetLink, etc.): These use chips with entity-specific colors
+- **CompactLinkCard**: Uses the card's theme color for the icon badge, link itself has no underline
+
+### Typography for Grid Links
+
+For links inside data grids, use:
+
+```razor
+<MudLink Href="@url" 
+         Color="Color.Primary" 
+         Typo="Typo.body2" 
+         Underline="Underline.Hover">
+    @text
+</MudLink>
+```
+
+---
+
 ## Anti-Patterns
 
 Avoid these common mistakes:
