@@ -37,9 +37,14 @@
                 </MudText>
             </MudStack>
         </MudStack>
-        @if (HasAction)
-        {
-            @if (!string.IsNullOrEmpty(ActionHref))
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+            @if (ExtraContent is not null)
+            {
+                @ExtraContent
+            }
+            @if (HasAction)
+            {
+                @if (!string.IsNullOrEmpty(ActionHref))
             {
                 <MudButton Variant="Variant.Filled" 
                            Color="@ActionButtonColor" 
@@ -57,8 +62,9 @@
                            Disabled="@ActionDisabled">
                     @ActionText
                 </MudButton>
+                }
             }
-        }
+        </MudStack>
     </MudStack>
 </div>
 
@@ -169,6 +175,13 @@
     /// </summary>
     [Parameter]
     public RenderFragment? SubtitleContent { get; set; }
+
+    /// <summary>
+    /// Optional extra content displayed on the right side of the header (before the action button).
+    /// Use for badges, counts, or other supplemental information.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ExtraContent { get; set; }
 
     private bool HasAction => !string.IsNullOrEmpty(ActionText) && 
         (!string.IsNullOrEmpty(ActionHref) || OnActionClick.HasDelegate);

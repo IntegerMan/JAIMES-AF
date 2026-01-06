@@ -10,40 +10,23 @@
 	<CompactHeroSection Title="@($"Chunk {_response?.ChunkIndex}")"
 	                    Icon="@Icons.Material.Filled.ViewModule"
 	                    Theme="CompactHeroSection.HeroTheme.Info"
-	                    Subtitle="@(_response?.DocumentName ?? "Document chunk details")" />
+	                    Subtitle="@(_response?.DocumentName ?? "Document chunk details")">
+		<ExtraContent>
+			@if (_response != null)
+			{
+				<MudChip T="string" 
+				         Color="Color.Primary" 
+				         Size="Size.Medium"
+				         Icon="@Icons.Material.Filled.Search">
+					@_response.QueryAppearances.Length Query Hit@(_response.QueryAppearances.Length != 1 ? "s" : "")
+				</MudChip>
+			}
+		</ExtraContent>
+	</CompactHeroSection>
 
 	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
 		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
 	</MudStack>
-
-	@if (_response != null)
-	{
-		<MudGrid Spacing="3" Class="mb-4">
-			<MudItem xs="12" sm="4">
-				<MetricCard Icon="@Icons.Material.Filled.Numbers"
-				            Value="@_response.ChunkIndex.ToString()"
-				            Label="Chunk Index"
-				            ColorVariant="MetricCard.MetricColorVariant.Info"
-				            Tooltip="Position of this chunk in the document" />
-			</MudItem>
-			<MudItem xs="12" sm="4">
-				<MetricCard Icon="@Icons.Material.Filled.Memory"
-				            Value="@(_response.HasEmbedding ? _response.EmbeddingDimensions.ToString() : "N/A")"
-				            Label="Dimensions"
-				            ColorVariant="@(_response.HasEmbedding
-				                ? MetricCard.MetricColorVariant.Success
-				                : MetricCard.MetricColorVariant.Warning)"
-				            Tooltip="@(_response.HasEmbedding ? "Embedding vector dimensions" : "Not yet embedded")" />
-			</MudItem>
-			<MudItem xs="12" sm="4">
-				<MetricCard Icon="@Icons.Material.Filled.Search"
-				            Value="@_response.QueryAppearances.Length.ToString()"
-				            Label="Query Hits"
-				            ColorVariant="MetricCard.MetricColorVariant.Primary"
-				            Tooltip="Number of search queries that returned this chunk" />
-			</MudItem>
-		</MudGrid>
-	}
 
 	@if (!string.IsNullOrEmpty(_errorMessage))
 	{
