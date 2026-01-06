@@ -47,7 +47,7 @@
     @if (_summary is not null)
     {
         <MudGrid Spacing="3" Class="mb-4">
-            <MudItem xs="12" sm="4">
+            <MudItem xs="12" sm="3">
                 <MudLink Underline="Underline.None" Class="stat-card-link" Style="display: block;" OnClick="@(() => ApplySentimentFilter(1))">
                     <div class="stat-card stat-card-success" style="cursor: pointer;">
                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
@@ -60,7 +60,7 @@
                     </div>
                 </MudLink>
             </MudItem>
-            <MudItem xs="12" sm="4">
+            <MudItem xs="12" sm="3">
                 <MudLink Underline="Underline.None" Class="stat-card-link" Style="display: block;" OnClick="@(() => ApplySentimentFilter(0))">
                     <div class="stat-card stat-card-default" style="cursor: pointer;">
                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
@@ -73,7 +73,7 @@
                     </div>
                 </MudLink>
             </MudItem>
-            <MudItem xs="12" sm="4">
+            <MudItem xs="12" sm="3">
                 <MudLink Underline="Underline.None" Class="stat-card-link" Style="display: block;" OnClick="@(() => ApplySentimentFilter(-1))">
                     <div class="stat-card stat-card-error" style="cursor: pointer;">
                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
@@ -85,6 +85,24 @@
                         </MudStack>
                     </div>
                 </MudLink>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <div class="stat-card stat-card-info" style="cursor: default;">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.Leaderboard" Color="Color.Info" />
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.caption" Class="text-muted">Avg Confidence</MudText>
+                            @if (_summary.AverageConfidence.HasValue)
+                            {
+                                <span class="stat-value">@($"{_summary.AverageConfidence.Value * 100:0.0}%")</span>
+                            }
+                            else
+                            {
+                                <span class="stat-value text-muted">N/A</span>
+                            }
+                        </MudStack>
+                    </MudStack>
+                </div>
             </MudItem>
         </MudGrid>
     }
@@ -154,7 +172,8 @@
         {
             _isLoading = true;
             HttpClient client = HttpClientFactory.CreateClient("Api");
-            _summary = await client.GetFromJsonAsync<SentimentSummaryResponse>("/admin/sentiments/summary");
+            string summaryUrl = BuildSummaryUrl();
+            _summary = await client.GetFromJsonAsync<SentimentSummaryResponse>(summaryUrl);
         }
         catch (Exception ex)
         {
@@ -164,6 +183,21 @@
         {
             _isLoading = false;
         }
+    }
+
+    private string BuildSummaryUrl()
+    {
+        var queryParams = new List<string>();
+
+        if (!string.IsNullOrEmpty(AgentId)) queryParams.Add($"agentId={Uri.EscapeDataString(AgentId)}");
+        if (InstructionVersionId.HasValue) queryParams.Add($"instructionVersionId={InstructionVersionId.Value}");
+        if (GameId.HasValue) queryParams.Add($"gameId={GameId.Value}");
+        if (!string.IsNullOrEmpty(ToolName)) queryParams.Add($"toolName={Uri.EscapeDataString(ToolName)}");
+        if (Sentiment.HasValue) queryParams.Add($"sentiment={Sentiment.Value}");
+        if (HasFeedback.HasValue) queryParams.Add($"hasFeedback={HasFeedback.Value.ToString().ToLower()}");
+
+        string query = queryParams.Count > 0 ? "?" + string.Join("&", queryParams) : string.Empty;
+        return $"/admin/sentiments/summary{query}";
     }
 
     private void ClearFilters()

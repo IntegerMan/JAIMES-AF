@@ -21,7 +21,18 @@ public class GetSentimentSummaryEndpoint : EndpointWithoutRequest<SentimentSumma
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        SentimentSummaryResponse response = await SentimentService.GetSentimentSummaryAsync(ct);
+        var filters = new AdminFilterParams
+        {
+            GameId = Query<Guid?>("gameId", false),
+            AgentId = Query<string?>("agentId", false),
+            InstructionVersionId = Query<int?>("instructionVersionId", false),
+            ToolName = Query<string?>("toolName", false),
+            Sentiment = Query<int?>("sentiment", false),
+            HasFeedback = Query<bool?>("hasFeedback", false),
+            FeedbackType = Query<int?>("feedbackType", false)
+        };
+
+        SentimentSummaryResponse response = await SentimentService.GetSentimentSummaryAsync(filters, ct);
         await Send.OkAsync(response, ct);
     }
 }

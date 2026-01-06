@@ -33,9 +33,10 @@ public interface IMessageSentimentService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets sentiment summary statistics (positive/neutral/negative counts).
+    /// Gets sentiment summary statistics (positive/neutral/negative counts, average confidence) with optional filters.
     /// </summary>
+    /// <param name="filters">Optional filters to scope the summary.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Sentiment summary statistics.</returns>
-    Task<SentimentSummaryResponse> GetSentimentSummaryAsync(CancellationToken cancellationToken = default);
+    Task<SentimentSummaryResponse> GetSentimentSummaryAsync(AdminFilterParams? filters = null, CancellationToken cancellationToken = default);
 }

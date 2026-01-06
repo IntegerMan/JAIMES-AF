@@ -24,4 +24,9 @@ public record SentimentSummaryResponse
     /// Count of negative sentiment records (sentiment = -1).
     /// </summary>
     public int NegativeCount { get; init; }
+
+    /// <summary>
+    /// Average confidence across the filtered set (0.0 to 1.0).
+    /// </summary>
+    public double? AverageConfidence { get; init; }
 }

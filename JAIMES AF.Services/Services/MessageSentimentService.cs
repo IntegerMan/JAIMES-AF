@@ -285,21 +285,102 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
     }
 
     /// <inheritdoc />
-    public async Task<SentimentSummaryResponse> GetSentimentSummaryAsync(CancellationToken cancellationToken = default)
+    public async Task<SentimentSummaryResponse> GetSentimentSummaryAsync(AdminFilterParams? filters = null, CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
-        int totalCount = await context.MessageSentiments.CountAsync(cancellationToken);
-        int positiveCount = await context.MessageSentiments.CountAsync(s => s.Sentiment == 1, cancellationToken);
-        int neutralCount = await context.MessageSentiments.CountAsync(s => s.Sentiment == 0, cancellationToken);
-        int negativeCount = await context.MessageSentiments.CountAsync(s => s.Sentiment == -1, cancellationToken);
+        IQueryable<MessageSentiment> query = context.MessageSentiments.AsNoTracking();
+
+        if (filters != null)
+        {
+            if (filters.GameId.HasValue)
+            {
+                query = query.Where(s => s.Message != null && s.Message.GameId == filters.GameId.Value);
+            }
+
+            if (!string.IsNullOrEmpty(filters.ToolName))
+            {
+                query = query.Where(s => s.Message != null &&
+                                         s.Message.PreviousMessage != null &&
+                                         s.Message.PreviousMessage.ToolCalls.Any(tc => tc.ToolName.ToLower() == filters.ToolName.ToLower()));
+            }
+
+            if (filters.Sentiment.HasValue)
+            {
+                query = query.Where(s => s.Sentiment == filters.Sentiment.Value);
+            }
+
+            if (!string.IsNullOrEmpty(filters.AgentId))
+            {
+                query = query.Where(s => s.Message != null &&
+                                         ((s.Message.InstructionVersion != null &&
+                                           s.Message.InstructionVersion.AgentId == filters.AgentId) ||
+                                          s.Message.AgentId == filters.AgentId));
+            }
+
+            if (filters.InstructionVersionId.HasValue)
+            {
+                query = query.Where(s => s.Message != null &&
+                                         s.Message.InstructionVersionId == filters.InstructionVersionId.Value);
+            }
+
+            if (filters.HasFeedback.HasValue)
+            {
+                bool hasFeedback = filters.HasFeedback.Value;
+                if (hasFeedback)
+                {
+                    query = query.Where(s => s.Message != null &&
+                                             s.Message.NextMessageId.HasValue &&
+                                             context.MessageFeedbacks.Any(f => f.MessageId == s.Message.NextMessageId.Value));
+                }
+                else
+                {
+                    query = query.Where(s => s.Message != null &&
+                                             (!s.Message.NextMessageId.HasValue ||
+                                              !context.MessageFeedbacks.Any(f => f.MessageId == s.Message.NextMessageId.Value)));
+                }
+            }
+
+            if (filters.FeedbackType.HasValue)
+            {
+                int feedbackType = filters.FeedbackType.Value;
+                if (feedbackType > 0)
+                {
+                    query = query.Where(s => s.Message != null &&
+                                             s.Message.NextMessageId.HasValue &&
+                                             context.MessageFeedbacks.Any(f => f.MessageId == s.Message.NextMessageId.Value && f.IsPositive));
+                }
+                else if (feedbackType < 0)
+                {
+                    query = query.Where(s => s.Message != null &&
+                                             s.Message.NextMessageId.HasValue &&
+                                             context.MessageFeedbacks.Any(f => f.MessageId == s.Message.NextMessageId.Value && !f.IsPositive));
+                }
+                else
+                {
+                    query = query.Where(s => false);
+                }
+            }
+        }
+
+        int totalCount = await query.CountAsync(cancellationToken);
+        int positiveCount = await query.Where(s => s.Sentiment == 1).CountAsync(cancellationToken);
+        int neutralCount = await query.Where(s => s.Sentiment == 0).CountAsync(cancellationToken);
+        int negativeCount = await query.Where(s => s.Sentiment == -1).CountAsync(cancellationToken);
+
+        double? avgConfidence = null;
+        if (await query.AnyAsync(s => s.Confidence.HasValue, cancellationToken))
+        {
+            avgConfidence = await query.Where(s => s.Confidence.HasValue).AverageAsync(s => s.Confidence!.Value, cancellationToken);
+        }
 
         return new SentimentSummaryResponse
         {
             TotalCount = totalCount,
             PositiveCount = positiveCount,
             NeutralCount = neutralCount,
-            NegativeCount = negativeCount
+            NegativeCount = negativeCount,
+            AverageConfidence = avgConfidence
         };
     }
 }
