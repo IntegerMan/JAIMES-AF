@@ -87,6 +87,57 @@ The `<CompactHeroSection>` component provides a consistent hero section for list
 
 ---
 
+### FormPageHeader Component
+
+The `<FormPageHeader>` component provides a consistent header for create and edit form pages. It matches the styling of `CompactHeroSection` but is optimized for form pages (no action button, simpler layout).
+
+**Location:** `JAIMES AF.Web/Components/Shared/FormPageHeader.razor`
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `Title` | `string` | Main title (required). For create pages: "Create New {Entity}". For edit pages: "Edit: {EntityName}" |
+| `Subtitle` | `string?` | Optional subtitle text (e.g., "Define a new AI agent") |
+| `Icon` | `string` | Icon from `Icons.Material.Filled.*` |
+| `Theme` | `HeroTheme` | Color theme (see below) |
+
+**Theme Options:**
+
+| Theme | Color | Use Case | Icon Badge Class |
+|-------|-------|----------|------------------|
+| `Primary` | Purple | Games | `icon-badge-primary` |
+| `Secondary` | Blue | Scenarios, Agents | `icon-badge-secondary` |
+| `Tertiary` | Cyan | Characters/Players | `icon-badge-tertiary` |
+| `Accent` | Green | Rulesets | `icon-badge-accent` |
+| `Success` | Green | Evaluations, Tests | `icon-badge-success` |
+| `Warning` | Orange | Locations | `icon-badge-warning` |
+| `Info` | Light Blue | Tools, Info pages | `icon-badge-info` |
+
+**Usage Examples:**
+
+```razor
+@* Create page - static title *@
+<FormPageHeader Title="Create New Game"
+                Icon="@Icons.Material.Filled.SportsEsports"
+                Theme="FormPageHeader.HeroTheme.Primary"
+                Subtitle="Start a new adventure" />
+
+@* Edit page - dynamic title showing entity name *@
+<FormPageHeader Title="@(_isLoading ? "Edit Agent" : $"Edit: {_name}")"
+                Icon="@Icons.Material.Filled.SmartToy"
+                Theme="FormPageHeader.HeroTheme.Secondary"
+                Subtitle="Modify agent configuration" />
+
+@* Location edit - Warning theme *@
+<FormPageHeader Title="@($"Edit: {_location?.Name ?? "Location"}")"
+                Icon="@Icons.Material.Filled.Place"
+                Theme="FormPageHeader.HeroTheme.Warning"
+                Subtitle="Modify location details" />
+```
+
+---
+
 ## Page Patterns
 
 ### List Page Pattern
@@ -147,15 +198,65 @@ Used for pages focused on executing a multi-selection action.
 
 Used for creating or editing a single entity.
 
-**Reference Pages:** NewGame, EditAgent, NewScenario
+**Reference Pages:** NewGame, NewAgent, EditAgent, EditPlayer
 
 **Structure:**
-1. `<MudContainer MaxWidth="MaxWidth.Medium">` wrapping content
-2. `<MudPaper Class="pa-4">` containing:
-   - `<MudBreadcrumbs>`
-   - `<MudText Typo="Typo.h4">` title
+1. `<FormPageHeader>` with entity icon and themed styling
+2. `<MudContainer MaxWidth="MaxWidth.Medium">` (or `MaxWidth.Large` for complex multi-column forms)
+3. `<MudPaper Class="pa-6" Elevation="2">` containing:
+   - `<MudBreadcrumbs>` with `mb-4` spacing
    - `<MudForm>` with `Variant.Outlined` fields
-   - Action buttons at bottom (Save/Cancel)
+   - Action buttons at bottom with `mt-4` gap styling
+
+**Button Conventions:**
+- **Create pages**: Primary button uses `StartIcon="@Icons.Material.Filled.Add"` with entity-specific color
+- **Edit pages**: Primary button uses `StartIcon="@Icons.Material.Filled.Check"` with entity-specific color
+- **Cancel button**: Uses `Variant.Text`, `Color.Default`, and `Href` to navigate back
+
+**Entity-Specific Button Colors:**
+| Entity | Button Color |
+|--------|--------------|
+| Games | `Color.Primary` |
+| Agents, Scenarios | `Color.Secondary` |
+| Players | `Color.Tertiary` |
+| Rulesets | `Color.Success` |
+| Locations | `Color.Warning` |
+
+**Usage Example:**
+```razor
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <FormPageHeader Title="Create New Agent"
+                    Icon="@Icons.Material.Filled.SmartToy"
+                    Theme="FormPageHeader.HeroTheme.Secondary"
+                    Subtitle="Define a new AI agent" />
+
+    <MudPaper Class="pa-6" Elevation="2">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+            <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+        </MudStack>
+
+        <MudForm>
+            <MudTextField @bind-Value="_name" Label="Name" 
+                          Variant="Variant.Outlined" Class="mb-4" />
+            
+            <div class="d-flex gap-2 mt-4">
+                <MudButton Variant="Variant.Filled" 
+                           Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Filled.Add">
+                    Create Agent
+                </MudButton>
+                <MudButton Variant="Variant.Text" 
+                           Color="Color.Default"
+                           Href="/agents">
+                    Cancel
+                </MudButton>
+            </div>
+        </MudForm>
+    </MudPaper>
+</MudContainer>
+```
+
+**Pages using this pattern:** NewGame, NewAgent, NewScenario, NewPlayer, NewRuleset, EditAgent, EditScenario, EditPlayer, EditRuleset, EditLocation
 
 ---
 

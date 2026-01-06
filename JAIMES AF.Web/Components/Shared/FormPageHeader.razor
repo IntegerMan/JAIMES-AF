@@ -1,0 +1,140 @@
+@*
+    FormPageHeader.razor - Reusable header component for create/edit form pages.
+    Provides consistent styling with gradient background, icon badge, and title/subtitle.
+    Designed to match CompactHeroSection styling but without action buttons.
+    
+    Usage Examples:
+    - Create pages: <FormPageHeader Title="Create New Game" Icon="@Icons.Material.Filled.SportsEsports" Theme="HeroTheme.Primary" />
+    - Edit pages: <FormPageHeader Title="Edit: Game Name" Icon="@Icons.Material.Filled.SportsEsports" Theme="HeroTheme.Primary" Subtitle="Modify game settings" />
+    
+    See PAGES.md for full documentation and pattern guidelines.
+*@
+
+<div class="pa-3 mb-4" style="@HeroStyle">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+        <div class="icon-badge @IconBadgeClass">
+            <MudIcon Icon="@Icon" Style="color: white; font-size: 1.5rem;"/>
+        </div>
+        <MudStack Spacing="0">
+            <MudText Typo="Typo.h5" Style="@TitleStyle">@Title</MudText>
+            @if (!string.IsNullOrEmpty(Subtitle))
+            {
+                <MudText Typo="Typo.caption" Class="text-muted">@Subtitle</MudText>
+            }
+        </MudStack>
+    </MudStack>
+</div>
+
+@code {
+    /// <summary>
+    /// Theme for the header, determining colors and styling.
+    /// Uses the same HeroTheme enum as CompactHeroSection for consistency.
+    /// </summary>
+    public enum HeroTheme
+    {
+        /// <summary>Purple theme - used for Games</summary>
+        Primary,
+        /// <summary>Blue theme - used for Scenarios, Agents</summary>
+        Secondary,
+        /// <summary>Cyan theme - used for Characters/Players</summary>
+        Tertiary,
+        /// <summary>Green theme - used for Rulesets (maps to Accent CSS)</summary>
+        Accent,
+        /// <summary>Green theme - used for Evaluations, Tests (maps to Success CSS)</summary>
+        Success,
+        /// <summary>Yellow/Orange theme - used for Locations</summary>
+        Warning,
+        /// <summary>Light blue theme - used for Tools, Info pages</summary>
+        Info
+    }
+
+    /// <summary>
+    /// The main title displayed in the header.
+    /// For create pages: "Create New {Entity}"
+    /// For edit pages: "Edit: {EntityName}"
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "";
+
+    /// <summary>
+    /// Optional subtitle text shown below the title.
+    /// </summary>
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    /// <summary>
+    /// Icon to display in the badge. Use Icons.Material.Filled.* constants.
+    /// </summary>
+    [Parameter]
+    public string Icon { get; set; } = Icons.Material.Filled.Edit;
+
+    /// <summary>
+    /// Theme determining the color scheme. Defaults to Primary (purple).
+    /// </summary>
+    [Parameter]
+    public HeroTheme Theme { get; set; } = HeroTheme.Primary;
+
+    private string GradientStart => Theme switch
+    {
+        HeroTheme.Primary => "rgba(123, 44, 191, 0.1)",
+        HeroTheme.Secondary => "rgba(67, 97, 238, 0.1)",
+        HeroTheme.Tertiary => "rgba(76, 201, 240, 0.1)",
+        HeroTheme.Accent => "rgba(6, 214, 160, 0.1)",
+        HeroTheme.Success => "rgba(6, 214, 160, 0.1)",
+        HeroTheme.Warning => "rgba(255, 193, 7, 0.1)",
+        HeroTheme.Info => "rgba(33, 150, 243, 0.1)",
+        _ => "rgba(123, 44, 191, 0.1)"
+    };
+
+    private string GradientEnd => Theme switch
+    {
+        HeroTheme.Primary => "rgba(67, 97, 238, 0.1)",
+        HeroTheme.Secondary => "rgba(76, 201, 240, 0.1)",
+        HeroTheme.Tertiary => "rgba(67, 97, 238, 0.1)",
+        HeroTheme.Accent => "rgba(67, 97, 238, 0.1)",
+        HeroTheme.Success => "rgba(67, 97, 238, 0.1)",
+        HeroTheme.Warning => "rgba(255, 152, 0, 0.1)",
+        HeroTheme.Info => "rgba(76, 201, 240, 0.1)",
+        _ => "rgba(67, 97, 238, 0.1)"
+    };
+
+    private string BorderColor => Theme switch
+    {
+        HeroTheme.Primary => "rgba(123, 44, 191, 0.2)",
+        HeroTheme.Secondary => "rgba(67, 97, 238, 0.2)",
+        HeroTheme.Tertiary => "rgba(76, 201, 240, 0.2)",
+        HeroTheme.Accent => "rgba(6, 214, 160, 0.2)",
+        HeroTheme.Success => "rgba(6, 214, 160, 0.2)",
+        HeroTheme.Warning => "rgba(255, 193, 7, 0.2)",
+        HeroTheme.Info => "rgba(33, 150, 243, 0.2)",
+        _ => "rgba(123, 44, 191, 0.2)"
+    };
+
+    private string TitleColor => Theme switch
+    {
+        HeroTheme.Primary => "#7B2CBF",
+        HeroTheme.Secondary => "#4361EE",
+        HeroTheme.Tertiary => "#4CC9F0",
+        HeroTheme.Accent => "#06D6A0",
+        HeroTheme.Success => "#06D6A0",
+        HeroTheme.Warning => "#FF9800",
+        HeroTheme.Info => "#2196F3",
+        _ => "#7B2CBF"
+    };
+
+    private string HeroStyle => $"background: linear-gradient(135deg, {GradientStart} 0%, {GradientEnd} 100%); border-radius: 16px; border: 1px solid {BorderColor};";
+
+    private string TitleStyle => $"font-weight: 600; color: {TitleColor};";
+
+    private string IconBadgeClass => Theme switch
+    {
+        HeroTheme.Primary => "icon-badge-primary",
+        HeroTheme.Secondary => "icon-badge-secondary",
+        HeroTheme.Tertiary => "icon-badge-tertiary",
+        HeroTheme.Accent => "icon-badge-accent",
+        HeroTheme.Success => "icon-badge-success",
+        HeroTheme.Warning => "icon-badge-warning",
+        HeroTheme.Info => "icon-badge-info",
+        _ => "icon-badge-primary"
+    };
+}
