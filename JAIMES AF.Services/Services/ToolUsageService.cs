@@ -180,6 +180,14 @@ public class ToolUsageService(
 
         int totalCount = allToolItems.Count;
 
+        // Calculate aggregate statistics across ALL tools (not just current page)
+        int totalCalls = allToolItems.Sum(x => x.TotalCalls);
+        int totalHelpful = allToolItems.Sum(x => x.HelpfulCount);
+        int totalUnhelpful = allToolItems.Sum(x => x.UnhelpfulCount);
+        double averageUsagePercentage = allToolItems.Count > 0
+            ? allToolItems.Average(x => x.UsagePercentage)
+            : 0;
+
         // Apply pagination
         List<ToolUsageItemDto> items = allToolItems
             .Skip((page - 1) * pageSize)
@@ -191,7 +199,11 @@ public class ToolUsageService(
             Items = items,
             TotalCount = totalCount,
             Page = page,
-            PageSize = pageSize
+            PageSize = pageSize,
+            TotalCalls = totalCalls,
+            TotalHelpful = totalHelpful,
+            TotalUnhelpful = totalUnhelpful,
+            AverageUsagePercentage = Math.Round(averageUsagePercentage, 1)
         };
     }
 
