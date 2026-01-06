@@ -7,6 +7,158 @@ This document provides a comprehensive inventory of all pages in the JAIMES AF a
 
 ---
 
+## Reusable Components
+
+### CompactHeroSection Component
+
+The `<CompactHeroSection>` component provides a consistent hero section for list and tool pages. Use it instead of inline hero markup.
+
+**Location:** `JAIMES AF.Web/Components/Shared/CompactHeroSection.razor`
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `Title` | `string` | Main title displayed in the hero section (required) |
+| `Subtitle` | `string?` | Text appended after item count (e.g., "in progress") |
+| `SubtitleNoItems` | `string?` | Fallback subtitle when ItemCount is 0 or null |
+| `ItemCount` | `int?` | Optional count to display (e.g., "5 games") |
+| `ItemName` | `string` | Name for pluralization (default: "item") |
+| `Icon` | `string` | Icon from `Icons.Material.Filled.*` |
+| `Theme` | `HeroTheme` | Color theme (see below) |
+| `ActionText` | `string?` | Text for action button (if null, button hidden) |
+| `ActionHref` | `string?` | Navigation href for action button |
+| `ActionIcon` | `string` | Icon for action button (default: Add) |
+| `ActionColor` | `Color?` | Override button color (defaults to theme) |
+| `OnActionClick` | `EventCallback` | Click handler for in-page actions |
+| `ActionDisabled` | `bool` | Whether action button is disabled |
+| `SubtitleContent` | `RenderFragment?` | Custom subtitle content |
+
+**Theme Options:**
+
+| Theme | Color | Use Case | Icon Badge Class |
+|-------|-------|----------|------------------|
+| `Primary` | Purple | Games | `icon-badge-primary` |
+| `Secondary` | Blue | Scenarios, Agents | `icon-badge-secondary` |
+| `Tertiary` | Cyan | Characters/Players | `icon-badge-tertiary` |
+| `Accent` | Green | Rulesets | `icon-badge-accent` |
+| `Success` | Green | Reserved (low contrast - avoid for heroes) | `icon-badge-success` |
+| `Info` | Light Blue | Evaluations, Tests, Tools | `icon-badge-info` |
+
+**Usage Examples:**
+
+```razor
+@* List page with item count and navigation action *@
+<CompactHeroSection Title="Your Adventures"
+                    Icon="@Icons.Material.Filled.SportsEsports"
+                    Theme="CompactHeroSection.HeroTheme.Primary"
+                    ItemCount="@_games?.Length"
+                    ItemName="game"
+                    Subtitle="in progress"
+                    SubtitleNoItems="Start a new adventure"
+                    ActionText="New Game"
+                    ActionHref="/games/new"/>
+
+@* Tool page with subtle hero (no action or info-only) *@
+<CompactHeroSection Title="Test Evaluators"
+                    Icon="@Icons.Material.Filled.Science"
+                    Theme="CompactHeroSection.HeroTheme.Success"
+                    Subtitle="Test AI response evaluators against sample data"
+                    ActionText="View Evaluators"
+                    ActionHref="/admin/evaluators"
+                    ActionIcon="@Icons.Material.Filled.List"/>
+
+@* Action page with dynamic subtitle and in-page action *@
+<CompactHeroSection Title="Run Tests"
+                    Icon="@Icons.Material.Filled.PlayArrow"
+                    Theme="CompactHeroSection.HeroTheme.Success">
+    <SubtitleContent>
+        @if (CanRun)
+        {
+            <span>@_selectedTests.Count test(s) ready</span>
+        }
+        else
+        {
+            <span>Select items to run tests</span>
+        }
+    </SubtitleContent>
+</CompactHeroSection>
+```
+
+---
+
+## Page Patterns
+
+### List Page Pattern
+
+Used for pages that display a collection of items in a table.
+
+**Reference Page:** `Games.razor`
+
+**Structure:**
+1. `<CompactHeroSection>` with item count and "New" action button
+2. `<MudBreadcrumbs>` below hero
+3. Loading state with centered `<MudProgressCircular>`
+4. Empty state using `glass-card` styling with icon and CTA
+5. `<MudTable>` with `Dense="true"` and `Hover="true"`
+6. Icon action buttons wrapped in `<MudTooltip Placement="Placement.Top">`
+
+**Pages using this pattern:** Games, Scenarios, Rulesets, Players, TestCases, TestReports, Evaluators
+
+---
+
+### Tool Test Page Pattern
+
+Used for pages where users configure inputs and run an action to see results.
+
+**Reference Page:** `EvaluatorTest.razor`
+
+**Structure:**
+1. `<CompactHeroSection>` with subtle informational styling (optional link action)
+2. `<MudBreadcrumbs>` below hero
+3. `<MudPaper Class="pa-6" Elevation="2">` containing:
+   - Brief description text
+   - Nested `<MudPaper Class="pa-4" Elevation="1">` sections for form groups
+   - Action button(s) below form sections
+   - Results section (shown after action completes)
+
+**Pages using this pattern:** EvaluatorTest, RulesSearchTest, ConversationSearch, ToolTest
+
+---
+
+### Action Page Pattern
+
+Used for pages focused on executing a multi-selection action.
+
+**Reference Page:** `RunTests.razor`
+
+**Structure:**
+1. `<CompactHeroSection>` with dynamic subtitle (e.g., selection count)
+2. `<MudBreadcrumbs>` below hero
+3. Primary action button (large, prominent, below hero)
+4. Multi-column selection panels using `<MudGrid>` and `<MudPaper>`
+5. Running state with progress indicator
+
+**Pages using this pattern:** RunTests
+
+---
+
+### Form Page Pattern (New/Edit)
+
+Used for creating or editing a single entity.
+
+**Reference Pages:** NewGame, EditAgent, NewScenario
+
+**Structure:**
+1. `<MudContainer MaxWidth="MaxWidth.Medium">` wrapping content
+2. `<MudPaper Class="pa-4">` containing:
+   - `<MudBreadcrumbs>`
+   - `<MudText Typo="Typo.h4">` title
+   - `<MudForm>` with `Variant.Outlined` fields
+   - Action buttons at bottom (Save/Cancel)
+
+---
+
 ## Primary Navigation
 
 These are the top-level pages accessible directly from the main navigation.

@@ -9,31 +9,21 @@
 
 <PageTitle>Test Cases</PageTitle>
 
-<MudPaper Class="pa-4">
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
+	<CompactHeroSection Title="Test Cases"
+	                    Icon="@Icons.Material.Filled.Science"
+	                    Theme="CompactHeroSection.HeroTheme.Info"
+	                    ItemCount="@_testCases?.Count"
+	                    ItemName="test case"
+	                    Subtitle="available"
+	                    SubtitleNoItems="Mark player messages as test cases"
+	                    ActionText="Run Tests"
+	                    ActionHref="/admin/run-tests"
+	                    ActionIcon="@Icons.Material.Filled.PlayArrow"/>
+
 	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
 		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
 	</MudStack>
-	<MudText Typo="Typo.h4">Test Cases</MudText>
-
-	<MudText Class="mb-4">Manage test cases for agent evaluation. Test cases are player messages that can be used to test agent versions.</MudText>
-
-	@if (_testCases is not null && _testCases.Count > 0)
-	{
-		<MudStack Row="true" Spacing="2" Class="mb-4">
-			<MudButton Variant="Variant.Filled" 
-			           Color="Color.Success" 
-			           StartIcon="@Icons.Material.Filled.PlayArrow"
-			           Href="/admin/run-tests">
-				Run Tests
-			</MudButton>
-			<MudButton Variant="Variant.Outlined"
-			           Color="Color.Primary"
-			           StartIcon="@Icons.Material.Filled.Description"
-			           Href="/admin/test-reports">
-				View Reports
-			</MudButton>
-		</MudStack>
-	}
 
 	<div style="position: relative; min-height: 200px;">
 		@if (_isLoading)
@@ -50,9 +40,18 @@
 
 		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && (_testCases is null || _testCases.Count == 0))
 		{
-			<MudText Class="mb-4">
-				No test cases yet. Mark player messages as test cases from the game conversation view.
-			</MudText>
+			<div class="glass-card pa-6" style="text-align: center;">
+				<MudStack AlignItems="AlignItems.Center" Spacing="3">
+					<MudIcon Icon="@Icons.Material.Filled.Science" Color="Color.Info"
+					         Style="font-size: 4rem; opacity: 0.5;"/>
+					<MudText Typo="Typo.h6">No test cases yet</MudText>
+					<MudText Class="text-muted mb-4">Mark player messages as test cases from the game conversation view.</MudText>
+					<MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+					           Href="/games" StartIcon="@Icons.Material.Filled.SportsEsports">
+						View Games
+					</MudButton>
+				</MudStack>
+			</div>
 		}
 
 		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && _testCases is not null && _testCases.Count > 0)
@@ -125,4 +124,4 @@
 			</MudTable>
 		}
 	</div>
-</MudPaper>
+</MudContainer>

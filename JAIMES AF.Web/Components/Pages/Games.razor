@@ -8,34 +8,15 @@
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
 
-	@* Compact Hero Section for Games *@
-	<div class="games-hero pa-3 mb-4" style="background: linear-gradient(135deg, rgba(123, 44, 191, 0.1) 0%, rgba(67, 97, 238, 0.1) 100%); 
-		border-radius: 16px; border: 1px solid rgba(123, 44, 191, 0.2);">
-		<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
-				<div class="icon-badge icon-badge-primary">
-					<MudIcon Icon="@Icons.Material.Filled.SportsEsports" Style="color: white; font-size: 1.5rem;"/>
-				</div>
-				<MudStack Spacing="0">
-					<MudText Typo="Typo.h5" Style="font-weight: 600; color: #7B2CBF;">Your Adventures</MudText>
-					<MudText Typo="Typo.caption" Class="text-muted">
-						@if (_games is not null && _games.Length > 0)
-						{
-							<span>@_games.Length game@(_games.Length != 1 ? "s" : "") in progress</span>
-						}
-						else
-						{
-							<span>Start a new adventure</span>
-						}
-					</MudText>
-				</MudStack>
-			</MudStack>
-			<MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/games/new"
-			           StartIcon="@Icons.Material.Filled.Add">
-				New Game
-			</MudButton>
-		</MudStack>
-	</div>
+	<CompactHeroSection Title="Your Adventures"
+	                    Icon="@Icons.Material.Filled.SportsEsports"
+	                    Theme="CompactHeroSection.HeroTheme.Primary"
+	                    ItemCount="@_games?.Length"
+	                    ItemName="game"
+	                    Subtitle="in progress"
+	                    SubtitleNoItems="Start a new adventure"
+	                    ActionText="New Game"
+	                    ActionHref="/games/new"/>
 
 	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
 		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>

@@ -6,7 +6,6 @@
 @inject IDialogService DialogService
 
 <PageTitle>Model Details</PageTitle>
-
 <MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
 
 	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
@@ -244,6 +243,7 @@
 						@{
 							var matrix = GetNormalizedMatrix();
 							var columnTotals = new int[3];
+							var maxCount = matrix.SelectMany(row => row).DefaultIfEmpty(0).Max();
 
 							// Calculate column totals for precision
 							for (int j = 0; j < 3; j++)
@@ -267,25 +267,27 @@
 								@for (int j = 0; j < 3; j++)
 								{
 									var isDiagonal = i == j;
-									var percentage = rowTotal > 0 ? (double) row[j] / rowTotal : 0;
-									var cellStyle = GetCellColor(percentage, isDiagonal);
-									var predictedLabel = SentimentLabels[j];
 									var cellValue = row[j];
+									var intensity = maxCount > 0 ? (double) cellValue / maxCount : 0;
+									var cellStyle = GetCellColor(intensity, isDiagonal);
+									var predictedLabel = SentimentLabels[j];
 									var tooltipText = isDiagonal
 										? $"{cellValue} samples correctly classified as {predictedLabel}"
 										: $"{cellValue} samples were actually {actualLabel} but predicted as {predictedLabel}";
-									<MudTooltip Text="@tooltipText" Placement="Placement.Top">
-										<td class="text-center" style="@cellStyle; cursor: help;">
-											@if (isDiagonal)
-											{
-												<strong>@cellValue</strong>
-											}
-											else
-											{
-												@cellValue
-											}
-										</td>
-									</MudTooltip>
+									<td class="text-center" style="@cellStyle">
+										<MudTooltip Text="@tooltipText" Placement="Placement.Top">
+											<span style="cursor: help; display: inline-block; width: 100%;">
+												@if (isDiagonal)
+												{
+													<strong>@cellValue</strong>
+												}
+												else
+												{
+													@cellValue
+												}
+											</span>
+										</MudTooltip>
+									</td>
 								}
 								<td class="text-center">
 									<strong>@recall.ToString("P1")</strong>
@@ -312,7 +314,7 @@
 					</MudSimpleTable>
 					<MudText Typo="Typo.caption" Class="mt-3 text-muted">
 						<MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-1" Style="vertical-align: middle;"/>
-						Color intensity indicates percentage of row. <strong>Diagonal cells</strong> (bold) show correct predictions.
+						Color intensity scales by the highest cell count in the matrix. <strong>Diagonal cells</strong> (bold) show correct predictions.
 						Hover over cells for detailed explanations.
 					</MudText>
 				</MudPaper>
@@ -454,7 +456,7 @@
 
 	private static string GetCellColor(double percentage, bool isDiagonal)
 	{
-		// Use white-to-dark-blue gradient based on percentage
+		// Use white-to-dark-blue gradient based on normalized intensity
 		// Higher percentage = more blue
 		if (percentage <= 0) return isDiagonal ? "font-weight: bold;" : "";
 

@@ -620,11 +620,20 @@ h1:focus {
     box-shadow: 0 4px 12px rgba(6, 214, 160, 0.3);
 }
 
+.icon-badge-success {
+    background: linear-gradient(135deg, var(--color-accent) 0%, #2FE6B5 100%);
+    box-shadow: 0 4px 12px rgba(6, 214, 160, 0.3);
+}
+
+.icon-badge-info {
+    background: linear-gradient(135deg, #2196F3 0%, #4FC3F7 100%);
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
 .icon-badge-error {
     background: linear-gradient(135deg, #EF476F 0%, #F76D8B 100%);
     box-shadow: 0 4px 12px rgba(239, 71, 111, 0.3);
 }
-
 .glass-card:hover .icon-badge {
     transform: scale(1.1) rotate(5deg);
 }
