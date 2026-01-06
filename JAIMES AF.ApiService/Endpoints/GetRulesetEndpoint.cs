@@ -30,7 +30,8 @@ public class GetRulesetEndpoint : EndpointWithoutRequest<RulesetResponse>
             RulesetResponse response = new()
             {
                 Id = ruleset.Id,
-                Name = ruleset.Name
+                Name = ruleset.Name,
+                Description = ruleset.Description
             };
 
             await Send.OkAsync(response, ct);

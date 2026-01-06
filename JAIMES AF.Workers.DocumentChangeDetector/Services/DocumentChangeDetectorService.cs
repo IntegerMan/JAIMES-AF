@@ -6,6 +6,7 @@ public class DocumentChangeDetectorService(
     IChangeTracker changeTracker,
     IDbContextFactory<JaimesDbContext> dbContextFactory,
     IMessagePublisher messagePublisher,
+    IRulesetsService rulesetsService,
     ActivitySource activitySource,
     DocumentChangeDetectorOptions options) : IDocumentChangeDetectorService
 {
@@ -207,6 +208,12 @@ public class DocumentChangeDetectorService(
         string rulesetId = DocumentMetadataExtractor.ExtractRulesetId(relativeDirectory);
         string documentKind = DocumentMetadataExtractor.DetermineDocumentKind(relativeDirectory);
 
+        // Auto-create ruleset if it doesn't exist (skip "default" as it's a fallback)
+        if (rulesetId != "default")
+        {
+            await EnsureRulesetExistsAsync(rulesetId, cancellationToken);
+        }
+
         string lowPath = filePath.ToLowerInvariant();
         DocumentMetadata? existingMetadata = await dbContext.DocumentMetadata
             .FirstOrDefaultAsync(x => x.FilePath.ToLower() == lowPath, cancellationToken);
@@ -333,5 +340,19 @@ public class DocumentChangeDetectorService(
         }
 
         return null;
+    }
+
+    private async Task EnsureRulesetExistsAsync(string rulesetId, CancellationToken cancellationToken)
+    {
+        bool created = await rulesetsService.TryCreateRulesetAsync(
+            rulesetId,
+            rulesetId, // Use the folder name as the initial name
+            "Auto-detected ruleset",
+            cancellationToken);
+
+        if (created)
+        {
+            logger.LogInformation("Auto-created ruleset: {RulesetId}", rulesetId);
+        }
     }
 }

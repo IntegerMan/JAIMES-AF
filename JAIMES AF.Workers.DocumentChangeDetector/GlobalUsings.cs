@@ -7,6 +7,7 @@ global using MattEland.Jaimes.Repositories.Entities;
 global using MattEland.Jaimes.ServiceDefaults;
 global using MattEland.Jaimes.ServiceDefinitions.Messages;
 global using MattEland.Jaimes.ServiceDefinitions.Services;
+global using MattEland.Jaimes.ServiceLayer.Services;
 global using MattEland.Jaimes.Workers.DocumentChangeDetector.Configuration;
 global using MattEland.Jaimes.Workers.DocumentChangeDetector.Services;
 global using Microsoft.EntityFrameworkCore;

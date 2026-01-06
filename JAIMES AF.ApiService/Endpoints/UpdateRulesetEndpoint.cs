@@ -29,12 +29,14 @@ public class UpdateRulesetEndpoint : Endpoint<UpdateRulesetRequest, RulesetRespo
             RulesetDto ruleset = await RulesetsService.UpdateRulesetAsync(
                 id,
                 req.Name,
+                req.Description,
                 ct);
 
             RulesetResponse response = new()
             {
                 Id = ruleset.Id,
-                Name = ruleset.Name
+                Name = ruleset.Name,
+                Description = ruleset.Description
             };
 
             await Send.OkAsync(response, ct);

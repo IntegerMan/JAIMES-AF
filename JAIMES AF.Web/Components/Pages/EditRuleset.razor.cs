@@ -11,6 +11,7 @@ public partial class EditRuleset
     [Inject] public NavigationManager Navigation { get; set; } = null!;
 
     private string _name = string.Empty;
+    private string? _description;
     private bool _isLoading = true;
     private bool _isSaving = false;
     private string? _errorMessage;
@@ -46,6 +47,7 @@ public partial class EditRuleset
             }
 
             _name = rulesetResponse.Name;
+            _description = rulesetResponse.Description;
 
             _breadcrumbs = new List<BreadcrumbItem>
             {
@@ -88,7 +90,8 @@ public partial class EditRuleset
         {
             UpdateRulesetRequest request = new()
             {
-                Name = _name
+                Name = _name,
+                Description = _description
             };
 
             HttpResponseMessage response = await Http.PutAsJsonAsync($"/rulesets/{RulesetId}", request);

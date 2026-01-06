@@ -19,11 +19,15 @@ public partial class RagCollections
     [SupplyParameterFromQuery(Name = "category")]
     public string? Category { get; set; }
 
+    [Parameter]
+    public string? RulesetId { get; set; }
+
     private RagCollectionDocumentInfo[] FilteredDocuments =>
         _statistics?.Documents
-            .Where(d => _filterType == "All" ||
-                        (_filterType == "Sourcebook" && d.DocumentKind == "Sourcebook") ||
-                        (_filterType == "Transcript" && d.DocumentKind == "Transcript"))
+            .Where(d => (_filterType == "All" ||
+                         (_filterType == "Sourcebook" && d.DocumentKind == "Sourcebook") ||
+                         (_filterType == "Transcript" && d.DocumentKind == "Transcript")) &&
+                        (string.IsNullOrEmpty(RulesetId) || string.Equals(d.RulesetId, RulesetId, StringComparison.OrdinalIgnoreCase)))
             .ToArray() ?? [];
 
     protected override async Task OnInitializedAsync()
@@ -32,8 +36,13 @@ public partial class RagCollections
         {
             new BreadcrumbItem("Home", href: "/"),
             new BreadcrumbItem("Admin", href: "/admin"),
-            new BreadcrumbItem("RAG Collections", href: null, disabled: true)
+            new BreadcrumbItem("RAG Collections", href: string.IsNullOrEmpty(RulesetId) ? null : "/admin/rag-collections", disabled: string.IsNullOrEmpty(RulesetId))
         };
+
+        if (!string.IsNullOrEmpty(RulesetId))
+        {
+            _breadcrumbs.Add(new BreadcrumbItem(RulesetId, href: null, disabled: true));
+        }
 
         // Initialize filter from query parameter
         if (!string.IsNullOrEmpty(Category))

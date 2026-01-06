@@ -98,18 +98,11 @@ Lists game rulesets for managing game mechanics and rules.
 
 ![Rulesets Page](Images/Rulesets.png)
 
-**Style Guide Violations:**
-- ⚠️ Apply List Page Pattern from `Games.razor` (compact hero, icon action buttons, empty state)
-- ❌ Uses text "Edit" button instead of icon buttons with tooltips (line 55-58)
-- ❌ Missing view details icon button
-- ❌ "ID" column shows raw database IDs — could use more user-friendly display
+**Style Guide Compliance:** ✅ Good - follows List Page Pattern
 
 **Improvement Ideas:**
-- Add compact hero section with ruleset count and "New Ruleset" button
-- Replace text "Edit" button with icon button + tooltip
-- Add "View Details" icon button
-- Add engaging empty state for when no rulesets exist
-- Remove or hide raw ID column
+- Add player/scenario count columns
+- Add batch operations for managing multiple rulesets
 
 ---
 
@@ -769,10 +762,8 @@ Form dialog for creating new locations.
 
 | Issue | Severity | Affected Pages |
 |-------|----------|----------------|
-| Missing `Placement.Top` on tooltips | High | Games, Locations, Evaluators |
-| Icon buttons without tooltip wrappers | High | Games |
-| Text buttons instead of icon buttons | Medium | Rulesets |
-| Raw database IDs displayed | Low | Rulesets |
+| Missing `Placement.Top` on tooltips | High | Locations, Evaluators |
+| Icon buttons without tooltip wrappers | High | (Fixed in most pages) |
 
 ## Priority Improvements
 

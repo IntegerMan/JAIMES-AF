@@ -38,6 +38,9 @@ builder.Services.AddJaimesRepositories(builder.Configuration);
 builder.Services.AddSingleton<IDirectoryScanner, DirectoryScanner>();
 builder.Services.AddSingleton<IChangeTracker, ChangeTracker>();
 
+// Register ruleset service for auto-detection
+builder.Services.AddSingleton<IRulesetsService, RulesetsService>();
+
 // Register scanner services
 builder.Services.AddSingleton<IDocumentChangeDetectorService, DocumentChangeDetectorService>();
 builder.Services.AddHostedService<DocumentChangeDetectorBackgroundService>();

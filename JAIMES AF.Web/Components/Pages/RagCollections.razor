@@ -1,4 +1,4 @@
-@page "/admin/rag-collections"
+@page "/admin/rag-collections/{RulesetId?}"
 @using MattEland.Jaimes.ServiceDefinitions.Responses
 @using MattEland.Jaimes.Web.Components.Shared
 @rendermode InteractiveServer
@@ -22,11 +22,11 @@
 
 		<MudStack Row="true" Spacing="2" Class="mb-6">
 			<MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/tools/rules-search"
-			           StartIcon="@Icons.Material.Filled.Search">
+				StartIcon="@Icons.Material.Filled.Search">
 				Test Rules Search
 			</MudButton>
 			<MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/tools/conversation-search"
-			           StartIcon="@Icons.Material.Filled.Chat">
+				StartIcon="@Icons.Material.Filled.Chat">
 				Test Conversation Search
 			</MudButton>
 		</MudStack>
@@ -35,7 +35,7 @@
 
 		@if (_isLoading)
 		{
-			<MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4"/>
+			<MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
 		}
 
 		@if (!string.IsNullOrEmpty(_errorMessage))
@@ -45,7 +45,7 @@
 
 		@if (_statistics != null)
 		{
-			<MudDivider Class="my-6"/>
+			<MudDivider Class="my-6" />
 
 			<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Collection Summaries</MudText>
 			<MudGrid Spacing="3" Class="mb-6">
@@ -56,19 +56,20 @@
 							<MudText Typo="Typo.h6" Class="mb-2">@summary.CollectionType</MudText>
 							<MudStack Spacing="1">
 								<MudText Typo="Typo.body2">
-									<MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" Class="me-1"/>
+									<MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" Class="me-1" />
 									@summary.DocumentCount documents
 								</MudText>
 								<MudText Typo="Typo.body2">
-									<MudIcon Icon="@Icons.Material.Filled.ViewModule" Size="Size.Small" Class="me-1"/>
+									<MudIcon Icon="@Icons.Material.Filled.ViewModule" Size="Size.Small" Class="me-1" />
 									@summary.TotalChunks chunks
 								</MudText>
-								<MudText Typo="Typo.body2" Color="@(summary.EmbeddedChunks < summary.TotalChunks ? Color.Warning : Color.Success)">
-									<MudIcon Icon="@Icons.Material.Filled.Memory" Size="Size.Small" Class="me-1"/>
+								<MudText Typo="Typo.body2"
+									Color="@(summary.EmbeddedChunks < summary.TotalChunks ? Color.Warning : Color.Success)">
+									<MudIcon Icon="@Icons.Material.Filled.Memory" Size="Size.Small" Class="me-1" />
 									@summary.EmbeddedChunks / @summary.TotalChunks embedded
 								</MudText>
 								<MudText Typo="Typo.body2">
-									<MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" Class="me-1"/>
+									<MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" Class="me-1" />
 									<MudLink Href="@GetQueryLink(summary.CollectionType)">@summary.QueryCount queries</MudLink>
 								</MudText>
 							</MudStack>
@@ -77,21 +78,21 @@
 				}
 			</MudGrid>
 
-			<MudDivider Class="my-6"/>
+			<MudDivider Class="my-6" />
 
 			<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
 				<MudText Typo="Typo.h5" GutterBottom="false">Document Details</MudText>
 				<MudToggleGroup T="string" Value="_filterType" ValueChanged="SetFilter" Color="Color.Primary">
-					<MudToggleItem Value="@("All")" Text="All"/>
-					<MudToggleItem Value="@("Sourcebook")" Text="Sourcebooks"/>
-					<MudToggleItem Value="@("Transcript")" Text="Transcripts"/>
+					<MudToggleItem Value="@("All")" Text="All" />
+					<MudToggleItem Value="@("Sourcebook")" Text="Sourcebooks" />
+					<MudToggleItem Value="@("Transcript")" Text="Transcripts" />
 				</MudToggleGroup>
 			</MudStack>
 			<MudDataGrid T="RagCollectionDocumentInfo" Items="@FilteredDocuments" Dense="true" Striped="true" Hover="true"
-			             RowsPerPage="25">
+				RowsPerPage="25">
 				<Columns>
-					<PropertyColumn Property="x => x.DocumentKind" Title="Type"/>
-					<PropertyColumn Property="x => x.RulesetId" Title="Ruleset"/>
+					<PropertyColumn Property="x => x.DocumentKind" Title="Type" />
+					<PropertyColumn Property="x => x.RulesetId" Title="Ruleset" />
 					<TemplateColumn Title="Name">
 						<CellTemplate>
 							<MudLink Href="@GetChunksLink(context.Item)">@context.Item.FileName</MudLink>
@@ -122,11 +123,11 @@
 						<CellTemplate>
 							@if (context.Item.IsFullyProcessed)
 							{
-								<MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small"/>
+								<MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
 							}
 							else
 							{
-								<MudIcon Icon="@Icons.Material.Filled.HourglassEmpty" Color="Color.Warning" Size="Size.Small"/>
+								<MudIcon Icon="@Icons.Material.Filled.HourglassEmpty" Color="Color.Warning" Size="Size.Small" />
 							}
 						</CellTemplate>
 					</TemplateColumn>
@@ -137,23 +138,21 @@
 							</MudLink>
 						</CellTemplate>
 					</TemplateColumn>
-					<PropertyColumn Property="x => x.CrackedAt" Title="Processed" Format="g"/>
+					<PropertyColumn Property="x => x.CrackedAt" Title="Processed" Format="g" />
 					<TemplateColumn Title="Actions">
 						<CellTemplate>
 							@if (context.Item.HasStoredFile)
 							{
 								<MudTooltip Text="View Document" Placement="Placement.Top">
-									<MudIconButton Icon="@Icons.Material.Filled.Visibility"
-									               Color="Color.Primary"
-									               Size="Size.Small"
-									               OnClick="@(() => ViewDocumentAsync(context.Item))" />
+									<MudIconButton Icon="@Icons.Material.Filled.Visibility" Color="Color.Primary"
+										Size="Size.Small" OnClick="@(() => ViewDocumentAsync(context.Item))" />
 								</MudTooltip>
 							}
 						</CellTemplate>
 					</TemplateColumn>
 				</Columns>
 				<PagerContent>
-					<MudDataGridPager T="RagCollectionDocumentInfo"/>
+					<MudDataGridPager T="RagCollectionDocumentInfo" />
 				</PagerContent>
 			</MudDataGrid>
 		}

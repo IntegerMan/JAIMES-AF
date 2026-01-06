@@ -63,6 +63,7 @@ Use these components instead of building custom displays. They are located in `J
 | `AgentLink.razor` | Displays agent name as a linked chip with bot icon (`SmartToy`). Use whenever showing an agent name. Has "View Agent Details" tooltip. |
 | `AgentVersionLink.razor` | Displays version number as a linked chip. When `VersionId` is null, shows "Latest" chip (Primary, Filled) that links to agent page. Has appropriate tooltips. |
 | `AgentVersionDisplay.razor` | Combined agent name + version number display. Use when showing both together. |
+| `RulesetLink.razor` | Displays ruleset ID as a linked chip with book icon (`AutoStories`). Tooltip shows full name and description. Use whenever showing a ruleset ID. |
 | `CompactLinkCard.razor` | Navigation card with colored icon badge. Use for dashboard/home page links. |
 | `SentimentIcon.razor` | Sentiment indicator (thumbs up/down/neutral) with optional edit menu. Use in chat footers. |
 | `MessageIndicators.razor` | Displays evaluation metrics and tool call badges. Use in assistant message footers. |
@@ -85,6 +86,7 @@ Always use these specific icons for each entity type:
 | Scenario | `Icons.Material.Filled.MenuBook` | `Color.Secondary` |
 | Player/Character | `Icons.Material.Filled.Person` | `Color.Tertiary` |
 | Ruleset | `Icons.Material.Filled.AutoStories` | `Color.Success` |
+| Sourcebook | `Icons.Material.Filled.Book` | `Color.Info` |
 | Location | `Icons.Material.Filled.Place` | `Color.Warning` |
 | Version/Update | `Icons.Material.Filled.Update` | `Color.Info` |
 
@@ -132,11 +134,10 @@ Always use these specific icons for each entity type:
 
 ### When to Add Tooltips
 
-- ✅ All icon buttons (required)
+- ✅ All buttons (required)
 - ✅ Chips that link to other pages
-- ✅ Status indicators
+- ✅ Status indicators and icons
 - ✅ Any element whose purpose isn't immediately obvious
-- ❌ Text buttons with clear labels (tooltip is redundant)
 
 ### Complex Tooltips
 
@@ -320,10 +321,16 @@ List pages should include these elements:
 
 #### Compact Hero Section
 
-A lightweight header with entity icon, item count, and primary action:
+A lightweight header with entity icon, item count, and primary action. Use a background gradient matching the entity's theme color (e.g., Purple for Games, Green for Rulesets).
+
+Example colors:
+- **Games**: `rgba(123, 44, 191, 0.1)` (Primary)
+- **Rulesets**: `rgba(6, 214, 160, 0.1)` (Success/Accent)
+- **Scenarios**: `rgba(67, 97, 238, 0.1)` (Secondary)
 
 ```razor
-<div class="games-hero pa-4 mb-4" style="background: linear-gradient(135deg, var(--color-primary) 0%, #9b4dca 100%); border-radius: 12px;">
+<div class="games-hero pa-3 mb-4" style="background: linear-gradient(135deg, [COLOR_1] 0%, [COLOR_2] 100%); 
+    border-radius: 16px; border: 1px solid [COLOR_BORDER];">
     <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
             <div class="icon-badge-primary">

@@ -44,6 +44,14 @@
 				              Required="true"
 				              RequiredError="Name is required"/>
 
+				<MudTextField @bind-Value="_description"
+				              Label="Description"
+				              Variant="Variant.Outlined"
+				              Class="mb-4"
+				              Disabled="_isSaving"
+				              Lines="3"
+				              HelperText="Optional description for this ruleset"/>
+
 				<div class="d-flex gap-2">
 					<MudButton Variant="Variant.Filled"
 					           Color="Color.Primary"
