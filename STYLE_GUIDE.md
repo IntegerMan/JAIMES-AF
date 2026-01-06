@@ -463,6 +463,30 @@ Used for metrics/statistics with colored left border:
 
 Available variants: `stat-card-primary`, `stat-card-secondary`, `stat-card-tertiary`, `stat-card-accent`, `stat-card-warning`, `stat-card-error`
 
+#### Message Logs & Data Grids
+
+When displaying message logs (e.g., `AgentMessagesList.razor`), adhere to the following standards:
+
+1.  **Sender Identification**: 
+    - Always include a **Sender** column before the message text.
+    - Use distinct visual styles to distinguish participant types:
+        - **Players**: Use a `MudChip` (Color.Info) with `Icons.Material.Filled.Person`.
+        - **AI Agents / GM**: Use an `AgentVersionLink` or similar navigation control to link to the specific agent version.
+    - Display the participant's name clearly.
+2.  **Interactive Elements**: See [Interactive Chart Tooltips](#interactive-chart-tooltips) for standardizing wedge hovers.
+
+#### Metric Value Links
+
+When a metric count or value in a dashboard stat card acts as a link (or triggers an on-click action like switching tabs), use the primary theme color to clearly indicate it is interactive:
+- **Color**: `var(--mud-palette-primary)`
+- **Font Weight**: `600` (Semi-bold)
+
+```razor
+<MudText Typo="Typo.h6" Style="font-weight: 600; color: var(--mud-palette-primary);">
+    @_count
+</MudText>
+```
+
 ### Compact Link Card
 
 Use the `CompactLinkCard` component for navigation cards on dashboards.

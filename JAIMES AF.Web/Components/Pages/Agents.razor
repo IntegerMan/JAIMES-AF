@@ -81,7 +81,8 @@
 					</HeaderContent>
 					<RowTemplate>
 						<MudTd>
-							<MudLink Href="@($"/agents/{context.Id}")">@context.Name</MudLink>
+							<MattEland.Jaimes.Web.Components.Shared.AgentLink AgentId="@context.Id"
+								AgentName="@context.Name" />
 						</MudTd>
 						<MudTd>@context.Role</MudTd>
 						<MudTd Style="text-align: right;">

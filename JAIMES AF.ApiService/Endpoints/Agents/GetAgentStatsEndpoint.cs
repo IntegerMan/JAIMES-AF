@@ -26,35 +26,63 @@ public class GetAgentStatsEndpoint : EndpointWithoutRequest<AgentStatsResponse>
         string agentId = Route<string>("agentId") ?? string.Empty;
         int? versionId = Query<int?>("versionId");
 
-        // Base filters
-        IQueryable<Message> messagesQuery = DbContext.Messages.Where(m => m.AgentId == agentId);
-        IQueryable<MessageFeedback> feedbackQuery = DbContext.MessageFeedbacks.Where(f => f.Message.AgentId == agentId);
-        IQueryable<MessageSentiment> sentimentQuery = DbContext.MessageSentiments.Where(s => s.Message.AgentId == agentId);
-        IQueryable<MessageEvaluationMetric> metricsQuery = DbContext.MessageEvaluationMetrics.Where(m => m.Message.AgentId == agentId);
-        IQueryable<MessageToolCall> toolsQuery = DbContext.MessageToolCalls.Where(t => t.Message.AgentId == agentId);
+        // Defensive ID resolution: Try exact match first, then fallback to case-insensitive match
+        // this helps avoid expensive ToLower calls on the DB when not needed, and ensures we use the "correct" indexed ID.
+        string? resolvedId = await DbContext.Agents
+            .Where(a => a.Id == agentId)
+            .Select(a => a.Id)
+            .FirstOrDefaultAsync(ct);
 
-        // Version filters
-        if (versionId.HasValue)
+        if (resolvedId == null)
         {
-            messagesQuery = messagesQuery.Where(m => m.InstructionVersionId == versionId);
-            feedbackQuery = feedbackQuery.Where(f => f.Message.InstructionVersionId == versionId);
-            sentimentQuery = sentimentQuery.Where(s => s.Message.InstructionVersionId == versionId);
-            metricsQuery = metricsQuery.Where(m => m.Message.InstructionVersionId == versionId);
-            toolsQuery = toolsQuery.Where(t => t.Message.InstructionVersionId == versionId);
+            resolvedId = await DbContext.Agents
+                .Where(a => a.Id.ToLower() == agentId.ToLower())
+                .Select(a => a.Id)
+                .FirstOrDefaultAsync(ct);
         }
 
-        // Execute queries
+        // Use the route param as fallback if nothing found (might be a new agent or data without an agent record)
+        resolvedId ??= agentId;
+
+        // Base filters - matching exactly what is shown in the agent message logs
+        IQueryable<Message> messagesQuery = DbContext.Messages
+            .Where(m => m.AgentId == resolvedId && !m.IsScriptedMessage);
+
+        // Optional version filtering
+        if (versionId.HasValue && versionId.Value > 0)
+        {
+            messagesQuery = messagesQuery.Where(m => m.InstructionVersionId == versionId);
+        }
+
+        // Execute counts directly on the target tables for maximum efficiency and reliability
         int messageCount = await messagesQuery.CountAsync(ct);
-        int feedbackPos = await feedbackQuery.CountAsync(f => f.IsPositive, ct);
-        int feedbackNeg = await feedbackQuery.CountAsync(f => !f.IsPositive, ct);
+        int aiMessageCount = await messagesQuery.CountAsync(m => m.PlayerId == null, ct);
         
-        int sentimentPos = await sentimentQuery.CountAsync(s => s.Sentiment > 0, ct);
-        int sentimentNeu = await sentimentQuery.CountAsync(s => s.Sentiment == 0, ct);
-        int sentimentNeg = await sentimentQuery.CountAsync(s => s.Sentiment < 0, ct);
+        // Joins for feedback, sentiment, and other related data
+        var feedbackBase = DbContext.MessageFeedbacks.Where(f => f.Message!.AgentId == resolvedId && !f.Message!.IsScriptedMessage);
+        var sentimentBase = DbContext.MessageSentiments.Where(s => s.Message!.AgentId == resolvedId && !s.Message!.IsScriptedMessage);
+        var toolBase = DbContext.MessageToolCalls.Where(t => t.Message!.AgentId == resolvedId && !t.Message!.IsScriptedMessage);
+        var metricBase = DbContext.MessageEvaluationMetrics.Where(m => m.Message!.AgentId == resolvedId && !m.Message!.IsScriptedMessage);
 
-        int toolCallCount = await toolsQuery.CountAsync(ct);
+        if (versionId.HasValue && versionId.Value > 0)
+        {
+            feedbackBase = feedbackBase.Where(f => f.Message!.InstructionVersionId == versionId);
+            sentimentBase = sentimentBase.Where(s => s.Message!.InstructionVersionId == versionId);
+            toolBase = toolBase.Where(t => t.Message!.InstructionVersionId == versionId);
+            metricBase = metricBase.Where(m => m.Message!.InstructionVersionId == versionId);
+        }
 
-        var evaluationMetrics = await metricsQuery
+        int feedbackPos = await feedbackBase.CountAsync(f => f.IsPositive, ct);
+        int feedbackNeg = await feedbackBase.CountAsync(f => !f.IsPositive, ct);
+        
+        int sentimentPos = await sentimentBase.CountAsync(s => s.Sentiment > 0, ct);
+        int sentimentNeu = await sentimentBase.CountAsync(s => s.Sentiment == 0, ct);
+        int sentimentNeg = await sentimentBase.CountAsync(s => s.Sentiment < 0, ct);
+
+        int toolCallCount = await toolBase.CountAsync(ct);
+        double toolUsageRate = aiMessageCount > 0 ? (double)toolCallCount / aiMessageCount : 0;
+
+        var evaluationMetrics = await metricBase
             .GroupBy(m => m.MetricName)
             .Select(g => new AgentEvaluatorMetricSummaryDto
             {
@@ -66,12 +94,14 @@ public class GetAgentStatsEndpoint : EndpointWithoutRequest<AgentStatsResponse>
         await Send.OkAsync(new AgentStatsResponse
         {
             MessageCount = messageCount,
+            AiMessageCount = aiMessageCount,
             FeedbackPositiveCount = feedbackPos,
             FeedbackNegativeCount = feedbackNeg,
             SentimentPositiveCount = sentimentPos,
             SentimentNeutralCount = sentimentNeu,
             SentimentNegativeCount = sentimentNeg,
             ToolCallCount = toolCallCount,
+            ToolUsageRate = toolUsageRate,
             EvaluationMetrics = evaluationMetrics
         }, ct);
     }

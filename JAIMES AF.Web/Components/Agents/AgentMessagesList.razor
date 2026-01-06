@@ -8,7 +8,7 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
-<MudDataGrid Items="_messages" Filterable="true" Groupable="true" Loading="_isLoading">
+<MudDataGrid Items="_messages" Filterable="true" Groupable="true" Loading="_isLoading" GroupExpanded="true">
     <Columns>
         <PropertyColumn Property="x => x.GameId" Title="Game" Grouping="true">
             <CellTemplate>
@@ -58,6 +58,23 @@
         </TemplateColumn>
 
         <PropertyColumn Property="x => x.CreatedAt" Title="Time" Sortable="true" Format="yyyy-MM-dd HH:mm:ss" />
+
+        <TemplateColumn Title="Sender" Sortable="true">
+            <CellTemplate>
+                @if (context.Item.PlayerId != null)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Icon="@Icons.Material.Filled.Person">
+                        @context.Item.ParticipantName
+                    </MudChip>
+                }
+                else
+                {
+                    <MattEland.Jaimes.Web.Components.Shared.AgentVersionLink AgentId="@context.Item.AgentId"
+                        VersionId="@context.Item.InstructionVersionId"
+                        VersionNumber="@(context.Item.AgentName ?? context.Item.ParticipantName)" />
+                }
+            </CellTemplate>
+        </TemplateColumn>
 
         <TemplateColumn Title="Message">
             <CellTemplate>

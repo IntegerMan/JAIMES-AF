@@ -61,20 +61,20 @@
             </div>
 
             @* Active Version Title *@
-            <div class="d-flex align-center justify-center mb-4">
+            <div class="mb-4">
                 <MudText Typo="Typo.overline" Style="letter-spacing: 2px; color: var(--mud-palette-primary); font-weight: bold;">
-                    Performance Summary
+                    STATISTICS (ALL VERSIONS)
                 </MudText>
             </div>
 
             @if (!string.IsNullOrEmpty(AgentId))
             {
-                <MattEland.Jaimes.Web.Components.Shared.AgentStats AgentId="@AgentId" VersionId="@_activeVersionId" />
+                <MattEland.Jaimes.Web.Components.Shared.AgentStats AgentId="@AgentId" OnTabRequested="@((idx) => _activeTabIndex = idx)" />
             }
 
             @* Content Tabs *@
             <div class="glass-card pa-0">
-                <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-3">
+                <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-3" @bind-ActivePanelIndex="_activeTabIndex">
                     <MudTabPanel Text="Versions" Icon="@Icons.Material.Filled.Update">
                         @if (_versions is null || _versions.Length == 0)
                         {
@@ -143,6 +143,10 @@
                                             <MudIconButton Icon="@Icons.Material.Filled.Visibility" Color="Color.Primary"
                                                 Size="Size.Small" Href="@($"/agents/{AgentId}/versions/{context.Id}")" />
                                         </MudTooltip>
+                                        <MudTooltip Text="Improve" Placement="Placement.Top">
+                                            <MudIconButton Icon="@Icons.Material.Filled.AutoAwesome" Color="Color.Secondary"
+                                                Size="Size.Small" Href="@($"/agents/{AgentId}/versions/{context.Id}/improve")" />
+                                        </MudTooltip>
                                         <MudTooltip Text="Run Tests" Placement="Placement.Top">
                                             <MudIconButton Icon="@Icons.Material.Filled.Science" Color="Color.Success" Size="Size.Small"
                                                 OnClick="@(() => RunTestsForVersionAsync(context.Id))" />
@@ -158,7 +162,7 @@
                     <MudTabPanel Text="Tools" Icon="@Icons.Material.Filled.Build">
                         <MattEland.Jaimes.Web.Components.Shared.ToolUsageGrid AgentId="@AgentId" />
                     </MudTabPanel>
-                    <MudTabPanel Text="Evaluations" Icon="@Icons.Material.Filled.Analytics">
+                    <MudTabPanel Text="Evaluations" Icon="@Icons.Material.Filled.PieChart">
                         <MattEland.Jaimes.Web.Components.Shared.MetricsGrid AgentId="@AgentId" />
                     </MudTabPanel>
                 </MudTabs>
