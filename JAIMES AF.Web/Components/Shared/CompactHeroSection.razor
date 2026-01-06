@@ -1,0 +1,241 @@
+@*
+    CompactHeroSection.razor - Reusable hero section component for list and tool pages.
+    Provides consistent styling with gradient background, icon badge, title/subtitle, and optional action button.
+    
+    Usage Examples:
+    - List pages: Use with ActionHref for "New Item" navigation buttons
+    - Tool/Action pages: Use with OnActionClick for in-page actions, or without action for info-only headers
+    
+    See PAGES.md for full documentation and pattern guidelines.
+*@
+
+<div class="pa-3 mb-4" style="@HeroStyle">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+            <div class="icon-badge @IconBadgeClass">
+                <MudIcon Icon="@Icon" Style="color: white; font-size: 1.5rem;"/>
+            </div>
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.h5" Style="@TitleStyle">@Title</MudText>
+                <MudText Typo="Typo.caption" Class="text-muted">
+                    @if (SubtitleContent is not null)
+                    {
+                        @SubtitleContent
+                    }
+                    else if (ItemCount.HasValue && ItemCount.Value > 0)
+                    {
+                        <span>@ItemCount.Value @ItemName@(ItemCount.Value != 1 ? "s" : "") @Subtitle</span>
+                    }
+                    else if (!string.IsNullOrEmpty(SubtitleNoItems))
+                    {
+                        <span>@SubtitleNoItems</span>
+                    }
+                    else if (!string.IsNullOrEmpty(Subtitle))
+                    {
+                        <span>@Subtitle</span>
+                    }
+                </MudText>
+            </MudStack>
+        </MudStack>
+        @if (HasAction)
+        {
+            @if (!string.IsNullOrEmpty(ActionHref))
+            {
+                <MudButton Variant="Variant.Filled" 
+                           Color="@ActionButtonColor" 
+                           Href="@ActionHref"
+                           StartIcon="@ActionIcon">
+                    @ActionText
+                </MudButton>
+            }
+            else if (OnActionClick.HasDelegate)
+            {
+                <MudButton Variant="Variant.Filled" 
+                           Color="@ActionButtonColor" 
+                           OnClick="OnActionClick"
+                           StartIcon="@ActionIcon"
+                           Disabled="@ActionDisabled">
+                    @ActionText
+                </MudButton>
+            }
+        }
+    </MudStack>
+</div>
+
+@code {
+    /// <summary>
+    /// Theme for the hero section, determining colors and styling.
+    /// </summary>
+    public enum HeroTheme
+    {
+        /// <summary>Purple theme - used for Games</summary>
+        Primary,
+        /// <summary>Blue theme - used for Scenarios, Agents</summary>
+        Secondary,
+        /// <summary>Cyan theme - used for Characters/Players</summary>
+        Tertiary,
+        /// <summary>Green theme - used for Rulesets (maps to Accent CSS)</summary>
+        Accent,
+        /// <summary>Green theme - used for Evaluations, Tests (maps to Success CSS)</summary>
+        Success,
+        /// <summary>Light blue theme - used for Tools, Info pages</summary>
+        Info
+    }
+
+    /// <summary>
+    /// The main title displayed in the hero section.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "";
+
+    /// <summary>
+    /// Subtitle text shown below the title. When ItemCount is provided, this is appended after the count.
+    /// </summary>
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    /// <summary>
+    /// Fallback subtitle shown when ItemCount is 0 or null.
+    /// </summary>
+    [Parameter]
+    public string? SubtitleNoItems { get; set; }
+
+    /// <summary>
+    /// Optional item count to display in the subtitle (e.g., "5 games").
+    /// </summary>
+    [Parameter]
+    public int? ItemCount { get; set; }
+
+    /// <summary>
+    /// Name of the items being counted, for pluralization (e.g., "game" -> "5 games").
+    /// </summary>
+    [Parameter]
+    public string ItemName { get; set; } = "item";
+
+    /// <summary>
+    /// Icon to display in the badge. Use Icons.Material.Filled.* constants.
+    /// </summary>
+    [Parameter]
+    public string Icon { get; set; } = Icons.Material.Filled.Folder;
+
+    /// <summary>
+    /// Theme determining the color scheme. Defaults to Primary (purple).
+    /// </summary>
+    [Parameter]
+    public HeroTheme Theme { get; set; } = HeroTheme.Primary;
+
+    /// <summary>
+    /// Text for the action button. If null/empty and no OnActionClick, button is hidden.
+    /// </summary>
+    [Parameter]
+    public string? ActionText { get; set; }
+
+    /// <summary>
+    /// Navigation href for the action button. Use for list page "New Item" buttons.
+    /// </summary>
+    [Parameter]
+    public string? ActionHref { get; set; }
+
+    /// <summary>
+    /// Icon for the action button. Defaults to Add icon.
+    /// </summary>
+    [Parameter]
+    public string ActionIcon { get; set; } = Icons.Material.Filled.Add;
+
+    /// <summary>
+    /// Color for the action button. Defaults to matching the theme.
+    /// </summary>
+    [Parameter]
+    public Color? ActionColor { get; set; }
+
+    /// <summary>
+    /// Click handler for action button. Use for in-page actions on tool/action pages.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnActionClick { get; set; }
+
+    /// <summary>
+    /// Whether the action button should be disabled.
+    /// </summary>
+    [Parameter]
+    public bool ActionDisabled { get; set; }
+
+    /// <summary>
+    /// Optional custom subtitle content. When provided, overrides Subtitle/ItemCount rendering.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? SubtitleContent { get; set; }
+
+    private bool HasAction => !string.IsNullOrEmpty(ActionText) && 
+        (!string.IsNullOrEmpty(ActionHref) || OnActionClick.HasDelegate);
+
+    private Color ActionButtonColor => ActionColor ?? Theme switch
+    {
+        HeroTheme.Primary => Color.Primary,
+        HeroTheme.Secondary => Color.Secondary,
+        HeroTheme.Tertiary => Color.Tertiary,
+        HeroTheme.Accent => Color.Success,
+        HeroTheme.Success => Color.Success,
+        HeroTheme.Info => Color.Info,
+        _ => Color.Primary
+    };
+
+    private string GradientStart => Theme switch
+    {
+        HeroTheme.Primary => "rgba(123, 44, 191, 0.1)",
+        HeroTheme.Secondary => "rgba(67, 97, 238, 0.1)",
+        HeroTheme.Tertiary => "rgba(76, 201, 240, 0.1)",
+        HeroTheme.Accent => "rgba(6, 214, 160, 0.1)",
+        HeroTheme.Success => "rgba(6, 214, 160, 0.1)",
+        HeroTheme.Info => "rgba(33, 150, 243, 0.1)",
+        _ => "rgba(123, 44, 191, 0.1)"
+    };
+
+    private string GradientEnd => Theme switch
+    {
+        HeroTheme.Primary => "rgba(67, 97, 238, 0.1)",
+        HeroTheme.Secondary => "rgba(76, 201, 240, 0.1)",
+        HeroTheme.Tertiary => "rgba(67, 97, 238, 0.1)",
+        HeroTheme.Accent => "rgba(67, 97, 238, 0.1)",
+        HeroTheme.Success => "rgba(67, 97, 238, 0.1)",
+        HeroTheme.Info => "rgba(76, 201, 240, 0.1)",
+        _ => "rgba(67, 97, 238, 0.1)"
+    };
+
+    private string BorderColor => Theme switch
+    {
+        HeroTheme.Primary => "rgba(123, 44, 191, 0.2)",
+        HeroTheme.Secondary => "rgba(67, 97, 238, 0.2)",
+        HeroTheme.Tertiary => "rgba(76, 201, 240, 0.2)",
+        HeroTheme.Accent => "rgba(6, 214, 160, 0.2)",
+        HeroTheme.Success => "rgba(6, 214, 160, 0.2)",
+        HeroTheme.Info => "rgba(33, 150, 243, 0.2)",
+        _ => "rgba(123, 44, 191, 0.2)"
+    };
+
+    private string TitleColor => Theme switch
+    {
+        HeroTheme.Primary => "#7B2CBF",
+        HeroTheme.Secondary => "#4361EE",
+        HeroTheme.Tertiary => "#4CC9F0",
+        HeroTheme.Accent => "#06D6A0",
+        HeroTheme.Success => "#06D6A0",
+        HeroTheme.Info => "#2196F3",
+        _ => "#7B2CBF"
+    };
+
+    private string HeroStyle => $"background: linear-gradient(135deg, {GradientStart} 0%, {GradientEnd} 100%); border-radius: 16px; border: 1px solid {BorderColor};";
+
+    private string TitleStyle => $"font-weight: 600; color: {TitleColor};";
+
+    private string IconBadgeClass => Theme switch
+    {
+        HeroTheme.Primary => "icon-badge-primary",
+        HeroTheme.Secondary => "icon-badge-secondary",
+        HeroTheme.Tertiary => "icon-badge-tertiary",
+        HeroTheme.Accent => "icon-badge-accent",
+        HeroTheme.Success => "icon-badge-success",
+        HeroTheme.Info => "icon-badge-info",
+        _ => "icon-badge-primary"
+    };
+}

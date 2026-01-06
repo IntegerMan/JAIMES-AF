@@ -10,28 +10,40 @@
 
 <PageTitle>Run Tests</PageTitle>
 
-<MudPaper Class="pa-4" Style="min-height: calc(100vh - 120px); display: flex; flex-direction: column;">
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4" Style="min-height: calc(100vh - 120px); display: flex; flex-direction: column;">
+    <CompactHeroSection Title="Run Tests"
+                        Icon="@Icons.Material.Filled.PlayArrow"
+                        Theme="CompactHeroSection.HeroTheme.Info"
+                        Subtitle="Select test cases, agent versions, and evaluators to run">
+        <SubtitleContent>
+            @if (!_isLoading && !_isRunning && CanRun)
+            {
+                <span>@_selectedTestCases.Count test(s) × @_selectedVersions.Count version(s) ready</span>
+            }
+            else if (!_isLoading && !_isRunning)
+            {
+                <span>Select items to run tests</span>
+            }
+        </SubtitleContent>
+    </CompactHeroSection>
+
     <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
         <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
     </MudStack>
 
-    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
-        <MudStack>
-            <MudText Typo="Typo.h4">Run Tests</MudText>
-            <MudText Class="text-muted">Select test cases, agent versions, and evaluators to run tests.</MudText>
-        </MudStack>
-        @if (!_isLoading && !_isRunning)
-        {
+    @if (!_isLoading && !_isRunning)
+    {
+        <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-4">
             <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
+                       Color="Color.Info"
                        Size="Size.Large"
                        StartIcon="@Icons.Material.Filled.PlayArrow"
                        Disabled="@(!CanRun)"
                        OnClick="RunTestsAsync">
                 Run @_selectedTestCases.Count Test(s) × @_selectedVersions.Count Version(s)
             </MudButton>
-        }
-    </MudStack>
+        </MudStack>
+    }
 
     @if (_isLoading)
     {
@@ -205,4 +217,4 @@
             </MudItem>
         </MudGrid>
     }
-</MudPaper>
+</MudContainer>

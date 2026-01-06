@@ -8,19 +8,17 @@
 <PageTitle>Evaluators</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <CompactHeroSection Title="Evaluators"
+                        Icon="@Icons.Material.Filled.Science"
+                        Theme="CompactHeroSection.HeroTheme.Info"
+                        Subtitle="Automated quality metrics for AI responses"
+                        ActionText="Test Evaluators"
+                        ActionHref="/admin/evaluators/test"
+                        ActionIcon="@Icons.Material.Filled.PlayArrow"/>
+
     <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
         <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
     </MudStack>
-    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-2">
-        <MudText Typo="Typo.h4">Evaluators</MudText>
-        <MudLink Href="/admin/metrics" Color="Color.Primary" Typo="Typo.body1" Class="d-flex align-center">
-            <MudIcon Icon="@Icons.Material.Filled.PieChart" Size="Size.Small" Class="mr-2"/>
-            View All Metrics
-        </MudLink>
-    </MudStack>
-    <MudText Typo="Typo.body2" Class="mb-4 text-muted">
-        View registered evaluators and their aggregate metrics. Click an evaluator name to see detailed evaluation metrics.
-    </MudText>
 
     <MudDataGrid T="EvaluatorItemDto"
                  ServerData="ServerReload"
@@ -110,7 +108,7 @@
             </PropertyColumn>
             <TemplateColumn Title="Actions">
                 <CellTemplate>
-                    <MudTooltip Text="View Metrics">
+                    <MudTooltip Text="View Metrics" Placement="Placement.Top">
                         <MudIconButton Icon="@Icons.Material.Filled.PieChart" 
                                        Color="Color.Primary" 
                                        Size="Size.Small"
