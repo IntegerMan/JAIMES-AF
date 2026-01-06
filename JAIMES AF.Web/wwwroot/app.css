@@ -634,6 +634,12 @@ h1:focus {
     background: linear-gradient(135deg, #EF476F 0%, #F76D8B 100%);
     box-shadow: 0 4px 12px rgba(239, 71, 111, 0.3);
 }
+
+.icon-badge-warning {
+    background: linear-gradient(135deg, #FF9800 0%, #FFB74D 100%);
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+}
+
 .glass-card:hover .icon-badge {
     transform: scale(1.1) rotate(5deg);
 }

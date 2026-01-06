@@ -8,7 +8,7 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
-<MudDataGrid Items="_messages" Filterable="true" Groupable="true" Loading="_isLoading">
+<MudDataGrid Items="_messages" Filterable="true" Groupable="true" Loading="_isLoading" GroupExpanded="true">
     <Columns>
         <PropertyColumn Property="x => x.GameId" Title="Game" Grouping="true">
             <CellTemplate>
@@ -28,19 +28,53 @@
             </GroupTemplate>
         </PropertyColumn>
 
-        @if (VersionId == null)
-        {
-            <TemplateColumn Title="Version" Sortable="true">
-                <CellTemplate>
-                    <MattEland.Jaimes.Web.Components.Shared.AgentVersionLink 
-                        AgentId="@AgentId" 
-                        VersionId="@context.Item.InstructionVersionId" 
-                        VersionNumber="@(context.Item.InstructionVersionNumber ?? $"v{context.Item.InstructionVersionId}")" />
-                </CellTemplate>
-            </TemplateColumn>
-        }
+        <TemplateColumn Title="Agent" Sortable="true">
+            <CellTemplate>
+                @if (!string.IsNullOrEmpty(context.Item.AgentId))
+                {
+                    <AgentLink AgentId="@context.Item.AgentId"
+                        AgentName="@(context.Item.AgentName ?? context.Item.AgentId)" />
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Class="text-muted">None</MudText>
+                }
+            </CellTemplate>
+        </TemplateColumn>
 
-        <PropertyColumn Property="x => x.CreatedAt" Title="Time" Sortable="true" Format="yyyy-MM-dd HH:mm:ss"/>
+        <TemplateColumn Title="Version" Sortable="true">
+            <CellTemplate>
+                @if (context.Item.InstructionVersionId > 0)
+                {
+                    <MattEland.Jaimes.Web.Components.Shared.AgentVersionLink AgentId="@context.Item.AgentId"
+                        VersionId="@context.Item.InstructionVersionId"
+                        VersionNumber="@(context.Item.InstructionVersionNumber ?? $"v{context.Item.InstructionVersionId}")" />
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Class="text-muted">-</MudText>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+
+        <PropertyColumn Property="x => x.CreatedAt" Title="Time" Sortable="true" Format="yyyy-MM-dd HH:mm:ss" />
+
+        <TemplateColumn Title="Sender" Sortable="true">
+            <CellTemplate>
+                @if (context.Item.PlayerId != null)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Icon="@Icons.Material.Filled.Person">
+                        @context.Item.ParticipantName
+                    </MudChip>
+                }
+                else
+                {
+                    <MattEland.Jaimes.Web.Components.Shared.AgentVersionLink AgentId="@context.Item.AgentId"
+                        VersionId="@context.Item.InstructionVersionId"
+                        VersionNumber="@(context.Item.AgentName ?? context.Item.ParticipantName)" />
+                }
+            </CellTemplate>
+        </TemplateColumn>
 
         <TemplateColumn Title="Message">
             <CellTemplate>
@@ -52,31 +86,26 @@
 
         <TemplateColumn Title="Status">
             <CellTemplate>
-                <MessageIndicators
-                    Feedback="@context.Item.Feedback"
-                    Metrics="@context.Item.Metrics"
-                    ToolCallCount="@(context.Item.ToolCalls?.Count ?? 0)"
-                    ToolCalls="@context.Item.ToolCalls"
-                    ReadOnly="true"
-                    ShowFeedbackButtons="false"
-                    MessageId="@context.Item.Id"
-                    ExemptFromProcessing="false"/>
+                <MessageIndicators Feedback="@context.Item.Feedback" Metrics="@context.Item.Metrics"
+                    ToolCallCount="@(context.Item.ToolCalls?.Count ?? 0)" ToolCalls="@context.Item.ToolCalls"
+                    ReadOnly="true" ShowFeedbackButtons="false" MessageId="@context.Item.Id"
+                    ExemptFromProcessing="false" />
             </CellTemplate>
         </TemplateColumn>
     </Columns>
     <PagerContent>
-        <MudDataGridPager T="MessageContextDto"/>
+        <MudDataGridPager T="MessageContextDto" />
     </PagerContent>
 </MudDataGrid>
 
 @code {
-    [Parameter] public string AgentId { get; set; } = string.Empty;
+    [Parameter] public string? AgentId { get; set; }
     [Parameter] public int? VersionId { get; set; }
 
     private List<MessageContextDto> _messages = new();
     private bool _isLoading = true;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
         await LoadMessagesAsync();
     }
@@ -86,10 +115,20 @@
         _isLoading = true;
         try
         {
-            string url = $"/agents/{AgentId}/messages";
+            string url = "/admin/messages";
+            var queryParams = new List<string>();
+            if (!string.IsNullOrEmpty(AgentId))
+            {
+                queryParams.Add($"agentId={AgentId}");
+            }
             if (VersionId.HasValue)
             {
-                url += $"?versionId={VersionId}";
+                queryParams.Add($"versionId={VersionId}");
+            }
+
+            if (queryParams.Any())
+            {
+                url += "?" + string.Join("&", queryParams);
             }
 
             var result = await Http.GetFromJsonAsync<List<MessageContextDto>>(url);
@@ -116,7 +155,7 @@
     /// </summary>
     public async Task GenerateInsightsAsync()
     {
-        if (!VersionId.HasValue || string.IsNullOrEmpty(AgentId))
+        if (string.IsNullOrEmpty(AgentId))
             return;
 
         _isGeneratingInsights = true;
@@ -127,9 +166,12 @@
             var client = HttpClientFactory.CreateClient("Api");
             var request = new GenerateInsightsRequest { InsightType = "messages" };
 
+            // We still need a version ID for insights generation as it's typically tied to a version
+            int versionToUse = VersionId ?? 0; // Defaulting to 0 might fail, but we usually want a version context for insights
+
             var response = await client.PostAsJsonAsync(
-                $"/agents/{AgentId}/instruction-versions/{VersionId}/generate-insights",
-                request);
+            $"/agents/{AgentId}/instruction-versions/{versionToUse}/generate-insights",
+            request);
 
             if (response.IsSuccessStatusCode)
             {
@@ -138,11 +180,11 @@
                 {
                     // Show dialog with markdown content
                     var parameters = new DialogParameters<InsightsDialog>
-                    {
-                        { x => x.Title, "Message Insights" },
-                        { x => x.Content, result.Insights ?? "No insights available." },
-                        { x => x.ItemCount, result.ItemsAnalyzed }
-                    };
+{
+{ x => x.Title, "Message Insights" },
+{ x => x.Content, result.Insights ?? "No insights available." },
+{ x => x.ItemCount, result.ItemsAnalyzed }
+};
                     await DialogService.ShowAsync<InsightsDialog>("AI Insights", parameters);
                 }
                 else

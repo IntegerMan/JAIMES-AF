@@ -1,0 +1,205 @@
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Chat
+@inject HttpClient Http
+@inject ILoggerFactory LoggerFactory
+@inject NavigationManager NavigationManager
+
+@if (_isLoading)
+{
+    <MudGrid Spacing="3" Class="mb-4">
+        @for (int i = 0; i < 5; i++)
+        {
+            <MudItem xs="12" sm="6" md="2" Style="flex: 1;">
+                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="100px" Style="border-radius: 12px;" />
+            </MudItem>
+        }
+    </MudGrid>
+}
+else
+{
+    <MudGrid Spacing="3" Class="mb-4" Style="display: flex; align-items: stretch;">
+        @* Messages Card *@
+        <MudItem xs="12" sm="6" md="2" Style="flex: 1; display: flex;">
+            <MudLink Href="@($"/admin/messages?agentId={AgentId}{(VersionId.HasValue ? $"&versionId={VersionId}" : "")}")"
+                Underline="Underline.None" Style="width: 100%; display: flex;">
+                <div class="stat-card stat-card-primary"
+                    style="cursor: pointer; width: 100%; height: 110px; display: flex; flex-direction: column; justify-content: center;">
+                    <MudText Typo="Typo.caption" Class="text-muted">Messages</MudText>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudIcon Icon="@Icons.Material.Filled.Message" Size="Size.Small" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6" Style="font-weight: 600; color: var(--mud-palette-primary);">
+                            @(_stats?.MessageCount ?? 0)</MudText>
+                        </MudStack>
+                    </div>
+                </MudLink>
+            </MudItem>
+
+            @* Feedback Card *@
+            <MudItem xs="12" sm="6" md="2" Style="flex: 1; display: flex;">
+                <MudLink Href="@($"/admin/feedback?agentId={AgentId}{(VersionId.HasValue ? $"&versionId={VersionId}" : "")}")"
+                    Underline="Underline.None" Style="width: 100%; display: flex;">
+                    <div class="stat-card stat-card-warning"
+                        style="cursor: pointer; width: 100%; height: 110px; display: flex; flex-direction: column; justify-content: center;">
+                        <MudText Typo="Typo.caption" Class="text-muted">Feedback</MudText>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Success" Size="Size.Small" />
+                            <MudText Typo="Typo.body2" Style="font-weight: 600; color: var(--mud-palette-primary);">
+                                @(_stats?.FeedbackPositiveCount ?? 0)</MudText>
+                            <MudIcon Icon="@Icons.Material.Filled.ThumbDown" Color="Color.Error" Size="Size.Small"
+                                Class="ml-2" />
+                            <MudText Typo="Typo.body2" Style="font-weight: 600; color: var(--mud-palette-primary);">
+                                @(_stats?.FeedbackNegativeCount ?? 0)</MudText>
+                        </MudStack>
+                    </div>
+                </MudLink>
+            </MudItem>
+
+            @* Sentiment Card *@
+            <MudItem xs="12" sm="6" md="3" Style="flex: 1.5; display: flex;">
+                <div class="stat-card @GetSentimentClass()"
+                @onclick="@(() => NavigationManager.NavigateTo($"/admin/sentiments?agentId={AgentId}"))"
+                    style="cursor: pointer; width: 100%; height: 110px; display: flex; flex-direction: column; justify-content: center;">
+                    <MudText Typo="Typo.caption" Class="text-muted">Sentiment</MudText>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        @if (_stats is not null && (_stats.SentimentPositiveCount > 0 ||
+                   _stats.SentimentNeutralCount > 0 || _stats.SentimentNegativeCount > 0))
+                    {
+                        <MudTooltip Text="Positive" Placement="Placement.Top">
+                            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                <MudIcon Icon="@Icons.Material.Filled.SentimentVerySatisfied" Color="Color.Success"
+                                    Size="Size.Small" />
+                                <MudText Typo="Typo.body2" Style="font-weight: 600; color: var(--mud-palette-primary);">
+                                    @_stats.SentimentPositiveCount</MudText>
+                            </MudStack>
+                        </MudTooltip>
+                        <MudTooltip Text="Neutral" Placement="Placement.Top">
+                            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Class="ml-1">
+                                <MudIcon Icon="@Icons.Material.Filled.Balance" Color="Color.Default" Size="Size.Small" />
+                                <MudText Typo="Typo.body2" Style="font-weight: 600; color: var(--mud-palette-primary);">
+                                    @_stats.SentimentNeutralCount</MudText>
+                            </MudStack>
+                        </MudTooltip>
+                        <MudTooltip Text="Negative" Placement="Placement.Top">
+                            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Class="ml-1">
+                                <MudIcon Icon="@Icons.Material.Filled.SentimentVeryDissatisfied" Color="Color.Error"
+                                    Size="Size.Small" />
+                                <MudText Typo="Typo.body2" Style="font-weight: 600; color: var(--mud-palette-primary);">
+                                    @_stats.SentimentNegativeCount</MudText>
+                            </MudStack>
+                        </MudTooltip>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.h6" Style="font-weight: 600;" Class="text-muted">—</MudText>
+                    }
+                </MudStack>
+            </div>
+        </MudItem>
+
+        @* Evaluations Card *@
+        <MudItem xs="12" sm="6" md="3" Style="flex: 1.5; display: flex;">
+            <div class="stat-card @GetEvaluationClass()"
+            @onclick="@(() => NavigationManager.NavigateTo($"/admin/metrics?agentId={AgentId}{(VersionId.HasValue ? $"&versionId={VersionId}" : "")}"))"
+                style="cursor: pointer; width: 100%; height: 110px; display: flex; flex-direction: column; justify-content: center;">
+                <MudText Typo="Typo.caption" Class="text-muted">Evaluations</MudText>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    @if (_stats?.EvaluationMetrics != null && _stats.EvaluationMetrics.Count > 0)
+                    {
+                        <EvaluationProgressRing Size="32" TotalSegments="@_stats.EvaluationMetrics.Count"
+                            Metrics="@_stats.EvaluationMetrics.Select(m => new MessageEvaluationMetricResponse { MetricName = m.MetricName, Score = m.AverageScore }).ToList()" />
+                        <MudText Typo="Typo.body2" Style="font-weight: 600; color: var(--mud-palette-primary);">
+                            @_stats.EvaluationMetrics.Average(m => m.AverageScore).ToString("F1") / 5 Average Score
+                        </MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.h6" Style="font-weight: 600;" Class="text-muted">—</MudText>
+                    }
+                </MudStack>
+            </div>
+        </MudItem>
+
+        @* Tool Calls Card *@
+        <MudItem xs="12" sm="6" md="2" Style="flex: 1; display: flex;">
+            <div class="stat-card stat-card-tertiary"
+            @onclick="@(() => NavigationManager.NavigateTo($"/admin/tools?agentId={AgentId}{(VersionId.HasValue ? $"&versionId={VersionId}" : "")}"))"
+                style="cursor: pointer; width: 100%; height: 110px; display: flex; flex-direction: column; justify-content: center;">
+                <MudText Typo="Typo.caption" Class="text-muted">Tool Calls</MudText>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.Build" Size="Size.Small" Color="Color.Default" />
+                    <MudText Typo="Typo.h6" Style="font-weight: 600; color: var(--mud-palette-primary);">
+                        @(_stats?.ToolCallCount ?? 0)</MudText>
+                </MudStack>
+                @if (_stats != null && _stats.AiMessageCount > 0)
+                {
+                    <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary); font-size: 0.7rem;">
+                        @(_stats.ToolUsageRate.ToString("F2")) calls per message
+                    </MudText>
+                }
+            </div>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public required string AgentId { get; set; }
+    [Parameter] public int? VersionId { get; set; }
+    [Parameter] public EventCallback<int> OnTabRequested { get; set; }
+
+    private bool _isLoading = true;
+    private AgentStatsResponse? _stats;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadStatsAsync();
+    }
+
+    private async Task LoadStatsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _stats = await Http.GetFromJsonAsync<AgentStatsResponse>(
+            $"/admin/agents/{AgentId}/stats{(VersionId.HasValue ? $"?versionId={VersionId}" : "")}");
+        }
+        catch (Exception ex)
+        {
+            LoggerFactory.CreateLogger("AgentStats").LogError(ex, "Failed to load agent stats");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private string GetSentimentClass()
+    {
+        if (_stats == null || (_stats.SentimentPositiveCount == 0 && _stats.SentimentNegativeCount == 0))
+            return "stat-card-accent";
+
+        int total = _stats.SentimentPositiveCount + _stats.SentimentNegativeCount;
+        double ratio = (double)_stats.SentimentPositiveCount / total;
+
+        return ratio switch
+        {
+            >= 0.7 => "stat-card-success",
+            >= 0.4 => "stat-card-warning",
+            _ => "stat-card-error"
+        };
+    }
+
+    private string GetEvaluationClass()
+    {
+        if (_stats == null || !_stats.EvaluationMetrics.Any())
+            return "stat-card-secondary";
+
+        double avg = _stats.EvaluationMetrics.Average(m => m.AverageScore);
+
+        return avg switch
+        {
+            >= 4.0 => "stat-card-success",
+            >= 3.0 => "stat-card-warning",
+            _ => "stat-card-error"
+        };
+    }
+}

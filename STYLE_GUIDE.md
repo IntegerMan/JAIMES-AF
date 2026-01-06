@@ -13,6 +13,8 @@ When building UI, follow these patterns:
 - **Displaying an agent name** → Use `<AgentLink>` component
 - **Displaying agent + version together** → Use `<AgentVersionDisplay>` component
 - **Displaying a version number alone** → Use `<AgentVersionLink>` component (handles null versions with "Latest" chip)
+- **List/tool page headers** → Use `<CompactHeroSection>` component
+- **Form page headers (create/edit)** → Use `<FormPageHeader>` component
 - **Icon buttons** → Always wrap in `<MudTooltip Placement="Placement.Top">`
 - **Tooltips** → Always use `Placement.Top` for better visibility
 - **Agent/bot icon** → `Icons.Material.Filled.SmartToy` with `Color.Secondary`
@@ -20,6 +22,7 @@ When building UI, follow these patterns:
 - **Section labels** → Use `Typo.overline` with purple color and letter-spacing
 - **Chat messages** → Use the `PlayerMessage`, `AssistantMessage`, or `ErrorMessage` components
 - **List pages** → Follow the List Page Pattern (`Games.razor` is the gold standard)
+- **Form pages** → Follow the Form Page Pattern (`NewAgent.razor`, `EditAgent.razor` are gold standards)
 
 ---
 
@@ -64,6 +67,8 @@ Use these components instead of building custom displays. They are located in `J
 | `AgentVersionLink.razor` | Displays version number as a linked chip. When `VersionId` is null, shows "Latest" chip (Primary, Filled) that links to agent page. Has appropriate tooltips. |
 | `AgentVersionDisplay.razor` | Combined agent name + version number display. Use when showing both together. |
 | `RulesetLink.razor` | Displays ruleset ID as a linked chip with book icon (`AutoStories`). Tooltip shows full name and description. Use whenever showing a ruleset ID. |
+| `CompactHeroSection.razor` | Hero header for list and tool pages with icon badge, title, subtitle, and optional action button. Use for pages showing collections of items. |
+| `FormPageHeader.razor` | Hero header for create/edit form pages with icon badge, title, and subtitle. Matches CompactHeroSection styling without action button. |
 | `CompactLinkCard.razor` | Navigation card with colored icon badge. Use for dashboard/home page links. |
 | `SentimentIcon.razor` | Sentiment indicator (thumbs up/down/neutral) with optional edit menu. Use in chat footers. |
 | `MessageIndicators.razor` | Displays evaluation metrics and tool call badges. Use in assistant message footers. |
@@ -95,6 +100,7 @@ Always use these specific icons for each entity type:
 
 | Action | Icon | Typical Color |
 |--------|------|---------------|
+| Add/Create | `Icons.Material.Filled.Add` | Entity-specific |
 | View/Details | `Icons.Material.Filled.Visibility` | `Color.Primary` |
 | Edit | `Icons.Material.Filled.Edit` | `Color.Default` |
 | Delete | `Icons.Material.Filled.Delete` | `Color.Error` |
@@ -103,7 +109,7 @@ Always use these specific icons for each entity type:
 | Test/Evaluate | `Icons.Material.Filled.Science` | `Color.Success` |
 | Download/Export | `Icons.Material.Filled.Download` | `Color.Info` |
 | Run/Play | `Icons.Material.Filled.PlayArrow` | `Color.Success` |
-| Save/Confirm | `Icons.Material.Filled.Check` | `Color.Success` |
+| Save/Confirm | `Icons.Material.Filled.Check` | Entity-specific |
 | Cancel/Close | `Icons.Material.Filled.Close` | `Color.Error` |
 | Tool Calls | `Icons.Material.Filled.Build` | `Color.Default` |
 
@@ -154,6 +160,32 @@ For tooltips with structured content, use `TooltipContent`:
     </TooltipContent>
     <ChildContent>
         <!-- Element to attach tooltip to -->
+    </ChildContent>
+</MudTooltip>
+```
+
+#### Interactive Chart Tooltips
+
+For charts (like Pie charts or Sparklines), use dynamic tooltips that update based on mouse hover:
+- **Per-Segment Detail**: Show the specific metric name and raw value.
+- **Visual Aid**: Include a small colored indicator matching the chart segment.
+- **Format**: Use `Metric Name: Value / Max` for clarity.
+
+```razor
+<MudTooltip Placement="Placement.Top">
+    <TooltipContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="pa-1">
+            <div style="width: 10px; height: 12px; border-radius: 4px; background-color: @Color;"></div>
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.caption" Style="font-weight: 700;">@MetricName</MudText>
+                <MudText Typo="Typo.caption">@Score / 5.0</MudText>
+            </MudStack>
+        </MudStack>
+    </TooltipContent>
+    <ChildContent>
+        <svg ... @onmouseover="@(() => _hoveredMetric = metric)">
+            <!-- Chart content -->
+        </svg>
     </ChildContent>
 </MudTooltip>
 ```
@@ -282,23 +314,53 @@ Assistant message footers should include:
 
 ### Form Page Structure
 
+Form pages (create/edit) should use the `FormPageHeader` component for visual consistency with list pages:
+
 ```razor
 <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
-    <MudPaper Class="pa-4">
-        <MudBreadcrumbs Items="_breadcrumbs" Separator=">" Class="mb-2"/>
-        <MudText Typo="Typo.h4" Class="mb-4">Edit Entity</MudText>
+    <FormPageHeader Title="Create New Agent"
+                    Icon="@Icons.Material.Filled.SmartToy"
+                    Theme="FormPageHeader.HeroTheme.Secondary"
+                    Subtitle="Define a new AI agent" />
+
+    <MudPaper Class="pa-6" Elevation="2">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+            <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+        </MudStack>
 
         <MudForm>
             <MudTextField @bind-Value="_name" Label="Name" 
                           Variant="Variant.Outlined" Class="mb-4" />
             
-            <div class="d-flex gap-2">
-                <MudButton Variant="Variant.Filled" Color="Color.Primary">Save</MudButton>
-                <MudButton Variant="Variant.Text" Color="Color.Default">Cancel</MudButton>
+            <div class="d-flex gap-2 mt-4">
+                <MudButton Variant="Variant.Filled" 
+                           Color="Color.Secondary"
+                           StartIcon="@Icons.Material.Filled.Add">
+                    Create Agent
+                </MudButton>
+                <MudButton Variant="Variant.Text" 
+                           Color="Color.Default"
+                           Href="/agents">
+                    Cancel
+                </MudButton>
             </div>
         </MudForm>
     </MudPaper>
 </MudContainer>
+```
+
+**Form Page Guidelines:**
+- Use `MaxWidth.Medium` for simple forms, `MaxWidth.Large` for complex multi-column forms
+- Use `pa-6` and `Elevation="2"` on the main `MudPaper`
+- **Create buttons**: Use `StartIcon="@Icons.Material.Filled.Add"` with entity-specific color
+- **Save buttons**: Use `StartIcon="@Icons.Material.Filled.Check"` with entity-specific color
+- **Cancel buttons**: Use `Variant.Text`, `Color.Default`, and `Href` to navigate back (not `OnClick`)
+- Use entity-specific button colors (see Entity Icon table for color mapping)
+
+**Edit Page Titles:**
+For edit pages, use dynamic titles that show the entity name after loading:
+```razor
+<FormPageHeader Title="@(_isLoading ? "Edit Agent" : $"Edit: {_name}")" ... />
 ```
 
 ### Hero Section (Home/Landing Pages)
@@ -402,6 +464,8 @@ Show an engaging empty state when no items exist:
 
 ### Section Headers
 
+Use these for grouping content within a page. Prefer left alignment and ALL CAPS HEADERS.
+
 ```razor
 <MudText Typo="Typo.overline" Class="mb-3" 
          Style="letter-spacing: 1.5px; color: #7B2CBF; font-weight: 600;">
@@ -435,6 +499,30 @@ Used for metrics/statistics with colored left border:
 ```
 
 Available variants: `stat-card-primary`, `stat-card-secondary`, `stat-card-tertiary`, `stat-card-accent`, `stat-card-warning`, `stat-card-error`
+
+#### Message Logs & Data Grids
+
+When displaying message logs (e.g., `AgentMessagesList.razor`), adhere to the following standards:
+
+1.  **Sender Identification**: 
+    - Always include a **Sender** column before the message text.
+    - Use distinct visual styles to distinguish participant types:
+        - **Players**: Use a `MudChip` (Color.Info) with `Icons.Material.Filled.Person`.
+        - **AI Agents / GM**: Use an `AgentVersionLink` or similar navigation control to link to the specific agent version.
+    - Display the participant's name clearly.
+2.  **Interactive Elements**: See [Interactive Chart Tooltips](#interactive-chart-tooltips) for standardizing wedge hovers.
+
+#### Metric Value Links
+
+When a metric count or value in a dashboard stat card acts as a link (or triggers an on-click action like switching tabs), use the primary theme color to clearly indicate it is interactive:
+- **Color**: `var(--mud-palette-primary)`
+- **Font Weight**: `600` (Semi-bold)
+
+```razor
+<MudText Typo="Typo.h6" Style="font-weight: 600; color: var(--mud-palette-primary);">
+    @_count
+</MudText>
+```
 
 ### Compact Link Card
 

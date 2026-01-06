@@ -4,11 +4,15 @@
 <PageTitle>Create New Agent</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
-	<MudPaper Class="pa-4">
-        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+	<FormPageHeader Title="Create New Agent"
+	                Icon="@Icons.Material.Filled.SmartToy"
+	                Theme="FormPageHeader.HeroTheme.Secondary"
+	                Subtitle="Define a new AI agent" />
+
+	<MudPaper Class="pa-6" Elevation="2">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
             <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
         </MudStack>
-		<MudText Typo="Typo.h4" Class="mb-4">Create New Agent</MudText>
 
 		@if (!string.IsNullOrEmpty(_errorMessage))
 		{
@@ -44,12 +48,12 @@
 			              RequiredError="Instructions are required"
 			              HelperText="Agent instructions that define how this agent behaves. This will be the initial instruction version."/>
 
-			<div class="d-flex gap-2">
+			<div class="d-flex gap-2 mt-4">
 				<MudButton Variant="Variant.Filled"
-				           Color="Color.Primary"
+				           Color="Color.Secondary"
 				           OnClick="CreateAgentAsync"
 				           Disabled="_isSaving || !IsFormValid()"
-				           Class="mt-2">
+				           StartIcon="@Icons.Material.Filled.Add">
 					@if (_isSaving)
 					{
 						<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
@@ -63,9 +67,8 @@
 
 				<MudButton Variant="Variant.Text"
 				           Color="Color.Default"
-				           OnClick="Cancel"
-				           Disabled="_isSaving"
-				           Class="mt-2">
+				           Href="/agents"
+				           Disabled="_isSaving">
 					Cancel
 				</MudButton>
 			</div>

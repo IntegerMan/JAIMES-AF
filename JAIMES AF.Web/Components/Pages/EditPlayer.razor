@@ -3,12 +3,16 @@
 
 <PageTitle>Edit Player</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-	<MudPaper Class="pa-4">
-        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+	<FormPageHeader Title="@(_isLoading ? "Edit Player" : $"Edit: {_name}")"
+	                Icon="@Icons.Material.Filled.Person"
+	                Theme="FormPageHeader.HeroTheme.Tertiary"
+	                Subtitle="Modify character details" />
+
+	<MudPaper Class="pa-6" Elevation="2">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
             <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
         </MudStack>
-		<MudText Typo="Typo.h4" Class="mb-4">Edit Player</MudText>
 
 		@if (_isLoading)
 		{
@@ -65,12 +69,12 @@
 				              Disabled="_isSaving"
 				              Lines="2"/>
 
-				<div class="d-flex gap-2">
+				<div class="d-flex gap-2 mt-4">
 					<MudButton Variant="Variant.Filled"
-					           Color="Color.Primary"
+					           Color="Color.Tertiary"
 					           OnClick="UpdatePlayerAsync"
 					           Disabled="_isSaving || !IsFormValid()"
-					           Class="mt-2">
+					           StartIcon="@Icons.Material.Filled.Check">
 						@if (_isSaving)
 						{
 							<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
@@ -84,9 +88,8 @@
 
 					<MudButton Variant="Variant.Text"
 					           Color="Color.Default"
-					           OnClick="Cancel"
-					           Disabled="_isSaving"
-					           Class="mt-2">
+					           Href="@($"/players/{PlayerId}")"
+					           Disabled="_isSaving">
 						Cancel
 					</MudButton>
 				</div>
