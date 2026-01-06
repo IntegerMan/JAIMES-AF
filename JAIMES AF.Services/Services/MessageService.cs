@@ -122,19 +122,21 @@ public class MessageService(IDbContextFactory<JaimesDbContext> contextFactory) :
         return dtos;
     }
 
-    public async Task<IEnumerable<MessageContextDto>> GetMessagesByAgentAsync(string agentId,
+    public async Task<IEnumerable<MessageContextDto>> GetMessagesByAgentAsync(string? agentId,
         int? versionId,
         CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
-        // Filter by AgentId (case-insensitive) AND IsScriptedMessage == false
-        // Note: AgentId is stored as a string in the DB, so we need to ensure format matches
-        string agentIdLower = agentId.ToLower();
-
         var query = context.Messages
             .AsNoTracking()
-            .Where(m => m.AgentId.ToLower() == agentIdLower && !m.IsScriptedMessage);
+            .Where(m => !m.IsScriptedMessage);
+
+        if (!string.IsNullOrEmpty(agentId))
+        {
+            string agentIdLower = agentId.ToLower();
+            query = query.Where(m => m.AgentId.ToLower() == agentIdLower);
+        }
 
         if (versionId.HasValue)
         {

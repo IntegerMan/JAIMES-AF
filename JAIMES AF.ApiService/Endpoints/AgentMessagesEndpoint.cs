@@ -9,7 +9,7 @@ public class AgentMessagesEndpoint : EndpointWithoutRequest<IEnumerable<MessageC
 
     public override void Configure()
     {
-        Get("/agents/{agentId}/messages");
+        Get("/admin/messages");
         AllowAnonymous();
         Description(b => b
             .Produces<IEnumerable<MessageContextDto>>(StatusCodes.Status200OK)
@@ -18,19 +18,13 @@ public class AgentMessagesEndpoint : EndpointWithoutRequest<IEnumerable<MessageC
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        string? agentId = Route<string>("agentId");
-        if (string.IsNullOrEmpty(agentId))
-        {
-            ThrowError("Agent ID is required");
-            return;
-        }
-
+        string? agentId = Query<string?>("agentId", false);
         int? versionId = Query<int?>("versionId", false);
 
         try
         {
             IEnumerable<MessageContextDto> messages =
-                await MessageService.GetMessagesByAgentAsync(agentId!, versionId, ct);
+                await MessageService.GetMessagesByAgentAsync(agentId, versionId, ct);
             await Send.OkAsync(messages, ct);
         }
         catch (ArgumentException ex)

@@ -19,6 +19,13 @@ public interface IMessageFeedbackService
 
     Task<MattEland.Jaimes.ServiceDefinitions.Responses.FeedbackFullDetailsResponse?> GetFeedbackDetailsAsync(int id,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets feedback summary statistics with optional filters.
+    /// </summary>
+    Task<MattEland.Jaimes.ServiceDefinitions.Responses.FeedbackSummaryResponse> GetFeedbackSummaryAsync(
+        AdminFilterParams? filters = null,
+        CancellationToken cancellationToken = default);
 }
 
 

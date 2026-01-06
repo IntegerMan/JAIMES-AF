@@ -164,6 +164,32 @@ For tooltips with structured content, use `TooltipContent`:
 </MudTooltip>
 ```
 
+#### Interactive Chart Tooltips
+
+For charts (like Pie charts or Sparklines), use dynamic tooltips that update based on mouse hover:
+- **Per-Segment Detail**: Show the specific metric name and raw value.
+- **Visual Aid**: Include a small colored indicator matching the chart segment.
+- **Format**: Use `Metric Name: Value / Max` for clarity.
+
+```razor
+<MudTooltip Placement="Placement.Top">
+    <TooltipContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="pa-1">
+            <div style="width: 10px; height: 12px; border-radius: 4px; background-color: @Color;"></div>
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.caption" Style="font-weight: 700;">@MetricName</MudText>
+                <MudText Typo="Typo.caption">@Score / 5.0</MudText>
+            </MudStack>
+        </MudStack>
+    </TooltipContent>
+    <ChildContent>
+        <svg ... @onmouseover="@(() => _hoveredMetric = metric)">
+            <!-- Chart content -->
+        </svg>
+    </ChildContent>
+</MudTooltip>
+```
+
 ---
 
 ## Link Styling
@@ -477,6 +503,8 @@ Show an engaging empty state when no items exist:
 
 ### Section Headers
 
+Use these for grouping content within a page. Prefer left alignment and ALL CAPS HEADERS.
+
 ```razor
 <MudText Typo="Typo.overline" Class="mb-3" 
          Style="letter-spacing: 1.5px; color: #7B2CBF; font-weight: 600;">
@@ -510,6 +538,30 @@ Used for metrics/statistics with colored left border:
 ```
 
 Available variants: `stat-card-primary`, `stat-card-secondary`, `stat-card-tertiary`, `stat-card-accent`, `stat-card-warning`, `stat-card-error`
+
+#### Message Logs & Data Grids
+
+When displaying message logs (e.g., `AgentMessagesList.razor`), adhere to the following standards:
+
+1.  **Sender Identification**: 
+    - Always include a **Sender** column before the message text.
+    - Use distinct visual styles to distinguish participant types:
+        - **Players**: Use a `MudChip` (Color.Info) with `Icons.Material.Filled.Person`.
+        - **AI Agents / GM**: Use an `AgentVersionLink` or similar navigation control to link to the specific agent version.
+    - Display the participant's name clearly.
+2.  **Interactive Elements**: See [Interactive Chart Tooltips](#interactive-chart-tooltips) for standardizing wedge hovers.
+
+#### Metric Value Links
+
+When a metric count or value in a dashboard stat card acts as a link (or triggers an on-click action like switching tabs), use the primary theme color to clearly indicate it is interactive:
+- **Color**: `var(--mud-palette-primary)`
+- **Font Weight**: `600` (Semi-bold)
+
+```razor
+<MudText Typo="Typo.h6" Style="font-weight: 600; color: var(--mud-palette-primary);">
+    @_count
+</MudText>
+```
 
 ### Compact Link Card
 

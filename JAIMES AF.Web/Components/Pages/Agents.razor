@@ -6,80 +6,106 @@
 
 <PageTitle>Agents</PageTitle>
 
-<MudPaper Class="pa-4">
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
+
+	@* Compact Hero Section *@
+	<div class="agents-hero pa-3 mb-4" style="background: linear-gradient(135deg, rgba(67, 97, 238, 0.1) 0%, rgba(76, 201, 240, 0.1) 100%); 
+		border-radius: 16px; border: 1px solid rgba(67, 97, 238, 0.2);">
+		<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+				<div class="icon-badge icon-badge-secondary">
+					<MudIcon Icon="@Icons.Material.Filled.SmartToy" Style="color: white; font-size: 1.5rem;" />
+				</div>
+				<MudStack Spacing="0">
+					<MudText Typo="Typo.h5" Style="font-weight: 600; color: #4361EE;">AI Agents</MudText>
+					<MudText Typo="Typo.caption" Class="text-muted">
+						@if (_agents is not null && _agents.Length > 0)
+						{
+							<span>@_agents.Length agent@(_agents.Length != 1 ? "s" : "") available</span>
+						}
+						else
+						{
+							<span>Create your first agent</span>
+						}
+					</MudText>
+				</MudStack>
+			</MudStack>
+			<MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/agents/new"
+				StartIcon="@Icons.Material.Filled.Add">
+				New Agent
+			</MudButton>
+		</MudStack>
+	</div>
+
 	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
 		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
 	</MudStack>
-	<MudText Typo="Typo.h4">Agents</MudText>
-
-	<MudText Class="mb-4">Manage AI agents and their instruction versions.</MudText>
-
-	<MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/agents/new" Class="mb-4">
-		New Agent
-	</MudButton>
 
 	<div style="position: relative; min-height: 200px;">
 		@if (_isLoading)
 		{
 			<div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
-				<MudProgressCircular Indeterminate="true"/>
+				<MudProgressCircular Indeterminate="true" />
 			</div>
 		}
 
 		@if (!_isLoading && !string.IsNullOrEmpty(_errorMessage))
 		{
-			<MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
+			<MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
 		}
 
 		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && (_agents is null || _agents.Length == 0))
 		{
-			<MudText Class="mb-4">
-				No agents yet.
-				<MudLink Href="/agents/new">Create a new agent</MudLink>
-			</MudText>
+			<div class="glass-card pa-6" style="text-align: center;">
+				<MudStack AlignItems="AlignItems.Center" Spacing="3">
+					<MudIcon Icon="@Icons.Material.Filled.SmartToy" Color="Color.Secondary"
+						Style="font-size: 4rem; opacity: 0.5;" />
+					<MudText Typo="Typo.h6">No agents yet</MudText>
+					<MudText Class="text-muted mb-4">Create AI agents to power your game experiences!</MudText>
+					<MudButton Variant="Variant.Filled" Color="Color.Secondary" Size="Size.Large" Href="/agents/new"
+						StartIcon="@Icons.Material.Filled.Add">
+						Create Your First Agent
+					</MudButton>
+				</MudStack>
+			</div>
 		}
 
 		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && _agents is not null && _agents.Length > 0)
 		{
-			<MudTable Items="_agents" Dense="true" Hover="true">
-				<HeaderContent>
-					<MudTh>Name</MudTh>
-					<MudTh>Role</MudTh>
-					<MudTh align="Align.Right">Actions</MudTh>
-				</HeaderContent>
-				<RowTemplate>
-					<MudTd>
-						<MudLink Href="@($"/agents/{context.Id}")">@context.Name</MudLink>
-					</MudTd>
-					<MudTd>@context.Role</MudTd>
-					<MudTd align="Align.Right">
-						<MudTooltip Text="View Details" Placement="Placement.Top">
-							<MudIconButton Icon="@Icons.Material.Filled.Visibility"
-							               Color="Color.Primary"
-							               Size="Size.Small"
-							               Href="@($"/agents/{context.Id}")"/>
-						</MudTooltip>
-						<MudTooltip Text="Improve Prompt" Placement="Placement.Top">
-							<MudIconButton Icon="@Icons.Material.Filled.AutoAwesome"
-							               Color="Color.Secondary"
-							               Size="Size.Small"
-							               Href="@($"/agents/{context.Id}/improve")"/>
-						</MudTooltip>
-						<MudTooltip Text="Run Test Cases" Placement="Placement.Top">
-							<MudIconButton Icon="@Icons.Material.Filled.Science"
-							               Color="Color.Success"
-							               Size="Size.Small"
-							               Href="@($"/agents/{context.Id}")"/>
-						</MudTooltip>
-						<MudTooltip Text="Edit Agent" Placement="Placement.Top">
-							<MudIconButton Icon="@Icons.Material.Filled.Edit"
-							               Color="Color.Default"
-							               Size="Size.Small"
-							               Href="@($"/agents/{context.Id}/edit")"/>
-						</MudTooltip>
-					</MudTd>
-				</RowTemplate>
-			</MudTable>
+			<MudPaper Elevation="0" Class="pa-0" Style="background: transparent;">
+				<MudTable Items="_agents" Dense="true" Hover="true">
+					<HeaderContent>
+						<MudTh>Name</MudTh>
+						<MudTh>Role</MudTh>
+						<MudTh Style="text-align: right;">Actions</MudTh>
+					</HeaderContent>
+					<RowTemplate>
+						<MudTd>
+							<MattEland.Jaimes.Web.Components.Shared.AgentLink AgentId="@context.Id"
+								AgentName="@context.Name" />
+						</MudTd>
+						<MudTd>@context.Role</MudTd>
+						<MudTd Style="text-align: right;">
+							<MudTooltip Text="View Details" Placement="Placement.Top">
+								<MudIconButton Icon="@Icons.Material.Filled.Visibility" Color="Color.Primary"
+									Size="Size.Small" Href="@($"/agents/{context.Id}")" />
+							</MudTooltip>
+							<MudTooltip Text="Improve Prompt" Placement="Placement.Top">
+								<MudIconButton Icon="@Icons.Material.Filled.AutoAwesome" Color="Color.Secondary"
+									Size="Size.Small" Href="@($"/agents/{context.Id}/improve")" />
+							</MudTooltip>
+							<MudTooltip Text="Run Test Cases" Placement="Placement.Top">
+								<MudIconButton Icon="@Icons.Material.Filled.Science" Color="Color.Success" Size="Size.Small"
+									Href="@($"/admin/run-tests?agentId={context.Id}")" />
+							</MudTooltip>
+							<MudTooltip Text="Edit Agent" Placement="Placement.Top">
+								<MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Default" Size="Size.Small"
+									Href="@($"/agents/{context.Id}/edit")" />
+							</MudTooltip>
+						</MudTd>
+					</RowTemplate>
+				</MudTable>
+			</MudPaper>
 		}
 	</div>
-</MudPaper>
+</MudContainer>

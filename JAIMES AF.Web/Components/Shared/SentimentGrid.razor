@@ -26,7 +26,7 @@
         </PropertyColumn>
         <PropertyColumn Property="x => x.Sentiment" Title="Sentiment" Sortable="false">
             <CellTemplate>
-                <SentimentIcon Sentiment="@context.Item.Sentiment"/>
+                <SentimentIcon Sentiment="@context.Item.Sentiment" ReadOnly="true" ShowViewDetails="false"/>
             </CellTemplate>
         </PropertyColumn>
         <PropertyColumn Property="x => x.Confidence" Title="Confidence">
@@ -81,11 +81,11 @@
         <PropertyColumn Property="x => x.GameScenarioName" Title="Scenario"/>
         <PropertyColumn Property="x => x.AgentVersion" Title="Agent Version">
             <CellTemplate>
-                @if (!string.IsNullOrEmpty(context.Item.AgentId) && !string.IsNullOrEmpty(context.Item.AgentVersion))
+                @if (!string.IsNullOrEmpty(context.Item.AgentId))
                 {
-                    <MudLink Href="@($"/agents/{context.Item.AgentId}")" Typo="Typo.body2">
-                        @context.Item.AgentVersion
-                    </MudLink>
+                    <AgentVersionLink AgentId="@context.Item.AgentId"
+                                      VersionId="@context.Item.InstructionVersionId"
+                                      VersionNumber="@context.Item.AgentVersion"/>
                 }
                 else if (!string.IsNullOrEmpty(context.Item.AgentVersion))
                 {
