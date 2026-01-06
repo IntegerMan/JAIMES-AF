@@ -109,4 +109,18 @@ public partial class RagSearchQueries
             _ => $"/admin/chunks/{Uri.EscapeDataString(chunkId)}"
         };
     }
+
+    private string GetAverageResultCount()
+    {
+        if (_statistics?.Queries.Length is null or 0) return "0";
+        return _statistics.Queries.Average(q => q.ResultCount).ToString("F1");
+    }
+
+    private string GetHighRelevancyPercentage()
+    {
+        var allResults = _statistics?.Queries.SelectMany(q => q.Results).ToList();
+        if (allResults is null || allResults.Count == 0) return "0%";
+        var highRelevancy = allResults.Count(r => r.Relevancy >= 0.8);
+        return $"{highRelevancy * 100.0 / allResults.Count:F0}%";
+    }
 }

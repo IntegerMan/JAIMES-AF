@@ -6,90 +6,114 @@
 <PageTitle>RAG Collections</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+
+	<CompactHeroSection Title="RAG Collections"
+	                    Icon="@Icons.Material.Filled.Storage"
+	                    Theme="CompactHeroSection.HeroTheme.Info"
+	                    ItemCount="@TotalDocuments"
+	                    ItemName="document"
+	                    Subtitle="indexed"
+	                    SubtitleNoItems="No documents indexed yet" />
+
 	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
 		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+		<MudSpacer />
+		<MudButton Variant="Variant.Text" Color="Color.Info" Href="/tools/rules-search"
+			StartIcon="@Icons.Material.Filled.Search" Size="Size.Small">
+			Test Rules Search
+		</MudButton>
+		<MudButton Variant="Variant.Text" Color="Color.Info" Href="/tools/conversation-search"
+			StartIcon="@Icons.Material.Filled.Chat" Size="Size.Small">
+			Test Conversation Search
+		</MudButton>
 	</MudStack>
-	<MudPaper Class="pa-8" Elevation="2">
-		<MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">RAG Collections</MudText>
-		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">
-			View indexed documents, chunks, embeddings, and query statistics
-		</MudText>
 
-		<MudText Typo="Typo.body1" Class="mb-6" Style="line-height: 1.75;">
-			This page displays statistics for RAG (Retrieval-Augmented Generation) collections used by AI agents.
-			Use this to identify potential issues with missing embeddings, chunks, or searches.
-		</MudText>
+	@if (_isLoading)
+	{
+		<MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+	}
 
-		<MudStack Row="true" Spacing="2" Class="mb-6">
-			<MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/tools/rules-search"
-				StartIcon="@Icons.Material.Filled.Search">
-				Test Rules Search
-			</MudButton>
-			<MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/tools/conversation-search"
-				StartIcon="@Icons.Material.Filled.Chat">
-				Test Conversation Search
-			</MudButton>
-		</MudStack>
+	@if (!string.IsNullOrEmpty(_errorMessage))
+	{
+		<MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+	}
 
-		<PipelineStatusPanel Class="mb-6" />
-
-		@if (_isLoading)
-		{
-			<MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
-		}
-
-		@if (!string.IsNullOrEmpty(_errorMessage))
-		{
-			<MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
-		}
-
-		@if (_statistics != null)
-		{
-			<MudDivider Class="my-6" />
-
-			<MudText Typo="Typo.h5" GutterBottom="true" Class="mb-4">Collection Summaries</MudText>
-			<MudGrid Spacing="3" Class="mb-6">
-				@foreach (RagCollectionSummary summary in _statistics.Summaries)
-				{
-					<MudItem xs="12" sm="6" md="4">
-						<MudPaper Class="pa-4" Elevation="1">
-							<MudText Typo="Typo.h6" Class="mb-2">@summary.CollectionType</MudText>
-							<MudStack Spacing="1">
-								<MudText Typo="Typo.body2">
-									<MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" Class="me-1" />
-									@summary.DocumentCount documents
-								</MudText>
-								<MudText Typo="Typo.body2">
-									<MudIcon Icon="@Icons.Material.Filled.ViewModule" Size="Size.Small" Class="me-1" />
-									@summary.TotalChunks chunks
-								</MudText>
-								<MudText Typo="Typo.body2"
-									Color="@(summary.EmbeddedChunks < summary.TotalChunks ? Color.Warning : Color.Success)">
-									<MudIcon Icon="@Icons.Material.Filled.Memory" Size="Size.Small" Class="me-1" />
-									@summary.EmbeddedChunks / @summary.TotalChunks embedded
-								</MudText>
-								<MudText Typo="Typo.body2">
-									<MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" Class="me-1" />
-									<MudLink Href="@GetQueryLink(summary.CollectionType)">@summary.QueryCount queries</MudLink>
-								</MudText>
-							</MudStack>
-						</MudPaper>
-					</MudItem>
-				}
-			</MudGrid>
-
-			<MudDivider Class="my-6" />
-
-			<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
-				<MudText Typo="Typo.h5" GutterBottom="false">Document Details</MudText>
-				<MudToggleGroup T="string" Value="_filterType" ValueChanged="SetFilter" Color="Color.Primary">
-					<MudToggleItem Value="@("All")" Text="All" />
-					<MudToggleItem Value="@("Sourcebook")" Text="Sourcebooks" />
-					<MudToggleItem Value="@("Transcript")" Text="Transcripts" />
-				</MudToggleGroup>
+	@if (_statistics != null && _statistics.Documents.Length == 0 && !_isLoading)
+	{
+		<div class="glass-card pa-6" style="text-align: center;">
+			<MudStack AlignItems="AlignItems.Center" Spacing="3">
+				<MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Info"
+				         Style="font-size: 4rem; opacity: 0.5;"/>
+				<MudText Typo="Typo.h6">No documents indexed</MudText>
+				<MudText Class="text-muted mb-4">
+					Upload sourcebooks or create game transcripts to start building your RAG collections.
+				</MudText>
 			</MudStack>
-			<MudDataGrid T="RagCollectionDocumentInfo" Items="@FilteredDocuments" Dense="true" Striped="true" Hover="true"
-				RowsPerPage="25">
+		</div>
+	}
+
+	@if (_statistics != null && _statistics.Documents.Length > 0)
+	{
+		<MudGrid Spacing="3" Class="mb-4">
+			@foreach (RagCollectionSummary summary in _statistics.Summaries)
+			{
+				<MudItem xs="12" sm="6">
+					<MudPaper Class="pa-4" Elevation="2">
+						<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
+							<MudText Typo="Typo.h5">@summary.CollectionType</MudText>
+							<MudChip T="string" Color="@(summary.EmbeddedChunks == summary.TotalChunks ? Color.Success : Color.Warning)" Size="Size.Small">
+								@summary.DocumentCount docs
+							</MudChip>
+						</MudStack>
+						<MudGrid Spacing="2">
+							<MudItem xs="6" sm="3">
+								<MudStack Spacing="0" AlignItems="AlignItems.Center">
+									<MudIcon Icon="@Icons.Material.Filled.Description" Color="Color.Info" Size="Size.Small" />
+									<MudText Typo="Typo.h6">@summary.DocumentCount</MudText>
+									<MudText Typo="Typo.caption" Class="text-muted">Documents</MudText>
+								</MudStack>
+							</MudItem>
+							<MudItem xs="6" sm="3">
+								<MudStack Spacing="0" AlignItems="AlignItems.Center">
+									<MudIcon Icon="@Icons.Material.Filled.ViewModule" Color="Color.Primary" Size="Size.Small" />
+									<MudText Typo="Typo.h6">@summary.TotalChunks</MudText>
+									<MudText Typo="Typo.caption" Class="text-muted">Chunks</MudText>
+								</MudStack>
+							</MudItem>
+							<MudItem xs="6" sm="3">
+								<MudStack Spacing="0" AlignItems="AlignItems.Center">
+									<MudIcon Icon="@Icons.Material.Filled.Memory" 
+									         Color="@(summary.EmbeddedChunks == summary.TotalChunks ? Color.Success : Color.Warning)" 
+									         Size="Size.Small" />
+									<MudText Typo="Typo.h6">@summary.EmbeddedChunks</MudText>
+									<MudText Typo="Typo.caption" Class="text-muted">Embedded</MudText>
+								</MudStack>
+							</MudItem>
+							<MudItem xs="6" sm="3">
+								<MudStack Spacing="0" AlignItems="AlignItems.Center">
+									<MudIcon Icon="@Icons.Material.Filled.Search" Color="Color.Success" Size="Size.Small" />
+									<MudLink Href="@GetQueryLink(summary.CollectionType)">
+										<MudText Typo="Typo.h6">@summary.QueryCount</MudText>
+									</MudLink>
+									<MudText Typo="Typo.caption" Class="text-muted">Queries</MudText>
+								</MudStack>
+							</MudItem>
+						</MudGrid>
+					</MudPaper>
+				</MudItem>
+			}
+			<MudItem xs="12">
+				<PipelineStatusPanel />
+			</MudItem>
+		</MudGrid>
+
+		<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
+			<MudText Typo="Typo.h6" GutterBottom="false">Document Details</MudText>
+			<ViewModeToggle TValue="string" @bind-Value="_filterType"
+			                Options="@_filterOptions" />
+		</MudStack>
+		<MudDataGrid T="RagCollectionDocumentInfo" Items="@FilteredDocuments" Dense="true" Striped="true" Hover="true"
+			RowsPerPage="25">
 				<Columns>
 					<PropertyColumn Property="x => x.DocumentKind" Title="Type" />
 					<PropertyColumn Property="x => x.RulesetId" Title="Ruleset" />
@@ -155,7 +179,6 @@
 					<MudDataGridPager T="RagCollectionDocumentInfo" />
 				</PagerContent>
 			</MudDataGrid>
-		}
-	</MudPaper>
+	}
 </MudContainer>
 
