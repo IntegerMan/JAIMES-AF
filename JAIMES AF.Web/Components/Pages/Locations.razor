@@ -1,123 +1,195 @@
 @page "/admin/locations"
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Shared
+@using static MattEland.Jaimes.Web.Components.Shared.CompactHeroSection
 @rendermode InteractiveServer
 
 <PageTitle>Locations</PageTitle>
 
-<MudPaper Class="pa-4">
-	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
-	</MudStack>
-	<MudText Typo="Typo.h4">Locations</MudText>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
 
-	<MudText Class="mb-4">Browse and manage locations by game.</MudText>
+    <CompactHeroSection Title="Locations"
+                        Theme="HeroTheme.Warning"
+                        Icon="@Icons.Material.Filled.Place"
+                        ItemCount="@_summary?.TotalCount"
+                        ItemName="location"
+                        SubtitleNoItems="Loading location data..."
+                        ActionText="New Location"
+                        ActionDisabled="@(!_selectedGameId.HasValue)"
+                        OnActionClick="OpenNewLocationDialog"/>
 
-	<MudStack Row="true" Spacing="2" Class="mb-4" AlignItems="AlignItems.Center">
-		<MudSelect T="Guid?" @bind-Value="SelectedGameId"
-		           Label="Filter by Game"
-		           Variant="Variant.Outlined"
-		           Style="max-width: 400px;"
-		           HelperText="Select a game to view its locations">
-			<MudSelectItem T="Guid?" Value="@((Guid?) null)">All Games</MudSelectItem>
-			@foreach (GameInfoResponse game in _games)
-			{
-				<MudSelectItem T="Guid?" Value="@((Guid?) game.GameId)">@FormatGameDisplay(game)</MudSelectItem>
-			}
-		</MudSelect>
+    @* Location Summary Stats Row *@
+    @if (_summary is not null)
+    {
+        <MudGrid Spacing="3" Class="mb-4">
+            <MudItem xs="12" sm="3">
+                <div class="stat-card stat-card-warning">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.Place" Color="Color.Warning"/>
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.caption" Class="text-muted">Total Locations</MudText>
+                            <span class="stat-value">@_summary.TotalCount</span>
+                        </MudStack>
+                    </MudStack>
+                </div>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <div class="stat-card stat-card-info">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.Event" Color="Color.Info"/>
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.caption" Class="text-muted">With Events</MudText>
+                            <span class="stat-value">@_summary.WithEventsCount</span>
+                        </MudStack>
+                    </MudStack>
+                </div>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <div class="stat-card stat-card-default">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.LinkOff" Class="text-muted"/>
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.caption" Class="text-muted">Orphaned</MudText>
+                            <span class="stat-value">@_summary.OrphanedCount</span>
+                        </MudStack>
+                    </MudStack>
+                </div>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <div class="stat-card stat-card-secondary">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.SportsEsports" Color="Color.Secondary"/>
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.caption" Class="text-muted">Games with Locations</MudText>
+                            <span class="stat-value">@_summary.ByGame.Count</span>
+                        </MudStack>
+                    </MudStack>
+                </div>
+            </MudItem>
+        </MudGrid>
+    }
+    else if (_isLoading)
+    {
+        <div style="display: flex; justify-content: center; align-items: center; min-height: 80px;" class="mb-4">
+            <MudProgressCircular Indeterminate="true" Size="Size.Small"/>
+        </div>
+    }
 
-		<MudButton Variant="Variant.Filled" Color="Color.Primary"
-		           StartIcon="@Icons.Material.Filled.Add"
-		           OnClick="OpenNewLocationDialog"
-		           Disabled="@(!_selectedGameId.HasValue)">
-			New Location
-		</MudButton>
-	</MudStack>
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+    </MudStack>
 
-	<div style="position: relative; min-height: 200px;">
-		@if (_isLoading)
-		{
-			<div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
-				<MudProgressCircular Indeterminate="true"/>
-			</div>
-		}
+    <MudStack Row="true" Spacing="2" Class="mb-4" AlignItems="AlignItems.Center">
+        <MudSelect T="Guid?" @bind-Value="SelectedGameId"
+                   Label="Filter by Game"
+                   Variant="Variant.Outlined"
+                   Style="max-width: 400px;"
+                   HelperText="Select a game to view its locations">
+            <MudSelectItem T="Guid?" Value="@((Guid?) null)">All Games</MudSelectItem>
+            @foreach (GameInfoResponse game in _games)
+            {
+                <MudSelectItem T="Guid?" Value="@((Guid?) game.GameId)">@FormatGameDisplayWithCount(game)</MudSelectItem>
+            }
+        </MudSelect>
+    </MudStack>
 
-		@if (!_isLoading && !string.IsNullOrEmpty(_errorMessage))
-		{
-			<MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
-		}
+    <div style="position: relative; min-height: 200px;">
+        @if (_isLoading)
+        {
+            <div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+                <MudProgressCircular Indeterminate="true"/>
+            </div>
+        }
 
-		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && (_locations is null || _locations.Length == 0))
-		{
-			<MudAlert Severity="Severity.Info" Class="mb-4">
-				@if (_selectedGameId.HasValue)
-				{
-					<span>No locations found for this game. Locations are created by the AI during gameplay.</span>
-				}
-				else
-				{
-					<span>No locations found. Select a game or play a game to have the AI create locations.</span>
-				}
-			</MudAlert>
-		}
+        @if (!_isLoading && !string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+        }
 
-		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && _locations is not null && _locations.Length > 0)
-		{
-			<MudTable T="LocationResponse" Items="_locations" Dense="true" Hover="true">
-				<HeaderContent>
-					<MudTh>Name</MudTh>
-					<MudTh>Description</MudTh>
-					@if (!_selectedGameId.HasValue)
-					{
-						<MudTh>Game</MudTh>
-					}
-					<MudTh>Events</MudTh>
-					<MudTh>Nearby</MudTh>
-					<MudTh Style="text-align: right;">Actions</MudTh>
-				</HeaderContent>
-				<RowTemplate>
-					<MudTd>
-						<MudLink Href="@($"/admin/locations/{context.Id}")">
-							<strong>@context.Name</strong>
-						</MudLink>
-					</MudTd>
-					<MudTd>@TruncateText(context.Description, 60)</MudTd>
-					@if (!_selectedGameId.HasValue)
-					{
-						<MudTd>@GetGameName(context.GameId)</MudTd>
-					}
-					<MudTd>
-						@if (context.EventCount > 0)
-						{
-							<MudChip T="string" Color="Color.Info" Size="Size.Small">@context.EventCount</MudChip>
-						}
-						else
-						{
-							<span class="text-muted">0</span>
-						}
-					</MudTd>
-					<MudTd>
-						@if (context.NearbyLocationCount > 0)
-						{
-							<MudChip T="string" Color="Color.Secondary" Size="Size.Small">@context.NearbyLocationCount</MudChip>
-						}
-						else
-						{
-							<span class="text-muted">0</span>
-						}
-					</MudTd>
-					<MudTd Style="text-align: right;">
-						<MudTooltip Text="View Details">
-							<MudIconButton Icon="@Icons.Material.Filled.Visibility"
-							               Size="Size.Small"
-							               Href="@($"/admin/locations/{context.Id}")"/>
-						</MudTooltip>
-						<MudTooltip Text="Edit Location">
-							<MudIconButton Icon="@Icons.Material.Filled.Edit"
-							               Size="Size.Small"
-							               Href="@($"/admin/locations/{context.Id}/edit")"/>
-						</MudTooltip>
-					</MudTd>
-				</RowTemplate>
-			</MudTable>
-		}
-	</div>
-</MudPaper>
+        @if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && (_locations is null || _locations.Length == 0))
+        {
+            <div class="glass-card pa-6" style="text-align: center;">
+                <MudStack AlignItems="AlignItems.Center" Spacing="3">
+                    <MudIcon Icon="@Icons.Material.Filled.Place" Color="Color.Warning"
+                             Style="font-size: 4rem; opacity: 0.5;"/>
+                    <MudText Typo="Typo.h6">No locations yet</MudText>
+                    <MudText Class="text-muted mb-4">
+                        @if (_selectedGameId.HasValue)
+                        {
+                            <span>No locations found for this game. Locations are created by the AI during gameplay.</span>
+                        }
+                        else
+                        {
+                            <span>Select a game or play a game to have the AI create locations.</span>
+                        }
+                    </MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Warning" Size="Size.Large"
+                               Href="/games" StartIcon="@Icons.Material.Filled.PlayArrow">
+                        Start Playing
+                    </MudButton>
+                </MudStack>
+            </div>
+        }
+
+        @if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && _locations is not null && _locations.Length > 0)
+        {
+            <MudTable T="LocationResponse" Items="_locations" Dense="true" Hover="true">
+                <HeaderContent>
+                    <MudTh>Name</MudTh>
+                    <MudTh>Description</MudTh>
+                    @if (!_selectedGameId.HasValue)
+                    {
+                        <MudTh>Game</MudTh>
+                    }
+                    <MudTh>Events</MudTh>
+                    <MudTh>Nearby</MudTh>
+                    <MudTh Style="text-align: right;">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>
+                        <MudLink Href="@($"/admin/locations/{context.Id}")">
+                            <strong>@context.Name</strong>
+                        </MudLink>
+                    </MudTd>
+                    <MudTd>@TruncateText(context.Description, 60)</MudTd>
+                    @if (!_selectedGameId.HasValue)
+                    {
+                        <MudTd>@GetGameName(context.GameId)</MudTd>
+                    }
+                    <MudTd>
+                        @if (context.EventCount > 0)
+                        {
+                            <MudChip T="string" Color="Color.Info" Size="Size.Small">@context.EventCount</MudChip>
+                        }
+                        else
+                        {
+                            <span class="text-muted">0</span>
+                        }
+                    </MudTd>
+                    <MudTd>
+                        @if (context.NearbyLocationCount > 0)
+                        {
+                            <MudChip T="string" Color="Color.Secondary" Size="Size.Small">@context.NearbyLocationCount</MudChip>
+                        }
+                        else
+                        {
+                            <span class="text-muted">0</span>
+                        }
+                    </MudTd>
+                    <MudTd Style="text-align: right;">
+                        <MudTooltip Text="View Details" Placement="Placement.Top">
+                            <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                           Size="Size.Small"
+                                           Href="@($"/admin/locations/{context.Id}")"/>
+                        </MudTooltip>
+                        <MudTooltip Text="Edit Location" Placement="Placement.Top">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                           Size="Size.Small"
+                                           Href="@($"/admin/locations/{context.Id}/edit")"/>
+                        </MudTooltip>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </div>
+</MudContainer>

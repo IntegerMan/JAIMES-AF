@@ -112,7 +112,9 @@
         </PropertyColumn>
         <PropertyColumn Property="x => x.MetricName" Title="Metric">
             <CellTemplate>
-                <strong>@context.Item.MetricName</strong>
+                <MudLink Href="@($"/admin/evaluations/{context.Item.Id}")" Style="font-weight: bold;">
+                    @context.Item.MetricName
+                </MudLink>
             </CellTemplate>
         </PropertyColumn>
         <PropertyColumn Property="x => x.Score" Title="Score">

@@ -1,0 +1,234 @@
+@page "/admin/evaluations/{EvaluationId:int}"
+@rendermode InteractiveServer
+
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Helpers
+@using MattEland.Jaimes.Web.Components.Chat
+@using System.Text.Json
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<PageTitle>Evaluation #@EvaluationId</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+    </MudStack>
+
+    @if (_isLoading)
+    {
+        <div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+            <MudProgressCircular Indeterminate="true" />
+        </div>
+    }
+    else if (_evaluation == null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4">Evaluation not found.</MudAlert>
+    }
+    else
+    {
+        @* Hero Section *@
+        <div class="agent-hero pa-3 mb-4" style="background: linear-gradient(135deg, rgba(3, 169, 244, 0.1) 0%, rgba(0, 150, 136, 0.1) 100%); 
+            border-radius: 16px; border: 1px solid rgba(3, 169, 244, 0.2);">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <div class="icon-badge icon-badge-info">
+                        <MudIcon Icon="@Icons.Material.Filled.Assessment" Style="color: white; font-size: 1.5rem;" />
+                    </div>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.h5" Style="font-weight: 600; color: var(--mud-palette-info);">
+                            @_evaluation.MetricName
+                        </MudText>
+                        <MudText Typo="Typo.caption" Class="text-muted">
+                            Evaluated by @(_evaluation.EvaluatorName ?? "Unknown") on @_evaluation.EvaluatedAt.ToLocalTime().ToString("g")
+                        </MudText>
+                    </MudStack>
+                </MudStack>
+                <MudStack Row="true" Spacing="2" Style="flex-wrap: nowrap;">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Message"
+                        Href="@($"/admin/metrics/{_evaluation.MessageId}")">View Message</MudButton>
+                    @if (_evaluation.EvaluatorId.HasValue)
+                    {
+                        <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.Science"
+                            Href="@($"/admin/evaluators/{_evaluation.EvaluatorId}")">View Evaluator</MudButton>
+                    }
+                </MudStack>
+            </MudStack>
+        </div>
+
+        @* Score Display *@
+        <MudGrid Spacing="3" Class="mb-4">
+            <MudItem xs="12" sm="6" md="4">
+                <div class="stat-card @GetScoreCardClass()" style="height: 120px; display: flex; flex-direction: column; justify-content: center;">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.caption" Class="text-muted">Score</MudText>
+                        <MudChip T="string" Size="Size.Small" 
+                                 Color="@(_evaluation.Passed ? Color.Success : Color.Error)" 
+                                 Variant="Variant.Filled">
+                            @(_evaluation.Passed ? "PASSED" : "FAILED")
+                        </MudChip>
+                    </MudStack>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudText Typo="Typo.h3" Style="font-weight: 700;">
+                            @_evaluation.Score.ToString("F1")
+                        </MudText>
+                        <MudText Typo="Typo.h6" Class="text-muted">/ 5</MudText>
+                    </MudStack>
+                    <MudText Typo="Typo.caption" Class="text-muted">
+                        Threshold: 3.0 to pass
+                    </MudText>
+                </div>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <div class="stat-card stat-card-secondary" style="height: 120px; display: flex; flex-direction: column; justify-content: center;">
+                    <MudText Typo="Typo.caption" Class="text-muted">Agent</MudText>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Small" Color="Color.Secondary" />
+                        @if (!string.IsNullOrEmpty(_evaluation.AgentId))
+                        {
+                            <MudLink Href="@($"/agents/{_evaluation.AgentId}")" Typo="Typo.body1" Style="font-weight: 600;">
+                                @(_evaluation.AgentName ?? _evaluation.AgentId)
+                            </MudLink>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body1">Unknown</MudText>
+                        }
+                    </MudStack>
+                    @if (_evaluation.InstructionVersionId.HasValue)
+                    {
+                        <MudText Typo="Typo.caption" Class="text-muted">
+                            Version: @(_evaluation.AgentVersion ?? _evaluation.InstructionVersionId.ToString())
+                        </MudText>
+                    }
+                </div>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <div class="stat-card stat-card-primary" style="height: 120px; display: flex; flex-direction: column; justify-content: center;">
+                    <MudText Typo="Typo.caption" Class="text-muted">Game Context</MudText>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudIcon Icon="@Icons.Material.Filled.SportsEsports" Size="Size.Small" Color="Color.Primary" />
+                        <MudLink Href="@($"/games/{_evaluation.GameId}")" Typo="Typo.body1" Style="font-weight: 600;">
+                            @(_evaluation.GamePlayerName ?? "Unknown Player")
+                        </MudLink>
+                    </MudStack>
+                    <MudText Typo="Typo.caption" Class="text-muted">
+                        @(_evaluation.GameScenarioName ?? "Unknown Scenario")
+                    </MudText>
+                </div>
+            </MudItem>
+        </MudGrid>
+
+        @* Two-Column Layout: Remarks/Diagnostics on Left, Conversation on Right *@
+        <MudGrid Spacing="3">
+            @* Left Column: Remarks and Diagnostics *@
+            <MudItem xs="12" md="5">
+                @* Remarks Section *@
+                @if (!string.IsNullOrEmpty(_evaluation.Remarks))
+                {
+                    <div class="mb-3">
+                        <MudText Typo="Typo.overline" Style="letter-spacing: 2px; color: var(--mud-palette-info); font-weight: bold;">
+                            EVALUATOR REMARKS
+                        </MudText>
+                    </div>
+                    <div class="glass-card pa-4 mb-4">
+                        <MudText Typo="Typo.body1" Style="white-space: pre-wrap;">@_evaluation.Remarks</MudText>
+                    </div>
+                }
+
+                @* Diagnostics Section *@
+                @if (!string.IsNullOrEmpty(_evaluation.Diagnostics))
+                {
+                    <div class="mb-3">
+                        <MudText Typo="Typo.overline" Style="letter-spacing: 2px; color: var(--mud-palette-warning); font-weight: bold;">
+                            DIAGNOSTICS
+                        </MudText>
+                    </div>
+                    <div class="glass-card pa-4 mb-4">
+                        <pre style="background: var(--mud-palette-background-grey); padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 0.85rem; margin: 0;">@FormatDiagnostics(_evaluation.Diagnostics)</pre>
+                    </div>
+                }
+            </MudItem>
+
+            @* Right Column: Conversation Context *@
+            <MudItem xs="12" md="7">
+                <div class="mb-3">
+                    <MudText Typo="Typo.overline" Style="letter-spacing: 2px; color: var(--mud-palette-secondary); font-weight: bold;">
+                        CONVERSATION CONTEXT
+                    </MudText>
+                </div>
+                <div class="glass-card pa-4" style="max-height: 600px; overflow-y: auto;">
+                    <ReadOnlyConversation MessageId="@_evaluation.MessageId" ContextCount="5" ContextCountAfter="2" />
+                </div>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public int EvaluationId { get; set; }
+
+    private EvaluationMetricListItemDto? _evaluation;
+    private bool _isLoading = true;
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadEvaluationAsync();
+    }
+
+    private async Task LoadEvaluationAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _evaluation = await Http.GetFromJsonAsync<EvaluationMetricListItemDto>($"/admin/evaluations/{EvaluationId}");
+
+            _breadcrumbs = new List<BreadcrumbItem>
+            {
+                new BreadcrumbItem("Home", href: "/"),
+                new BreadcrumbItem("Admin", href: "/admin"),
+                new BreadcrumbItem("Evaluators", href: "/admin/evaluators"),
+            };
+
+            if (_evaluation?.EvaluatorId.HasValue == true)
+            {
+                _breadcrumbs.Add(new BreadcrumbItem(_evaluation.EvaluatorName ?? "Evaluator", 
+                    href: $"/admin/evaluators/{_evaluation.EvaluatorId}"));
+            }
+
+            _breadcrumbs.Add(new BreadcrumbItem($"Evaluation #{EvaluationId}", href: null, disabled: true));
+        }
+        catch (Exception)
+        {
+            _evaluation = null;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private string GetScoreCardClass()
+    {
+        if (_evaluation == null) return "stat-card-info";
+
+        return _evaluation.Passed 
+            ? "stat-card-success" 
+            : "stat-card-error";
+    }
+
+    private string FormatDiagnostics(string diagnostics)
+    {
+        try
+        {
+            var jsonDoc = JsonDocument.Parse(diagnostics);
+            return JsonSerializer.Serialize(jsonDoc, new JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            return diagnostics;
+        }
+    }
+}

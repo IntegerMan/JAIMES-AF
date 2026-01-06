@@ -24,7 +24,7 @@ public class GetAgentStatsEndpoint : EndpointWithoutRequest<AgentStatsResponse>
     public override async Task HandleAsync(CancellationToken ct)
     {
         string agentId = Route<string>("agentId") ?? string.Empty;
-        int? versionId = Query<int?>("versionId");
+        int? versionId = Query<int?>("versionId", isRequired: false);
 
         // Defensive ID resolution: Try exact match first, then fallback to case-insensitive match
         // this helps avoid expensive ToLower calls on the DB when not needed, and ensures we use the "correct" indexed ID.
@@ -83,10 +83,11 @@ public class GetAgentStatsEndpoint : EndpointWithoutRequest<AgentStatsResponse>
         double toolUsageRate = aiMessageCount > 0 ? (double)toolCallCount / aiMessageCount : 0;
 
         var evaluationMetrics = await metricBase
-            .GroupBy(m => m.MetricName)
+            .GroupBy(m => new { m.MetricName, m.EvaluatorId })
             .Select(g => new AgentEvaluatorMetricSummaryDto
             {
-                MetricName = g.Key,
+                EvaluatorId = g.Key.EvaluatorId,
+                MetricName = g.Key.MetricName,
                 AverageScore = g.Any() ? g.Average(m => m.Score) : 0
             })
             .ToListAsync(ct);

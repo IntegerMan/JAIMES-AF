@@ -4,26 +4,8 @@
 
 @* Pie chart that shows evaluation metric progress with color-coded wedges *@
 
-<MudTooltip Placement="Placement.Top">
-    <TooltipContent>
-        @if (_hoveredMetric != null)
-        {
-            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="pa-1">
-                <div style="width: 10px; height: 100%; min-height: 12px; border-radius: 4px; background-color: @GetMetricColor(_hoveredMetric.Score);"></div>
-                <MudStack Spacing="0">
-                    <MudText Typo="Typo.caption" Style="font-weight: 700;">@_hoveredMetric.MetricName</MudText>
-                    <MudText Typo="Typo.caption">@_hoveredMetric.Score.ToString("F1") / 5.0</MudText>
-                </MudStack>
-            </MudStack>
-        }
-        else
-        {
-            <MudText Typo="Typo.caption">Hover for details</MudText>
-        }
-    </TooltipContent>
-    <ChildContent>
-        <svg class="evaluation-pie" width="@Size" height="@Size" viewBox="0 0 100 100" 
-             style="display: inline-block; vertical-align: middle; margin-top: 4px; cursor: pointer;">
+<svg class="evaluation-pie" width="@Size" height="@Size" viewBox="0 0 100 100" 
+     style="display: inline-block; vertical-align: middle; margin-top: 4px; cursor: pointer;">
             @if (TotalSegments == 1)
             {
                 @* Single segment - render as a full circle since SVG arcs can't render 360 degrees *@
@@ -31,7 +13,8 @@
                 var singleWedge = GetWedge(0, 0, 360);
                 <circle cx="50" cy="50" r="48" fill="@singleWedge.Color" 
                         class="@(singleWedge.IsCompleted ? "wedge-completed" : "")"
-                        @onmouseover="@(() => _hoveredMetric = metric)" />
+                        @onclick="@(() => HandleSliceClick(metric))"
+                        @onclick:stopPropagation="true" />
             }
             else if (TotalSegments > 1)
             {
@@ -46,7 +29,8 @@
                     var wedge = GetWedge(index, startAngle, anglePerSegment);
                     <path d="@wedge.Path" fill="@wedge.Color" 
                           class="@(wedge.IsCompleted ? "wedge-completed" : "")"
-                          @onmouseover="@(() => _hoveredMetric = metric)" />
+                          @onclick="@(() => HandleSliceClick(metric))"
+                          @onclick:stopPropagation="true" />
                     startAngle += anglePerSegment;
                 }
                 
@@ -58,9 +42,7 @@
                 @* Empty state - gray circle *@
                 <circle cx="50" cy="50" r="48" fill="var(--mud-palette-grey-lighter)"/>
             }
-        </svg>
-    </ChildContent>
-</MudTooltip>
+</svg>
 
 <style>
     .evaluation-pie {
@@ -109,7 +91,11 @@
     [Parameter]
     public bool IsProcessing { get; set; }
 
-    private MessageEvaluationMetricResponse? _hoveredMetric;
+    /// <summary>
+    /// Event callback when a slice is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback<MessageEvaluationMetricResponse> OnSliceClick { get; set; }
 
     private int CompletedCount => Metrics?.Count ?? 0;
     private bool HasError => ErrorsByMetric?.Any() ?? false;
@@ -184,4 +170,12 @@
         Color.Secondary => "var(--mud-palette-secondary)",
         _ => "var(--mud-palette-grey-default)"
     };
+
+    private async Task HandleSliceClick(MessageEvaluationMetricResponse? metric)
+    {
+        if (metric != null && OnSliceClick.HasDelegate)
+        {
+            await OnSliceClick.InvokeAsync(metric);
+        }
+    }
 }
