@@ -1,0 +1,38 @@
+@*
+    MetricCardGrid.razor - Responsive grid container for MetricCard components.
+    Provides consistent spacing and responsive layout for dashboard statistics.
+    
+    Usage:
+    <MetricCardGrid>
+        <MetricCard Icon="@Icons.Material.Filled.Assessment" Value="42" Label="Test Cases" ColorVariant="MetricCard.MetricColorVariant.Info" />
+        <MetricCard Icon="@Icons.Material.Filled.Timer" Value="150ms" Label="Avg Duration" ColorVariant="MetricCard.MetricColorVariant.Success" />
+    </MetricCardGrid>
+*@
+
+<MudGrid Spacing="@Spacing" Class="@Class">
+    @foreach (var child in ChildContent is not null ? new[] { ChildContent } : [])
+    {
+        @child
+    }
+</MudGrid>
+
+@code {
+    /// <summary>
+    /// The MetricCard components to display in the grid.
+    /// Each card will be wrapped in a responsive MudItem.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Spacing between grid items. Defaults to 3.
+    /// </summary>
+    [Parameter]
+    public int Spacing { get; set; } = 3;
+
+    /// <summary>
+    /// Additional CSS classes to apply to the grid.
+    /// </summary>
+    [Parameter]
+    public string? Class { get; set; }
+}

@@ -13,16 +13,91 @@ When building UI, follow these patterns:
 - **Displaying an agent name** → Use `<AgentLink>` component
 - **Displaying agent + version together** → Use `<AgentVersionDisplay>` component
 - **Displaying a version number alone** → Use `<AgentVersionLink>` component (handles null versions with "Latest" chip)
-- **List/tool page headers** → Use `<CompactHeroSection>` component
+- **List/tool/detail page headers** → Use `<CompactHeroSection>` component
 - **Form page headers (create/edit)** → Use `<FormPageHeader>` component
+- **Statistics/metrics display** → Use `<MetricCard>` component with appropriate `ColorVariant`
+- **Comparison tables** → Use `<ComparisonMatrix>` component for version/metric comparisons
+- **View mode toggles** → Use `<ViewModeToggle>` component for "Group by" or "View as" controls
 - **Icon buttons** → Always wrap in `<MudTooltip Placement="Placement.Top">`
 - **Tooltips** → Always use `Placement.Top` for better visibility
 - **Agent/bot icon** → `Icons.Material.Filled.SmartToy` with `Color.Secondary`
-- **Page titles** → Use `Typo.h4` inside a `MudPaper` container
 - **Section labels** → Use `Typo.overline` with purple color and letter-spacing
 - **Chat messages** → Use the `PlayerMessage`, `AssistantMessage`, or `ErrorMessage` components
 - **List pages** → Follow the List Page Pattern (`Games.razor` is the gold standard)
 - **Form pages** → Follow the Form Page Pattern (`NewAgent.razor`, `EditAgent.razor` are gold standards)
+- **Test pages** → Follow patterns in `TestCaseDetails.razor`, `TestRunComparison.razor`
+
+---
+
+## Design Principles
+
+These principles guide UI decisions across the application:
+
+### Components Over CSS
+
+**Prefer reusable Blazor components over CSS classes** for standardization and maintainability:
+- ✅ Use `<MetricCard>` component instead of `.stat-card` CSS classes
+- ✅ Use `<CompactHeroSection>` component instead of inline hero section markup
+- ✅ Use `<ViewModeToggle>` component instead of raw `<MudToggleGroup>`
+
+This approach ensures consistent styling, easier refactoring, and better type safety.
+
+### Page Header Patterns
+
+Use `CompactHeroSection` for **all non-form pages** (list, detail, tool, comparison pages):
+- Provides consistent visual hierarchy across the application
+- Supports dynamic content (item counts, action buttons)
+- Includes theme-based color coordination
+
+Use `FormPageHeader` only for **create/edit form pages**.
+
+### Breadcrumb Placement
+
+**Breadcrumbs go below the hero section**, not above:
+```razor
+<CompactHeroSection Title="..." ... />
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+    <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+</MudStack>
+```
+
+This keeps the hero as the visual anchor and positions navigation aids closer to the content.
+
+### Theme Assignments
+
+Each entity type has an assigned theme for visual consistency:
+
+| Entity Type | Theme | Color |
+|-------------|-------|-------|
+| Games | Primary | Purple `#7B2CBF` |
+| Agents, Scenarios | Secondary | Blue `#4361EE` |
+| Players/Characters | Tertiary | Cyan `#4CC9F0` |
+| Rulesets | Accent/Success | Green `#06D6A0` |
+| Tests, Evaluations | Info | Light Blue `#2196F3` |
+| ML Models, Classification | Error | Pink `#EF476F` |
+| Sentiments | Primary | Purple `#7B2CBF` |
+
+### Score Color Coding
+
+When displaying scores (0.0 - 1.0), use consistent color thresholds:
+```csharp
+private static MetricCard.MetricColorVariant GetScoreColorVariant(double? score) => score switch
+{
+    >= 0.8 => MetricCard.MetricColorVariant.Success,  // Green - excellent
+    >= 0.6 => MetricCard.MetricColorVariant.Warning,  // Yellow - acceptable
+    _ => MetricCard.MetricColorVariant.Error          // Red - needs attention
+};
+```
+
+### Comparison Displays
+
+For comparing metrics across versions or test cases:
+- Use `ComparisonMatrix` component with sticky row labels
+- Color-code cells based on score thresholds
+- Include tooltips with detailed reasoning/remarks
+- Show averages row for quick comparison
+- Show timing information when relevant
 
 ---
 
@@ -61,17 +136,38 @@ Key CSS variables defined in `app.css`:
 
 Use these components instead of building custom displays. They are located in `JAIMES AF.Web/Components/`.
 
+### Display Components
+
 | Component | Purpose |
 |-----------|---------|
 | `AgentLink.razor` | Displays agent name as a linked chip with bot icon (`SmartToy`). Use whenever showing an agent name. Has "View Agent Details" tooltip. |
 | `AgentVersionLink.razor` | Displays version number as a linked chip. When `VersionId` is null, shows "Latest" chip (Primary, Filled) that links to agent page. Has appropriate tooltips. |
 | `AgentVersionDisplay.razor` | Combined agent name + version number display. Use when showing both together. |
 | `RulesetLink.razor` | Displays ruleset ID as a linked chip with book icon (`AutoStories`). Tooltip shows full name and description. Use whenever showing a ruleset ID. |
-| `CompactHeroSection.razor` | Hero header for list and tool pages with icon badge, title, subtitle, and optional action button. Use for pages showing collections of items. |
-| `FormPageHeader.razor` | Hero header for create/edit form pages with icon badge, title, and subtitle. Matches CompactHeroSection styling without action button. |
-| `CompactLinkCard.razor` | Navigation card with colored icon badge. Use for dashboard/home page links. |
 | `SentimentIcon.razor` | Sentiment indicator (thumbs up/down/neutral) with optional edit menu. Use in chat footers. |
 | `MessageIndicators.razor` | Displays evaluation metrics and tool call badges. Use in assistant message footers. |
+
+### Layout Components
+
+| Component | Purpose |
+|-----------|---------|
+| `CompactHeroSection.razor` | Hero header for list, tool, and detail pages with icon badge, title, subtitle, and optional action button. Supports themes: Primary, Secondary, Tertiary, Accent, Success, Info, Error. Use for all non-form page headers. |
+| `FormPageHeader.razor` | Hero header for create/edit form pages with icon badge, title, and subtitle. Matches CompactHeroSection styling without action button. |
+| `CompactLinkCard.razor` | Navigation card with colored icon badge. Use for dashboard/home page links. |
+| `MetricCard.razor` | Statistics display card with icon, value, label. Supports color variants, tooltips, click handlers, and navigation (Href). Use for dashboard stats and page summaries. |
+| `MetricCardGrid.razor` | Responsive MudGrid wrapper for MetricCard components. Use when displaying multiple metrics in a row. |
+
+### Data Visualization Components
+
+| Component | Purpose |
+|-----------|---------|
+| `ComparisonMatrix.razor` | Generic comparison table with sticky row labels, color-coded cells, tooltips, and average rows. Use for comparing metrics across versions or test cases. Requires `TRow` and `TColumn` type parameters. |
+| `ViewModeToggle.razor` | Generic toggle component for switching between view modes. Wraps MudToggleGroup with standardized styling. Use for "Group by" or "View as" toggles. |
+
+### Chat Components
+
+| Component | Purpose |
+|-----------|---------|
 | `PlayerMessage.razor` | Chat bubble for user/player messages. Use instead of raw `MudChat`. |
 | `AssistantMessage.razor` | Chat bubble for AI/assistant messages with markdown support. Use instead of raw `MudChat`. |
 | `ErrorMessage.razor` | Chat bubble for error messages with optional retry button. |
@@ -423,33 +519,28 @@ List pages should include these elements:
 
 #### Compact Hero Section
 
-A lightweight header with entity icon, item count, and primary action. Use a background gradient matching the entity's theme color (e.g., Purple for Games, Green for Rulesets).
-
-Example colors:
-- **Games**: `rgba(123, 44, 191, 0.1)` (Primary)
-- **Rulesets**: `rgba(6, 214, 160, 0.1)` (Success/Accent)
-- **Scenarios**: `rgba(67, 97, 238, 0.1)` (Secondary)
+Use the `CompactHeroSection` component for a lightweight header with entity icon, item count, and primary action:
 
 ```razor
-<div class="games-hero pa-3 mb-4" style="background: linear-gradient(135deg, [COLOR_1] 0%, [COLOR_2] 100%); 
-    border-radius: 16px; border: 1px solid [COLOR_BORDER];">
-    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
-            <div class="icon-badge-primary">
-                <MudIcon Icon="@Icons.Material.Filled.SportsEsports" Size="Size.Large" />
-            </div>
-            <div>
-                <MudText Typo="Typo.h5" Style="color: white;">Page Title</MudText>
-                <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.85);">
-                    @(_items?.Length ?? 0) items found
-                </MudText>
-            </div>
-        </MudStack>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
-                   Href="/items/new">New Item</MudButton>
-    </MudStack>
-</div>
+<CompactHeroSection Title="Games"
+                    Icon="@Icons.Material.Filled.SportsEsports"
+                    Theme="CompactHeroSection.HeroTheme.Primary"
+                    ItemCount="@_games?.Count"
+                    ItemName="game"
+                    Subtitle="available"
+                    SubtitleNoItems="Create your first game"
+                    ActionText="New Game"
+                    ActionHref="/games/new"
+                    ActionIcon="@Icons.Material.Filled.Add"/>
 ```
+
+Available themes:
+- **Primary**: Purple - Games
+- **Secondary**: Blue - Agents, Scenarios
+- **Tertiary**: Cyan - Characters/Players
+- **Accent/Success**: Green - Rulesets
+- **Info**: Light Blue - Tests, Evaluations
+- **Error**: Pink - ML Models, Classification
 
 #### Table Action Buttons
 
@@ -526,9 +617,45 @@ Used for prominent content areas:
 </div>
 ```
 
-### Stat Card
+### MetricCard Component (Recommended)
 
-Used for metrics/statistics with colored left border:
+Use the `MetricCard` component for displaying statistics and metrics. It provides consistent styling with color variants, tooltips, and click/navigation support:
+
+```razor
+@* Basic metric display *@
+<MetricCard Icon="@Icons.Material.Filled.Assessment" 
+            Value="42" 
+            Label="Test Cases" 
+            ColorVariant="MetricCard.MetricColorVariant.Info"/>
+
+@* Clickable metric with navigation *@
+<MetricCard Icon="@Icons.Material.Filled.SportsEsports" 
+            Value="@_gamesCount.ToString()" 
+            Label="Active Games" 
+            ColorVariant="MetricCard.MetricColorVariant.Primary"
+            Href="/games"
+            Tooltip="Click to view all games"/>
+
+@* Multiple metrics in a responsive grid *@
+<MudGrid Spacing="3">
+    <MudItem xs="12" sm="4">
+        <MetricCard Icon="@Icons.Material.Filled.PlayArrow" Value="15" Label="Total Runs" />
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MetricCard Icon="@Icons.Material.Filled.Score" Value="0.87" Label="Avg Score" 
+                    ColorVariant="MetricCard.MetricColorVariant.Success"/>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MetricCard Icon="@Icons.Material.Filled.Timer" Value="1250 ms" Label="Avg Duration" />
+    </MudItem>
+</MudGrid>
+```
+
+Color variants: `Primary`, `Secondary`, `Tertiary`, `Accent`, `Success`, `Warning`, `Error`, `Info`
+
+### Stat Card (Legacy)
+
+> **Note**: Prefer `MetricCard` component for new development. `stat-card` CSS classes are still used in some pages pending migration.
 
 ```razor
 <div class="stat-card stat-card-primary">
@@ -538,6 +665,41 @@ Used for metrics/statistics with colored left border:
 ```
 
 Available variants: `stat-card-primary`, `stat-card-secondary`, `stat-card-tertiary`, `stat-card-accent`, `stat-card-warning`, `stat-card-error`
+
+### ComparisonMatrix Component
+
+Use for comparing metrics across multiple versions, test cases, or time periods. Features sticky row labels, color-coded cells, and tooltips:
+
+```razor
+<ComparisonMatrix TRow="int" TColumn="VersionResult"
+                  Rows="_testCaseIds"
+                  Columns="_versionResults"
+                  RowLabel="@(testCaseId => GetTestCaseName(testCaseId))"
+                  ColumnHeader="@(vr => $"{vr.AgentName} v{vr.VersionNumber}")"
+                  CellValue="@((tcId, vr) => GetMetricValue(tcId, vr))"
+                  CellColor="@((tcId, vr) => GetCellColor(tcId, vr))"
+                  CellTooltip="@((tcId, vr) => GetCellTooltip(tcId, vr))"
+                  ShowAverages="true"
+                  AverageValue="@(vr => vr.AvgScore?.ToString("F2") ?? "-")"
+                  ShowTimes="true"
+                  TimeValue="@(vr => $"{vr.AvgDuration:F0} ms")"/>
+```
+
+### ViewModeToggle Component
+
+Use for "Group by" or "View as" toggle controls:
+
+```razor
+@* Define options *@
+private static readonly ViewModeToggle<string>.ViewModeOption<string>[] _viewModeOptions =
+[
+    new("agent", "Group by Agent", Icons.Material.Filled.Person),
+    new("testcase", "Group by Test Case", Icons.Material.Filled.Science)
+];
+
+@* Use in markup *@
+<ViewModeToggle TValue="string" @bind-Value="_groupBy" Options="_viewModeOptions"/>
+```
 
 #### Message Logs & Data Grids
 
