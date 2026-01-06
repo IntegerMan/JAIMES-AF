@@ -620,6 +620,11 @@ h1:focus {
     box-shadow: 0 4px 12px rgba(6, 214, 160, 0.3);
 }
 
+.icon-badge-error {
+    background: linear-gradient(135deg, #EF476F 0%, #F76D8B 100%);
+    box-shadow: 0 4px 12px rgba(239, 71, 111, 0.3);
+}
+
 .glass-card:hover .icon-badge {
     transform: scale(1.1) rotate(5deg);
 }

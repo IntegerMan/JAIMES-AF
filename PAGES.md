@@ -190,13 +190,24 @@ Detailed view of a specific agent instruction version with its prompt content an
 
 Lists ML.NET classification models used for sentiment analysis and other ML tasks.
 
-**Style Guide Violations:**
-- Review for tooltip and icon consistency
+**Style Guide Compliance:** ✅ Good — Uses compact hero section, MudTable with action buttons, glass-card empty state, proper tooltip placement
 
 **Improvement Ideas:**
-- Add model accuracy metrics display
-- Include training status indicators
-- Add model comparison view
+- Add model comparison feature for side-by-side metric and confusion matrix analysis
+- Add bulk delete for failed training jobs
+
+---
+
+### [ClassificationModelDetails.razor](JAIMES%20AF.Web/Components/Pages/ClassificationModelDetails.razor)
+**Route:** `/admin/classification-models/{id}`
+
+Detailed view of a specific ML classification model including training parameters, evaluation metrics, and confusion matrix.
+
+**Style Guide Compliance:** ✅ Good — Uses compact hero section, stat-card metrics, overline section headers, enhanced confusion matrix with tooltips
+
+**Improvement Ideas:**
+- Add model download/export functionality
+- Add re-training option with adjusted parameters
 
 ---
 
