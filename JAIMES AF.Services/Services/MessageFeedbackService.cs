@@ -207,5 +207,75 @@ public class MessageFeedbackService(IDbContextFactory<JaimesDbContext> contextFa
             ToolNames = mf.Message?.ToolCalls?.Select(tc => tc.ToolName).Distinct().ToList()
         };
     }
+
+    public async Task<MattEland.Jaimes.ServiceDefinitions.Responses.FeedbackSummaryResponse> GetFeedbackSummaryAsync(
+        AdminFilterParams? filters = null,
+        CancellationToken cancellationToken = default)
+    {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        IQueryable<MessageFeedback> query = context.MessageFeedbacks
+            .AsNoTracking()
+            .Include(mf => mf.Message)
+            .ThenInclude(m => m!.ToolCalls)
+            .Include(mf => mf.Message)
+            .ThenInclude(m => m!.InstructionVersion)
+            .Include(mf => mf.InstructionVersion);
+
+        // Apply filters from AdminFilterParams
+        if (filters != null)
+        {
+            // Apply isPositive filter if specified
+            if (filters.IsPositive.HasValue)
+            {
+                query = query.Where(mf => mf.IsPositive == filters.IsPositive.Value);
+            }
+
+            // Apply toolName filter if specified - filter by messages that have a tool call with this name
+            if (!string.IsNullOrEmpty(filters.ToolName))
+            {
+                query = query.Where(mf => mf.Message != null &&
+                                          mf.Message.ToolCalls.Any(tc =>
+                                              tc.ToolName.ToLower() == filters.ToolName.ToLower()));
+            }
+
+            // Apply AgentId filter if specified
+            if (!string.IsNullOrEmpty(filters.AgentId))
+            {
+                query = query.Where(mf =>
+                    (mf.InstructionVersion != null && mf.InstructionVersion.AgentId == filters.AgentId) ||
+                    (mf.Message != null && mf.Message.InstructionVersion != null &&
+                     mf.Message.InstructionVersion.AgentId == filters.AgentId) ||
+                    (mf.Message != null && mf.Message.AgentId == filters.AgentId));
+            }
+
+            // Apply InstructionVersionId filter if specified
+            if (filters.InstructionVersionId.HasValue)
+            {
+                query = query.Where(mf =>
+                    mf.InstructionVersionId == filters.InstructionVersionId.Value ||
+                    (mf.Message != null && mf.Message.InstructionVersionId == filters.InstructionVersionId.Value));
+            }
+
+            // Apply GameId filter if specified
+            if (filters.GameId.HasValue)
+            {
+                query = query.Where(mf => mf.Message != null && mf.Message.GameId == filters.GameId.Value);
+            }
+        }
+
+        int totalCount = await query.CountAsync(cancellationToken);
+        int positiveCount = await query.CountAsync(mf => mf.IsPositive, cancellationToken);
+        int negativeCount = await query.CountAsync(mf => !mf.IsPositive, cancellationToken);
+        int withCommentsCount = await query.CountAsync(mf => !string.IsNullOrEmpty(mf.Comment), cancellationToken);
+
+        return new MattEland.Jaimes.ServiceDefinitions.Responses.FeedbackSummaryResponse
+        {
+            TotalCount = totalCount,
+            PositiveCount = positiveCount,
+            NegativeCount = negativeCount,
+            WithCommentsCount = withCommentsCount
+        };
+    }
 }
 
