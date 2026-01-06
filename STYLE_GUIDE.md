@@ -89,6 +89,7 @@ Always use these specific icons for each entity type:
 | Sourcebook | `Icons.Material.Filled.Book` | `Color.Info` |
 | Location | `Icons.Material.Filled.Place` | `Color.Warning` |
 | Version/Update | `Icons.Material.Filled.Update` | `Color.Info` |
+| ML Model | `Icons.Material.Filled.Psychology` | `Color.Error` |
 
 ### Action Icons
 
