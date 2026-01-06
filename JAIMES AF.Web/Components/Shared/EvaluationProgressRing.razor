@@ -11,10 +11,14 @@
                 @* Single segment - render as a full circle since SVG arcs can't render 360 degrees *@
                 var metric = Metrics?.FirstOrDefault();
                 var singleWedge = GetWedge(0, 0, 360);
-                <circle cx="50" cy="50" r="48" fill="@singleWedge.Color" 
-                        class="@(singleWedge.IsCompleted ? "wedge-completed" : "")"
-                        @onclick="@(() => HandleSliceClick(metric))"
-                        @onclick:stopPropagation="true" />
+                <g>
+                    <circle cx="50" cy="50" r="48" fill="@singleWedge.Color" 
+                            class="@(singleWedge.IsCompleted ? "wedge-completed" : "")"
+                            @onclick="@(() => HandleSliceClick(metric))"
+                            @onclick:stopPropagation="true"
+                            @onmouseenter="@(() => SetHoveredMetric(metric))"
+                            @onmouseleave="@(() => ClearHoveredMetric())" />
+                </g>
             }
             else if (TotalSegments > 1)
             {
@@ -27,10 +31,14 @@
                     int index = i;
                     var metric = (Metrics != null && index < Metrics.Count) ? Metrics[index] : null;
                     var wedge = GetWedge(index, startAngle, anglePerSegment);
-                    <path d="@wedge.Path" fill="@wedge.Color" 
-                          class="@(wedge.IsCompleted ? "wedge-completed" : "")"
-                          @onclick="@(() => HandleSliceClick(metric))"
-                          @onclick:stopPropagation="true" />
+                    <g>
+                        <path d="@wedge.Path" fill="@wedge.Color" 
+                              class="@(wedge.IsCompleted ? "wedge-completed" : "")"
+                              @onclick="@(() => HandleSliceClick(metric))"
+                              @onclick:stopPropagation="true"
+                              @onmouseenter="@(() => SetHoveredMetric(metric))"
+                              @onmouseleave="@(() => ClearHoveredMetric())" />
+                    </g>
                     startAngle += anglePerSegment;
                 }
                 
@@ -43,6 +51,21 @@
                 <circle cx="50" cy="50" r="48" fill="var(--mud-palette-grey-lighter)"/>
             }
 </svg>
+
+@if (_hoveredMetric != null)
+{
+    <MudPopover Open="true" AnchorOrigin="Origin.TopCenter" TransformOrigin="Origin.BottomCenter" Style="pointer-events: none;">
+        <MudPaper Class="pa-2" Elevation="4">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <div style="width: 10px; height: 10px; border-radius: 2px; background-color: @GetMetricColor(_hoveredMetric.Score);"></div>
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.caption" Style="font-weight: 700;">@_hoveredMetric.MetricName</MudText>
+                    <MudText Typo="Typo.caption">@_hoveredMetric.Score.ToString("F1") / 5.0</MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </MudPopover>
+}
 
 <style>
     .evaluation-pie {
@@ -97,8 +120,22 @@
     [Parameter]
     public EventCallback<MessageEvaluationMetricResponse> OnSliceClick { get; set; }
 
+    private MessageEvaluationMetricResponse? _hoveredMetric;
+
     private int CompletedCount => Metrics?.Count ?? 0;
     private bool HasError => ErrorsByMetric?.Any() ?? false;
+
+    private void SetHoveredMetric(MessageEvaluationMetricResponse? metric)
+    {
+        _hoveredMetric = metric;
+        StateHasChanged();
+    }
+
+    private void ClearHoveredMetric()
+    {
+        _hoveredMetric = null;
+        StateHasChanged();
+    }
 
     private record WedgeInfo(string Path, string Color, bool IsCompleted);
 

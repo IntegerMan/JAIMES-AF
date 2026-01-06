@@ -53,9 +53,9 @@
                 }
             </CellTemplate>
         </PropertyColumn>
-        <PropertyColumn Property="x => x.MessageId" Title="Message" Groupable="true" Grouping="true">
+        <PropertyColumn Property="x => x.MessageId" Title="Message" Groupable="@(!EvaluatorId.HasValue)" Grouping="@(!EvaluatorId.HasValue)">
             <CellTemplate>
-                <MudLink Href="@($"/admin/metrics/{context.Item.MessageId}")">
+                <MudLink Href="@($"/admin/evaluations/{context.Item.Id}")">
                      @if (!string.IsNullOrEmpty(context.Item.MessagePreview))
                      {
                          @context.Item.MessagePreview
