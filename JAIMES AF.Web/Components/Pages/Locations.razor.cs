@@ -13,6 +13,7 @@ public partial class Locations
     private List<BreadcrumbItem> _breadcrumbs = [];
     private GameInfoResponse[] _games = [];
     private LocationResponse[] _locations = [];
+    private LocationsSummaryResponse? _summary;
     private Guid? _selectedGameId;
     private bool _isLoading = true;
     private string? _errorMessage;
@@ -40,7 +41,7 @@ public partial class Locations
         ];
 
         await LoadGamesAsync();
-        await LoadLocationsAsync();
+        await Task.WhenAll(LoadLocationsAsync(), LoadSummaryAsync());
     }
 
     private HttpClient CreateClient() => HttpClientFactory.CreateClient("Api");
@@ -55,6 +56,21 @@ public partial class Locations
         catch (Exception ex)
         {
             LoggerFactory.CreateLogger("Locations").LogError(ex, "Failed to load games");
+        }
+    }
+
+    private async Task LoadSummaryAsync()
+    {
+        try
+        {
+            string url = _selectedGameId.HasValue
+                ? $"/admin/locations/summary?gameId={_selectedGameId.Value}"
+                : "/admin/locations/summary";
+            _summary = await CreateClient().GetFromJsonAsync<LocationsSummaryResponse>(url);
+        }
+        catch (Exception ex)
+        {
+            LoggerFactory.CreateLogger("Locations").LogError(ex, "Failed to load location summary");
         }
     }
 
@@ -128,7 +144,7 @@ public partial class Locations
         var result = await dialog.Result;
         if (result is { Canceled: false })
         {
-            await LoadLocationsAsync();
+            await Task.WhenAll(LoadLocationsAsync(), LoadSummaryAsync());
             Snackbar.Add("Location created successfully!", Severity.Success);
         }
     }
@@ -136,6 +152,16 @@ public partial class Locations
     private static string FormatGameDisplay(GameInfoResponse game)
     {
         return $"{game.PlayerName} - {game.ScenarioName} ({game.RulesetName})";
+    }
+
+    private string FormatGameDisplayWithCount(GameInfoResponse game)
+    {
+        string baseDisplay = FormatGameDisplay(game);
+        if (_summary?.ByGame.TryGetValue(game.GameId, out var count) == true)
+        {
+            return $"{baseDisplay} ({count.LocationCount})";
+        }
+        return baseDisplay;
     }
 
     private string GetGameName(Guid gameId)

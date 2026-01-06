@@ -79,7 +79,9 @@
         /// <summary>Green theme - used for Evaluations, Tests (maps to Success CSS)</summary>
         Success,
         /// <summary>Light blue theme - used for Tools, Info pages</summary>
-        Info
+        Info,
+        /// <summary>Yellow/Orange theme - used for Locations</summary>
+        Warning
     }
 
     /// <summary>
@@ -177,6 +179,7 @@
         HeroTheme.Accent => Color.Success,
         HeroTheme.Success => Color.Success,
         HeroTheme.Info => Color.Info,
+        HeroTheme.Warning => Color.Warning,
         _ => Color.Primary
     };
 
@@ -188,6 +191,7 @@
         HeroTheme.Accent => "rgba(6, 214, 160, 0.1)",
         HeroTheme.Success => "rgba(6, 214, 160, 0.1)",
         HeroTheme.Info => "rgba(33, 150, 243, 0.1)",
+        HeroTheme.Warning => "rgba(255, 214, 10, 0.1)",
         _ => "rgba(123, 44, 191, 0.1)"
     };
 
@@ -199,6 +203,7 @@
         HeroTheme.Accent => "rgba(67, 97, 238, 0.1)",
         HeroTheme.Success => "rgba(67, 97, 238, 0.1)",
         HeroTheme.Info => "rgba(76, 201, 240, 0.1)",
+        HeroTheme.Warning => "rgba(255, 152, 0, 0.1)",
         _ => "rgba(67, 97, 238, 0.1)"
     };
 
@@ -210,6 +215,7 @@
         HeroTheme.Accent => "rgba(6, 214, 160, 0.2)",
         HeroTheme.Success => "rgba(6, 214, 160, 0.2)",
         HeroTheme.Info => "rgba(33, 150, 243, 0.2)",
+        HeroTheme.Warning => "rgba(255, 152, 0, 0.2)",
         _ => "rgba(123, 44, 191, 0.2)"
     };
 
@@ -221,6 +227,7 @@
         HeroTheme.Accent => "#06D6A0",
         HeroTheme.Success => "#06D6A0",
         HeroTheme.Info => "#2196F3",
+        HeroTheme.Warning => "#FF9800",
         _ => "#7B2CBF"
     };
 
@@ -236,6 +243,7 @@
         HeroTheme.Accent => "icon-badge-accent",
         HeroTheme.Success => "icon-badge-success",
         HeroTheme.Info => "icon-badge-info",
+        HeroTheme.Warning => "icon-badge-warning",
         _ => "icon-badge-primary"
     };
 }

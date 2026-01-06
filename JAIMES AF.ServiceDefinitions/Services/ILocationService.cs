@@ -68,4 +68,9 @@ public interface ILocationService
     /// Checks if a location name exists in a game.
     /// </summary>
     Task<bool> LocationExistsAsync(Guid gameId, string name, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets location summary statistics with optional game filter.
+    /// </summary>
+    Task<LocationsSummaryResponse> GetLocationsSummaryAsync(Guid? gameId = null, CancellationToken cancellationToken = default);
 }

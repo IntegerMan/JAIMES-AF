@@ -1,0 +1,194 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JsRuntime
+@inject NavigationManager NavigationManager
+@implements IAsyncDisposable
+
+<div class="location-graph-container" style="position: relative; width: 100%; min-height: @(Height)px; border-radius: 12px; background: linear-gradient(135deg, rgba(255, 214, 10, 0.05) 0%, rgba(255, 152, 0, 0.05) 100%); border: 1px solid rgba(255, 152, 0, 0.15);">
+    @if (_isLoading)
+    {
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+            <MudProgressCircular Indeterminate="true" Color="Color.Warning" Size="Size.Medium"/>
+        </div>
+    }
+    <div id="@_containerId" style="width: 100%; height: @(Height)px;"></div>
+</div>
+
+@code {
+    private string _containerId = $"location-graph-{Guid.NewGuid():N}";
+    private DotNetObjectReference<LocationGraph>? _dotNetRef;
+    private bool _isLoading = true;
+    private bool _isInitialized;
+
+    /// <summary>
+    /// The current location ID (will be highlighted as the center node)
+    /// </summary>
+    [Parameter]
+    public int CurrentLocationId { get; set; }
+
+    /// <summary>
+    /// Current location name
+    /// </summary>
+    [Parameter]
+    public string CurrentLocationName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Nearby locations to display in the graph
+    /// </summary>
+    [Parameter]
+    public IEnumerable<NearbyLocationInfo> NearbyLocations { get; set; } = [];
+
+    /// <summary>
+    /// Height of the graph container in pixels
+    /// </summary>
+    [Parameter]
+    public int Height { get; set; } = 300;
+
+    /// <summary>
+    /// Event callback when a location node is clicked
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> OnLocationClicked { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await InitializeGraphAsync();
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_isInitialized)
+        {
+            await InitializeGraphAsync();
+        }
+    }
+
+    private async Task InitializeGraphAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var graphData = BuildGraphData();
+            await JsRuntime.InvokeVoidAsync("visNetworkInterop.createNetwork",
+                _containerId,
+                graphData,
+                _dotNetRef,
+                CurrentLocationId.ToString());
+
+            _isInitialized = true;
+        }
+        catch (JSException ex)
+        {
+            Console.Error.WriteLine($"Failed to initialize location graph: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private object BuildGraphData()
+    {
+        var nodes = new List<object>();
+        var edges = new List<object>();
+        var addedNodes = new HashSet<int>();
+
+        // Add current location as center node
+        nodes.Add(new
+        {
+            id = CurrentLocationId.ToString(),
+            label = TruncateLabel(CurrentLocationName),
+            tooltip = CurrentLocationName
+        });
+        addedNodes.Add(CurrentLocationId);
+
+        // Add nearby locations and edges
+        foreach (var nearby in NearbyLocations)
+        {
+            var linkedId = nearby.SourceLocationId == CurrentLocationId
+                ? nearby.TargetLocationId
+                : nearby.SourceLocationId;
+            var linkedName = nearby.SourceLocationId == CurrentLocationId
+                ? nearby.TargetLocationName
+                : nearby.SourceLocationName;
+
+            if (!addedNodes.Contains(linkedId))
+            {
+                nodes.Add(new
+                {
+                    id = linkedId.ToString(),
+                    label = TruncateLabel(linkedName),
+                    tooltip = linkedName
+                });
+                addedNodes.Add(linkedId);
+            }
+
+            edges.Add(new
+            {
+                from = CurrentLocationId.ToString(),
+                to = linkedId.ToString(),
+                label = nearby.Distance ?? "",
+                tooltip = nearby.TravelNotes ?? nearby.Distance ?? ""
+            });
+        }
+
+        return new { nodes, edges };
+    }
+
+    private static string TruncateLabel(string label, int maxLength = 20)
+    {
+        if (string.IsNullOrEmpty(label)) return label;
+        return label.Length <= maxLength ? label : label[..(maxLength - 3)] + "...";
+    }
+
+    /// <summary>
+    /// Called from JavaScript when a node is clicked
+    /// </summary>
+    [JSInvokable]
+    public async Task OnNodeClicked(string nodeId)
+    {
+        if (int.TryParse(nodeId, out var locationId))
+        {
+            if (OnLocationClicked.HasDelegate)
+            {
+                await OnLocationClicked.InvokeAsync(locationId);
+            }
+            else
+            {
+                // Default behavior: navigate to the location
+                NavigationManager.NavigateTo($"/admin/locations/{locationId}");
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JsRuntime.InvokeVoidAsync("visNetworkInterop.destroyNetwork", _containerId);
+        }
+        catch
+        {
+            // Ignore errors during disposal (component may be disconnected)
+        }
+
+        _dotNetRef?.Dispose();
+    }
+
+    /// <summary>
+    /// Data model for nearby location information
+    /// </summary>
+    public record NearbyLocationInfo(
+        int SourceLocationId,
+        string SourceLocationName,
+        int TargetLocationId,
+        string TargetLocationName,
+        string? Distance,
+        string? TravelNotes);
+}
