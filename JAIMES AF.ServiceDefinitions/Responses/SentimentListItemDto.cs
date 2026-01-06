@@ -71,6 +71,11 @@ public class SentimentListItemDto
     public string? AgentId { get; set; }
 
     /// <summary>
+    /// Gets or sets the instruction version ID for the agent.
+    /// </summary>
+    public int? InstructionVersionId { get; set; }
+
+    /// <summary>
     /// Gets or sets the list of tool names used in the AI response message.
     /// </summary>
     public List<string>? ToolNames { get; set; }

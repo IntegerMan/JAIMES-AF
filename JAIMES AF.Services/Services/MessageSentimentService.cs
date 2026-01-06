@@ -186,6 +186,7 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
                 GameRulesetId = s.Message?.Game?.RulesetId,
                 AgentVersion = s.Message?.InstructionVersion?.VersionNumber,
                 AgentId = s.Message?.InstructionVersion?.AgentId ?? s.Message?.AgentId,
+                InstructionVersionId = s.Message?.InstructionVersionId,
                 // Tool names from the previous assistant message (the one the user is reacting to)
                 ToolNames = s.Message?.PreviousMessage?.ToolCalls?.Select(tc => tc.ToolName).Distinct().ToList(),
                 HasFeedback = feedback != null,
@@ -280,6 +281,25 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
             FeedbackIsPositive = feedback?.IsPositive,
             FeedbackComment = feedback?.Comment,
             MessageText = sentiment.Message?.Text
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task<SentimentSummaryResponse> GetSentimentSummaryAsync(CancellationToken cancellationToken = default)
+    {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        int totalCount = await context.MessageSentiments.CountAsync(cancellationToken);
+        int positiveCount = await context.MessageSentiments.CountAsync(s => s.Sentiment == 1, cancellationToken);
+        int neutralCount = await context.MessageSentiments.CountAsync(s => s.Sentiment == 0, cancellationToken);
+        int negativeCount = await context.MessageSentiments.CountAsync(s => s.Sentiment == -1, cancellationToken);
+
+        return new SentimentSummaryResponse
+        {
+            TotalCount = totalCount,
+            PositiveCount = positiveCount,
+            NeutralCount = neutralCount,
+            NegativeCount = negativeCount
         };
     }
 }

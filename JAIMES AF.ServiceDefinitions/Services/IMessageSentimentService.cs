@@ -31,4 +31,11 @@ public interface IMessageSentimentService
     Task<SentimentFullDetailsResponse?> GetSentimentDetailsAsync(
         int id,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets sentiment summary statistics (positive/neutral/negative counts).
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Sentiment summary statistics.</returns>
+    Task<SentimentSummaryResponse> GetSentimentSummaryAsync(CancellationToken cancellationToken = default);
 }
