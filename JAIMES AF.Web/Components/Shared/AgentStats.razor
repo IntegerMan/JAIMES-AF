@@ -61,7 +61,7 @@ else
             @* Sentiment Card *@
             <MudItem xs="12" sm="6" md="3" Style="flex: 1.5; display: flex;">
                 <div class="stat-card @GetSentimentClass()"
-                @onclick="@(() => NavigationManager.NavigateTo($"/admin/sentiments?agentId={AgentId}{(VersionId.HasValue ? $"&versionId={VersionId}" : "")}"))"
+                @onclick="@(() => NavigationManager.NavigateTo($"/admin/sentiments?agentId={AgentId}{(VersionId.HasValue ? $"&instructionVersionId={VersionId}" : "")}"))"
                     style="cursor: pointer; width: 100%; height: 110px; display: flex; flex-direction: column; justify-content: center;">
                     <MudText Typo="Typo.caption" Class="text-muted">Sentiment</MudText>
                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
@@ -199,7 +199,7 @@ else
             await OnTabRequested.InvokeAsync(FeedbackTabIndex.Value);
             return;
         }
-        NavigationManager.NavigateTo($"/admin/feedback?agentId={AgentId}{(VersionId.HasValue ? $"&versionId={VersionId}" : "")}");
+        NavigationManager.NavigateTo($"/admin/feedback?agentId={AgentId}{(VersionId.HasValue ? $"&instructionVersionId={VersionId}" : "")}");
     }
 
     private async Task OnToolsClicked()
@@ -209,7 +209,7 @@ else
             await OnTabRequested.InvokeAsync(ToolsTabIndex.Value);
             return;
         }
-        NavigationManager.NavigateTo($"/admin/tools?agentId={AgentId}{(VersionId.HasValue ? $"&versionId={VersionId}" : "")}");
+        NavigationManager.NavigateTo($"/admin/tools?agentId={AgentId}{(VersionId.HasValue ? $"&instructionVersionId={VersionId}" : "")}");
     }
 
     private async Task OnMetricsClicked()
@@ -219,7 +219,7 @@ else
             await OnTabRequested.InvokeAsync(MetricsTabIndex.Value);
             return;
         }
-        NavigationManager.NavigateTo($"/admin/metrics?agentId={AgentId}{(VersionId.HasValue ? $"&versionId={VersionId}" : "")}");
+        NavigationManager.NavigateTo($"/admin/metrics?agentId={AgentId}{(VersionId.HasValue ? $"&instructionVersionId={VersionId}" : "")}");
     }
 
     private string GetSentimentClass()

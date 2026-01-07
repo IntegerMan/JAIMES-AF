@@ -1,4 +1,4 @@
-@page "/admin/sentiments/{Id:int}"
+@page "/admin/sentiments/{MessageId:int}"
 @using MattEland.Jaimes.ServiceDefinitions.Responses
 @using MattEland.Jaimes.ServiceDefinitions.Requests
 @using MattEland.Jaimes.Web.Components.Shared
@@ -26,7 +26,7 @@
         <CompactHeroSection Title="Sentiment Details"
                             Icon="@Icons.Material.Filled.Mood"
                             Theme="CompactHeroSection.HeroTheme.Primary"
-                            Subtitle="@($"Record #{Id}")"
+                            Subtitle="@($"Message #{MessageId}")"
                             ActionText="@(_sentiment.GameId != Guid.Empty ? "View Game" : null)"
                             ActionHref="@(_sentiment.GameId != Guid.Empty ? $"/games/{_sentiment.GameId}" : null)"
                             ActionIcon="@Icons.Material.Filled.Games"/>
@@ -192,7 +192,7 @@
 </MudContainer>
 
 @code {
-    [Parameter] public int Id { get; set; }
+    [Parameter] public int MessageId { get; set; }
     private SentimentFullDetailsResponse? _sentiment;
     private bool _loading = true;
     private bool _saving = false;
@@ -207,7 +207,7 @@
             new BreadcrumbItem("Home", href: "/"),
             new BreadcrumbItem("Admin", href: "/admin"),
             new BreadcrumbItem("Sentiments", href: "/admin/sentiments"),
-            new BreadcrumbItem($"Sentiment {Id}", href: null, disabled: true)
+            new BreadcrumbItem($"Sentiment {MessageId}", href: null, disabled: true)
         };
 
         await LoadSentimentAsync();
@@ -221,7 +221,7 @@
         try 
         {
             var client = HttpClientFactory.CreateClient("Api");
-            _sentiment = await client.GetFromJsonAsync<SentimentFullDetailsResponse>($"/admin/sentiments/{Id}");
+            _sentiment = await client.GetFromJsonAsync<SentimentFullDetailsResponse>($"/admin/sentiments/{MessageId}");
             if (_sentiment != null)
             {
                 _selectedSentiment = _sentiment.Sentiment;
