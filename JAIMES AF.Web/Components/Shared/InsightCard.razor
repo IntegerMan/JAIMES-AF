@@ -1,0 +1,102 @@
+@*
+    InsightCard.razor - Reusable card component for displaying AI-generated insights.
+    Shows an icon, title, loading indicator, and scrollable content area.
+    
+    Usage Example:
+    <InsightCard Title="Feedback"
+                 Icon="@Icons.Material.Filled.ThumbUp"
+                 IsLoading="_isGeneratingFeedback"
+                 Content="@_feedbackInsights"
+                 EmptyMessage="No feedback data available." />
+*@
+
+@using Markdig
+
+<MudPaper Class="pa-4" Elevation="2" Style="@CardStyle">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+        <MudIcon Icon="@Icon" Color="Color.Primary" Size="Size.Medium"/>
+        <MudText Typo="Typo.h6">@Title</MudText>
+        @if (IsLoading)
+        {
+            <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
+        }
+        else if (!string.IsNullOrEmpty(Content))
+        {
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small"/>
+        }
+    </MudStack>
+    <div class="insight-card-content">
+        @if (!string.IsNullOrEmpty(Content))
+        {
+            @((MarkupString)Markdown.ToHtml(Content, Pipeline))
+        }
+        else if (!IsLoading)
+        {
+            <MudText Typo="Typo.caption" Class="text-muted">@EmptyMessage</MudText>
+        }
+    </div>
+</MudPaper>
+
+<style>
+    .insight-card-content {
+        flex: 1;
+        overflow-y: auto;
+        min-height: 0;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// Title displayed in the card header.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "";
+
+    /// <summary>
+    /// Icon displayed in the card header.
+    /// </summary>
+    [Parameter]
+    public string Icon { get; set; } = Icons.Material.Filled.Lightbulb;
+
+    /// <summary>
+    /// Whether the card is in a loading state.
+    /// </summary>
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    /// <summary>
+    /// The insight content to display.
+    /// </summary>
+    [Parameter]
+    public string? Content { get; set; }
+
+    /// <summary>
+    /// Message shown when there is no content and not loading.
+    /// </summary>
+    [Parameter]
+    public string EmptyMessage { get; set; } = "No data available.";
+
+    /// <summary>
+    /// Optional width specification (e.g., "calc(33.3% - 16px)").
+    /// </summary>
+    [Parameter]
+    public string? Width { get; set; }
+
+    /// <summary>
+    /// Optional height specification. Defaults to 300px.
+    /// </summary>
+    [Parameter]
+    public string Height { get; set; } = "300px";
+
+    /// <summary>
+    /// Optional minimum width. Defaults to 250px.
+    /// </summary>
+    [Parameter]
+    public string MinWidth { get; set; } = "250px";
+
+    private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
+        .DisableHtml()
+        .Build();
+
+    private string CardStyle => $"flex: 1 1 {Width ?? "calc(33.3% - 16px)"}; min-width: {MinWidth}; height: {Height}; display: flex; flex-direction: column; overflow: hidden;";
+}

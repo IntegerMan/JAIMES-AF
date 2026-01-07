@@ -1,0 +1,99 @@
+@*
+    WizardSteps.razor - Reusable step indicator for multi-step wizard pages.
+    Displays step numbers/check icons with labels and connecting dividers.
+    
+    Usage Example:
+    <WizardSteps StepTitles="@_stepTitles" 
+                 ActiveStep="@_activeStep" 
+                 MaxReachedStep="@_maxReachedStep"
+                 OnStepClick="GoToStep" />
+*@
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.Center" Class="mb-4">
+    @for (int i = 0; i < StepTitles.Length; i++)
+    {
+        var stepIndex = i;
+        var isCompleted = stepIndex < ActiveStep;
+        var isActive = stepIndex == ActiveStep;
+        var isReachable = stepIndex <= MaxReachedStep;
+        var isClickable = OnStepClick.HasDelegate && isReachable && !isActive;
+        
+        <MudStack AlignItems="AlignItems.Center" Spacing="1" 
+                  Class="@(isClickable ? "cursor-pointer" : "")"
+                  @onclick="@(() => HandleStepClick(stepIndex, isClickable))">
+            <MudAvatar Size="Size.Small" 
+                       Color="@GetStepColor(stepIndex, isActive, isCompleted)"
+                       Style="@GetStepStyle(isReachable)">
+                @if (isCompleted)
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small"/>
+                }
+                else
+                {
+                    @(stepIndex + 1)
+                }
+            </MudAvatar>
+            <MudText Typo="Typo.caption" 
+                     Color="@(isActive ? Color.Primary : Color.Default)"
+                     Style="@GetStepStyle(isReachable)">
+                @StepTitles[stepIndex]
+            </MudText>
+        </MudStack>
+        @if (i < StepTitles.Length - 1)
+        {
+            <MudDivider Class="mx-4" Style="@GetDividerStyle(stepIndex)"/>
+        }
+    }
+</MudStack>
+
+@code {
+    /// <summary>
+    /// Array of step titles to display.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string[] StepTitles { get; set; } = [];
+
+    /// <summary>
+    /// The current active step index (0-based).
+    /// </summary>
+    [Parameter]
+    public int ActiveStep { get; set; }
+
+    /// <summary>
+    /// The maximum step index that has been reached (for enabling clickable navigation).
+    /// </summary>
+    [Parameter]
+    public int MaxReachedStep { get; set; }
+
+    /// <summary>
+    /// Optional callback when a step is clicked. Only fires for reachable, non-active steps.
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> OnStepClick { get; set; }
+
+    private Color GetStepColor(int stepIndex, bool isActive, bool isCompleted)
+    {
+        if (isCompleted) return Color.Success;
+        if (isActive) return Color.Primary;
+        return Color.Default;
+    }
+
+    private string GetStepStyle(bool isReachable)
+    {
+        return isReachable ? "" : "opacity: 0.5;";
+    }
+
+    private string GetDividerStyle(int stepIndex)
+    {
+        var opacity = stepIndex < MaxReachedStep ? "1" : "0.3";
+        return $"width: 60px; opacity: {opacity};";
+    }
+
+    private async Task HandleStepClick(int stepIndex, bool isClickable)
+    {
+        if (isClickable && OnStepClick.HasDelegate)
+        {
+            await OnStepClick.InvokeAsync(stepIndex);
+        }
+    }
+}

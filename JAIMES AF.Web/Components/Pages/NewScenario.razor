@@ -72,30 +72,14 @@
 				              Lines="5"
 				              HelperText="The initial message shown to players when starting a new game with this scenario (optional)"/>
 
-				<div class="d-flex gap-2 mt-4">
-					<MudButton Variant="Variant.Filled"
-					           Color="Color.Secondary"
-					           OnClick="CreateScenarioAsync"
-					           Disabled="_isSaving || !IsFormValid()"
-					           StartIcon="@Icons.Material.Filled.Add">
-						@if (_isSaving)
-						{
-							<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
-							<span class="ms-2">Creating...</span>
-						}
-						else
-						{
-							<span>Create Scenario</span>
-						}
-					</MudButton>
-
-					<MudButton Variant="Variant.Text"
-					           Color="Color.Default"
-					           Href="/scenarios"
-					           Disabled="_isSaving">
-						Cancel
-					</MudButton>
-				</div>
+				<FormActionButtons PrimaryText="Create Scenario"
+				                   PrimaryColor="Color.Secondary"
+				                   PrimaryIcon="@Icons.Material.Filled.Add"
+				                   OnPrimary="CreateScenarioAsync"
+				                   PrimaryDisabled="@(!IsFormValid())"
+				                   IsSaving="_isSaving"
+				                   SavingText="Creating..."
+				                   CancelHref="/scenarios" />
 			</MudForm>
 		}
 	</MudPaper>

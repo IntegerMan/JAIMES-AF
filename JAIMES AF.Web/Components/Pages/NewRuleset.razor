@@ -38,30 +38,14 @@
 			              RequiredError="Name is required"
 			              HelperText="The display name for this ruleset (e.g., 'D&D 5th Edition')"/>
 
-			<div class="d-flex gap-2 mt-4">
-				<MudButton Variant="Variant.Filled"
-				           Color="Color.Success"
-				           OnClick="CreateRulesetAsync"
-				           Disabled="_isSaving || !IsFormValid()"
-				           StartIcon="@Icons.Material.Filled.Add">
-					@if (_isSaving)
-					{
-						<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
-						<span class="ms-2">Creating...</span>
-					}
-					else
-					{
-						<span>Create Ruleset</span>
-					}
-				</MudButton>
-
-				<MudButton Variant="Variant.Text"
-				           Color="Color.Default"
-				           Href="/rulesets"
-				           Disabled="_isSaving">
-					Cancel
-				</MudButton>
-			</div>
+			<FormActionButtons PrimaryText="Create Ruleset"
+			                   PrimaryColor="Color.Success"
+			                   PrimaryIcon="@Icons.Material.Filled.Add"
+			                   OnPrimary="CreateRulesetAsync"
+			                   PrimaryDisabled="@(!IsFormValid())"
+			                   IsSaving="_isSaving"
+			                   SavingText="Creating..."
+			                   CancelHref="/rulesets" />
 		</MudForm>
 	</MudPaper>
 </MudContainer>

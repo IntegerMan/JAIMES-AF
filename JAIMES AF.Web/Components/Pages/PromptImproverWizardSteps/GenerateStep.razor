@@ -1,0 +1,60 @@
+@*
+    GenerateStep.razor - Third step of the Prompt Improvement Wizard.
+    Shows editable input prompt and triggers AI generation.
+*@
+
+<MudText Typo="Typo.body1" Class="mb-3">
+    Review and edit the prompt that will be sent to the AI, then generate an improved version.
+</MudText>
+
+<MudExpansionPanels Class="mb-4" Elevation="2">
+    <MudExpansionPanel Text="Input Prompt" MaxHeight="600" @bind-Expanded="InputPromptExpanded">
+        <MudTextField @bind-Value="EditableInputPrompt"
+                      @bind-Value:after="OnEditableInputPromptChanged"
+                      Variant="Variant.Outlined"
+                      Lines="20"
+                      HelperText="Edit this prompt if you want to customize the input sent to the AI"/>
+    </MudExpansionPanel>
+</MudExpansionPanels>
+
+<MudButton Variant="Variant.Filled"
+           Color="Color.Secondary"
+           Size="Size.Large"
+           StartIcon="@(IsGenerating ? null : Icons.Material.Filled.AutoAwesome)"
+           OnClick="OnGenerate"
+           Disabled="@(IsGenerating || !CanGenerate)"
+           FullWidth="true">
+    @if (IsGenerating)
+    {
+        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+        <span class="ms-2">Generating Improved Prompt...</span>
+    }
+    else
+    {
+        <span>Generate</span>
+    }
+</MudButton>
+
+@if (!CanGenerate)
+{
+    <MudText Typo="Typo.caption" Class="text-muted mt-2">
+        Generate at least one insight or provide your feedback to enable prompt generation.
+    </MudText>
+}
+
+@code {
+    [Parameter] public string EditableInputPrompt { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> EditableInputPromptChanged { get; set; }
+    
+    [Parameter] public bool InputPromptExpanded { get; set; } = true;
+    [Parameter] public EventCallback<bool> InputPromptExpandedChanged { get; set; }
+    
+    [Parameter] public bool IsGenerating { get; set; }
+    [Parameter] public bool CanGenerate { get; set; }
+    [Parameter] public EventCallback OnGenerate { get; set; }
+
+    private async Task OnEditableInputPromptChanged()
+    {
+        await EditableInputPromptChanged.InvokeAsync(EditableInputPrompt);
+    }
+}

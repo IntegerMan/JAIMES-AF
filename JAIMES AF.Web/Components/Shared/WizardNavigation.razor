@@ -1,0 +1,123 @@
+@*
+    WizardNavigation.razor - Reusable navigation buttons for multi-step wizard pages.
+    Displays Cancel, Previous, and Next/Action buttons in a justified layout.
+    
+    Usage Example:
+    <WizardNavigation CancelHref="/agents"
+                      ShowBack="@(_activeStep > 0)"
+                      ShowNext="@(_activeStep < 3)"
+                      OnBack="PreviousStep"
+                      OnNext="NextStep" />
+*@
+
+<MudStack Row="true" Justify="Justify.SpaceBetween">
+    <MudButton Variant="Variant.Text" 
+               Color="Color.Default" 
+               Href="@CancelHref"
+               Disabled="@CancelDisabled">
+        @CancelText
+    </MudButton>
+
+    <MudStack Row="true" Spacing="2">
+        @if (ShowBack)
+        {
+            <MudButton Variant="Variant.Outlined" 
+                       Color="Color.Primary" 
+                       OnClick="OnBack"
+                       Disabled="@BackDisabled"
+                       StartIcon="@Icons.Material.Filled.ArrowBack">
+                @BackText
+            </MudButton>
+        }
+        @if (ShowNext)
+        {
+            <MudButton Variant="Variant.Filled" 
+                       Color="@NextColor" 
+                       OnClick="OnNext"
+                       Disabled="@NextDisabled"
+                       StartIcon="@NextIcon">
+                @NextText
+            </MudButton>
+        }
+    </MudStack>
+</MudStack>
+
+@code {
+    /// <summary>
+    /// Navigation href for the Cancel button.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string CancelHref { get; set; } = "/";
+
+    /// <summary>
+    /// Text for the Cancel button. Defaults to "Cancel".
+    /// </summary>
+    [Parameter]
+    public string CancelText { get; set; } = "Cancel";
+
+    /// <summary>
+    /// Whether the Cancel button should be disabled.
+    /// </summary>
+    [Parameter]
+    public bool CancelDisabled { get; set; }
+
+    /// <summary>
+    /// Whether to show the Back/Previous button.
+    /// </summary>
+    [Parameter]
+    public bool ShowBack { get; set; }
+
+    /// <summary>
+    /// Text for the Back button. Defaults to "Previous".
+    /// </summary>
+    [Parameter]
+    public string BackText { get; set; } = "Previous";
+
+    /// <summary>
+    /// Whether the Back button should be disabled.
+    /// </summary>
+    [Parameter]
+    public bool BackDisabled { get; set; }
+
+    /// <summary>
+    /// Click handler for the Back button.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnBack { get; set; }
+
+    /// <summary>
+    /// Whether to show the Next/Action button.
+    /// </summary>
+    [Parameter]
+    public bool ShowNext { get; set; } = true;
+
+    /// <summary>
+    /// Text for the Next button. Defaults to "Next".
+    /// </summary>
+    [Parameter]
+    public string NextText { get; set; } = "Next";
+
+    /// <summary>
+    /// Icon for the Next button. Defaults to ArrowForward.
+    /// </summary>
+    [Parameter]
+    public string NextIcon { get; set; } = Icons.Material.Filled.ArrowForward;
+
+    /// <summary>
+    /// Color for the Next button. Defaults to Primary.
+    /// </summary>
+    [Parameter]
+    public Color NextColor { get; set; } = Color.Primary;
+
+    /// <summary>
+    /// Whether the Next button should be disabled.
+    /// </summary>
+    [Parameter]
+    public bool NextDisabled { get; set; }
+
+    /// <summary>
+    /// Click handler for the Next button.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnNext { get; set; }
+}
