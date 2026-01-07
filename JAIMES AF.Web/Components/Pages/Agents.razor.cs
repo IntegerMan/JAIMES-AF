@@ -5,6 +5,9 @@ namespace MattEland.Jaimes.Web.Components.Pages;
 public partial class Agents
 {
     private AgentResponse[]? _agents;
+    private int? _totalVersions;
+    private int? _totalFeedback;
+    private double? _averageEvaluation;
     private bool _isLoading = true;
     private string? _errorMessage;
 
@@ -29,6 +32,9 @@ public partial class Agents
         {
             AgentListResponse? resp = await Http.GetFromJsonAsync<AgentListResponse>("/agents");
             _agents = resp?.Agents ?? [];
+            _totalVersions = resp?.TotalVersions;
+            _totalFeedback = resp?.TotalFeedback;
+            _averageEvaluation = resp?.AverageEvaluation;
         }
         catch (Exception ex)
         {

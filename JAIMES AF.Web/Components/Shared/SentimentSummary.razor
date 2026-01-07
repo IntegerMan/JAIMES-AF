@@ -1,0 +1,62 @@
+@inject NavigationManager NavigationManager
+
+@if (PositiveCount == 0 && NeutralCount == 0 && NegativeCount == 0)
+{
+    @if (ShowEmptyState)
+    {
+        <MudText Typo="Typo.body2" Class="text-muted">—</MudText>
+    }
+}
+else
+{
+    <div @onclick="HandleClick" style="@(DisableClick ? "" : "cursor: pointer;")">
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            <MudTooltip Text="Positive" Placement="Placement.Top">
+                <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.SentimentVerySatisfied" 
+                             Color="@(PositiveCount > 0 ? Color.Success : Color.Default)" 
+                             Size="Size.Small" />
+                    <MudText Typo="Typo.body2" Style="@(PositiveCount > 0 ? "font-weight: 600;" : "")">@PositiveCount</MudText>
+                </MudStack>
+            </MudTooltip>
+            <MudTooltip Text="Neutral" Placement="Placement.Top">
+                <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.Balance" 
+                             Color="Color.Default" 
+                             Size="Size.Small" />
+                    <MudText Typo="Typo.body2">@NeutralCount</MudText>
+                </MudStack>
+            </MudTooltip>
+            <MudTooltip Text="Negative" Placement="Placement.Top">
+                <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.SentimentVeryDissatisfied" 
+                             Color="@(NegativeCount > 0 ? Color.Error : Color.Default)" 
+                             Size="Size.Small" />
+                    <MudText Typo="Typo.body2" Style="@(NegativeCount > 0 ? "font-weight: 600;" : "")">@NegativeCount</MudText>
+                </MudStack>
+            </MudTooltip>
+        </MudStack>
+    </div>
+}
+
+@code {
+    [Parameter] public int PositiveCount { get; set; }
+    [Parameter] public int NeutralCount { get; set; }
+    [Parameter] public int NegativeCount { get; set; }
+    [Parameter] public required string AgentId { get; set; }
+    [Parameter] public string? VersionId { get; set; }
+    [Parameter] public bool DisableClick { get; set; }
+    [Parameter] public bool ShowEmptyState { get; set; } = true;
+
+    private void HandleClick()
+    {
+        if (DisableClick) return;
+        
+        string url = $"/admin/sentiments?agentId={AgentId}";
+        if (!string.IsNullOrEmpty(VersionId))
+        {
+            url += $"&instructionVersionId={VersionId}";
+        }
+        NavigationManager.NavigateTo(url);
+    }
+}
