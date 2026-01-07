@@ -20,3 +20,11 @@ window.scrollToBottom = (elementId) => {
         });
     }
 };
+
+window.focusChatInput = () => {
+    // Native input element has id directly
+    const input = document.getElementById('chat-input');
+    if (input) {
+        input.focus();
+    }
+};

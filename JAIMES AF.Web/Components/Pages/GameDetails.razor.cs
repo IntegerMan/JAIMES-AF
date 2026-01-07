@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
+using MattEland.Jaimes.Web.Components.Dialogs;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.AI;
 using MudBlazor;
@@ -46,7 +47,6 @@ public partial class GameDetails : IAsyncDisposable
     // Title editing
     private string? _editableTitle;
     private bool _isSavingTitle = false;
-    private bool _isEditingTitle = false;
 
     // Agent and Version selection
     private List<AgentResponse> _availableAgents = [];
@@ -58,8 +58,6 @@ public partial class GameDetails : IAsyncDisposable
 
     private bool _isSending = false;
     private ILogger? _logger;
-    private Guid _chatInputKey = Guid.NewGuid();
-    private MudTextField<string>? _chatInput;
     private string _userMessageText = string.Empty;
 
     protected override async Task OnParametersSetAsync()
@@ -207,50 +205,103 @@ public partial class GameDetails : IAsyncDisposable
     }
 
     /// <summary>
-    /// Enters title edit mode.
+    /// Opens the game settings dialog.
     /// </summary>
-    private void EnterTitleEditMode()
+    private async Task OpenSettingsDialogAsync()
     {
-        _editableTitle = _game?.Title ?? $"{_game?.PlayerName} in {_game?.ScenarioName}";
-        _isEditingTitle = true;
-        StateHasChanged();
+        var parameters = new DialogParameters<Dialogs.GameSettingsDialog>
+        {
+            { nameof(Dialogs.GameSettingsDialog.AvailableAgents), _availableAgents },
+            { nameof(Dialogs.GameSettingsDialog.AvailableVersions), _availableVersions },
+            { nameof(Dialogs.GameSettingsDialog.SelectedAgentId), _selectedAgentId },
+            { nameof(Dialogs.GameSettingsDialog.SelectedAgentName), GetCurrentAgentName() },
+            { nameof(Dialogs.GameSettingsDialog.SelectedVersionId), _selectedVersionId },
+            { nameof(Dialogs.GameSettingsDialog.SelectedVersionNumber), GetCurrentVersionNumber() },
+            { nameof(Dialogs.GameSettingsDialog.GameTitle), _game?.Title },
+            { nameof(Dialogs.GameSettingsDialog.DefaultTitle), $"{_game?.PlayerName} in {_game?.ScenarioName}" }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<Dialogs.GameSettingsDialog>("Game Settings", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: Dialogs.GameSettingsDialog.GameSettingsResult settings })
+        {
+            // Apply title change if different
+            if (settings.Title != _game?.Title)
+            {
+                _editableTitle = settings.Title;
+                await SaveTitleAsync();
+            }
+            
+            // Apply the agent/version settings
+            if (settings.AgentId != _selectedAgentId)
+            {
+                await OnAgentChanged(settings.AgentId!);
+            }
+            if (settings.VersionId != _selectedVersionId)
+            {
+                await OnVersionChanged(settings.VersionId);
+            }
+        }
     }
 
     /// <summary>
-    /// Cancels title edit mode without saving.
+    /// Gets the current agent name for display.
     /// </summary>
-    private void CancelTitleEdit()
+    private string GetCurrentAgentName()
     {
-        _isEditingTitle = false;
-        _editableTitle = _game?.Title;
-        StateHasChanged();
+        if (!string.IsNullOrEmpty(_selectedAgentId))
+        {
+            var agent = _availableAgents.FirstOrDefault(a => a.Id == _selectedAgentId);
+            if (agent != null) return agent.Name;
+        }
+        return _defaultAgentName ?? "Agent";
     }
 
     /// <summary>
-    /// Saves the title and exits edit mode.
+    /// Gets the current version number for display.
     /// </summary>
-    private async Task SaveTitleAndExitEditModeAsync()
+    private string GetCurrentVersionNumber()
     {
-        await SaveTitleAsync();
-        _isEditingTitle = false;
-        StateHasChanged();
+        if (_selectedVersionId.HasValue)
+        {
+            var version = _availableVersions.FirstOrDefault(v => v.Id == _selectedVersionId.Value);
+            if (version != null) return version.VersionNumber;
+        }
+        return _defaultVersionNumber ?? "Latest";
     }
 
     private async Task SendMessageAsync()
     {
         string message = _userMessageText;
+        if (string.IsNullOrWhiteSpace(message)) return;
 
-        // Clear input immediately
+        // Clear input immediately - native binding just works
         _userMessageText = string.Empty;
-        _chatInputKey = Guid.NewGuid();
-
+        
+        // Send the message
         await SendMessagePrivateAsync(message);
 
-        // Reset focus
-        await Task.Yield();
-        if (_chatInput != null)
+        // Restore focus to input
+        await FocusChatInputAsync();
+    }
+
+    private async Task FocusChatInputAsync()
+    {
+        try
         {
-            await _chatInput.FocusAsync();
+            await JsRuntime.InvokeVoidAsync("focusChatInput");
+        }
+        catch
+        {
+            // Ignore - element may not exist yet
         }
     }
 
@@ -933,9 +984,10 @@ public partial class GameDetails : IAsyncDisposable
             var response = await httpClient.GetFromJsonAsync<AgentListResponse>("/agents");
             if (response?.Agents != null)
             {
-                // Filter to just game master role agents as requested
+                // Filter to just game master role agents - handle both "Game Master" and "GameMaster" formats
                 var agents = response.Agents
-                    .Where(a => a.Role.Equals("Game Master", StringComparison.OrdinalIgnoreCase))
+                    .Where(a => a.Role.Equals("Game Master", StringComparison.OrdinalIgnoreCase) ||
+                                a.Role.Equals("GameMaster", StringComparison.OrdinalIgnoreCase))
                     .ToList();
 
                 // Ensure the currently selected agent is in the list, even if it's not a "Game Master"

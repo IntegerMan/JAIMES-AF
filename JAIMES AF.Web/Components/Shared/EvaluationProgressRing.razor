@@ -54,17 +54,21 @@
 
 @if (_hoveredMetric != null)
 {
-    <MudPopover Open="true" AnchorOrigin="Origin.TopCenter" TransformOrigin="Origin.BottomCenter" Style="pointer-events: none;">
-        <MudPaper Class="pa-2" Elevation="4">
-            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                <div style="width: 10px; height: 10px; border-radius: 2px; background-color: @GetMetricColor(_hoveredMetric.Score);"></div>
-                <MudStack Spacing="0">
-                    <MudText Typo="Typo.caption" Style="font-weight: 700;">@_hoveredMetric.MetricName</MudText>
-                    <MudText Typo="Typo.caption">@_hoveredMetric.Score.ToString("F1") / 5.0</MudText>
+    var hoveredMetric = _hoveredMetric; @* Capture to local variable to avoid null reference during render *@
+    @if (hoveredMetric != null)
+    {
+        <MudPopover Open="true" AnchorOrigin="Origin.TopCenter" TransformOrigin="Origin.BottomCenter" Style="pointer-events: none;">
+            <MudPaper Class="pa-2" Elevation="4">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <div style="width: 10px; height: 10px; border-radius: 2px; background-color: @GetMetricColor(hoveredMetric.Score);"></div>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.caption" Style="font-weight: 700;">@hoveredMetric.MetricName</MudText>
+                        <MudText Typo="Typo.caption">@hoveredMetric.Score.ToString("F1") / 5.0</MudText>
+                    </MudStack>
                 </MudStack>
-            </MudStack>
-        </MudPaper>
-    </MudPopover>
+            </MudPaper>
+        </MudPopover>
+    }
 }
 
 <style>
