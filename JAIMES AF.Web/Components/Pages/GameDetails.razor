@@ -14,7 +14,12 @@
 	<MudContainer MaxWidth="MaxWidth.Large" Class="game-details-wrapper">
 		@if (_isLoading)
 		{
-			<MudProgressCircular Indeterminate="true" Class="my-4"/>
+			<div class="game-loading-container">
+				<MudStack AlignItems="AlignItems.Center" Spacing="3">
+					<MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large"/>
+					<MudText Typo="Typo.h6" Color="Color.Primary">Loading game...</MudText>
+				</MudStack>
+			</div>
 		}
 		else if (!string.IsNullOrEmpty(_errorMessage) && _failedMessageIndex == null)
 		{
@@ -32,20 +37,28 @@
 			                    Icon="@Icons.Material.Filled.SportsEsports"
 			                    Theme="CompactHeroSection.HeroTheme.Primary">
 				<ExtraContent>
-					<div class="version-badge" @onclick="OpenSettingsDialogAsync" title="Game Settings">
+					<div class="version-badge">
 						<MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Small" Color="Color.Secondary"/>
-						<MudText Typo="Typo.caption">
+						<MudLink Href="@GetAgentLink()" Typo="Typo.caption" Color="Color.Inherit" Class="version-badge-link">
 							@(GetCurrentAgentName())
+						</MudLink>
+						<span class="version-badge-separator">•</span>
+						<MudLink Href="@GetVersionLink()" Typo="Typo.caption" Color="Color.Inherit" Class="version-badge-link">
 							@if (_selectedVersionId == null)
 							{
-								<span> • Latest</span>
+								<span>Latest</span>
 							}
 							else
 							{
-								<span> • v@(GetCurrentVersionNumber())</span>
+								<span>v@(GetCurrentVersionNumber())</span>
 							}
-						</MudText>
-						<MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small" Color="Color.Default"/>
+						</MudLink>
+						<MudTooltip Text="Game Settings">
+							<MudIconButton Icon="@Icons.Material.Filled.Settings" 
+							               Size="Size.Small" 
+							               Color="Color.Default"
+							               OnClick="OpenSettingsDialogAsync" />
+						</MudTooltip>
 					</div>
 				</ExtraContent>
 			</CompactHeroSection>

@@ -8,6 +8,18 @@
     overflow: hidden;
 }
 
+/* Loading state - centered with visual interest */
+.game-loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 1 1 auto;
+    min-height: 300px;
+    background: linear-gradient(135deg, rgba(123, 44, 191, 0.03) 0%, rgba(67, 97, 238, 0.03) 100%);
+    border-radius: 16px;
+    margin: 1rem;
+}
+
 /* Ensure MudContainer expands */
 ::deep .mud-container.game-details-wrapper {
     height: 100% !important;
@@ -32,18 +44,26 @@
 .version-badge {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.25rem 0.75rem;
+    gap: 0.375rem;
+    padding: 0.25rem 0.5rem;
     background: var(--mud-palette-surface);
     border: 1px solid var(--mud-palette-lines-default);
     border-radius: 1rem;
-    cursor: pointer;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
-.version-badge:hover {
-    background: var(--mud-palette-background-gray);
-    border-color: var(--mud-palette-primary);
+.version-badge-link {
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.version-badge-link:hover {
+    color: var(--color-primary) !important;
+    text-decoration: underline;
+}
+
+.version-badge-separator {
+    color: var(--mud-palette-text-disabled);
+    font-size: 0.75rem;
 }
 
 .chat-scroll {

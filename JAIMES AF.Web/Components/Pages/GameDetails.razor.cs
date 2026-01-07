@@ -278,6 +278,30 @@ public partial class GameDetails : IAsyncDisposable
         return _defaultVersionNumber ?? "Latest";
     }
 
+    /// <summary>
+    /// Gets the link to the current agent's detail page.
+    /// </summary>
+    private string GetAgentLink()
+    {
+        var agentId = _selectedAgentId ?? _defaultAgentId;
+        return !string.IsNullOrEmpty(agentId) ? $"/agents/{agentId}" : "/agents";
+    }
+
+    /// <summary>
+    /// Gets the link to the current version's detail page.
+    /// </summary>
+    private string GetVersionLink()
+    {
+        var agentId = _selectedAgentId ?? _defaultAgentId;
+        var versionId = _selectedVersionId ?? _defaultInstructionVersionId;
+        
+        if (!string.IsNullOrEmpty(agentId) && versionId.HasValue)
+        {
+            return $"/agents/{agentId}/versions/{versionId}";
+        }
+        return GetAgentLink();
+    }
+
     private async Task SendMessageAsync()
     {
         string message = _userMessageText;
