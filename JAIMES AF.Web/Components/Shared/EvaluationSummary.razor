@@ -1,0 +1,47 @@
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MudBlazor
+
+@* EvaluationSummary.razor - shared component for displaying metric distribution pie + avg score *@
+
+<div @onclick="HandleClick" style="@(OnClick.HasDelegate || !string.IsNullOrEmpty(Href) ? "cursor: pointer;" : "")">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+        @if (Metrics != null && Metrics.Any())
+        {
+            <EvaluationProgressRing Size="@Size" TotalSegments="@TotalSegments" Metrics="@Metrics" OnSliceClick="OnSliceClick" />
+            
+            <MudText Typo="Typo.body2" Style="font-weight: 600; color: var(--mud-palette-primary); white-space: nowrap;">
+                @AverageScore.ToString("F1") @(ShowLabel ? " / 5" : " Avg")
+            </MudText>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Class="text-muted">—</MudText>
+        }
+    </MudStack>
+</div>
+
+@code {
+    [Parameter] public List<MessageEvaluationMetricResponse>? Metrics { get; set; }
+    [Parameter] public int Size { get; set; } = 24;
+    [Parameter] public int TotalSegments { get; set; }
+    [Parameter] public string? Href { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public EventCallback<MessageEvaluationMetricResponse> OnSliceClick { get; set; }
+    [Parameter] public bool ShowLabel { get; set; } = true;
+
+    private double AverageScore => Metrics?.Any() == true ? Metrics.Average(m => m.Score) : 0;
+
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private async Task HandleClick()
+    {
+        if (OnClick.HasDelegate)
+        {
+            await OnClick.InvokeAsync();
+        }
+        else if (!string.IsNullOrEmpty(Href))
+        {
+            Nav.NavigateTo(Href);
+        }
+    }
+}

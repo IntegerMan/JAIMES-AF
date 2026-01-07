@@ -83,12 +83,11 @@ else
                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                     @if (_stats?.EvaluationMetrics != null && _stats.EvaluationMetrics.Count > 0)
                     {
-                        <EvaluationProgressRing Size="32" TotalSegments="@_stats.EvaluationMetrics.Count"
-                            Metrics="@_stats.EvaluationMetrics.Select(m => new MessageEvaluationMetricResponse { MetricName = m.MetricName, Score = m.AverageScore, EvaluatorId = m.EvaluatorId }).ToList()"
+                        <EvaluationSummary 
+                            Size="32" 
+                            TotalSegments="@_stats.EvaluationMetrics.Count" 
+                            Metrics="@_stats.EvaluationMetrics.Select(m => new MessageEvaluationMetricResponse { MetricName = m.MetricName, Score = m.AverageScore, EvaluatorId = m.EvaluatorId }).ToList()" 
                             OnSliceClick="HandleEvaluationSliceClick" />
-                        <MudText Typo="Typo.body2" Style="font-weight: 600; color: var(--mud-palette-primary);">
-                            @_stats.EvaluationMetrics.Average(m => m.AverageScore).ToString("F1") / 5 Average Score
-                        </MudText>
                     }
                     else
                     {

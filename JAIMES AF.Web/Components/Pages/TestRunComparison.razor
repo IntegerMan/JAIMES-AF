@@ -157,14 +157,18 @@
                                          CellValue="@((r, c) => r.Metrics?.FirstOrDefault(m => m.MetricName == c)?.Score)"
                                          CellTooltip="@((r, c) => GetMetricTooltip(c, r.Metrics?.FirstOrDefault(m => m.MetricName == c)))"
                                          CellStyle="@((r, c, v) => GetHeatmapCellStyle(v))"
-                                         AverageValue="@(r => r.Metrics?.Any() == true ? r.Metrics.Average(m => m.Score) : null)"
+                                         ShowAverageColumn="false"
                                          ShowTimeColumn="true"
                                          TimeValue="@(r => r.DurationMs)"
-                                         RowHeaderLabel="Test Case">
+                                         RowHeaderLabel="Test Case"
+                                         RowIndicatorHeader="Summary">
                             <RowIndicator>
-                                <EvaluationProgressRing Size="20"
+                                <EvaluationSummary 
+                                    Size="20"
                                     TotalSegments="@_metricNames.Count"
-                                    Metrics="@GetRunMetrics(context)" />
+                                    Metrics="@GetRunMetrics(context)"
+                                    ShowLabel="false"
+                                    Href="@GetEvaluationsHref(vr.AgentId, vr.InstructionVersionId)" />
                             </RowIndicator>
                         </ComparisonMatrix>
                     </div>
@@ -194,16 +198,20 @@
                                          CellValue="@((r, c) => r.Run?.Metrics?.FirstOrDefault(m => m.MetricName == c)?.Score)"
                                          CellTooltip="@((r, c) => GetMetricTooltip(c, r.Run?.Metrics?.FirstOrDefault(m => m.MetricName == c)))"
                                          CellStyle="@((r, c, v) => GetHeatmapCellStyle(v))"
-                                         AverageValue="@(r => r.Run?.Metrics?.Any() == true ? r.Run.Metrics.Average(m => m.Score) : null)"
+                                         ShowAverageColumn="false"
                                          ShowTimeColumn="true"
                                          TimeValue="@(r => r.Run?.DurationMs)"
-                                         RowHeaderLabel="Agent Version">
+                                         RowHeaderLabel="Agent Version"
+                                         RowIndicatorHeader="Summary">
                             <RowIndicator>
                                 @if (context.Run != null)
                                 {
-                                    <EvaluationProgressRing Size="20"
+                                    <EvaluationSummary 
+                                        Size="20"
                                         TotalSegments="@_metricNames.Count"
-                                        Metrics="@GetRunMetrics(context.Run)" />
+                                        Metrics="@GetRunMetrics(context.Run)"
+                                        ShowLabel="false"
+                                        Href="@GetEvaluationsHref(context.Version.AgentId, context.Version.InstructionVersionId)" />
                                 }
                             </RowIndicator>
                             <RowLabelContent>
@@ -459,6 +467,16 @@
                 Score = score // Already on 0-5 scale from test metrics
             };
         }).ToList();
+    }
+
+    private string GetEvaluationsHref(string? agentId, int? versionId)
+    {
+        string agentParam = string.IsNullOrEmpty(agentId) ? "" : $"agentId={agentId}";
+        string versionParam = versionId.HasValue ? $"&instructionVersionId={versionId}" : "";
+        string connector = string.IsNullOrEmpty(agentParam) && string.IsNullOrEmpty(versionParam) ? "" : "?";
+        if (connector == "?" && string.IsNullOrEmpty(agentParam)) versionParam = versionParam.TrimStart('&');
+
+        return $"/admin/metrics{connector}{agentParam}{versionParam}";
     }
 
     /// <summary>

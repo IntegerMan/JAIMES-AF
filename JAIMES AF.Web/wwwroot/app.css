@@ -10,13 +10,13 @@
 
     /* Secondary Colors */
     --color-secondary: #4361EE;
-    --color-tertiary: #4CC9F0;
+    --color-tertiary: #FF9800;
     --color-accent: #06D6A0;
 
     /* Semantic Colors */
     --color-games: #7B2CBF;
     --color-scenarios: #4361EE;
-    --color-characters: #4CC9F0;
+    --color-characters: #FF9800;
     --color-rulesets: #06D6A0;
     --color-admin: #2B2D42;
 
@@ -611,8 +611,8 @@ h1:focus {
 }
 
 .icon-badge-tertiary {
-    background: linear-gradient(135deg, var(--color-tertiary) 0%, #70D6F4 100%);
-    box-shadow: 0 4px 12px rgba(76, 201, 240, 0.3);
+    background: linear-gradient(135deg, var(--color-tertiary) 0%, #FFB74D 100%);
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
 }
 
 .icon-badge-accent {
@@ -626,8 +626,8 @@ h1:focus {
 }
 
 .icon-badge-info {
-    background: linear-gradient(135deg, #2196F3 0%, #4FC3F7 100%);
-    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+    background: linear-gradient(135deg, #4CC9F0 0%, #70D6F4 100%);
+    box-shadow: 0 4px 12px rgba(76, 201, 240, 0.3);
 }
 
 .icon-badge-error {
