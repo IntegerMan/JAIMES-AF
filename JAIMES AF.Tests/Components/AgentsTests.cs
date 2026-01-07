@@ -51,19 +51,35 @@ public class AgentsTests : Bunit.TestContext
     {
         var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
         var response = new AgentListResponse { Agents = agents };
+        var statsResponse = new AgentStatsResponse();
 
         handlerMock
             .Protected()
             .Setup<Task<HttpResponseMessage>>(
                 "SendAsync",
                 ItExpr.Is<HttpRequestMessage>(m =>
-                    m.Method == HttpMethod.Get && m.RequestUri!.PathAndQuery.Contains("/agents")),
+                    m.Method == HttpMethod.Get && m.RequestUri!.PathAndQuery.Contains("/agents") &&
+                    !m.RequestUri.PathAndQuery.Contains("/stats")),
                 ItExpr.IsAny<CancellationToken>()
             )
             .ReturnsAsync(new HttpResponseMessage
             {
                 StatusCode = System.Net.HttpStatusCode.OK,
                 Content = JsonContent.Create(response),
+            });
+
+        handlerMock
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(m =>
+                    m.Method == HttpMethod.Get && m.RequestUri!.PathAndQuery.Contains("/stats")),
+                ItExpr.IsAny<CancellationToken>()
+            )
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = System.Net.HttpStatusCode.OK,
+                Content = JsonContent.Create(statsResponse),
             });
 
         return new HttpClient(handlerMock.Object) { BaseAddress = new Uri("http://localhost/") };
