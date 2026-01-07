@@ -150,30 +150,13 @@
 					<MudText Typo="Typo.body2" Class="mb-4 text-secondary">All available agents are already assigned to this scenario.</MudText>
 				}
 
-				<div class="d-flex gap-2 mt-4">
-					<MudButton Variant="Variant.Filled"
-					           Color="Color.Secondary"
-					           OnClick="UpdateScenarioAsync"
-					           Disabled="_isSaving || !IsFormValid()"
-					           StartIcon="@Icons.Material.Filled.Check">
-						@if (_isSaving)
-						{
-							<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
-							<span class="ms-2">Saving...</span>
-						}
-						else
-						{
-							<span>Save Changes</span>
-						}
-					</MudButton>
-
-					<MudButton Variant="Variant.Text"
-					           Color="Color.Default"
-					           Href="@($"/scenarios/{ScenarioId}")"
-					           Disabled="_isSaving">
-						Cancel
-					</MudButton>
-				</div>
+				<FormActionButtons PrimaryText="Save Changes"
+				                   PrimaryColor="Color.Secondary"
+				                   PrimaryIcon="@Icons.Material.Filled.Check"
+				                   OnPrimary="UpdateScenarioAsync"
+				                   PrimaryDisabled="@(!IsFormValid())"
+				                   IsSaving="_isSaving"
+				                   CancelHref="@($"/scenarios/{ScenarioId}")" />
 			</MudForm>
 		}
 	</MudPaper>

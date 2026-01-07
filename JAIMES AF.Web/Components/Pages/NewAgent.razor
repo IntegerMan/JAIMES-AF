@@ -48,30 +48,14 @@
 			              RequiredError="Instructions are required"
 			              HelperText="Agent instructions that define how this agent behaves. This will be the initial instruction version."/>
 
-			<div class="d-flex gap-2 mt-4">
-				<MudButton Variant="Variant.Filled"
-				           Color="Color.Secondary"
-				           OnClick="CreateAgentAsync"
-				           Disabled="_isSaving || !IsFormValid()"
-				           StartIcon="@Icons.Material.Filled.Add">
-					@if (_isSaving)
-					{
-						<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
-						<span class="ms-2">Creating...</span>
-					}
-					else
-					{
-						<span>Create Agent</span>
-					}
-				</MudButton>
-
-				<MudButton Variant="Variant.Text"
-				           Color="Color.Default"
-				           Href="/agents"
-				           Disabled="_isSaving">
-					Cancel
-				</MudButton>
-			</div>
+			<FormActionButtons PrimaryText="Create Agent"
+			                   PrimaryColor="Color.Secondary"
+			                   PrimaryIcon="@Icons.Material.Filled.Add"
+			                   OnPrimary="CreateAgentAsync"
+			                   PrimaryDisabled="@(!IsFormValid())"
+			                   IsSaving="_isSaving"
+			                   SavingText="Creating..."
+			                   CancelHref="/agents" />
 		</MudForm>
 	</MudPaper>
 </MudContainer>

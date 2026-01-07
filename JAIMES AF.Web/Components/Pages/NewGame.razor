@@ -60,30 +60,14 @@
 					}
 				</MudSelect>
 
-				<div class="d-flex gap-2 mt-4">
-					<MudButton Variant="Variant.Filled"
-					           Color="Color.Primary"
-					           OnClick="CreateGameAsync"
-					           Disabled="_isCreating || string.IsNullOrEmpty(_selectedScenarioId) || string.IsNullOrEmpty(_selectedPlayerId)"
-					           StartIcon="@Icons.Material.Filled.Add">
-						@if (_isCreating)
-						{
-							<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
-							<span class="ms-2">Creating...</span>
-						}
-						else
-						{
-							<span>Create Game</span>
-						}
-					</MudButton>
-
-					<MudButton Variant="Variant.Text"
-					           Color="Color.Default"
-					           Href="/games"
-					           Disabled="_isCreating">
-						Cancel
-					</MudButton>
-				</div>
+				<FormActionButtons PrimaryText="Create Game"
+				                   PrimaryColor="Color.Primary"
+				                   PrimaryIcon="@Icons.Material.Filled.Add"
+				                   OnPrimary="CreateGameAsync"
+				                   PrimaryDisabled="@(string.IsNullOrEmpty(_selectedScenarioId) || string.IsNullOrEmpty(_selectedPlayerId))"
+				                   IsSaving="_isCreating"
+				                   SavingText="Creating..."
+				                   CancelHref="/games" />
 			</MudForm>
 		}
 	</MudPaper>

@@ -161,26 +161,14 @@
 					</MudPaper>
 
 					@* Submit Button *@
-					<MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-4">
-						<MudButton Variant="Variant.Text" Color="Color.Default"
-						           OnClick="@(() => NavigationManager.NavigateTo("/admin/classification-models"))">
-							Cancel
-						</MudButton>
-						<MudButton Variant="Variant.Filled" Color="Color.Primary"
-						           StartIcon="@Icons.Material.Filled.PlayArrow"
-						           Disabled="@(_submitting || !CanStartTraining)"
-						           OnClick="StartTraining">
-							@if (_submitting)
-							{
-								<MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2"/>
-								<span>Starting...</span>
-							}
-							else
-							{
-								<span>Start Training</span>
-							}
-						</MudButton>
-					</MudStack>
+					<FormActionButtons PrimaryText="Start Training"
+					                   PrimaryColor="Color.Primary"
+					                   PrimaryIcon="@Icons.Material.Filled.PlayArrow"
+					                   OnPrimary="StartTraining"
+					                   PrimaryDisabled="@(!CanStartTraining)"
+					                   IsSaving="_submitting"
+					                   SavingText="Starting..."
+					                   CancelHref="/admin/classification-models" />
 				</MudStack>
 			</MudForm>
 

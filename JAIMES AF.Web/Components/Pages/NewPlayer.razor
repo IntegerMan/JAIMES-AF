@@ -64,30 +64,14 @@
 				              Disabled="_isSaving"
 				              Lines="2"/>
 
-				<div class="d-flex gap-2 mt-4">
-					<MudButton Variant="Variant.Filled"
-					           Color="Color.Info"
-					           OnClick="CreatePlayerAsync"
-					           Disabled="_isSaving || !IsFormValid()"
-					           StartIcon="@Icons.Material.Filled.Add">
-						@if (_isSaving)
-						{
-							<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
-							<span class="ms-2">Creating...</span>
-						}
-						else
-						{
-							<span>Create Player</span>
-						}
-					</MudButton>
-
-					<MudButton Variant="Variant.Text"
-					           Color="Color.Default"
-					           Href="/players"
-					           Disabled="_isSaving">
-						Cancel
-					</MudButton>
-				</div>
+				<FormActionButtons PrimaryText="Create Player"
+				                   PrimaryColor="Color.Tertiary"
+				                   PrimaryIcon="@Icons.Material.Filled.Add"
+				                   OnPrimary="CreatePlayerAsync"
+				                   PrimaryDisabled="@(!IsFormValid())"
+				                   IsSaving="_isSaving"
+				                   SavingText="Creating..."
+				                   CancelHref="/players" />
 			</MudForm>
 		}
 	</MudPaper>
