@@ -22,6 +22,10 @@
         <thead>
             <tr>
                 <MudTh Class="comparison-matrix-sticky-column">@RowHeaderLabel</MudTh>
+                @if (RowIndicator is not null)
+                {
+                    <MudTh Class="comparison-matrix-cell" Style="text-align: center; width: 50px;">@RowIndicatorHeader</MudTh>
+                }
                 @if (ShowAverageColumn)
                 {
                     <MudTh Class="comparison-matrix-avg-cell">Avg</MudTh>
@@ -58,15 +62,22 @@
                             @RowLabel(row)
                         }
                     </MudTd>
+                    @if (RowIndicator is not null)
+                    {
+                        <MudTd Class="comparison-matrix-cell" Style="text-align: center; padding: 4px;">
+                            @RowIndicator(row)
+                        </MudTd>
+                    }
                     @if (ShowAverageColumn && AverageValue is not null)
                     {
                         var avgScore = AverageValue(row);
-                        <MudTd Class="comparison-matrix-avg-cell">
+                        var avgStyle = CellStyle?.Invoke(row, default!, avgScore);
+                        <MudTd Class="comparison-matrix-avg-cell" Style="@avgStyle">
                             @if (avgScore.HasValue)
                             {
-                                <MudChip T="string" Size="Size.Small" Color="@GetScoreColor(avgScore.Value)">
+                                <MudText Typo="Typo.body2" Style="font-weight: 600; text-align: center;">
                                     @avgScore.Value.ToString("F1")
-                                </MudChip>
+                                </MudText>
                             }
                             else
                             {
@@ -77,24 +88,24 @@
                     @foreach (var column in Columns)
                     {
                         var cellVal = CellValue(row, column);
-                        var cellCol = CellColor?.Invoke(row, column) ?? (cellVal.HasValue ? GetScoreColor(cellVal.Value) : Color.Default);
                         var tooltip = CellTooltip?.Invoke(row, column);
-                        <MudTd Class="comparison-matrix-cell">
+                        var cellStyle = CellStyle?.Invoke(row, column, cellVal);
+                        <MudTd Class="comparison-matrix-cell" Style="@cellStyle">
                             @if (cellVal.HasValue)
                             {
                                 @if (!string.IsNullOrEmpty(tooltip))
                                 {
                                     <MudTooltip Text="@tooltip" Placement="Placement.Top">
-                                        <MudChip T="string" Size="Size.Small" Color="@cellCol">
+                                        <MudText Typo="Typo.body2" Style="font-weight: 500; text-align: center; cursor: help;">
                                             @cellVal.Value.ToString("F1")
-                                        </MudChip>
+                                        </MudText>
                                     </MudTooltip>
                                 }
                                 else
                                 {
-                                    <MudChip T="string" Size="Size.Small" Color="@cellCol">
+                                    <MudText Typo="Typo.body2" Style="font-weight: 500; text-align: center;">
                                         @cellVal.Value.ToString("F1")
-                                    </MudChip>
+                                    </MudText>
                                 }
                             }
                             else
@@ -148,6 +159,18 @@
     public RenderFragment<TRow>? RowLabelContent { get; set; }
 
     /// <summary>
+    /// Optional render fragment for row indicator (e.g., pie chart) displayed as its own column.
+    /// </summary>
+    [Parameter]
+    public RenderFragment<TRow>? RowIndicator { get; set; }
+
+    /// <summary>
+    /// Header label for the RowIndicator column.
+    /// </summary>
+    [Parameter]
+    public string RowIndicatorHeader { get; set; } = "";
+
+    /// <summary>
     /// Function to get the header text for each column.
     /// </summary>
     [Parameter, EditorRequired]
@@ -170,6 +193,13 @@
     /// </summary>
     [Parameter]
     public Func<TRow, TColumn, string?>? CellTooltip { get; set; }
+
+    /// <summary>
+    /// Optional function to get inline CSS style for a cell (e.g., for heatmap backgrounds).
+    /// Parameters are: row, column, cellValue.
+    /// </summary>
+    [Parameter]
+    public Func<TRow, TColumn, double?, string?>? CellStyle { get; set; }
 
     /// <summary>
     /// Whether to show an average column after the row label.

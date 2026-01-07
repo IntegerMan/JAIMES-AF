@@ -173,8 +173,8 @@
 
     private string GetMetricColor(double score)
     {
-        var scoreColor = MetricColorHelper.GetScoreColor(score);
-        return GetMudColor(scoreColor);
+        // Use the hex color directly from MetricColorHelper for consistent 1-5 scale colors
+        return MetricColorHelper.GetScoreColorRgba(score);
     }
 
     private static string CreatePieSlicePath(double cx, double cy, double r, double startAngle, double angleSize)
@@ -205,6 +205,7 @@
         Color.Warning => "var(--mud-palette-warning)",
         Color.Error => "var(--mud-palette-error)",
         Color.Secondary => "var(--mud-palette-secondary)",
+        Color.Tertiary => "var(--mud-palette-tertiary)",
         _ => "var(--mud-palette-grey-default)"
     };
 

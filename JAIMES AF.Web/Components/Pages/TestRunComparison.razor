@@ -41,48 +41,83 @@
     }
     else if (_versionResults.Count == 0)
     {
-        <MudAlert Severity="Severity.Info">No test results found.</MudAlert>
+        @* Enhanced Empty State *@
+        <div class="glass-card pa-6" style="text-align: center;">
+            <MudStack AlignItems="AlignItems.Center" Spacing="3">
+                <MudIcon Icon="@Icons.Material.Filled.Compare" Color="Color.Info"
+                         Style="font-size: 4rem; opacity: 0.5;"/>
+                <MudText Typo="Typo.h6">No test results to compare</MudText>
+                <MudText Class="text-muted mb-4">Run tests on different agent versions to compare results here.</MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Success" Size="Size.Large"
+                           Href="/admin/run-tests" StartIcon="@Icons.Material.Filled.PlayArrow">
+                    Run Tests
+                </MudButton>
+            </MudStack>
+        </div>
     }
     else
     {
-        @* Version Summary Cards *@
-        <MudGrid Spacing="3" Class="mb-4">
-            @foreach (var vr in _versionResults)
-            {
-                <MudItem xs="12" sm="6" md="4" lg="3">
-                    <MudPaper Class="pa-4" Elevation="2">
-                        <MudStack Spacing="2">
-                            <AgentVersionDisplay 
-                                AgentId="@vr.AgentId" 
-                                AgentName="@vr.AgentName" 
-                                VersionId="@vr.InstructionVersionId"
-                                VersionNumber="@vr.VersionNumber" />
-                            <MudDivider/>
-                            <MudText Typo="Typo.body2">Avg Duration: @vr.AvgDuration.ToString("F0") ms</MudText>
-                            @if (vr.AvgScore.HasValue)
-                            {
-                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                    <MudText Typo="Typo.body2">Avg Score:</MudText>
-                                    <MudChip T="string" Size="Size.Small" Color="@MetricColorHelper.GetScoreColor(vr.AvgScore.Value)">
-                                        @vr.AvgScore.Value.ToString("F2")
-                                    </MudChip>
-                                </MudStack>
-                            }
+        @* Aggregate Summary Stats Row - Matching AgentStats.razor pattern *@
+        <MudGrid Spacing="3" Class="mb-4" Style="display: flex; align-items: stretch;">
+            @* Versions Card *@
+            <MudItem xs="12" sm="6" md="2" Style="flex: 1; display: flex;">
+                <div class="stat-card stat-card-info"
+                     style="width: 100%; height: 100px; display: flex; flex-direction: column; justify-content: center;">
+                    <MudText Typo="Typo.caption" Class="text-muted">Versions</MudText>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudIcon Icon="@Icons.Material.Filled.Compare" Size="Size.Small" Color="Color.Info" />
+                        <MudText Typo="Typo.h6" Style="font-weight: 600; color: var(--mud-palette-primary);">
+                            @_versionResults.Count
+                        </MudText>
+                    </MudStack>
+                </div>
+            </MudItem>
+
+            @* Test Cases Card *@
+            <MudItem xs="12" sm="6" md="2" Style="flex: 1; display: flex;">
+                <MudLink Href="/admin/test-cases" Underline="Underline.None" Style="width: 100%; display: flex;">
+                    <div class="stat-card stat-card-success"
+                         style="cursor: pointer; width: 100%; height: 100px; display: flex; flex-direction: column; justify-content: center;">
+                        <MudText Typo="Typo.caption" Class="text-muted">Test Cases</MudText>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudIcon Icon="@Icons.Material.Filled.Science" Size="Size.Small" Color="Color.Success" />
+                            <MudText Typo="Typo.h6" Style="font-weight: 600; color: var(--mud-palette-primary);">
+                                @_testCaseIds.Count
+                            </MudText>
                         </MudStack>
-                    </MudPaper>
-                </MudItem>
-            }
+                    </div>
+                </MudLink>
+            </MudItem>
+
+            @* Metrics Card with Pie Chart *@
+            <MudItem xs="12" sm="6" md="3" Style="flex: 1.5; display: flex;">
+                <div class="stat-card @GetOverallScoreClass()"
+                     style="width: 100%; height: 100px; display: flex; flex-direction: column; justify-content: center;">
+                    <MudText Typo="Typo.caption" Class="text-muted">Metrics</MudText>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <EvaluationProgressRing Size="32"
+                            TotalSegments="@_metricNames.Count"
+                            Metrics="@GetAggregatedMetrics()" />
+                        <MudText Typo="Typo.body2" Style="font-weight: 600; color: var(--mud-palette-primary);">
+                            @(GetOverallAverageScore()?.ToString("F2") ?? "-") Avg Score
+                        </MudText>
+                    </MudStack>
+                </div>
+            </MudItem>
         </MudGrid>
 
         @* Grouping Toggle *@
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-3">
-            <MudText Typo="Typo.h6">Metrics Comparison</MudText>
+            <MudText Typo="Typo.overline" 
+                     Style="letter-spacing: 1.5px; color: #7B2CBF; font-weight: 600;">
+                METRICS COMPARISON
+            </MudText>
+            <MudSpacer />
             <ViewModeToggle TValue="string" 
                            @bind-Value="_groupBy" 
                            Options="@_viewModeOptions" />
             @if (!string.IsNullOrEmpty(Executions))
             {
-                <MudSpacer />
                 <MudButton Variant="Variant.Text"
                            Color="Color.Default"
                            StartIcon="@Icons.Material.Filled.List"
@@ -93,17 +128,26 @@
         </MudStack>
 
         @* Hierarchical Grid *@
-        <MudPaper Class="pa-2" Elevation="1">
+        <MudPaper Class="pa-3" Elevation="2">
             @if (_groupBy == "agent")
             {
                 @foreach (var vr in _versionResults)
                 {
                     <div class="mb-6">
-                        <AgentVersionDisplay 
-                            AgentId="@vr.AgentId" 
-                            AgentName="@vr.AgentName" 
-                            VersionId="@vr.InstructionVersionId"
-                            VersionNumber="@vr.VersionNumber" />
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+                            <AgentVersionDisplay 
+                                AgentId="@vr.AgentId" 
+                                AgentName="@vr.AgentName" 
+                                VersionId="@vr.InstructionVersionId"
+                                VersionNumber="@vr.VersionNumber" />
+                            @if (vr.AvgScore.HasValue)
+                            {
+                                <MudChip T="string" Size="Size.Small" 
+                                         Color="@MetricColorHelper.GetScoreColor(vr.AvgScore.Value)">
+                                    @vr.AvgScore.Value.ToString("F2") avg
+                                </MudChip>
+                            }
+                        </MudStack>
                         <ComparisonMatrix TRow="TestCaseRunResponse" TColumn="string"
                                          Rows="@vr.Runs.OrderBy(r => r.TestCaseId)"
                                          Columns="@_metricNames"
@@ -112,10 +156,17 @@
                                          ColumnHeader="@(c => c)"
                                          CellValue="@((r, c) => r.Metrics?.FirstOrDefault(m => m.MetricName == c)?.Score)"
                                          CellTooltip="@((r, c) => GetMetricTooltip(c, r.Metrics?.FirstOrDefault(m => m.MetricName == c)))"
+                                         CellStyle="@((r, c, v) => GetHeatmapCellStyle(v))"
                                          AverageValue="@(r => r.Metrics?.Any() == true ? r.Metrics.Average(m => m.Score) : null)"
                                          ShowTimeColumn="true"
                                          TimeValue="@(r => r.DurationMs)"
-                                         RowHeaderLabel="Test Case" />
+                                         RowHeaderLabel="Test Case">
+                            <RowIndicator>
+                                <EvaluationProgressRing Size="20"
+                                    TotalSegments="@_metricNames.Count"
+                                    Metrics="@GetRunMetrics(context)" />
+                            </RowIndicator>
+                        </ComparisonMatrix>
                     </div>
                 }
             }
@@ -127,9 +178,14 @@
                     var testCaseName = GetTestCaseName(testCaseId);
                     var runsForTestCase = GetRunsForTestCase(testCaseId);
                     <div class="mb-6">
-                        <MudText Typo="Typo.subtitle1" Class="mb-2 mt-3 font-weight-bold">
-                            <MudLink Href="@($"/admin/test-cases/{testCaseId}")">@testCaseName</MudLink>
-                        </MudText>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2 mt-3">
+                            <MudIcon Icon="@Icons.Material.Filled.Science" Size="Size.Small" Color="Color.Info" />
+                            <MudLink Href="@($"/admin/test-cases/{testCaseId}")" 
+                                     Typo="Typo.subtitle1" 
+                                     Style="font-weight: 600;">
+                                @testCaseName
+                            </MudLink>
+                        </MudStack>
                         <ComparisonMatrix TRow="VersionRunPair" TColumn="string"
                                          Rows="@runsForTestCase"
                                          Columns="@_metricNames"
@@ -137,10 +193,19 @@
                                          ColumnHeader="@(c => c)"
                                          CellValue="@((r, c) => r.Run?.Metrics?.FirstOrDefault(m => m.MetricName == c)?.Score)"
                                          CellTooltip="@((r, c) => GetMetricTooltip(c, r.Run?.Metrics?.FirstOrDefault(m => m.MetricName == c)))"
+                                         CellStyle="@((r, c, v) => GetHeatmapCellStyle(v))"
                                          AverageValue="@(r => r.Run?.Metrics?.Any() == true ? r.Run.Metrics.Average(m => m.Score) : null)"
                                          ShowTimeColumn="true"
                                          TimeValue="@(r => r.Run?.DurationMs)"
                                          RowHeaderLabel="Agent Version">
+                            <RowIndicator>
+                                @if (context.Run != null)
+                                {
+                                    <EvaluationProgressRing Size="20"
+                                        TotalSegments="@_metricNames.Count"
+                                        Metrics="@GetRunMetrics(context.Run)" />
+                                }
+                            </RowIndicator>
                             <RowLabelContent>
                                 @if (context.Run != null)
                                 {
@@ -208,7 +273,7 @@
 
     private static readonly ViewModeToggle<string>.ViewModeOption<string>[] _viewModeOptions =
     [
-        new("agent", "Group by Agent", Icons.Material.Filled.Person),
+        new("agent", "Group by Agent", Icons.Material.Filled.SmartToy),
         new("testcase", "Group by Test Case", Icons.Material.Filled.Science)
     ];
 
@@ -328,6 +393,129 @@
             return $"{metricName}: {metric.Score:F2}";
         }
         return $"{metricName}: {metric.Score:F2}\n\nReasoning: {metric.Remarks}";
+    }
+
+    /// <summary>
+    /// Get aggregated metrics across all runs for the overall pie chart
+    /// </summary>
+    private List<MessageEvaluationMetricResponse> GetAggregatedMetrics()
+    {
+        return _metricNames.Select(name => new MessageEvaluationMetricResponse
+        {
+            MetricName = name,
+            Score = GetAverageScoreForMetric(name) ?? 0 // Already on 0-5 scale from test metrics
+        }).ToList();
+    }
+
+    /// <summary>
+    /// Get average score for a specific metric across all runs (0-1 scale)
+    /// </summary>
+    private double? GetAverageScoreForMetric(string metricName)
+    {
+        var scores = _versionResults
+            .SelectMany(vr => vr.Runs)
+            .SelectMany(r => r.Metrics ?? [])
+            .Where(m => m.MetricName == metricName)
+            .Select(m => m.Score)
+            .ToList();
+
+        return scores.Any() ? scores.Average() : null;
+    }
+
+    /// <summary>
+    /// Get metrics for a specific version (for pie chart display)
+    /// </summary>
+    private List<MessageEvaluationMetricResponse> GetVersionMetrics(VersionResult vr)
+    {
+        return _metricNames.Select(name =>
+        {
+            var avgScore = vr.Runs
+                .SelectMany(r => r.Metrics ?? [])
+                .Where(m => m.MetricName == name)
+                .Select(m => m.Score)
+                .DefaultIfEmpty(0)
+                .Average();
+
+            return new MessageEvaluationMetricResponse
+            {
+                MetricName = name,
+                Score = avgScore // Already on 0-5 scale from test metrics
+            };
+        }).ToList();
+    }
+
+    /// <summary>
+    /// Get metrics for a specific test case run (for row pie chart display)
+    /// </summary>
+    private List<MessageEvaluationMetricResponse> GetRunMetrics(TestCaseRunResponse run)
+    {
+        return _metricNames.Select(name =>
+        {
+            var score = run.Metrics?.FirstOrDefault(m => m.MetricName == name)?.Score ?? 0;
+
+            return new MessageEvaluationMetricResponse
+            {
+                MetricName = name,
+                Score = score // Already on 0-5 scale from test metrics
+            };
+        }).ToList();
+    }
+
+    /// <summary>
+    /// Get overall average score across all versions and metrics
+    /// </summary>
+    private double? GetOverallAverageScore()
+    {
+        var allScores = _versionResults
+            .SelectMany(vr => vr.Runs)
+            .SelectMany(r => r.Metrics ?? [])
+            .Select(m => m.Score)
+            .ToList();
+
+        return allScores.Any() ? allScores.Average() : null;
+    }
+
+    /// <summary>
+    /// Get the stat-card color class based on overall score
+    /// </summary>
+    private string GetOverallScoreClass()
+    {
+        var avg = GetOverallAverageScore();
+        if (!avg.HasValue) return "stat-card-info";
+
+        return avg.Value switch
+        {
+            >= 0.8 => "stat-card-success",
+            >= 0.5 => "stat-card-warning",
+            _ => "stat-card-error"
+        };
+    }
+
+    /// <summary>
+    /// Get the stat-card color class based on a version's score
+    /// </summary>
+    private static string GetVersionScoreClass(VersionResult vr)
+    {
+        if (!vr.AvgScore.HasValue) return "stat-card-secondary";
+
+        return vr.AvgScore.Value switch
+        {
+            >= 0.8 => "stat-card-success",
+            >= 0.5 => "stat-card-warning",
+            _ => "stat-card-error"
+        };
+    }
+
+    /// <summary>
+    /// Get heatmap-style CSS for cell backgrounds based on score (1-5 scale).
+    /// Uses centralized MetricColorHelper for consistent colors across the app.
+    /// </summary>
+    private static string? GetHeatmapCellStyle(double? score)
+    {
+        if (!score.HasValue) return null;
+        
+        var (bgColor, _) = MetricColorHelper.GetScoreColorCss(score.Value);
+        return $"background-color: {bgColor}; text-align: center;";
     }
 
     private async Task ViewCombinedReport()
