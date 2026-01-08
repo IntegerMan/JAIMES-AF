@@ -95,8 +95,11 @@ public class GetAgentStatsEndpoint : Endpoint<AgentStatsRequest, AgentStatsRespo
 
         if (versionId.HasValue && versionId.Value > 0)
         {
-            feedbackBase = feedbackBase.Where(f => f.Message!.InstructionVersionId == versionId);
-            sentimentBase = sentimentBase.Where(s => s.Message!.InstructionVersionId == versionId);
+            feedbackBase = feedbackBase.Where(f =>
+                f.InstructionVersionId == versionId || f.Message!.InstructionVersionId == versionId);
+            sentimentBase = sentimentBase.Where(s => s.Message!.InstructionVersionId == versionId ||
+                                                     (s.Message!.PreviousMessage != null &&
+                                                      s.Message!.PreviousMessage.InstructionVersionId == versionId));
             toolBase = toolBase.Where(t => t.Message!.InstructionVersionId == versionId);
             metricBase = metricBase.Where(m => m.Message!.InstructionVersionId == versionId);
         }
