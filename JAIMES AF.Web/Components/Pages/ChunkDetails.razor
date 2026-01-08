@@ -1,10 +1,29 @@
 @page "/admin/chunks/{ChunkId}"
 @using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Shared
 @rendermode InteractiveServer
 
 <PageTitle>Chunk Details</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+
+	<CompactHeroSection Title="@($"Chunk {_response?.ChunkIndex}")"
+	                    Icon="@Icons.Material.Filled.ViewModule"
+	                    Theme="CompactHeroSection.HeroTheme.Info"
+	                    Subtitle="@(_response?.DocumentName ?? "Document chunk details")">
+		<ExtraContent>
+			@if (_response != null)
+			{
+				<MudChip T="string" 
+				         Color="Color.Primary" 
+				         Size="Size.Medium"
+				         Icon="@Icons.Material.Filled.Search">
+					@_response.QueryAppearances.Length Query Hit@(_response.QueryAppearances.Length != 1 ? "s" : "")
+				</MudChip>
+			}
+		</ExtraContent>
+	</CompactHeroSection>
+
 	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
 		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
 	</MudStack>

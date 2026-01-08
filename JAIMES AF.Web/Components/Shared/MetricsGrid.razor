@@ -53,9 +53,9 @@
                 }
             </CellTemplate>
         </PropertyColumn>
-        <PropertyColumn Property="x => x.MessageId" Title="Message" Groupable="true" Grouping="true">
+        <PropertyColumn Property="x => x.MessageId" Title="Message" Groupable="@(!EvaluatorId.HasValue)" Grouping="@(!EvaluatorId.HasValue)">
             <CellTemplate>
-                <MudLink Href="@($"/admin/metrics/{context.Item.MessageId}")">
+                <MudLink Href="@($"/admin/evaluations/{context.Item.Id}")">
                      @if (!string.IsNullOrEmpty(context.Item.MessagePreview))
                      {
                          @context.Item.MessagePreview
@@ -112,7 +112,9 @@
         </PropertyColumn>
         <PropertyColumn Property="x => x.MetricName" Title="Metric">
             <CellTemplate>
-                <strong>@context.Item.MetricName</strong>
+                <MudLink Href="@($"/admin/evaluations/{context.Item.Id}")" Style="font-weight: bold;">
+                    @context.Item.MetricName
+                </MudLink>
             </CellTemplate>
         </PropertyColumn>
         <PropertyColumn Property="x => x.Score" Title="Score">
@@ -149,7 +151,7 @@
             <CellTemplate>
                 @if (!string.IsNullOrEmpty(context.Item.Remarks))
                 {
-                    <MudTooltip Text="@context.Item.Remarks">
+                    <MudTooltip Text="@context.Item.Remarks" Placement="Placement.Top">
                         <MudText Typo="Typo.body2">@TruncateText(context.Item.Remarks, 50)</MudText>
                     </MudTooltip>
                 }
@@ -162,7 +164,7 @@
         <TemplateColumn Title="Actions">
             <CellTemplate>
                 <MudStack Row="true" Spacing="0">
-                    <MudTooltip Text="View Game">
+                    <MudTooltip Text="View Game" Placement="Placement.Top">
                         <MudIconButton Icon="@Icons.Material.Filled.Gamepad"
                                        Color="Color.Secondary"
                                        Size="Size.Small"
@@ -171,7 +173,7 @@
                     </MudTooltip>
                     @if (!string.IsNullOrEmpty(context.Item.Diagnostics))
                     {
-                        <MudTooltip Text="View Diagnostics">
+                        <MudTooltip Text="View Diagnostics" Placement="Placement.Top">
                             <MudIconButton Icon="@Icons.Material.Filled.Biotech"
                                            Color="Color.Primary"
                                            Size="Size.Small"

@@ -1,258 +1,314 @@
 @page "/admin/classification-models/{Id:int}"
 @using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Shared
 @rendermode InteractiveServer
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
 @inject IDialogService DialogService
 
 <PageTitle>Model Details</PageTitle>
-
 <MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
-	<MudPaper Class="pa-8" Elevation="2">
-		<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-			<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
-		</MudStack>
 
-		@if (_loading)
-		{
-			<MudProgressCircular Indeterminate="true" Class="mb-4"/>
-		}
-		else if (_model == null)
-		{
-			<MudAlert Severity="Severity.Error">Model not found.</MudAlert>
-		}
-		else
-		{
-			<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
-				<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-					<MudText Typo="Typo.h3">@_model.Name</MudText>
-					@if (_model.IsActive)
-					{
-						<MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">Active</MudChip>
-					}
-				</MudStack>
-				@if (!_model.IsActive)
-				{
-					<MudButton Variant="Variant.Filled" Color="Color.Primary"
-					           StartIcon="@Icons.Material.Filled.CheckCircle"
-					           OnClick="ConfirmActivation">
-						Activate This Model
-					</MudButton>
-				}
+	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+	</MudStack>
+
+	@if (_loading)
+	{
+		<div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+			<MudProgressCircular Indeterminate="true"/>
+		</div>
+	}
+	else if (_model == null)
+	{
+		<div class="glass-card pa-6" style="text-align: center;">
+			<MudStack AlignItems="AlignItems.Center" Spacing="3">
+				<MudIcon Icon="@Icons.Material.Filled.SearchOff" Color="Color.Error"
+				         Style="font-size: 4rem; opacity: 0.5;"/>
+				<MudText Typo="Typo.h6">Model not found</MudText>
+				<MudText Class="text-muted mb-4">The requested classification model could not be found.</MudText>
+				<MudButton Variant="Variant.Filled" Color="Color.Primary"
+				           Href="/admin/classification-models" StartIcon="@Icons.Material.Filled.ArrowBack">
+					Back to Models
+				</MudButton>
 			</MudStack>
+		</div>
+	}
+	else
+	{
+		<CompactHeroSection Title="@_model.Name"
+		                    Icon="@Icons.Material.Filled.Psychology"
+		                    Theme="CompactHeroSection.HeroTheme.Error"
+		                    Subtitle="@($"{_model.ModelType} • {FormatFileSize(_model.SizeBytes)} • Created {_model.CreatedAt:g}")"
+		                    ActionText="@(_model.IsActive ? null : "Activate")"
+		                    ActionIcon="@Icons.Material.Filled.CheckCircle"
+		                    OnActionClick="ConfirmActivation">
+			<SubtitleContent>
+				@if (_model.IsActive)
+				{
+					<MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled" Class="ml-2">Active</MudChip>
+				}
+				<span class="ml-2">@_model.ModelType • @FormatFileSize(_model.SizeBytes) • Created @_model.CreatedAt.ToString("g")</span>
+			</SubtitleContent>
+		</CompactHeroSection>
 
-			@* Model Info *@
-			<MudGrid Class="mb-6">
-				<MudItem xs="12" md="5">
+		@* Model Information Section *@
+		<MudText Typo="Typo.overline" Class="mb-3" Style="letter-spacing: 1.5px; color: #EF476F; font-weight: 600;">
+			MODEL INFORMATION
+		</MudText>
+		<MudGrid Class="mb-6">
+			<MudItem xs="12" md="5">
+				<MudPaper Class="pa-4" Elevation="0" Outlined="true">
+					<MudStack Spacing="2">
+						<MudStack Row="true" Justify="Justify.SpaceBetween">
+							<MudText Typo="Typo.body2" Color="Color.Default">Type:</MudText>
+							<MudText Typo="Typo.body2">
+								<strong>@_model.ModelType</strong>
+							</MudText>
+						</MudStack>
+						<MudStack Row="true" Justify="Justify.SpaceBetween">
+							<MudText Typo="Typo.body2" Color="Color.Default">File:</MudText>
+							<MudText Typo="Typo.body2">
+								<strong>@_model.FileName</strong>
+							</MudText>
+						</MudStack>
+						<MudStack Row="true" Justify="Justify.SpaceBetween">
+							<MudText Typo="Typo.body2" Color="Color.Default">Size:</MudText>
+							<MudText Typo="Typo.body2">
+								<strong>@FormatFileSize(_model.SizeBytes)</strong>
+							</MudText>
+						</MudStack>
+						<MudStack Row="true" Justify="Justify.SpaceBetween">
+							<MudText Typo="Typo.body2" Color="Color.Default">Created:</MudText>
+							<MudText Typo="Typo.body2">
+								<strong>@_model.CreatedAt.ToString("g")</strong>
+							</MudText>
+						</MudStack>
+					</MudStack>
+				</MudPaper>
+			</MudItem>
+
+			@if (_model.TrainingJob != null)
+			{
+				<MudItem xs="12" md="7">
 					<MudPaper Class="pa-4" Elevation="0" Outlined="true">
-						<MudText Typo="Typo.h6" Class="mb-3">Model Information</MudText>
 						<MudStack Spacing="2">
 							<MudStack Row="true" Justify="Justify.SpaceBetween">
-								<MudText Typo="Typo.body2" Color="Color.Default">Type:</MudText>
+								<MudText Typo="Typo.body2" Color="Color.Default">Min Confidence:</MudText>
 								<MudText Typo="Typo.body2">
-									<strong>@_model.ModelType</strong>
+									<strong>@(_model.TrainingJob.MinConfidence.ToString("P0"))</strong>
 								</MudText>
 							</MudStack>
 							<MudStack Row="true" Justify="Justify.SpaceBetween">
-								<MudText Typo="Typo.body2" Color="Color.Default">File:</MudText>
+								<MudText Typo="Typo.body2" Color="Color.Default">Train/Test Split:</MudText>
 								<MudText Typo="Typo.body2">
-									<strong>@_model.FileName</strong>
+									<strong>@(_model.TrainingJob.TrainTestSplit.ToString("P0"))</strong>
 								</MudText>
 							</MudStack>
 							<MudStack Row="true" Justify="Justify.SpaceBetween">
-								<MudText Typo="Typo.body2" Color="Color.Default">Size:</MudText>
+								<MudText Typo="Typo.body2" Color="Color.Default">Training Time:</MudText>
 								<MudText Typo="Typo.body2">
-									<strong>@FormatFileSize(_model.SizeBytes)</strong>
+									<strong>@(_model.TrainingJob.TrainingTimeSeconds)s</strong>
 								</MudText>
 							</MudStack>
 							<MudStack Row="true" Justify="Justify.SpaceBetween">
-								<MudText Typo="Typo.body2" Color="Color.Default">Created:</MudText>
+								<MudText Typo="Typo.body2" Color="Color.Default">Metric:</MudText>
 								<MudText Typo="Typo.body2">
-									<strong>@_model.CreatedAt.ToString("g")</strong>
+									<strong>@_model.TrainingJob.OptimizingMetric</strong>
+								</MudText>
+							</MudStack>
+							<MudStack Row="true" Justify="Justify.SpaceBetween">
+								<MudText Typo="Typo.body2" Color="Color.Default">Trainer:</MudText>
+								<MudText Typo="Typo.body2">
+									<strong>@(_model.TrainingJob.TrainerName ?? "N/A")</strong>
 								</MudText>
 							</MudStack>
 						</MudStack>
 					</MudPaper>
 				</MudItem>
+			}
+		</MudGrid>
 
-				@if (_model.TrainingJob != null)
-				{
-					<MudItem xs="12" md="7">
-						<MudPaper Class="pa-4" Elevation="0" Outlined="true">
-							<MudText Typo="Typo.h6" Class="mb-3">Training Parameters</MudText>
-							<MudStack Spacing="2">
-								<MudStack Row="true" Justify="Justify.SpaceBetween">
-									<MudText Typo="Typo.body2" Color="Color.Default">Min Confidence:</MudText>
-									<MudText Typo="Typo.body2">
-										<strong>@(_model.TrainingJob.MinConfidence.ToString("P0"))</strong>
-									</MudText>
-								</MudStack>
-								<MudStack Row="true" Justify="Justify.SpaceBetween">
-									<MudText Typo="Typo.body2" Color="Color.Default">Train/Test Split:</MudText>
-									<MudText Typo="Typo.body2">
-										<strong>@(_model.TrainingJob.TrainTestSplit.ToString("P0"))</strong>
-									</MudText>
-								</MudStack>
-								<MudStack Row="true" Justify="Justify.SpaceBetween">
-									<MudText Typo="Typo.body2" Color="Color.Default">Training Time:</MudText>
-									<MudText Typo="Typo.body2">
-										<strong>@(_model.TrainingJob.TrainingTimeSeconds)s</strong>
-									</MudText>
-								</MudStack>
-								<MudStack Row="true" Justify="Justify.SpaceBetween">
-									<MudText Typo="Typo.body2" Color="Color.Default">Metric:</MudText>
-									<MudText Typo="Typo.body2">
-										<strong>@_model.TrainingJob.OptimizingMetric</strong>
-									</MudText>
-								</MudStack>
-								<MudStack Row="true" Justify="Justify.SpaceBetween">
-									<MudText Typo="Typo.body2" Color="Color.Default">Trainer:</MudText>
-									<MudText Typo="Typo.body2">
-										<strong>@(_model.TrainingJob.TrainerName ?? "N/A")</strong>
-									</MudText>
-								</MudStack>
-							</MudStack>
-						</MudPaper>
-					</MudItem>
-				}
+		@* Evaluation Metrics Section *@
+		@if (_model.TrainingJob != null)
+		{
+			<MudText Typo="Typo.overline" Class="mb-3" Style="letter-spacing: 1.5px; color: #EF476F; font-weight: 600;">
+				EVALUATION METRICS
+			</MudText>
+			<MudGrid Class="mb-6" Spacing="2">
+				<MudItem xs="6" sm="4" md="2">
+					<div class="stat-card stat-card-mlnet">
+						<MudStack Spacing="0">
+							<MudTooltip Text="Average accuracy across all classes (treats each class equally)" Placement="Placement.Top">
+								<span class="stat-value">@((_model.TrainingJob.MacroAccuracy ?? 0).ToString("P1"))</span>
+							</MudTooltip>
+							<MudText Typo="Typo.caption" Class="text-muted">Macro Accuracy</MudText>
+						</MudStack>
+					</div>
+				</MudItem>
+				<MudItem xs="6" sm="4" md="2">
+					<div class="stat-card stat-card-mlnet">
+						<MudStack Spacing="0">
+							<MudTooltip Text="Overall accuracy weighted by class frequency" Placement="Placement.Top">
+								<span class="stat-value">@((_model.TrainingJob.MicroAccuracy ?? 0).ToString("P1"))</span>
+							</MudTooltip>
+							<MudText Typo="Typo.caption" Class="text-muted">Micro Accuracy</MudText>
+						</MudStack>
+					</div>
+				</MudItem>
+				<MudItem xs="6" sm="4" md="2">
+					<div class="stat-card stat-card-mlnet">
+						<MudStack Spacing="0">
+							<MudTooltip Text="Lower is better - measures prediction confidence quality" Placement="Placement.Top">
+								<span class="stat-value">@((_model.TrainingJob.LogLoss ?? 0).ToString("F3"))</span>
+							</MudTooltip>
+							<MudText Typo="Typo.caption" Class="text-muted">Log Loss</MudText>
+						</MudStack>
+					</div>
+				</MudItem>
+				<MudItem xs="6" sm="4" md="2">
+					<div class="stat-card stat-card-mlnet">
+						<MudStack Spacing="0">
+							<span class="stat-value">@_model.TrainingJob.TotalRows</span>
+							<MudText Typo="Typo.caption" Class="text-muted">Total Rows</MudText>
+						</MudStack>
+					</div>
+				</MudItem>
+				<MudItem xs="6" sm="4" md="2">
+					<div class="stat-card stat-card-mlnet">
+						<MudStack Spacing="0">
+							<span class="stat-value">@_model.TrainingJob.TrainingRows</span>
+							<MudText Typo="Typo.caption" Class="text-muted">Training</MudText>
+						</MudStack>
+					</div>
+				</MudItem>
+				<MudItem xs="6" sm="4" md="2">
+					<div class="stat-card stat-card-mlnet">
+						<MudStack Spacing="0">
+							<span class="stat-value">@_model.TrainingJob.TestRows</span>
+							<MudText Typo="Typo.caption" Class="text-muted">Test</MudText>
+						</MudStack>
+					</div>
+				</MudItem>
 			</MudGrid>
 
-			@* Evaluation Metrics *@
-			@if (_model.TrainingJob != null)
+			@* Confusion Matrix Section *@
+			@if (_model.TrainingJob.ConfusionMatrix != null && _model.TrainingJob.ConfusionMatrix.Length > 0)
 			{
-				<MudText Typo="Typo.h5" Class="mb-4">Evaluation Metrics</MudText>
-				<MudGrid Class="mb-6">
-					<MudItem xs="6" sm="4" md="2">
-						<MudPaper Class="pa-4 text-center" Elevation="1">
-							<MudText Typo="Typo.h4" Color="Color.Primary">@((_model.TrainingJob.MacroAccuracy ?? 0).ToString("P1"))</MudText>
-							<MudText Typo="Typo.caption">Macro Accuracy</MudText>
-						</MudPaper>
-					</MudItem>
-					<MudItem xs="6" sm="4" md="2">
-						<MudPaper Class="pa-4 text-center" Elevation="1">
-							<MudText Typo="Typo.h4" Color="Color.Secondary">@((_model.TrainingJob.MicroAccuracy ?? 0).ToString("P1"))</MudText>
-							<MudText Typo="Typo.caption">Micro Accuracy</MudText>
-						</MudPaper>
-					</MudItem>
-					<MudItem xs="6" sm="4" md="2">
-						<MudPaper Class="pa-4 text-center" Elevation="1">
-							<MudText Typo="Typo.h4">@((_model.TrainingJob.LogLoss ?? 0).ToString("F3"))</MudText>
-							<MudText Typo="Typo.caption">Log Loss</MudText>
-						</MudPaper>
-					</MudItem>
-					<MudItem xs="6" sm="4" md="2">
-						<MudPaper Class="pa-4 text-center" Elevation="1">
-							<MudText Typo="Typo.h4">@_model.TrainingJob.TotalRows</MudText>
-							<MudText Typo="Typo.caption">Total Rows</MudText>
-						</MudPaper>
-					</MudItem>
-					<MudItem xs="6" sm="4" md="2">
-						<MudPaper Class="pa-4 text-center" Elevation="1">
-							<MudText Typo="Typo.h4">@_model.TrainingJob.TrainingRows</MudText>
-							<MudText Typo="Typo.caption">Training</MudText>
-						</MudPaper>
-					</MudItem>
-					<MudItem xs="6" sm="4" md="2">
-						<MudPaper Class="pa-4 text-center" Elevation="1">
-							<MudText Typo="Typo.h4">@_model.TrainingJob.TestRows</MudText>
-							<MudText Typo="Typo.caption">Test</MudText>
-						</MudPaper>
-					</MudItem>
-				</MudGrid>
-
-				@* Confusion Matrix *@
-				@if (_model.TrainingJob.ConfusionMatrix != null && _model.TrainingJob.ConfusionMatrix.Length > 0)
-				{
-					<MudText Typo="Typo.h5" Class="mb-4">Confusion Matrix</MudText>
-					<MudPaper Class="pa-4" Elevation="1">
-						<MudSimpleTable Dense="true" Bordered="true" Style="width: 100%;">
-							<thead>
-							<tr>
-								<th></th>
-								@foreach (var label in SentimentLabels)
-								{
-									<th class="text-center">
-										<strong>Predicted @label</strong>
-									</th>
-								}
-								<th class="text-center">
-									<strong>Recall</strong>
-								</th>
-							</tr>
-							</thead>
-							<tbody>
-							@{
-								var matrix = GetNormalizedMatrix();
-								var columnTotals = new int[3];
-
-								// Calculate column totals for precision
-								for (int j = 0; j < 3; j++)
-								{
-									for (int i = 0; i < 3; i++)
-									{
-										columnTotals[j] += matrix[i][j];
-									}
-								}
-							}
-							@for (int i = 0; i < 3; i++)
+				<MudText Typo="Typo.overline" Class="mb-3" Style="letter-spacing: 1.5px; color: #EF476F; font-weight: 600;">
+					CONFUSION MATRIX
+				</MudText>
+				<MudPaper Class="pa-4" Elevation="0" Outlined="true">
+					<MudSimpleTable Dense="true" Bordered="true" Style="width: 100%;">
+						<thead>
+						<tr>
+							<th></th>
+							@foreach (var label in SentimentLabels)
 							{
-								var row = matrix[i];
-								var rowTotal = row.Sum();
-								var recall = rowTotal > 0 ? (double) row[i] / rowTotal : 0;
-								<tr>
-									<td>
-										<strong>Actual @SentimentLabels[i]</strong>
-									</td>
-									@for (int j = 0; j < 3; j++)
-									{
-										var percentage = rowTotal > 0 ? (double) row[j] / rowTotal : 0;
-										var cellStyle = GetCellColor(percentage);
-										<td class="text-center" style="@cellStyle">
-											@row[j]
-										</td>
-									}
-									<td class="text-center">
-										<strong>@recall.ToString("P1")</strong>
-									</td>
-								</tr>
+								<th class="text-center">
+									<strong>Predicted @label</strong>
+								</th>
 							}
-							@* Precision row *@
+							<th class="text-center">
+								<MudTooltip Text="Recall = correctly predicted / actual total per class" Placement="Placement.Top">
+									<strong style="cursor: help;">Recall</strong>
+								</MudTooltip>
+							</th>
+						</tr>
+						</thead>
+						<tbody>
+						@{
+							var matrix = GetNormalizedMatrix();
+							var columnTotals = new int[3];
+							var maxCount = matrix.SelectMany(row => row).DefaultIfEmpty(0).Max();
+
+							// Calculate column totals for precision
+							for (int j = 0; j < 3; j++)
+							{
+								for (int i = 0; i < 3; i++)
+								{
+									columnTotals[j] += matrix[i][j];
+								}
+							}
+						}
+						@for (int i = 0; i < 3; i++)
+						{
+							var row = matrix[i];
+							var rowTotal = row.Sum();
+							var recall = rowTotal > 0 ? (double) row[i] / rowTotal : 0;
+							var actualLabel = SentimentLabels[i];
 							<tr>
 								<td>
-									<strong>Precision</strong>
+									<strong>Actual @actualLabel</strong>
 								</td>
 								@for (int j = 0; j < 3; j++)
 								{
-									var precision = columnTotals[j] > 0 ? (double) matrix[j][j] / columnTotals[j] : 0;
-									<td class="text-center">
-										<strong>@precision.ToString("P1")</strong>
+									var isDiagonal = i == j;
+									var cellValue = row[j];
+									var intensity = maxCount > 0 ? (double) cellValue / maxCount : 0;
+									var cellStyle = GetCellColor(intensity, isDiagonal);
+									var predictedLabel = SentimentLabels[j];
+									var tooltipText = isDiagonal
+										? $"{cellValue} samples correctly classified as {predictedLabel}"
+										: $"{cellValue} samples were actually {actualLabel} but predicted as {predictedLabel}";
+									<td class="text-center" style="@cellStyle">
+										<MudTooltip Text="@tooltipText" Placement="Placement.Top">
+											<span style="cursor: help; display: inline-block; width: 100%;">
+												@if (isDiagonal)
+												{
+													<strong>@cellValue</strong>
+												}
+												else
+												{
+													@cellValue
+												}
+											</span>
+										</MudTooltip>
 									</td>
 								}
-								<td></td>
+								<td class="text-center">
+									<strong>@recall.ToString("P1")</strong>
+								</td>
 							</tr>
-							</tbody>
-						</MudSimpleTable>
-						<MudText Typo="Typo.caption" Class="mt-2 text-muted">
-							Color intensity indicates percentage of row (white = low, blue = high).
-							<strong>Recall</strong> = correctly predicted / actual total per class.
-							<strong>Precision</strong> = correctly predicted / predicted total per class.
-						</MudText>
-					</MudPaper>
-				}
+						}
+						@* Precision row *@
+						<tr>
+							<td>
+								<MudTooltip Text="Precision = correctly predicted / predicted total per class" Placement="Placement.Top">
+									<strong style="cursor: help;">Precision</strong>
+								</MudTooltip>
+							</td>
+							@for (int j = 0; j < 3; j++)
+							{
+								var precision = columnTotals[j] > 0 ? (double) matrix[j][j] / columnTotals[j] : 0;
+								<td class="text-center">
+									<strong>@precision.ToString("P1")</strong>
+								</td>
+							}
+							<td></td>
+						</tr>
+						</tbody>
+					</MudSimpleTable>
+					<MudText Typo="Typo.caption" Class="mt-3 text-muted">
+						<MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-1" Style="vertical-align: middle;"/>
+						Color intensity scales by the highest cell count in the matrix. <strong>Diagonal cells</strong> (bold) show correct predictions.
+						Hover over cells for detailed explanations.
+					</MudText>
+				</MudPaper>
 			}
-			else
-			{
-				<MudAlert Severity="Severity.Info" Class="mt-4">
-					This model was not trained through the application and has no training metrics available.
-				</MudAlert>
-			}
+		}
+		else
+		{
+			<MudAlert Severity="Severity.Info" Class="mt-4">
+				This model was not trained through the application and has no training metrics available.
+			</MudAlert>
 		}
 
 		@if (!string.IsNullOrEmpty(_error))
 		{
 			<MudAlert Severity="Severity.Error" Class="mt-4">@_error</MudAlert>
 		}
-	</MudPaper>
+	}
 </MudContainer>
 
 @code {
@@ -375,11 +431,11 @@
 		return normalized;
 	}
 
-	private static string GetCellColor(double percentage)
+	private static string GetCellColor(double percentage, bool isDiagonal)
 	{
-		// Use white-to-dark-blue gradient based on percentage
+		// Use white-to-dark-blue gradient based on normalized intensity
 		// Higher percentage = more blue
-		if (percentage <= 0) return "";
+		if (percentage <= 0) return isDiagonal ? "font-weight: bold;" : "";
 
 		// Map percentage to RGB - start from white (255,255,255), end at dark blue (21,101,192)
 		// MUI blue-700 = #1565c0 = rgb(21, 101, 192)
@@ -387,7 +443,8 @@
 		int g = (int) (255 - (percentage * (255 - 101)));
 		int b = (int) (255 - (percentage * (255 - 192)));
 
-		return $"background-color: rgb({r}, {g}, {b}); color: {(percentage > 0.5 ? "white" : "black")};";
+		var fontWeight = isDiagonal ? " font-weight: bold;" : "";
+		return $"background-color: rgb({r}, {g}, {b}); color: {(percentage > 0.5 ? "white" : "black")};{fontWeight}";
 	}
 
 }

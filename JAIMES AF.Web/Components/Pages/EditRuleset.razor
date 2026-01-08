@@ -3,12 +3,16 @@
 
 <PageTitle>Edit Ruleset</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-	<MudPaper Class="pa-4">
-        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+	<FormPageHeader Title="@(_isLoading ? "Edit Ruleset" : $"Edit: {_name}")"
+	                Icon="@Icons.Material.Filled.AutoStories"
+	                Theme="FormPageHeader.HeroTheme.Accent"
+	                Subtitle="Modify ruleset configuration" />
+
+	<MudPaper Class="pa-6" Elevation="2">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
             <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
         </MudStack>
-		<MudText Typo="Typo.h4" Class="mb-4">Edit Ruleset</MudText>
 
 		@if (_isLoading)
 		{
@@ -44,31 +48,21 @@
 				              Required="true"
 				              RequiredError="Name is required"/>
 
-				<div class="d-flex gap-2">
-					<MudButton Variant="Variant.Filled"
-					           Color="Color.Primary"
-					           OnClick="UpdateRulesetAsync"
-					           Disabled="_isSaving || !IsFormValid()"
-					           Class="mt-2">
-						@if (_isSaving)
-						{
-							<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
-							<span class="ms-2">Saving...</span>
-						}
-						else
-						{
-							<span>Save Changes</span>
-						}
-					</MudButton>
+				<MudTextField @bind-Value="_description"
+				              Label="Description"
+				              Variant="Variant.Outlined"
+				              Class="mb-4"
+				              Disabled="_isSaving"
+				              Lines="3"
+				              HelperText="Optional description for this ruleset"/>
 
-					<MudButton Variant="Variant.Text"
-					           Color="Color.Default"
-					           OnClick="Cancel"
-					           Disabled="_isSaving"
-					           Class="mt-2">
-						Cancel
-					</MudButton>
-				</div>
+				<FormActionButtons PrimaryText="Save Changes"
+				                   PrimaryColor="Color.Success"
+				                   PrimaryIcon="@Icons.Material.Filled.Check"
+				                   OnPrimary="UpdateRulesetAsync"
+				                   PrimaryDisabled="@(!IsFormValid())"
+				                   IsSaving="_isSaving"
+				                   CancelHref="@($"/rulesets/{RulesetId}")" />
 			</MudForm>
 		}
 	</MudPaper>

@@ -1,0 +1,243 @@
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MudBlazor
+@using System.Net.Http.Json
+
+@inject IHttpClientFactory HttpClientFactory
+
+<MudDialog>
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Settings" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Game Settings</MudText>
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="4" Class="pt-2" Style="min-width: 350px;">
+            @* Game Title *@
+            <MudTextField @bind-Value="GameTitle"
+                          Label="Game Title"
+                          Placeholder="@DefaultTitle"
+                          Variant="Variant.Outlined"
+                          FullWidth="true"
+                          Immediate="true"
+                          HelperText="Leave empty to use the default title"/>
+
+            @* Current Configuration Display *@
+            <MudPaper Outlined="true" Class="pa-3">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">AI Agent Configuration</MudText>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Small" Color="Color.Secondary"/>
+                        <MudText Typo="Typo.body2">
+                            <strong>@(SelectedAgentName ?? "Unknown Agent")</strong>
+                        </MudText>
+                    </MudStack>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" Color="Color.Info"/>
+                        <MudText Typo="Typo.body2">
+                            Version: 
+                            @if (SelectedVersionId == null)
+                            {
+                                <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Text">Latest (Dynamic)</MudChip>
+                            }
+                            else
+                            {
+                                <strong>@SelectedVersionNumber</strong>
+                            }
+                        </MudText>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+
+            @* Agent Selection (only if multiple agents available) *@
+            @if (AvailableAgents.Count > 1)
+            {
+                <MudSelect T="string" 
+                           Label="Agent" 
+                           Value="@SelectedAgentId" 
+                           ValueChanged="OnAgentChanged"
+                           Variant="Variant.Outlined" 
+                           FullWidth="true"
+                           HelperText="Select the AI agent to use for responses">
+                    @foreach (var agent in AvailableAgents)
+                    {
+                        <MudSelectItem Value="@agent.Id">@agent.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+
+            @* Version Selection *@
+            @if (AvailableVersions.Any())
+            {
+                <MudSelect T="int?" 
+                           Label="Instruction Version" 
+                           Value="@SelectedVersionId" 
+                           ValueChanged="OnVersionChanged"
+                           Variant="Variant.Outlined" 
+                           FullWidth="true"
+                           HelperText="Pin to a specific version or use dynamic (latest)">
+                    <MudSelectItem T="int?" Value="@(null)">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <span>Latest (Dynamic)</span>
+                            <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Text">Auto-Update</MudChip>
+                        </MudStack>
+                    </MudSelectItem>
+                    @foreach (var version in AvailableVersions)
+                    {
+                        <MudSelectItem T="int?" Value="@version.Id">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <span>Version @version.VersionNumber</span>
+                                @if (version.IsActive)
+                                {
+                                    <MudChip T="string" Color="Color.Info" Size="Size.Small" Variant="Variant.Text">Current</MudChip>
+                                }
+                            </MudStack>
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            }
+
+            @if (_hasChanges)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    Changes will apply to future messages in this conversation.
+                </MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Default" OnClick="Cancel">
+            @(_hasChanges ? "Cancel" : "Close")
+        </MudButton>
+        @if (_hasChanges)
+        {
+            <MudButton Color="Color.Primary" 
+                       Variant="Variant.Filled" 
+                       OnClick="SaveAsync">
+                Apply Changes
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance? MudDialog { get; set; }
+
+    /// <summary>
+    /// Available agents to choose from.
+    /// </summary>
+    [Parameter] public List<AgentResponse> AvailableAgents { get; set; } = [];
+
+    /// <summary>
+    /// Available versions for the selected agent.
+    /// </summary>
+    [Parameter] public List<AgentInstructionVersionResponse> AvailableVersions { get; set; } = [];
+
+    /// <summary>
+    /// Currently selected agent ID.
+    /// </summary>
+    [Parameter] public string? SelectedAgentId { get; set; }
+
+    /// <summary>
+    /// Currently selected agent name (for display).
+    /// </summary>
+    [Parameter] public string? SelectedAgentName { get; set; }
+
+    /// <summary>
+    /// Currently selected version ID (null = dynamic/latest).
+    /// </summary>
+    [Parameter] public int? SelectedVersionId { get; set; }
+
+    /// <summary>
+    /// Currently selected version number (for display).
+    /// </summary>
+    [Parameter] public string? SelectedVersionNumber { get; set; }
+
+    /// <summary>
+    /// Current game title.
+    /// </summary>
+    [Parameter] public string? GameTitle { get; set; }
+
+    /// <summary>
+    /// Default title to show as placeholder.
+    /// </summary>
+    [Parameter] public string? DefaultTitle { get; set; }
+
+    private string? _originalAgentId;
+    private int? _originalVersionId;
+    private string? _originalTitle;
+    private bool _hasChanges => SelectedAgentId != _originalAgentId || SelectedVersionId != _originalVersionId || GameTitle != _originalTitle;
+
+    protected override void OnInitialized()
+    {
+        _originalAgentId = SelectedAgentId;
+        _originalVersionId = SelectedVersionId;
+        _originalTitle = GameTitle;
+    }
+
+    private async Task OnAgentChanged(string newAgentId)
+    {
+        SelectedAgentId = newAgentId;
+        SelectedAgentName = AvailableAgents.FirstOrDefault(a => a.Id == newAgentId)?.Name;
+        
+        // Load new versions for this agent
+        await LoadVersionsForAgentAsync(newAgentId);
+
+        // Reset version to dynamic when agent changes
+        SelectedVersionId = null;
+        SelectedVersionNumber = null;
+        StateHasChanged();
+    }
+
+    private async Task LoadVersionsForAgentAsync(string agentId)
+    {
+        try
+        {
+            var httpClient = HttpClientFactory.CreateClient("Api");
+            var response = await httpClient.GetFromJsonAsync<AgentInstructionVersionListResponse>(
+                $"/agents/{agentId}/instruction-versions");
+            if (response?.InstructionVersions != null)
+            {
+                AvailableVersions = response.InstructionVersions.OrderByDescending(v => v.VersionNumber).ToList();
+            }
+        }
+        catch
+        {
+            // Log error but don't crash the dialog
+            AvailableVersions = [];
+        }
+    }
+
+    private void OnVersionChanged(int? newVersionId)
+    {
+        SelectedVersionId = newVersionId;
+        SelectedVersionNumber = newVersionId.HasValue 
+            ? AvailableVersions.FirstOrDefault(v => v.Id == newVersionId)?.VersionNumber 
+            : null;
+        StateHasChanged();
+    }
+
+    private void Cancel() => MudDialog?.Cancel();
+
+    private void SaveAsync()
+    {
+        // Return the new settings
+        var result = new GameSettingsResult
+        {
+            AgentId = SelectedAgentId,
+            VersionId = SelectedVersionId,
+            Title = string.IsNullOrWhiteSpace(GameTitle) ? null : GameTitle.Trim()
+        };
+        MudDialog?.Close(DialogResult.Ok(result));
+    }
+
+    /// <summary>
+    /// Result object containing the selected settings.
+    /// </summary>
+    public class GameSettingsResult
+    {
+        public string? AgentId { get; set; }
+        public int? VersionId { get; set; }
+        public string? Title { get; set; }
+    }
+}

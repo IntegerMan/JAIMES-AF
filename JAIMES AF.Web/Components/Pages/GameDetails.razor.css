@@ -1,11 +1,23 @@
 /* Game details page wrapper - calculates its own height from viewport */
 .game-details-page-wrapper {
-    /* Viewport height minus app bar (64px), top row (56px = 3.5rem) */
-    height: calc(100vh - 64px - 3.5rem);
-    max-height: calc(100vh - 64px - 3.5rem);
+    /* Viewport height minus app bar (40px), content padding (~18px = 1.1rem), container padding (8px) */
+    height: calc(100vh - 40px - 1.1rem - 8px);
+    max-height: calc(100vh - 40px - 1.1rem - 8px);
     display: flex;
     flex-direction: column;
     overflow: hidden;
+}
+
+/* Loading state - centered with visual interest */
+.game-loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 1 1 auto;
+    min-height: 300px;
+    background: linear-gradient(135deg, rgba(123, 44, 191, 0.03) 0%, rgba(67, 97, 238, 0.03) 100%);
+    border-radius: 16px;
+    margin: 1rem;
 }
 
 /* Ensure MudContainer expands */
@@ -28,14 +40,30 @@
     padding: 0;
 }
 
-.game-header {
-    flex: 0 0 auto;
-    padding: 1rem 1.5rem;
+/* Hero section with version badge */
+.version-badge {
     display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 1rem;
-    border-bottom: 1px solid var(--mud-palette-lines-default);
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.5rem;
+    background: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 1rem;
+}
+
+.version-badge-link {
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.version-badge-link:hover {
+    color: var(--color-primary) !important;
+    text-decoration: underline;
+}
+
+.version-badge-separator {
+    color: var(--mud-palette-text-disabled);
+    font-size: 0.75rem;
 }
 
 .chat-scroll {
@@ -76,11 +104,73 @@
     flex: 0 0 auto;
     background: var(--mud-palette-surface);
     border-top: 1px solid var(--mud-palette-lines-default);
-    padding: 1rem 1.5rem;
+    padding: 0.75rem 1.5rem;
     margin: 0;
     box-shadow: 0 -2px 8px rgba(0, 0, 0, .08);
     /* safe-area support for iOS notches */
-    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+}
+
+/* Responsive message input - stack vertically on mobile */
+.message-input-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.chat-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    font-family: inherit;
+    color: var(--mud-palette-text-primary);
+    background: var(--mud-palette-background);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.chat-input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-glow);
+}
+
+.chat-input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.chat-input::placeholder {
+    color: var(--mud-palette-text-disabled);
+    opacity: 0.7;
+}
+
+@media (max-width: 640px) {
+    .message-input-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+
+    .chat-input {
+        width: 100%;
+    }
+
+    .message-bar {
+        padding: 0.5rem 1rem;
+        padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+    }
+
+    .chat-scroll {
+        margin: 0 0.5rem;
+        padding: 0.75rem;
+    }
+
+    .version-badge {
+        display: none; /* Hide on mobile to save space - use settings dialog instead */
+    }
 }
 
 .typing-indicator {

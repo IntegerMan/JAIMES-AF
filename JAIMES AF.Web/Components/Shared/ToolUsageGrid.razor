@@ -14,8 +14,11 @@
     <Columns>
         <PropertyColumn Property="x => x.ToolName" Title="Tool Name">
             <CellTemplate>
-                <MudLink Href="@GetToolLink(context.Item.ToolName)" Typo="Typo.body2">
-                    <strong>@context.Item.ToolName</strong>
+                <MudLink Href="@GetToolLink(context.Item.ToolName)" 
+                         Typo="Typo.body2"
+                         Color="Color.Primary"
+                         Underline="Underline.Hover">
+                    @context.Item.ToolName
                 </MudLink>
             </CellTemplate>
         </PropertyColumn>
@@ -112,9 +115,23 @@
         <MudDataGridPager T="ToolUsageItemDto" />
     </PagerContent>
     <NoRecordsContent>
-        <MudText Typo="Typo.body1" Class="pa-4">
-            No tool usage data available.
-        </MudText>
+        <div class="glass-card pa-6 text-center mx-auto" style="max-width: 400px;">
+            <MudStack AlignItems="AlignItems.Center" Spacing="3">
+                <div class="icon-badge icon-badge-info">
+                    <MudIcon Icon="@Icons.Material.Filled.Build" Style="color: white; font-size: 1.5rem;" />
+                </div>
+                <MudText Typo="Typo.h6">No Tool Usage Data</MudText>
+                <MudText Typo="Typo.body2" Class="text-muted">
+                    No tool calls have been recorded yet. Start a game to see tool usage statistics.
+                </MudText>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Info"
+                           Href="/admin/tool-test"
+                           StartIcon="@Icons.Material.Filled.Science">
+                    Test Tools
+                </MudButton>
+            </MudStack>
+        </div>
     </NoRecordsContent>
 </MudDataGrid>
 
@@ -136,6 +153,12 @@
     /// </summary>
     [Parameter]
     public Guid? GameId { get; set; }
+
+    /// <summary>
+    /// Callback invoked when stats are loaded from the API.
+    /// </summary>
+    [Parameter]
+    public EventCallback<ToolUsageListResponse> OnStatsLoaded { get; set; }
 
     private string GetToolLink(string toolName)
     {
@@ -206,6 +229,12 @@
 
             if (response != null)
             {
+                // Notify parent component of stats
+                if (OnStatsLoaded.HasDelegate)
+                {
+                    await OnStatsLoaded.InvokeAsync(response);
+                }
+
                 return new GridData<ToolUsageItemDto>
                 {
                     TotalItems = response.TotalCount,

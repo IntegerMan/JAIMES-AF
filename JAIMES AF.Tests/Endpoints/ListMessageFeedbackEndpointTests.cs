@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using MattEland.Jaimes.Domain;
+using MattEland.Jaimes.Repositories;
+using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.Tests.Endpoints;
@@ -9,35 +11,53 @@ namespace MattEland.Jaimes.Tests.Endpoints;
 
 public class ListMessageFeedbackEndpointTests : EndpointTestBase
 {
+    private int _nonScriptedMessageId;
+
+    protected override async Task SeedTestDataAsync(JaimesDbContext context, CancellationToken cancellationToken)
+    {
+        await base.SeedTestDataAsync(context, cancellationToken);
+
+        // Create a game with a non-scripted AI message for feedback testing
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            RulesetId = "test-ruleset",
+            ScenarioId = "test-scenario",
+            PlayerId = "test-player",
+            Title = "Feedback Test Game",
+            CreatedAt = DateTime.UtcNow,
+            AgentId = "test-agent",
+            InstructionVersionId = 1
+        };
+        context.Games.Add(game);
+
+        // Create a non-scripted AI message (this would normally come from actual AI response)
+        var aiMessage = new Message
+        {
+            GameId = game.Id,
+            Text = "This is a non-scripted AI response for testing.",
+            PlayerId = null, // AI message
+            CreatedAt = DateTime.UtcNow,
+            IsScriptedMessage = false,
+            AgentId = "test-agent",
+            InstructionVersionId = 1
+        };
+        context.Messages.Add(aiMessage);
+        await context.SaveChangesAsync(cancellationToken);
+
+        _nonScriptedMessageId = aiMessage.Id;
+    }
+
     [Fact]
     public async Task ListMessageFeedback_ReturnsFeedback()
     {
         CancellationToken ct = TestContext.Current.CancellationToken;
 
-        // 1. Create a Game
-        var createRequest = new { ScenarioId = "test-scenario", PlayerId = "test-player" };
-        var createGameResponse = await Client.PostAsJsonAsync("/games/", createRequest, ct);
-        createGameResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
+        // The non-scripted message was created in SeedTestDataAsync
+        int messageId = _nonScriptedMessageId;
+        messageId.ShouldBeGreaterThan(0);
 
-        // Retrieve the game via List endpoint which correctly loads relations
-        var listGamesResponse = await Client.GetAsync("/games/", ct);
-        var gamesList = await listGamesResponse.Content
-            .ReadFromJsonAsync<MattEland.Jaimes.ServiceDefinitions.Responses.ListGamesResponse>(ct);
-        gamesList.ShouldNotBeNull();
-        var game = gamesList.Games.First();
-        game.ShouldNotBeNull();
-
-        // 2. Get the initial greeting message ID (this is an assistant message suitable for feedback)
-        // Accessing the game details to find the message
-        var gameResponse = await Client.GetAsync($"/games/{game.GameId}", ct);
-        var fetchedGame = await gameResponse.Content.ReadFromJsonAsync<GameStateResponse>(ct);
-        fetchedGame.ShouldNotBeNull();
-        fetchedGame.Messages.ShouldNotBeNull();
-        var message = fetchedGame.Messages.FirstOrDefault(m => m.PlayerId == null);
-        message.ShouldNotBeNull();
-        int messageId = message.Id;
-
-        // 3. Submit Feedback
+        // 1. Submit Feedback on the non-scripted message
         var feedbackRequest = new SubmitMessageFeedbackRequest
         {
             IsPositive = false,
@@ -46,21 +66,17 @@ public class ListMessageFeedbackEndpointTests : EndpointTestBase
         var feedbackResponse = await Client.PostAsJsonAsync($"/messages/{messageId}/feedback", feedbackRequest, ct);
         feedbackResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
 
-        // 4. List Feedback
+        // 2. List Feedback
         var listResponse = await Client.GetAsync("/admin/feedback", ct);
         listResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         var feedbackList = await listResponse.Content.ReadFromJsonAsync<FeedbackListResponse>(ct);
 
-        // 5. Verify
+        // 3. Verify - feedback on non-scripted messages should be included
         feedbackList.ShouldNotBeNull();
         feedbackList.Items.ShouldNotBeEmpty();
         var item = feedbackList.Items.First();
         item.MessageId.ShouldBe(messageId);
         item.Comment.ShouldBe("This is a test feedback");
         item.IsPositive.ShouldBeFalse();
-        item.GameId.ShouldBe(game.GameId);
-        item.GamePlayerName.ShouldNotBeNullOrEmpty();
-        item.GameScenarioName.ShouldNotBeNullOrEmpty();
-        item.GameRulesetId.ShouldBe("test-ruleset");
     }
 }

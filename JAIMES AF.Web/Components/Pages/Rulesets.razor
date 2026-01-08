@@ -8,17 +8,21 @@
 
 <PageTitle>Rulesets</PageTitle>
 
-<MudPaper Class="pa-4">
-    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
-    </MudStack>
-	<MudText Typo="Typo.h4">Rulesets</MudText>
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
 
-	<MudText Class="mb-4">Manage your game rulesets. Create new rulesets or edit existing ones.</MudText>
+	<CompactHeroSection Title="Your Rulesets"
+	                    Icon="@Icons.Material.Filled.AutoStories"
+	                    Theme="CompactHeroSection.HeroTheme.Accent"
+	                    ItemCount="@_rulesets?.Length"
+	                    ItemName="ruleset"
+	                    Subtitle="available"
+	                    SubtitleNoItems="Create your first ruleset"
+	                    ActionText="New Ruleset"
+	                    ActionHref="/rulesets/new"/>
 
-	<MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/rulesets/new" Class="mb-4">
-		New Ruleset
-	</MudButton>
+	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+	</MudStack>
 
 	<div style="position: relative; min-height: 200px;">
 		@if (_isLoading)
@@ -30,36 +34,66 @@
 
 		@if (!_isLoading && !string.IsNullOrEmpty(_errorMessage))
 		{
-			<MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
+			<MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
 		}
 
 		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && (_rulesets is null || _rulesets.Length == 0))
 		{
-			<MudText Class="mb-4">No rulesets yet.
-				<MudLink Href="/rulesets/new">Create a new ruleset</MudLink>
-			</MudText>
+			<div class="glass-card pa-6" style="text-align: center;">
+				<MudStack AlignItems="AlignItems.Center" Spacing="3">
+					<MudIcon Icon="@Icons.Material.Filled.AutoStories" Color="Color.Success"
+					         Style="font-size: 4rem; opacity: 0.5;"/>
+					<MudText Typo="Typo.h6">No rulesets yet</MudText>
+					<MudText Class="text-muted mb-4">Create your first ruleset to define game mechanics and rules!</MudText>
+					<MudButton Variant="Variant.Filled" Color="Color.Success" Size="Size.Large"
+					           Href="/rulesets/new" StartIcon="@Icons.Material.Filled.Add">
+						Create Your First Ruleset
+					</MudButton>
+				</MudStack>
+			</div>
 		}
 
 		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && _rulesets is not null && _rulesets.Length > 0)
 		{
-			<MudTable Items="_rulesets" Dense="true" Hover="true">
-				<HeaderContent>
-					<MudTh>ID</MudTh>
-					<MudTh>Name</MudTh>
-					<MudTh align="Align.Right">Actions</MudTh>
-				</HeaderContent>
-				<RowTemplate>
-					<MudTd>@context.Id</MudTd>
-					<MudTd>@context.Name</MudTd>
-					<MudTd align="Align.Right">
-						<MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-						           Href="@($"/rulesets/{context.Id}/edit")" Class="me-2">
-							Edit
-						</MudButton>
-					</MudTd>
-				</RowTemplate>
-			</MudTable>
+			<MudPaper Elevation="0" Class="pa-0" Style="background: transparent;">
+				<MudTable Items="_rulesets" Dense="true" Hover="true">
+					<HeaderContent>
+						<MudTh>Short Name</MudTh>
+						<MudTh>Name</MudTh>
+						<MudTh>Description</MudTh>
+						<MudTh>Sourcebooks</MudTh>
+						<MudTh Style="text-align: right;">Actions</MudTh>
+					</HeaderContent>
+					<RowTemplate>
+						<MudTd>
+							<MattEland.Jaimes.Web.Components.Shared.RulesetLink 
+								RulesetId="@context.Id"
+								RulesetName="@context.Name"
+								RulesetDescription="@context.Description" />
+						</MudTd>
+						<MudTd>
+							<MudLink Href="@($"/rulesets/{context.Id}/edit")">@context.Name</MudLink>
+						</MudTd>
+						<MudTd>@(context.Description ?? "-")</MudTd>
+						<MudTd>
+							<MudTooltip Text="View Sourcebooks" Placement="Placement.Top">
+								<MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text"
+								         Icon="@Icons.Material.Filled.Book"
+								         Href="@($"/admin/rag-collections/{context.Id}")"
+								         Disabled="@(context.SourcebookCount == 0)">
+									@context.SourcebookCount
+								</MudChip>
+							</MudTooltip>
+						</MudTd>
+						<MudTd Style="text-align: right;">
+							<MudTooltip Text="Edit Ruleset" Placement="Placement.Top">
+								<MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Default" Size="Size.Small"
+								               Href="@($"/rulesets/{context.Id}/edit")"/>
+							</MudTooltip>
+						</MudTd>
+					</RowTemplate>
+				</MudTable>
+			</MudPaper>
 		}
 	</div>
-</MudPaper>
-
+</MudContainer>

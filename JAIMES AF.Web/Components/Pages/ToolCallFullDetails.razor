@@ -2,6 +2,7 @@
 @using MattEland.Jaimes.ServiceDefinitions.Responses
 @using MattEland.Jaimes.Web.Components.Helpers
 @using MattEland.Jaimes.Web.Components.Chat
+@using MattEland.Jaimes.Web.Components.Shared
 @using System.Text.Json
 @using MudBlazor
 @inject IHttpClientFactory HttpClientFactory
@@ -25,18 +26,13 @@
     }
     else
     {
-        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
-            <MudText Typo="Typo.h4">Tool Call: @_toolCall.ToolName</MudText>
-            @if (_toolCall.GameId.HasValue)
-            {
-                <MudButton StartIcon="@Icons.Material.Filled.VideogameAsset" 
-                           Color="Color.Secondary" 
-                           Href="@($"/games/{_toolCall.GameId}")" 
-                           Target="_blank">
-                    View Game
-                </MudButton>
-            }
-        </MudStack>
+        <CompactHeroSection Title="@($"Tool Call: {_toolCall.ToolName}")"
+                            Icon="@Icons.Material.Filled.Build"
+                            Theme="CompactHeroSection.HeroTheme.Info"
+                            Subtitle="@($"Call #{Id} • {_toolCall.CreatedAt.ToLocalTime():g}")"
+                            ActionText="@(_toolCall.GameId.HasValue ? "View Game" : null)"
+                            ActionHref="@(_toolCall.GameId.HasValue ? $"/games/{_toolCall.GameId}" : null)"
+                            ActionIcon="@Icons.Material.Filled.VideogameAsset" />
         
         <MudGrid>
             <MudItem xs="12" md="6">

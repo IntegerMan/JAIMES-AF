@@ -24,6 +24,7 @@ public class GetMessageSentimentEndpoint : EndpointWithoutRequest<SentimentFullD
     {
         int id = Route<int>("id");
 
+        // id represents the message ID (preferred) but can still be a sentiment ID for backward compatibility
         SentimentFullDetailsResponse? response = await SentimentService.GetSentimentDetailsAsync(id, ct);
 
         if (response == null)

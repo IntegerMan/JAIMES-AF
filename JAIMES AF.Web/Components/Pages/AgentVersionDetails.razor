@@ -10,146 +10,140 @@
 
 <PageTitle>Agent Version Details</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-    <MudPaper Class="pa-4">
-        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-            <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
-        </MudStack>
-
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
+    <div style="position: relative; min-height: 200px;">
         @if (_isLoading)
         {
             <div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
-                <MudProgressCircular Indeterminate="true"/>
+                <MudProgressCircular Indeterminate="true" />
             </div>
         }
-        else if (!string.IsNullOrEmpty(_errorMessage))
+
+        @if (!_isLoading && !string.IsNullOrEmpty(_errorMessage))
         {
             <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
             <MudButton Variant="Variant.Text" Color="Color.Primary" Href="@($"/agents/{AgentId}")">
                 Back to Agent
             </MudButton>
         }
-        else if (_version is not null)
+
+        @if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && _version is not null)
         {
-            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
-                <MudText Typo="Typo.h4">Version @_version.VersionNumber</MudText>
-                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                    @if (_version.IsActive)
-                    {
-                        <MudChip T="string" Color="Color.Success" Class="mr-4">Active Version</MudChip>
-                    }
-
-                    <MudTooltip Text="Previous Version">
-                        <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft"
-                                       Color="Color.Primary"
-                                       Disabled="@(!_previousVersionId.HasValue)"
-                                       Href="@(_previousVersionId.HasValue ? $"/agents/{AgentId}/versions/{_previousVersionId}" : null)"/>
-                    </MudTooltip>
-
-                    <MudTooltip Text="Next Version">
-                        <MudIconButton Icon="@Icons.Material.Filled.ChevronRight"
-                                       Color="Color.Primary"
-                                       Disabled="@(!_nextVersionId.HasValue)"
-                                       Href="@(_nextVersionId.HasValue ? $"/agents/{AgentId}/versions/{_nextVersionId}" : null)"/>
+            @* Hero Section *@
+            <div class="agent-hero pa-4 mb-4" style="background: linear-gradient(135deg, rgba(67, 97, 238, 0.1) 0%, rgba(76, 201, 240, 0.1) 100%); 
+                border-radius: 16px; border: 1px solid rgba(67, 97, 238, 0.2);">
+                @* Top row: Title and navigation *@
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3" Style="flex-wrap: wrap; gap: 1rem;">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                        <div class="icon-badge icon-badge-secondary">
+                            <MudIcon Icon="@Icons.Material.Filled.Update" Style="color: white; font-size: 1.5rem;" />
+                        </div>
+                        <MudStack Spacing="0">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudText Typo="Typo.h5" Style="font-weight: 600; color: #4361EE;">
+                                    Version @_version.VersionNumber
+                                </MudText>
+                                @if (_version.IsActive)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">Active</MudChip>
+                                }
+                            </MudStack>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MattEland.Jaimes.Web.Components.Shared.AgentLink AgentId="@AgentId" AgentName="@_agentName" />
+                                <MudText Typo="Typo.caption" Class="text-muted">
+                                    Created @_version.CreatedAt.ToString("yyyy-MM-dd HH:mm")
+                                </MudText>
+                            </MudStack>
+                        </MudStack>
+                    </MudStack>
+                    @* Version Navigation *@
+                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                        <MudTooltip Text="Previous Version" Placement="Placement.Top">
+                            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft"
+                                           Color="Color.Primary"
+                                           Disabled="@(!_previousVersionId.HasValue)"
+                                           Href="@(_previousVersionId.HasValue ? $"/agents/{AgentId}/versions/{_previousVersionId}" : null)"/>
+                        </MudTooltip>
+                        <MudTooltip Text="Next Version" Placement="Placement.Top">
+                            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight"
+                                           Color="Color.Primary"
+                                           Disabled="@(!_nextVersionId.HasValue)"
+                                           Href="@(_nextVersionId.HasValue ? $"/agents/{AgentId}/versions/{_nextVersionId}" : null)"/>
+                        </MudTooltip>
+                    </MudStack>
+                </MudStack>
+                @* Bottom row: Action buttons *@
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Style="flex-wrap: wrap; gap: 0.5rem;">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Edit"
+                        Href="@($"/agents/{AgentId}/edit?baseVersionId={VersionId}")">Revise</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
+                        StartIcon="@Icons.Material.Filled.AutoAwesome" Href="@($"/agents/{AgentId}/versions/{VersionId}/improve")">Improve</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Success"
+                        StartIcon="@Icons.Material.Filled.Science" OnClick="RunTestsAsync">Test</MudButton>
+                    <MudTooltip Text="Export messages to JSONL for Microsoft Foundry" Placement="Placement.Top">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Info" 
+                            StartIcon="@Icons.Material.Filled.Download" OnClick="ExportJsonl">Export</MudButton>
                     </MudTooltip>
                 </MudStack>
+            </div>
+
+            @* Breadcrumbs below hero *@
+            <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+                <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
             </MudStack>
 
-            <MudGrid Spacing="3" Class="mb-4">
-                <MudItem xs="12" sm="6" md="4">
-                    <MudText Typo="Typo.caption" Class="text-muted">Agent</MudText>
-                    <MudLink Href="@($"/agents/{AgentId}")" Typo="Typo.body1">
-                        @(_agentName ?? AgentId)
-                    </MudLink>
-                </MudItem>
-                <MudItem xs="12" sm="6" md="4">
-                    <MudText Typo="Typo.caption" Class="text-muted">Version Number</MudText>
-                    <MudText Typo="Typo.body1">@_version.VersionNumber</MudText>
-                </MudItem>
-                <MudItem xs="12" sm="6" md="4">
-                    <MudText Typo="Typo.caption" Class="text-muted">Created</MudText>
-                    <MudText Typo="Typo.body1">@_version.CreatedAt.ToString("yyyy-MM-dd HH:mm")</MudText>
-                </MudItem>
-            </MudGrid>
+            @* Version Statistics - clicking navigates to pages, not tabs *@
+            <div class="mb-4">
+                <MudText Typo="Typo.overline" Style="letter-spacing: 2px; color: var(--mud-palette-primary); font-weight: bold;">
+                    VERSION STATISTICS
+                </MudText>
+            </div>
+            <MattEland.Jaimes.Web.Components.Shared.AgentStats AgentId="@AgentId" VersionId="@VersionId" />
 
-            <MudDivider Class="my-4"/>
-
-            <MudText Typo="Typo.h6" Class="mb-3">Instructions</MudText>
-            <MudPaper Class="pa-4" Elevation="1" Style="background-color: var(--mud-palette-background-grey);">
-                <MudText Style="white-space: pre-wrap; font-family: monospace;">@_version.Instructions</MudText>
-            </MudPaper>
-
-            <MudStack Row="true" Class="mt-4" Spacing="2">
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.Edit"
-                           Href="@($"/agents/{AgentId}/edit?baseVersionId={VersionId}")">
-                    Create New Version
-                </MudButton>
-                <MudButton Variant="Variant.Outlined"
-                           Color="Color.Secondary"
-                           StartIcon="@Icons.Material.Filled.AutoAwesome"
-                           Href="@($"/agents/{AgentId}/versions/{VersionId}/improve")">
-                    Improve
-                </MudButton>
-                <MudButton Variant="Variant.Outlined"
-                           Color="Color.Success"
-                           StartIcon="@Icons.Material.Filled.Science"
-                           OnClick="RunTestsAsync">
-                    Run Tests
-                </MudButton>
-                <MudTooltip Text="Export all messages and responses for this version to a JSONL file for evaluation in Microsoft Foundry" Placement="Placement.Top">
-                    <MudButton Variant="Variant.Outlined"
-                               Color="Color.Info"
-                               StartIcon="@Icons.Material.Filled.Download"
-                               OnClick="ExportJsonl">
-                        Export
-                    </MudButton>
-                </MudTooltip>
-            </MudStack>
-
-            <MudDivider Class="my-4"/>
-
-            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3">
-                <MudText Typo="Typo.h5">Version Analysis</MudText>
-                @if (_activeTabIndex is 0 or 1 or 2 or 3 or 4)
-                {
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Secondary"
-                               Size="Size.Small"
-                               StartIcon="@Icons.Material.Filled.AutoAwesome"
-                               OnClick="GenerateInsightsForActiveTabAsync"
-                               Disabled="_isGeneratingInsights">
-                        @if (_isGeneratingInsights)
-                        {
-                            <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
-                            <span class="ms-2">Analyzing...</span>
-                        }
-                        else
-                        {
-                            <span>Generate Insights</span>
-                        }
-                    </MudButton>
-                }
-            </MudStack>
-
-            <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-3" @bind-ActivePanelIndex="_activeTabIndex">
-                <MudTabPanel Text="Messages">
-                    <MattEland.Jaimes.Web.Components.Agents.AgentMessagesList @ref="_messagesGrid" AgentId="@AgentId" VersionId="@VersionId"/>
-                </MudTabPanel>
-                <MudTabPanel Text="Feedback">
-                    <MattEland.Jaimes.Web.Components.Shared.FeedbackGrid @ref="_feedbackGrid" AgentId="@AgentId" InstructionVersionId="@VersionId"/>
-                </MudTabPanel>
-                <MudTabPanel Text="Tool Usage">
-                    <MattEland.Jaimes.Web.Components.Shared.ToolUsageGrid @ref="_toolUsageGrid" AgentId="@AgentId" InstructionVersionId="@VersionId"/>
-                </MudTabPanel>
-                <MudTabPanel Text="Metrics">
-                    <MattEland.Jaimes.Web.Components.Shared.MetricsGrid @ref="_metricsGrid" AgentId="@AgentId" InstructionVersionId="@VersionId"/>
-                </MudTabPanel>
-                <MudTabPanel Text="Sentiment">
-                    <MattEland.Jaimes.Web.Components.Shared.SentimentGrid @ref="_sentimentGrid" AgentId="@AgentId" InstructionVersionId="@VersionId"/>
-                </MudTabPanel>
-            </MudTabs>
+            @* Version Analysis Tabs *@
+            <div class="glass-card pa-0 mt-4">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="pa-3 pb-0">
+                    <MudText Typo="Typo.h6">Version Details</MudText>
+                    @if (_activeTabIndex is 1 or 2 or 3 or 4)
+                    {
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Secondary"
+                                   Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.AutoAwesome"
+                                   OnClick="GenerateInsightsForActiveTabAsync"
+                                   Disabled="_isGeneratingInsights">
+                            @if (_isGeneratingInsights)
+                            {
+                                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                                <span class="ms-2">Analyzing...</span>
+                            }
+                            else
+                            {
+                                <span>Generate Insights</span>
+                            }
+                        </MudButton>
+                    }
+                </MudStack>
+                <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-3" @bind-ActivePanelIndex="_activeTabIndex">
+                    <MudTabPanel Text="Instructions" Icon="@Icons.Material.Filled.Description">
+                        <MudPaper Class="pa-4" Elevation="1" Style="background-color: var(--mud-palette-background-grey);">
+                            <MudText Style="white-space: pre-wrap; font-family: monospace;">@_version.Instructions</MudText>
+                        </MudPaper>
+                    </MudTabPanel>
+                    <MudTabPanel Text="Feedback" Icon="@Icons.Material.Filled.ThumbsUpDown">
+                        <MattEland.Jaimes.Web.Components.Shared.FeedbackGrid @ref="_feedbackGrid" AgentId="@AgentId" InstructionVersionId="@VersionId"/>
+                    </MudTabPanel>
+                    <MudTabPanel Text="Tool Usage" Icon="@Icons.Material.Filled.Build">
+                        <MattEland.Jaimes.Web.Components.Shared.ToolUsageGrid @ref="_toolUsageGrid" AgentId="@AgentId" InstructionVersionId="@VersionId"/>
+                    </MudTabPanel>
+                    <MudTabPanel Text="Metrics" Icon="@Icons.Material.Filled.PieChart">
+                        <MattEland.Jaimes.Web.Components.Shared.MetricsGrid @ref="_metricsGrid" AgentId="@AgentId" InstructionVersionId="@VersionId"/>
+                    </MudTabPanel>
+                    <MudTabPanel Text="Sentiment" Icon="@Icons.Material.Filled.SentimentSatisfied">
+                        <MattEland.Jaimes.Web.Components.Shared.SentimentGrid @ref="_sentimentGrid" AgentId="@AgentId" InstructionVersionId="@VersionId"/>
+                    </MudTabPanel>
+                </MudTabs>
+            </div>
         }
-    </MudPaper>
+    </div>
 </MudContainer>

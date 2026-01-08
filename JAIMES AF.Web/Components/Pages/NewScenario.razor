@@ -3,12 +3,16 @@
 
 <PageTitle>Create New Scenario</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-	<MudPaper Class="pa-4">
-        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+	<FormPageHeader Title="Create New Scenario"
+	                Icon="@Icons.Material.Filled.TheaterComedy"
+	                Theme="FormPageHeader.HeroTheme.Secondary"
+	                Subtitle="Design a new adventure" />
+
+	<MudPaper Class="pa-6" Elevation="2">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
             <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
         </MudStack>
-		<MudText Typo="Typo.h4" Class="mb-4">Create New Scenario</MudText>
 
 		@if (_isLoading)
 		{
@@ -68,31 +72,14 @@
 				              Lines="5"
 				              HelperText="The initial message shown to players when starting a new game with this scenario (optional)"/>
 
-				<div class="d-flex gap-2">
-					<MudButton Variant="Variant.Filled"
-					           Color="Color.Primary"
-					           OnClick="CreateScenarioAsync"
-					           Disabled="_isSaving || !IsFormValid()"
-					           Class="mt-2">
-						@if (_isSaving)
-						{
-							<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
-							<span class="ms-2">Creating...</span>
-						}
-						else
-						{
-							<span>Create Scenario</span>
-						}
-					</MudButton>
-
-					<MudButton Variant="Variant.Text"
-					           Color="Color.Default"
-					           OnClick="Cancel"
-					           Disabled="_isSaving"
-					           Class="mt-2">
-						Cancel
-					</MudButton>
-				</div>
+				<FormActionButtons PrimaryText="Create Scenario"
+				                   PrimaryColor="Color.Secondary"
+				                   PrimaryIcon="@Icons.Material.Filled.Add"
+				                   OnPrimary="CreateScenarioAsync"
+				                   PrimaryDisabled="@(!IsFormValid())"
+				                   IsSaving="_isSaving"
+				                   SavingText="Creating..."
+				                   CancelHref="/scenarios" />
 			</MudForm>
 		}
 	</MudPaper>

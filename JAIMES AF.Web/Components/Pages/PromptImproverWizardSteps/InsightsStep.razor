@@ -1,0 +1,61 @@
+@*
+    InsightsStep.razor - First step of the Prompt Improvement Wizard.
+    Displays AI-generated insights from various data sources.
+*@
+
+@using MattEland.Jaimes.Web.Components.Shared
+
+<MudText Typo="Typo.body1" Class="mb-4">
+    Generating AI insights from your agent's performance data to identify areas for improvement.
+</MudText>
+
+<div class="d-flex flex-wrap gap-4" style="min-height: 350px;">
+    <InsightCard Title="Feedback"
+                 Icon="@Icons.Material.Filled.ThumbUp"
+                 IsLoading="IsGeneratingFeedback"
+                 Content="@FeedbackInsights"
+                 EmptyMessage="No feedback data available."
+                 Width="calc(33.3% - 16px)" />
+
+    <InsightCard Title="Metrics"
+                 Icon="@Icons.Material.Filled.PieChart"
+                 IsLoading="IsGeneratingMetrics"
+                 Content="@MetricsInsights"
+                 EmptyMessage="No metrics data available."
+                 Width="calc(33.3% - 16px)" />
+
+    <InsightCard Title="Sentiment"
+                 Icon="@Icons.Material.Filled.Balance"
+                 IsLoading="IsGeneratingSentiment"
+                 Content="@SentimentInsights"
+                 EmptyMessage="No sentiment data available."
+                 Width="calc(33.3% - 16px)" />
+
+    <InsightCard Title="Messages"
+                 Icon="@Icons.Material.Filled.Chat"
+                 IsLoading="IsGeneratingMessages"
+                 Content="@MessageInsights"
+                 EmptyMessage="No message data available."
+                 Width="calc(50% - 16px)" />
+
+    <InsightCard Title="Tool Usage"
+                 Icon="@Icons.Material.Filled.Build"
+                 IsLoading="IsGeneratingTools"
+                 Content="@ToolInsights"
+                 EmptyMessage="No tool usage data available."
+                 Width="calc(50% - 16px)" />
+</div>
+
+@code {
+    [Parameter] public string? FeedbackInsights { get; set; }
+    [Parameter] public string? MetricsInsights { get; set; }
+    [Parameter] public string? SentimentInsights { get; set; }
+    [Parameter] public string? MessageInsights { get; set; }
+    [Parameter] public string? ToolInsights { get; set; }
+    
+    [Parameter] public bool IsGeneratingFeedback { get; set; }
+    [Parameter] public bool IsGeneratingMetrics { get; set; }
+    [Parameter] public bool IsGeneratingSentiment { get; set; }
+    [Parameter] public bool IsGeneratingMessages { get; set; }
+    [Parameter] public bool IsGeneratingTools { get; set; }
+}

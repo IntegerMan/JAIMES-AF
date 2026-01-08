@@ -131,15 +131,14 @@ public class GameDetailsInteractionTests : Bunit.TestContext
         // Wait for loading to finish
         cut.WaitForState(() => cut.FindAll(".mud-progress-circular").Count == 0);
 
-        // Find the text field
-        var textField = cut.FindComponent<MudTextField<string>>();
+        // Find the native HTML input element by its ID
+        var input = cut.Find("#chat-input");
 
         // Act - Type a message
-        var input = textField.Find("input");
         input.Input("Test Message");
 
         // Assert initial state
-        textField.Instance.Value.ShouldBe("Test Message");
+        input.GetAttribute("value").ShouldBe("Test Message");
 
         // Act - Press Enter
         await input.KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
@@ -147,8 +146,8 @@ public class GameDetailsInteractionTests : Bunit.TestContext
         // Assert - The value should be cleared
         cut.WaitForAssertion(() =>
         {
-            var field = cut.FindComponent<MudTextField<string>>();
-            field.Instance.Value.ShouldBeNullOrEmpty();
+            var inputElement = cut.Find("#chat-input");
+            inputElement.GetAttribute("value").ShouldBeNullOrEmpty();
         });
     }
 }

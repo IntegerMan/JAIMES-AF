@@ -9,6 +9,9 @@ public partial class AgentDetails
 
     private AgentResponse? _agent;
     private AgentInstructionVersionResponse[]? _versions;
+    private int? _activeVersionId;
+    
+    private int _activeTabIndex { get; set; }
     private bool _isLoading = true;
     private string? _errorMessage;
     private List<BreadcrumbItem> _breadcrumbs = new();
@@ -60,6 +63,9 @@ public partial class AgentDetails
                 await Http.GetFromJsonAsync<AgentInstructionVersionListResponse>(
                     $"/agents/{AgentId}/instruction-versions");
             _versions = versionsResp?.InstructionVersions ?? [];
+
+            // Set active version ID for stats
+            _activeVersionId = _versions.FirstOrDefault(v => v.IsActive)?.Id;
         }
         catch (Exception ex)
         {

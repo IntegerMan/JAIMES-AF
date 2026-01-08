@@ -4,11 +4,15 @@
 <PageTitle>Edit Agent</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
-	<MudPaper Class="pa-4">
-        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+	<FormPageHeader Title="@(_isLoading ? "Edit Agent" : $"Edit: {_name}")"
+	                Icon="@Icons.Material.Filled.SmartToy"
+	                Theme="FormPageHeader.HeroTheme.Secondary"
+	                Subtitle="Modify agent configuration" />
+
+	<MudPaper Class="pa-6" Elevation="2">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
             <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
         </MudStack>
-		<MudText Typo="Typo.h4" Class="mb-4">Edit Agent</MudText>
 
 		@if (_isLoading)
 		{
@@ -62,31 +66,13 @@
 				              RequiredError="Instructions are required"
 				              HelperText="Agent instructions that define how this agent behaves. Changes will create a new instruction version."/>
 
-				<div class="d-flex gap-2">
-					<MudButton Variant="Variant.Filled"
-					           Color="Color.Primary"
-					           OnClick="UpdateAgentAsync"
-					           Disabled="_isSaving || !IsFormValid()"
-					           Class="mt-2">
-						@if (_isSaving)
-						{
-							<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
-							<span class="ms-2">Saving...</span>
-						}
-						else
-						{
-							<span>Save Changes</span>
-						}
-					</MudButton>
-
-					<MudButton Variant="Variant.Text"
-					           Color="Color.Default"
-					           OnClick="Cancel"
-					           Disabled="_isSaving"
-					           Class="mt-2">
-						Cancel
-					</MudButton>
-				</div>
+				<FormActionButtons PrimaryText="Save Changes"
+				                   PrimaryColor="Color.Secondary"
+				                   PrimaryIcon="@Icons.Material.Filled.Check"
+				                   OnPrimary="UpdateAgentAsync"
+				                   PrimaryDisabled="@(!IsFormValid())"
+				                   IsSaving="_isSaving"
+				                   CancelHref="@($"/agents/{AgentId}")" />
 			</MudForm>
 		}
 	</MudPaper>

@@ -6,10 +6,12 @@
 @inject NavigationManager NavigationManager
 @inject IDialogService DialogService
 @using MattEland.Jaimes.Web.Components.Dialogs
+@using MattEland.Jaimes.Web.Components.Chat
+@using MattEland.Jaimes.ServiceDefinitions.Responses
 
 <PageTitle>Agent Details</PageTitle>
 
-<MudPaper Class="pa-4">
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
     <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
         <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
     </MudStack>
@@ -18,142 +20,153 @@
         @if (_isLoading)
         {
             <div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
-                <MudProgressCircular Indeterminate="true"/>
+                <MudProgressCircular Indeterminate="true" />
             </div>
         }
 
         @if (!_isLoading && !string.IsNullOrEmpty(_errorMessage))
         {
-            <MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
+            <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
         }
 
         @if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && _agent is not null)
         {
-            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
-                <MudText Typo="Typo.h4">@_agent.Name</MudText>
-                <MudStack Row="true" Spacing="2">
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.Edit"
-                               Href="@($"/agents/{AgentId}/edit")">
-                        Edit Agent
-                    </MudButton>
-                    <MudButton Variant="Variant.Outlined"
-                               Color="Color.Secondary"
-                               StartIcon="@Icons.Material.Filled.AutoAwesome"
-                               Href="@($"/agents/{AgentId}/improve")">
-                        Improve
-                    </MudButton>
-                    <MudButton Variant="Variant.Outlined"
-                               Color="Color.Success"
-                               StartIcon="@Icons.Material.Filled.Science"
-                               Href="@($"/admin/run-tests?agentId={AgentId}")">
-                        Test
-                    </MudButton>
+            @* Hero Section *@
+            <div class="agent-hero pa-3 mb-4" style="background: linear-gradient(135deg, rgba(67, 97, 238, 0.1) 0%, rgba(76, 201, 240, 0.1) 100%); 
+                border-radius: 16px; border: 1px solid rgba(67, 97, 238, 0.2);">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                        <div class="icon-badge icon-badge-secondary">
+                            <MudIcon Icon="@Icons.Material.Filled.SmartToy" Style="color: white; font-size: 1.5rem;" />
+                        </div>
+                        <MudStack Spacing="0">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudText Typo="Typo.h5" Style="font-weight: 600; color: #4361EE;">@_agent.Name</MudText>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Outlined">
+                                    @(_versions?.Length ?? 0) version@((_versions?.Length ?? 0) != 1 ? "s" : "")
+                                </MudChip>
+                            </MudStack>
+                            <MudText Typo="Typo.caption" Class="text-muted">@_agent.Role</MudText>
+                        </MudStack>
+                    </MudStack>
+                    <MudStack Row="true" Spacing="2" Style="flex-wrap: nowrap;">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Edit"
+                            Href="@($"/agents/{AgentId}/edit")">Edit</MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
+                            StartIcon="@Icons.Material.Filled.AutoAwesome" Href="@($"/agents/{AgentId}/improve")">Improve</MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Success"
+                            StartIcon="@Icons.Material.Filled.Science" Href="@($"/admin/run-tests?agentId={AgentId}")">Test</MudButton>
+                    </MudStack>
                 </MudStack>
-            </MudStack>
+            </div>
 
-            <MudText Typo="Typo.body1" Class="mb-4">
-                <strong>Role:</strong> @_agent.Role
-            </MudText>
+            @* Active Version Title *@
+            <div class="mb-4">
+                <MudText Typo="Typo.overline" Style="letter-spacing: 2px; color: var(--mud-palette-primary); font-weight: bold;">
+                    STATISTICS (ALL VERSIONS)
+                </MudText>
+            </div>
 
-            <MudDivider Class="my-4"/>
-
-            <MudText Typo="Typo.h5" Class="mb-3">Instruction Versions</MudText>
-
-            @if (_versions is null || _versions.Length == 0)
+            @if (!string.IsNullOrEmpty(AgentId))
             {
-                <MudText Class="mb-4">No instruction versions yet.</MudText>
-            }
-            else
-            {
-                <MudTable Items="_versions" Dense="true" Hover="true">
-                        <HeaderContent>
-                        <MudTh>Version</MudTh>
-                        <MudTh>Created</MudTh>
-                        <MudTh>Active</MudTh>
-                        <MudTh>Games</MudTh>
-                        <MudTh>Messages</MudTh>
-                        <MudTh>Instructions Preview</MudTh>
-                        <MudTh align="Align.Right">Actions</MudTh>
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd>
-                            <MattEland.Jaimes.Web.Components.Shared.AgentVersionLink 
-                                AgentId="@AgentId" 
-                                VersionId="@context.Id" 
-                                VersionNumber="@context.VersionNumber" />
-                        </MudTd>
-                        <MudTd>@context.CreatedAt.ToString("yyyy-MM-dd")</MudTd>
-                        <MudTd>
-                            @if (context.IsActive)
-                            {
-                                <MudChip T="string" Color="Color.Success" Size="Size.Small">Active</MudChip>
-                            }
-                            else
-                            {
-                                <MudText Typo="Typo.body2" Class="text-muted">No</MudText>
-                            }
-                        </MudTd>
-                        <MudTd>
-                            @if (context.GameCount > 0)
-                            {
-                                <MudChip T="string" Color="Color.Primary" Size="Size.Small">@context.GameCount using</MudChip>
-                            }
-                            @if (context.LatestGameCount > 0 && context.IsActive)
-                            {
-                                <MudChip T="string" Color="Color.Success" Size="Size.Small">@context.LatestGameCount using latest</MudChip>
-                            }
-                            @if (context.GameCount == 0 && (context.LatestGameCount == 0 || !context.IsActive))
-                            {
-                                <MudText Typo="Typo.body2" Class="text-muted">0</MudText>
-                            }
-                        </MudTd>
-                        <MudTd>@context.MessageCount</MudTd>
-                        <MudTd>
-                            <MudTooltip Text="@context.Instructions">
-                                <span>@(context.Instructions.Length > 50 ? context.Instructions.Substring(0, 50) + "..." : context.Instructions)</span>
-                            </MudTooltip>
-                        </MudTd>
-                        <MudTd align="Align.Right">
-                            <MudTooltip Text="View Version Details">
-                                <MudIconButton Icon="@Icons.Material.Filled.Visibility"
-                                               Color="Color.Primary"
-                                               Size="Size.Small"
-                                               Href="@($"/agents/{AgentId}/versions/{context.Id}")"/>
-                            </MudTooltip>
-                            <MudTooltip Text="Run Test Cases">
-                                <MudIconButton Icon="@Icons.Material.Filled.Science"
-                                               Color="Color.Success"
-                                               Size="Size.Small"
-                                               OnClick="@(() => RunTestsForVersionAsync(context.Id))"/>
-                            </MudTooltip>
-                        </MudTd>
-                    </RowTemplate>
-                </MudTable>
+                <MattEland.Jaimes.Web.Components.Shared.AgentStats AgentId="@AgentId" />
             }
 
-            <MudDivider Class="my-4"/>
-
-            <MudText Typo="Typo.h5" Class="mb-3">Agent Analysis</MudText>
-
-            <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-3">
-                <MudTabPanel Text="Messages">
-                    <MattEland.Jaimes.Web.Components.Agents.AgentMessagesList AgentId="@AgentId"/>
-                </MudTabPanel>
-                <MudTabPanel Text="Feedback">
-                    <MattEland.Jaimes.Web.Components.Shared.FeedbackGrid AgentId="@AgentId"/>
-                </MudTabPanel>
-                <MudTabPanel Text="Tool Usage">
-                    <MattEland.Jaimes.Web.Components.Shared.ToolUsageGrid AgentId="@AgentId"/>
-                </MudTabPanel>
-                <MudTabPanel Text="Metrics">
-                    <MattEland.Jaimes.Web.Components.Shared.MetricsGrid AgentId="@AgentId"/>
-                </MudTabPanel>
-                <MudTabPanel Text="Sentiment">
-                    <MattEland.Jaimes.Web.Components.Shared.SentimentGrid AgentId="@AgentId"/>
-                </MudTabPanel>
-            </MudTabs>
+            @* Content Tabs *@
+            <div class="glass-card pa-0">
+                <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-3" @bind-ActivePanelIndex="_activeTabIndex">
+                    <MudTabPanel Text="Versions" Icon="@Icons.Material.Filled.Update">
+                        @if (_versions is null || _versions.Length == 0)
+                        {
+                            <div style="text-align: center; padding: 32px;">
+                                <MudIcon Icon="@Icons.Material.Filled.Update" Color="Color.Secondary" 
+                                         Style="font-size: 3rem; opacity: 0.5;" Class="mb-2" />
+                                <MudText>No instruction versions yet.</MudText>
+                                <MudButton Variant="Variant.Text" Color="Color.Primary" 
+                                           Href="@($"/agents/{AgentId}/edit")" Class="mt-2">
+                                    Create First Version
+                                </MudButton>
+                            </div>
+                        }
+                        else
+                        {
+                            <MudTable Items="_versions" Dense="true" Hover="true">
+                                <HeaderContent>
+                                    <MudTh>Version</MudTh>
+                                    <MudTh>Created</MudTh>
+                                    <MudTh>Status</MudTh>
+                                    <MudTh>Games</MudTh>
+                                    <MudTh>Messages</MudTh>
+                                    <MudTh Style="text-align: right; white-space: nowrap;">Actions</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd>
+                                        <MattEland.Jaimes.Web.Components.Shared.AgentVersionLink AgentId="@AgentId"
+                                            VersionId="@context.Id" VersionNumber="@context.VersionNumber" />
+                                    </MudTd>
+                                    <MudTd>@context.CreatedAt.ToString("yyyy-MM-dd")</MudTd>
+                                    <MudTd>
+                                        @if (context.IsActive)
+                                        {
+                                            <MudChip T="string" Color="Color.Success" Size="Size.Small">Active</MudChip>
+                                        }
+                                        else
+                                        {
+                                            <MudText Typo="Typo.body2" Class="text-muted">Inactive</MudText>
+                                        }
+                                    </MudTd>
+                                    <MudTd>
+                                        @{
+                                            int totalGames = context.GameCount + (context.IsActive ? context.LatestGameCount : 0);
+                                        }
+                                        @if (totalGames > 0)
+                                        {
+                                            <MudLink Href="@($"/games?agentId={AgentId}")">@totalGames</MudLink>
+                                        }
+                                        else
+                                        {
+                                            <MudText Typo="Typo.body2" Class="text-muted">0</MudText>
+                                        }
+                                    </MudTd>
+                                    <MudTd>
+                                        @if (context.MessageCount > 0)
+                                        {
+                                            <MudLink Href="@($"/admin/messages?agentId={AgentId}&versionId={context.Id}")">@context.MessageCount</MudLink>
+                                        }
+                                        else
+                                        {
+                                            <MudText Typo="Typo.body2" Class="text-muted">0</MudText>
+                                        }
+                                    </MudTd>
+                                    <MudTd Style="text-align: right; white-space: nowrap;">
+                                        <MudTooltip Text="View Details" Placement="Placement.Top">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Visibility" Color="Color.Primary"
+                                                Size="Size.Small" Href="@($"/agents/{AgentId}/versions/{context.Id}")" />
+                                        </MudTooltip>
+                                        <MudTooltip Text="Improve" Placement="Placement.Top">
+                                            <MudIconButton Icon="@Icons.Material.Filled.AutoAwesome" Color="Color.Secondary"
+                                                Size="Size.Small" Href="@($"/agents/{AgentId}/versions/{context.Id}/improve")" />
+                                        </MudTooltip>
+                                        <MudTooltip Text="Run Tests" Placement="Placement.Top">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Science" Color="Color.Success" Size="Size.Small"
+                                                OnClick="@(() => RunTestsForVersionAsync(context.Id))" />
+                                        </MudTooltip>
+                                    </MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        }
+                    </MudTabPanel>
+                    <MudTabPanel Text="Feedback" Icon="@Icons.Material.Filled.ThumbsUpDown">
+                        <MattEland.Jaimes.Web.Components.Shared.FeedbackGrid AgentId="@AgentId" />
+                    </MudTabPanel>
+                    <MudTabPanel Text="Tools" Icon="@Icons.Material.Filled.Build">
+                        <MattEland.Jaimes.Web.Components.Shared.ToolUsageGrid AgentId="@AgentId" />
+                    </MudTabPanel>
+                    <MudTabPanel Text="Evaluations" Icon="@Icons.Material.Filled.PieChart">
+                        <MattEland.Jaimes.Web.Components.Shared.MetricsGrid AgentId="@AgentId" />
+                    </MudTabPanel>
+                </MudTabs>
+            </div>
         }
     </div>
-</MudPaper>
+</MudContainer>

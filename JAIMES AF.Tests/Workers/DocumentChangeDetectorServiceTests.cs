@@ -46,6 +46,15 @@ public class DocumentChangeDetectorServiceTests
                     message.RulesetId == "ruleset-a"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
+
+        // Verify ruleset auto-detection was triggered
+        context.RulesetsServiceMock.Verify(
+            service => service.TryCreateRulesetAsync(
+                "ruleset-a",
+                "ruleset-a",
+                "Auto-detected ruleset",
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -247,6 +256,7 @@ public class DocumentChangeDetectorServiceTests
         public Mock<IChangeTracker> ChangeTrackerMock { get; }
         public JaimesDbContext DbContext { get; }
         public Mock<IMessagePublisher> MessagePublisherMock { get; }
+        public Mock<IRulesetsService> RulesetsServiceMock { get; }
 
         private readonly ActivitySource _activitySource;
         private readonly DbContextOptions<JaimesDbContext> _dbOptions;
@@ -262,6 +272,16 @@ public class DocumentChangeDetectorServiceTests
             DirectoryScannerMock = new Mock<IDirectoryScanner>();
             ChangeTrackerMock = new Mock<IChangeTracker>();
             MessagePublisherMock = new Mock<IMessagePublisher>();
+            RulesetsServiceMock = new Mock<IRulesetsService>();
+
+            // Default setup: TryCreateRulesetAsync returns true (created)
+            RulesetsServiceMock
+                .Setup(s => s.TryCreateRulesetAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string?>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
 
             // Unique ID per test context to avoid collision
             string dbName = $"DocumentChangeDetectorTests-{Guid.NewGuid():N}";
@@ -285,6 +305,7 @@ public class DocumentChangeDetectorServiceTests
                 ChangeTrackerMock.Object,
                 dbContextFactory,
                 MessagePublisherMock.Object,
+                RulesetsServiceMock.Object,
                 _activitySource,
                 Options);
         }

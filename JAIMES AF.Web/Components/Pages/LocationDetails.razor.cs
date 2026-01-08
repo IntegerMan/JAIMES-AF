@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
+using MattEland.Jaimes.Web.Components.Shared;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 
@@ -175,5 +176,16 @@ public partial class LocationDetails
 			_isAddingEvent = false;
 			StateHasChanged();
 		}
+	}
+
+	private IEnumerable<LocationGraph.NearbyLocationInfo> GetNearbyLocationInfos()
+	{
+		return _nearbyLocations.Select(n => new LocationGraph.NearbyLocationInfo(
+			n.SourceLocationId,
+			n.SourceLocationName,
+			n.TargetLocationId,
+			n.TargetLocationName,
+			n.Distance,
+			n.TravelNotes));
 	}
 }

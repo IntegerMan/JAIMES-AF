@@ -23,12 +23,20 @@ public interface IMessageSentimentService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets the full details for a specific sentiment record.
+    /// Gets the full details for a specific sentiment record, looked up by message ID (or sentiment ID for backward compatibility).
     /// </summary>
-    /// <param name="id">The sentiment record ID.</param>
+    /// <param name="messageId">The message ID (or sentiment ID).</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The sentiment details or null if not found.</returns>
     Task<SentimentFullDetailsResponse?> GetSentimentDetailsAsync(
-        int id,
+        int messageId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets sentiment summary statistics (positive/neutral/negative counts, average confidence) with optional filters.
+    /// </summary>
+    /// <param name="filters">Optional filters to scope the summary.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Sentiment summary statistics.</returns>
+    Task<SentimentSummaryResponse> GetSentimentSummaryAsync(AdminFilterParams? filters = null, CancellationToken cancellationToken = default);
 }

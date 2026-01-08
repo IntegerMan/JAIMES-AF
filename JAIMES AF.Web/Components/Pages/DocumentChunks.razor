@@ -1,60 +1,97 @@
 @page "/admin/documents/{DocumentId:int}/chunks"
 @using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Shared
 @rendermode InteractiveServer
 
 <PageTitle>@(_response?.DocumentName ?? "Document Chunks")</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+
+	<CompactHeroSection Title="@(_response?.DocumentName ?? "Document Chunks")"
+	                    Icon="@Icons.Material.Filled.ViewModule"
+	                    Theme="CompactHeroSection.HeroTheme.Info"
+	                    ItemCount="@_response?.TotalCount"
+	                    ItemName="chunk"
+	                    Subtitle="extracted"
+	                    SubtitleNoItems="No chunks extracted yet" />
+
 	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
 		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
 	</MudStack>
-	<MudPaper Class="pa-8" Elevation="2">
-		<MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">
-			@(_response?.DocumentName ?? "Document Chunks")
-		</MudText>
-		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">
-			View text chunks extracted from this document
-		</MudText>
 
-		@if (!string.IsNullOrEmpty(_errorMessage))
+	@if (_response != null)
+	{
+		<MudGrid Spacing="3" Class="mb-4">
+			<MudItem xs="12" sm="4">
+				<MetricCard Icon="@Icons.Material.Filled.ViewModule"
+				            Value="@_response.TotalCount.ToString()"
+				            Label="Total Chunks"
+				            ColorVariant="MetricCard.MetricColorVariant.Info"
+				            Tooltip="Total text chunks from this document" />
+			</MudItem>
+			<MudItem xs="12" sm="4">
+				<MetricCard Icon="@Icons.Material.Filled.Memory"
+				            Value="@_response.EmbeddedCount.ToString()"
+				            Label="Embedded"
+				            ColorVariant="@(_response.EmbeddedCount == _response.TotalCount
+				                ? MetricCard.MetricColorVariant.Success
+				                : MetricCard.MetricColorVariant.Warning)"
+				            Tooltip="@($"{_response.EmbeddedCount}/{_response.TotalCount} chunks have embeddings")" />
+			</MudItem>
+			<MudItem xs="12" sm="4">
+				<MetricCard Icon="@Icons.Material.Filled.HourglassEmpty"
+				            Value="@((_response.TotalCount - _response.EmbeddedCount).ToString())"
+				            Label="Pending"
+				            ColorVariant="@((_response.TotalCount - _response.EmbeddedCount) == 0
+				                ? MetricCard.MetricColorVariant.Success
+				                : MetricCard.MetricColorVariant.Warning)"
+				            Tooltip="Chunks awaiting embedding generation" />
+			</MudItem>
+		</MudGrid>
+	}
+
+	@if (!string.IsNullOrEmpty(_errorMessage))
+	{
+		<MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+	}
+
+	@if (_isLoading)
+	{
+		<MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4"/>
+	}
+
+	@if (_response != null)
+	{
+		<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4" Class="mb-4">
+			<MudChip T="string" Color="Color.Info" Size="Size.Small">@_response.DocumentKind</MudChip>
+			<MudChip T="string" Color="Color.Secondary" Size="Size.Small">@_response.RulesetId</MudChip>
+		</MudStack>
+
+		@if (_response.EmbeddedCount < _response.TotalCount)
 		{
-			<MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+			<MudAlert Severity="Severity.Warning" Class="mb-4">
+				<strong>@(_response.TotalCount - _response.EmbeddedCount)</strong> of @_response.TotalCount chunks are missing embeddings.
+				Embedding processing may still be in progress.
+			</MudAlert>
 		}
 
-		@if (_isLoading)
+		@if (_response.Chunks.Length == 0)
 		{
-			<MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4"/>
+			<div class="glass-card pa-6" style="text-align: center;">
+				<MudStack AlignItems="AlignItems.Center" Spacing="3">
+					<MudIcon Icon="@Icons.Material.Filled.ViewModule" Color="Color.Info"
+					         Style="font-size: 4rem; opacity: 0.5;"/>
+					<MudText Typo="Typo.h6">No chunks found</MudText>
+					<MudText Class="text-muted mb-4">
+						Chunks will appear here after document processing is complete.
+					</MudText>
+				</MudStack>
+			</div>
 		}
-
-		@if (_response != null)
+		else
 		{
-			<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4" Class="mb-4">
-				<MudText Typo="Typo.body1">
-					<MudIcon Icon="@Icons.Material.Filled.ViewModule" Size="Size.Small" Class="me-1"/>
-					<strong>@_response.TotalCount</strong> chunks
-				</MudText>
-				<MudChip T="string" Color="Color.Info" Size="Size.Small">@_response.DocumentKind</MudChip>
-				<MudChip T="string" Color="Color.Secondary" Size="Size.Small">@_response.RulesetId</MudChip>
-			</MudStack>
-
-			@if (_response.EmbeddedCount < _response.TotalCount)
-			{
-				<MudAlert Severity="Severity.Warning" Class="mb-4">
-					<strong>@(_response.TotalCount - _response.EmbeddedCount)</strong> of @_response.TotalCount chunks are missing embeddings.
-					Embedding processing may still be in progress.
-				</MudAlert>
-			}
-
-			@if (_response.Chunks.Length == 0)
-			{
-				<MudAlert Severity="Severity.Info" Class="mb-4">
-					No chunks found for this document. Chunks will appear here after document chunking is complete.
-				</MudAlert>
-			}
-			else
-			{
-				<MudDataGrid T="DocumentChunkInfo" Items="@_response.Chunks" Dense="true" Striped="true" Hover="true"
-				             RowsPerPage="@_response.PageSize">
+			<MudDataGrid T="DocumentChunkInfo" Items="@_response.Chunks" Dense="true" Striped="true" Hover="true"
+			             RowsPerPage="@_response.PageSize">
 					<Columns>
 						<PropertyColumn Property="x => x.ChunkIndex" Title="Index"/>
 						<TemplateColumn Title="Text Preview">
@@ -91,13 +128,12 @@
 					</Columns>
 				</MudDataGrid>
 
-				@if (_response.TotalCount > _response.PageSize)
-				{
-					<MudStack Row="true" Justify="Justify.Center" Class="mt-4">
-						<MudPagination Count="@TotalPages" Selected="@_currentPage" SelectedChanged="OnPageChanged" Color="Color.Primary"/>
-					</MudStack>
-				}
+			@if (_response.TotalCount > _response.PageSize)
+			{
+				<MudStack Row="true" Justify="Justify.Center" Class="mt-4">
+					<MudPagination Count="@TotalPages" Selected="@_currentPage" SelectedChanged="OnPageChanged" Color="Color.Primary"/>
+				</MudStack>
 			}
 		}
-	</MudPaper>
+	}
 </MudContainer>

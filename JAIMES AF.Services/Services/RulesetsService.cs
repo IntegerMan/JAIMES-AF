@@ -52,6 +52,7 @@ public class RulesetsService(IDbContextFactory<JaimesDbContext> contextFactory) 
 
     public async Task<RulesetDto> UpdateRulesetAsync(string id,
         string name,
+        string? description,
         CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -62,9 +63,45 @@ public class RulesetsService(IDbContextFactory<JaimesDbContext> contextFactory) 
         if (ruleset == null) throw new ArgumentException($"Ruleset with id '{id}' not found.", nameof(id));
 
         ruleset.Name = name;
+        ruleset.Description = description;
 
         await context.SaveChangesAsync(cancellationToken);
 
         return ruleset.ToDto();
+    }
+
+    public async Task<bool> TryCreateRulesetAsync(string id,
+        string name,
+        string? description,
+        CancellationToken cancellationToken = default)
+    {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        // Check if ruleset already exists
+        bool exists = await context.Rulesets
+            .AnyAsync(r => r.Id == id, cancellationToken);
+
+        if (exists) return false;
+
+        Ruleset newRuleset = new()
+        {
+            Id = id,
+            Name = name,
+            Description = description
+        };
+
+        context.Rulesets.Add(newRuleset);
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+        catch (DbUpdateException)
+        {
+            // Handle race condition: another caller created the ruleset between our check and save.
+            // This is expected behavior for TryCreate - we return false indicating we didn't create it.
+            return false;
+        }
     }
 }

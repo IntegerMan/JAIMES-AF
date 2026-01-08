@@ -1,5 +1,6 @@
 using MattEland.Jaimes.ServiceDefinitions.Requests;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
+using MattEland.Jaimes.Web.Components.Helpers;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using MudBlazor;
@@ -26,6 +27,24 @@ public partial class PromptImproverWizard : IDisposable
     // Current prompt
     private string _currentPrompt = string.Empty;
     private int _effectiveVersionId;
+
+    private string GetStepSubtitle() => _activeStep switch
+    {
+        0 => "Step 1: Gathering Insights",
+        1 => "Step 2: Your Feedback",
+        2 => "Step 3: Generate Improved Prompt",
+        3 => "Step 4: Review & Apply",
+        _ => "AI-assisted prompt improvement"
+    };
+
+    private void GoToStep(int step)
+    {
+        if (step <= _maxReachedStep && step != _activeStep)
+        {
+            _activeStep = step;
+            StateHasChanged();
+        }
+    }
 
     // Insights
     private string? _feedbackInsights;
@@ -485,7 +504,7 @@ public partial class PromptImproverWizard : IDisposable
                 var result = await response.Content.ReadFromJsonAsync<GenerateImprovedPromptResponse>();
                 if (result?.Success == true)
                 {
-                    _improvedPrompt = result.ImprovedPrompt ?? string.Empty;
+                    _improvedPrompt = PromptHelpers.StripLeadingHeading(result.ImprovedPrompt ?? string.Empty);
                     Snackbar.Add("Improved prompt generated successfully!", Severity.Success);
                 }
                 else
@@ -650,12 +669,6 @@ public partial class PromptImproverWizard : IDisposable
         sb.AppendLine("Generate an improved version of the prompt that addresses the insights above.");
 
         return sb.ToString();
-    }
-
-    private string GetDividerStyle(int stepIndex)
-    {
-        var opacity = stepIndex < _maxReachedStep ? "1" : "0.3";
-        return $"width: 60px; opacity: {opacity};";
     }
 
     public void Dispose()

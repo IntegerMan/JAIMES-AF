@@ -18,7 +18,7 @@
 			<div class="particle"></div>
 			<div class="particle"></div>
 		</div>
-		
+
 		<MudGrid Style="position: relative; z-index: 1;">
 			<MudItem xs="12" md="12">
 				<MudStack Spacing="2">
@@ -27,22 +27,19 @@
 				</MudStack>
 				<MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mt-5">
 					<MudButton Variant="Variant.Filled" Size="Size.Large" Href="/games/new"
-					           StartIcon="@Icons.Material.Filled.PlayArrow"
-					           Class="btn-hero-primary">
+						StartIcon="@Icons.Material.Filled.PlayArrow" Class="btn-hero-primary">
 						Start New Game
 					</MudButton>
 					@if (_lastPlayedGame != null)
 					{
-						<MudButton Variant="Variant.Outlined" Size="Size.Large"
-						           Href="@($"/games/{_lastPlayedGame.GameId}")"
-						           StartIcon="@Icons.Material.Filled.Restore"
-						           Class="btn-hero-secondary">
+						<MudButton Variant="Variant.Outlined" Size="Size.Large" Href="@($"/games/{_lastPlayedGame.GameId}")"
+							StartIcon="@Icons.Material.Filled.Restore" Class="btn-hero-secondary">
 							Continue: @_lastPlayedGame.Title
 						</MudButton>
 					}
 				</MudStack>
 			</MudItem>
-			
+
 			<MudLink Href="/admin" Class="admin-link-hero pa-2">
 				<MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
 					<MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Size="Size.Small" />
@@ -66,40 +63,46 @@
 						<div class="glass-card pa-4" style="cursor: pointer; height: 100%;">
 							<MudStack AlignItems="AlignItems.Center" Spacing="2">
 								<div class="icon-badge icon-badge-primary">
-									<MudIcon Icon="@Icons.Material.Filled.SportsEsports" Style="color: white; font-size: 1.5rem;" />
+									<MudIcon Icon="@Icons.Material.Filled.SportsEsports"
+										Style="color: white; font-size: 1.5rem;" />
 								</div>
 								<MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Games</MudText>
-								<MudText Typo="Typo.caption" Class="text-muted" Align="Align.Center">Play adventures</MudText>
+								<MudText Typo="Typo.caption" Class="text-muted" Align="Align.Center">Play adventures
+								</MudText>
 							</MudStack>
 						</div>
 					</MudLink>
 				</MudItem>
-				
+
 				@* Scenarios Card *@
 				<MudItem xs="12" sm="4">
 					<MudLink Href="/scenarios" Underline="Underline.None" Style="display: block;">
 						<div class="glass-card pa-4" style="cursor: pointer; height: 100%;">
 							<MudStack AlignItems="AlignItems.Center" Spacing="2">
 								<div class="icon-badge icon-badge-secondary">
-									<MudIcon Icon="@Icons.Material.Filled.MenuBook" Style="color: white; font-size: 1.5rem;" />
+									<MudIcon Icon="@Icons.Material.Filled.MenuBook"
+										Style="color: white; font-size: 1.5rem;" />
 								</div>
 								<MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Scenarios</MudText>
-								<MudText Typo="Typo.caption" Class="text-muted" Align="Align.Center">Story seeds</MudText>
+								<MudText Typo="Typo.caption" Class="text-muted" Align="Align.Center">Story seeds
+								</MudText>
 							</MudStack>
 						</div>
 					</MudLink>
 				</MudItem>
-				
+
 				@* Characters Card *@
 				<MudItem xs="12" sm="4">
 					<MudLink Href="/players" Underline="Underline.None" Style="display: block;">
 						<div class="glass-card pa-4" style="cursor: pointer; height: 100%;">
 							<MudStack AlignItems="AlignItems.Center" Spacing="2">
-								<div class="icon-badge icon-badge-tertiary">
-									<MudIcon Icon="@Icons.Material.Filled.Person" Style="color: white; font-size: 1.5rem;" />
+								<div class="icon-badge icon-badge-info">
+									<MudIcon Icon="@Icons.Material.Filled.Person"
+										Style="color: white; font-size: 1.5rem;" />
 								</div>
 								<MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Characters</MudText>
-								<MudText Typo="Typo.caption" Class="text-muted" Align="Align.Center">Your heroes</MudText>
+								<MudText Typo="Typo.caption" Class="text-muted" Align="Align.Center">Your heroes
+								</MudText>
 							</MudStack>
 						</div>
 					</MudLink>
@@ -111,49 +114,57 @@
 				<MudStack Spacing="3">
 					<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
 						<MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Color="Color.Primary" />
-						<MudText Typo="Typo.subtitle1" Style="font-weight: 600; color: #7B2CBF;">About JAIMES AF</MudText>
+						<MudText Typo="Typo.subtitle1" Style="font-weight: 600; color: #7B2CBF;">About JAIMES AF
+						</MudText>
 					</MudStack>
 					<MudText Typo="Typo.body2" Style="line-height: 1.7; color: #444;">
-						JAIMES AF is an AI-powered single-player roleplaying platform built on Microsoft's Agent Framework.
+						JAIMES AF is an AI-powered single-player roleplaying platform built on Microsoft's Agent
+						Framework.
 						It uses Azure OpenAI to create an intelligent Game Master that crafts immersive narratives,
 						remembers your story context, and adapts dynamically to your choices.
 					</MudText>
-					
+
 					@* Feature Pills - Integrated within About *@
 					<MudStack Row="true" Style="flex-wrap: wrap; gap: 12px;" Class="mt-2">
 						<MudLink Href="/scenarios" Underline="Underline.None">
 							<span class="feature-pill">
-								<MudIcon Icon="@Icons.Material.Filled.ElectricBolt" Style="color: #7B2CBF;" Size="Size.Small" />
+								<MudIcon Icon="@Icons.Material.Filled.ElectricBolt" Style="color: #7B2CBF;"
+									Size="Size.Small" />
 								AI Storytelling
 							</span>
 						</MudLink>
 						<MudLink Href="/tools/location-lookup" Underline="Underline.None">
 							<span class="feature-pill">
-								<MudIcon Icon="@Icons.Material.Filled.Public" Style="color: #4361EE;" Size="Size.Small" />
+								<MudIcon Icon="@Icons.Material.Filled.Public" Style="color: #4361EE;"
+									Size="Size.Small" />
 								Dynamic Worlds
 							</span>
 						</MudLink>
 						<MudLink Href="/admin/sentiments" Underline="Underline.None">
 							<span class="feature-pill">
-								<MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Style="color: #4CC9F0;" Size="Size.Small" />
+								<MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Style="color: #4CC9F0;"
+									Size="Size.Small" />
 								Adaptive Narratives
 							</span>
 						</MudLink>
 						<MudLink Href="/agents" Underline="Underline.None">
 							<span class="feature-pill">
-								<MudIcon Icon="@Icons.Material.Filled.SmartToy" Style="color: #06D6A0;" Size="Size.Small" />
+								<MudIcon Icon="@Icons.Material.Filled.SmartToy" Style="color: #06D6A0;"
+									Size="Size.Small" />
 								Agent Framework
 							</span>
 						</MudLink>
 						<MudLink Href="/admin/rag-collections" Underline="Underline.None">
 							<span class="feature-pill">
-								<MudIcon Icon="@Icons.Material.Filled.Storage" Style="color: #F15BB5;" Size="Size.Small" />
+								<MudIcon Icon="@Icons.Material.Filled.Storage" Style="color: #F15BB5;"
+									Size="Size.Small" />
 								Qdrant Vector Storage
 							</span>
 						</MudLink>
 						<MudLink Href="/admin/classification-models" Underline="Underline.None">
 							<span class="feature-pill">
-								<MudIcon Icon="@Icons.Material.Filled.Psychology" Style="color: #EF476F;" Size="Size.Small" />
+								<MudIcon Icon="@Icons.Material.Filled.Psychology" Style="color: #EF476F;"
+									Size="Size.Small" />
 								ML.NET
 							</span>
 						</MudLink>
@@ -167,8 +178,9 @@
 			<MudText Typo="Typo.overline" Class="mb-3" Style="letter-spacing: 1.5px; color: #7B2CBF; font-weight: 600;">
 				STATS DASHBOARD
 			</MudText>
-			
-			<MudPaper Elevation="0" Class="pa-2" Style="background: linear-gradient(to bottom right, #f8f9fa, #ffffff); border-radius: 16px; border: 1px solid #e8e8e8;">
+
+			<MudPaper Elevation="0" Class="pa-2"
+				Style="background: linear-gradient(to bottom right, #f8f9fa, #ffffff); border-radius: 16px; border: 1px solid #e8e8e8;">
 				<MudGrid Spacing="2">
 					@* Content Stats *@
 					<MudItem xs="6">
@@ -184,7 +196,7 @@
 							</div>
 						</MudLink>
 					</MudItem>
-					
+
 					<MudItem xs="6">
 						<MudLink Href="/scenarios" Class="stat-card-link">
 							<div class="stat-card stat-card-secondary">
@@ -198,12 +210,12 @@
 							</div>
 						</MudLink>
 					</MudItem>
-					
+
 					<MudItem xs="6">
-						<MudLink Href="/admin/rag-collections?category=transcripts" Class="stat-card-link">
-							<div class="stat-card stat-card-tertiary">
+						<MudLink Href="/admin/messages" Class="stat-card-link">
+							<div class="stat-card stat-card-secondary">
 								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-									<MudIcon Icon="@Icons.Material.Filled.Forum" Color="Color.Tertiary" />
+									<MudIcon Icon="@Icons.Material.Filled.Forum" Color="Color.Secondary" />
 									<MudStack Spacing="0">
 										<MudText Typo="Typo.caption" Class="text-muted">Messages</MudText>
 										<span class="stat-value">@_messagesCount</span>
@@ -212,7 +224,7 @@
 							</div>
 						</MudLink>
 					</MudItem>
-					
+
 					<MudItem xs="6">
 						<MudLink Href="/rulesets" Class="stat-card-link">
 							<div class="stat-card stat-card-accent">
@@ -220,18 +232,20 @@
 									<MudIcon Icon="@Icons.Material.Filled.AutoStories" Color="Color.Success" />
 									<MudStack Spacing="0">
 										<MudText Typo="Typo.caption" Class="text-muted">Systems / Sources</MudText>
-										<span class="stat-value-compact">@_rulesetsCount <span class="stat-separator">•</span> @_sourcebooksCount</span>
+										<span class="stat-value-compact">@_rulesetsCount <span
+												class="stat-separator">•</span> @_sourcebooksCount</span>
 									</MudStack>
 								</MudStack>
 							</div>
 						</MudLink>
 					</MudItem>
 				</MudGrid>
-				
+
 				<MudDivider Class="my-2" />
-				
+
 				@* Platform Stats *@
-				<MudText Typo="Typo.caption" Class="text-muted mb-2" Style="font-weight: 600; letter-spacing: 0.5px;">PLATFORM</MudText>
+				<MudText Typo="Typo.caption" Class="text-muted mb-2" Style="font-weight: 600; letter-spacing: 0.5px;">
+					PLATFORM</MudText>
 				<MudGrid Spacing="2">
 					<MudItem xs="6">
 						<MudLink Href="/agents" Class="stat-card-link">
@@ -240,13 +254,14 @@
 									<MudIcon Icon="@Icons.Material.Filled.SmartToy" Style="color: #9D4EDD;" />
 									<MudStack Spacing="0">
 										<MudText Typo="Typo.caption" Class="text-muted">Agents / Versions</MudText>
-										<span class="stat-value-compact">@_agentsCount <span class="stat-separator">•</span> @_versionsCount</span>
+										<span class="stat-value-compact">@_agentsCount <span
+												class="stat-separator">•</span> @_versionsCount</span>
 									</MudStack>
 								</MudStack>
 							</div>
 						</MudLink>
 					</MudItem>
-					
+
 					<MudItem xs="6">
 						<MudLink Href="/admin/classification-models" Class="stat-card-link">
 							<div class="stat-card stat-card-mlnet">
@@ -261,11 +276,12 @@
 						</MudLink>
 					</MudItem>
 				</MudGrid>
-				
+
 				<MudDivider Class="my-2" />
-				
+
 				@* AI Metrics *@
-				<MudText Typo="Typo.caption" Class="text-muted mb-2" Style="font-weight: 600; letter-spacing: 0.5px;">AI QUALITY</MudText>
+				<MudText Typo="Typo.caption" Class="text-muted mb-2" Style="font-weight: 600; letter-spacing: 0.5px;">AI
+					QUALITY</MudText>
 				<MudGrid Spacing="2">
 					<MudItem xs="6">
 						<MudLink Href="/admin/test-cases" Class="stat-card-link">
@@ -274,13 +290,14 @@
 									<MudIcon Icon="@Icons.Material.Filled.Checklist" Style="color: #F59E0B;" />
 									<MudStack Spacing="0">
 										<MudText Typo="Typo.caption" Class="text-muted">Test Cases / Reports</MudText>
-										<span class="stat-value-compact">@_testCasesCount <span class="stat-separator">•</span> @_testReportsCount</span>
+										<span class="stat-value-compact">@_testCasesCount <span
+												class="stat-separator">•</span> @_testReportsCount</span>
 									</MudStack>
 								</MudStack>
 							</div>
 						</MudLink>
 					</MudItem>
-					
+
 					<MudItem xs="6">
 						<MudLink Href="/admin/sentiments" Class="stat-card-link">
 							<div class="stat-card stat-card-error">
@@ -294,7 +311,7 @@
 							</div>
 						</MudLink>
 					</MudItem>
-					
+
 					<MudItem xs="6">
 						<MudLink Href="/admin/metrics" Class="stat-card-link">
 							<div class="stat-card stat-card-secondary">
@@ -308,7 +325,7 @@
 							</div>
 						</MudLink>
 					</MudItem>
-					
+
 					<MudItem xs="6">
 						<MudLink Href="/admin/feedback" Class="stat-card-link">
 							<div class="stat-card stat-card-primary">

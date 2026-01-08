@@ -1,0 +1,101 @@
+@*
+    FormActionButtons.razor - Reusable action button group for create/edit form pages.
+    Displays a primary action button (Create/Save) and Cancel button in a consistent layout.
+    
+    Usage Example:
+    <FormActionButtons PrimaryText="Create Game"
+                       PrimaryColor="Color.Primary"
+                       PrimaryIcon="@Icons.Material.Filled.Add"
+                       OnPrimary="CreateGameAsync"
+                       PrimaryDisabled="@(!IsFormValid())"
+                       IsSaving="_isCreating"
+                       SavingText="Creating..."
+                       CancelHref="/games" />
+*@
+
+<div class="d-flex gap-2 mt-4">
+    <MudButton Variant="Variant.Filled"
+               Color="@PrimaryColor"
+               OnClick="OnPrimary"
+               Disabled="@(PrimaryDisabled || IsSaving)"
+               StartIcon="@(IsSaving ? null : PrimaryIcon)">
+        @if (IsSaving)
+        {
+            <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+            <span class="ms-2">@SavingText</span>
+        }
+        else
+        {
+            <span>@PrimaryText</span>
+        }
+    </MudButton>
+
+    <MudButton Variant="Variant.Text"
+               Color="Color.Default"
+               Href="@CancelHref"
+               Disabled="@(IsSaving || CancelDisabled)">
+        @CancelText
+    </MudButton>
+</div>
+
+@code {
+    /// <summary>
+    /// Text for the primary action button.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string PrimaryText { get; set; } = "Save";
+
+    /// <summary>
+    /// Color for the primary action button.
+    /// </summary>
+    [Parameter]
+    public Color PrimaryColor { get; set; } = Color.Primary;
+
+    /// <summary>
+    /// Icon for the primary action button.
+    /// </summary>
+    [Parameter]
+    public string PrimaryIcon { get; set; } = Icons.Material.Filled.Save;
+
+    /// <summary>
+    /// Click handler for the primary action button.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnPrimary { get; set; }
+
+    /// <summary>
+    /// Whether the primary action button should be disabled.
+    /// </summary>
+    [Parameter]
+    public bool PrimaryDisabled { get; set; }
+
+    /// <summary>
+    /// Whether the form is currently saving/submitting.
+    /// </summary>
+    [Parameter]
+    public bool IsSaving { get; set; }
+
+    /// <summary>
+    /// Text to show while saving. Defaults to "Saving...".
+    /// </summary>
+    [Parameter]
+    public string SavingText { get; set; } = "Saving...";
+
+    /// <summary>
+    /// Navigation href for the Cancel button.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string CancelHref { get; set; } = "/";
+
+    /// <summary>
+    /// Text for the Cancel button. Defaults to "Cancel".
+    /// </summary>
+    [Parameter]
+    public string CancelText { get; set; } = "Cancel";
+
+    /// <summary>
+    /// Whether the Cancel button should be disabled (independent of IsSaving).
+    /// </summary>
+    [Parameter]
+    public bool CancelDisabled { get; set; }
+}

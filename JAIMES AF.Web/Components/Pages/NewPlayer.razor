@@ -3,12 +3,16 @@
 
 <PageTitle>Create New Player</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-	<MudPaper Class="pa-4">
-        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+	<FormPageHeader Title="Create New Player"
+	                Icon="@Icons.Material.Filled.Person"
+	                Theme="FormPageHeader.HeroTheme.Info"
+	                Subtitle="Create a new character" />
+
+	<MudPaper Class="pa-6" Elevation="2">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
             <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
         </MudStack>
-		<MudText Typo="Typo.h4" Class="mb-4">Create New Player</MudText>
 
 		@if (_isLoading)
 		{
@@ -60,31 +64,14 @@
 				              Disabled="_isSaving"
 				              Lines="2"/>
 
-				<div class="d-flex gap-2">
-					<MudButton Variant="Variant.Filled"
-					           Color="Color.Primary"
-					           OnClick="CreatePlayerAsync"
-					           Disabled="_isSaving || !IsFormValid()"
-					           Class="mt-2">
-						@if (_isSaving)
-						{
-							<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
-							<span class="ms-2">Creating...</span>
-						}
-						else
-						{
-							<span>Create Player</span>
-						}
-					</MudButton>
-
-					<MudButton Variant="Variant.Text"
-					           Color="Color.Default"
-					           OnClick="Cancel"
-					           Disabled="_isSaving"
-					           Class="mt-2">
-						Cancel
-					</MudButton>
-				</div>
+				<FormActionButtons PrimaryText="Create Player"
+				                   PrimaryColor="Color.Tertiary"
+				                   PrimaryIcon="@Icons.Material.Filled.Add"
+				                   OnPrimary="CreatePlayerAsync"
+				                   PrimaryDisabled="@(!IsFormValid())"
+				                   IsSaving="_isSaving"
+				                   SavingText="Creating..."
+				                   CancelHref="/players" />
 			</MudForm>
 		}
 	</MudPaper>

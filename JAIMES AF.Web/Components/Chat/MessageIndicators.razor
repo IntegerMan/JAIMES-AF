@@ -10,88 +10,32 @@
 <div class="d-flex align-items-center gap-2">
     @if (Metrics != null && Metrics.Count > 0)
     {
-        <MudTooltip Placement="Placement.Top">
-            <TooltipContent>
-                <div class="d-flex flex-column gap-2 pa-1">
-                    <MudText Typo="Typo.subtitle2" Class="mb-1">Evaluation Results</MudText>
-                    @if (IsProcessing && ExpectedMetricCount.GetValueOrDefault() > 0)
-                    {
-                        var pending = ExpectedMetricCount.GetValueOrDefault() - (Metrics?.Count ?? 0);
-                        <div class="d-flex align-items-center gap-2">
-                            <MudProgressCircular Size="MudBlazor.Size.Small" Indeterminate="true" Color="Color.Info" Style="width: 16px; height: 16px;"/>
-                            <MudText Typo="Typo.caption" Color="Color.Info">@pending metric@(pending != 1 ? "s" : "") pending...</MudText>
-                        </div>
-                    }
-                    @if (HasMissingEvaluators)
-                    {
-                        <div class="d-flex align-items-center gap-2">
-                            <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Size="Size.Small"/>
-                            <MudText Typo="Typo.caption" Color="Color.Warning">Missing some evaluators</MudText>
-                        </div>
-                    }
-                    @if (HasErrors)
-                    {
-                        <div class="d-flex align-items-center gap-2">
-                            <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="Size.Small"/>
-                            <MudText Typo="Typo.caption" Color="Color.Error">Some evaluations failed</MudText>
-                        </div>
-                    }
-                    <div class="d-flex flex-wrap gap-1" style="max-width: 300px;">
-                        @foreach (var metric in Metrics ?? [])
-                        {
-                            var isError = ErrorsByMetric?.ContainsKey(metric.MetricName) ?? false;
-                            var errorMessage = isError && ErrorsByMetric != null ? ErrorsByMetric[metric.MetricName] : null;
-                            <MudTooltip Text="@(isError ? errorMessage : metric.Remarks)" Placement="Placement.Bottom" Delay="100">
-                                <MudChip T="string" 
-                                         Color="@(isError ? Color.Error : MetricColorHelper.GetScoreColor(metric.Score))" 
-                                         Size="MudBlazor.Size.Small"
-                                         Variant="Variant.Filled">
-                                    @if (isError)
-                                    {
-                                        <MudIcon Icon="@Icons.Material.Filled.Error" Size="MudBlazor.Size.Small" Class="mr-1"/>
-                                        @metric.MetricName
-                                    }
-                                    else
-                                    {
-                                        <text>@metric.MetricName: @metric.Score.ToString("F1")</text>
-                                    }
-                                </MudChip>
-                            </MudTooltip>
-                        }
-                    </div>
-                    @if (!ReadOnly)
-                    {
-                        <MudText Typo="Typo.caption" Class="text-muted mt-1">Click to view details</MudText>
-                    }
-                </div>
-            </TooltipContent>
-            <ChildContent>
-                @if (IsProcessing && ExpectedMetricCount.GetValueOrDefault() > 0)
-                {
-                    @* Show progress ring while evaluating *@
-                    <div style="cursor: pointer;" @onclick="OnMetricsClicked">
-                        <EvaluationProgressRing 
-                            TotalSegments="@ExpectedMetricCount.GetValueOrDefault()"
-                            Metrics="Metrics"
-                            ErrorsByMetric="ErrorsByMetric"
-                            IsProcessing="true"
-                            Size="20"/>
-                    </div>
-                }
-                else
-                {
-                    @* Show completed progress ring or pie chart icon *@
-                    <div style="cursor: pointer;" @onclick="OnMetricsClicked">
-                        <EvaluationProgressRing 
-                            TotalSegments="@(ExpectedMetricCount.GetValueOrDefault() > 0 ? ExpectedMetricCount.GetValueOrDefault() : Metrics.Count)"
-                            Metrics="Metrics"
-                            ErrorsByMetric="ErrorsByMetric"
-                            IsProcessing="false"
-                            Size="20"/>
-                    </div>
-                }
-            </ChildContent>
-        </MudTooltip>
+        @if (IsProcessing && ExpectedMetricCount.GetValueOrDefault() > 0)
+        {
+            @* Show progress ring while evaluating *@
+            <div style="cursor: pointer;" @onclick="OnMetricsClicked">
+                <EvaluationProgressRing 
+                    TotalSegments="@ExpectedMetricCount.GetValueOrDefault()"
+                    Metrics="Metrics"
+                    ErrorsByMetric="ErrorsByMetric"
+                    IsProcessing="true"
+                    Size="20"
+                    OnSliceClick="HandleSliceClick"/>
+            </div>
+        }
+        else
+        {
+            @* Show completed progress ring or pie chart icon *@
+            <div style="cursor: pointer;" @onclick="OnMetricsClicked">
+                <EvaluationProgressRing 
+                    TotalSegments="@(ExpectedMetricCount.GetValueOrDefault() > 0 ? ExpectedMetricCount.GetValueOrDefault() : Metrics.Count)"
+                    Metrics="Metrics"
+                    ErrorsByMetric="ErrorsByMetric"
+                    IsProcessing="false"
+                    Size="20"
+                    OnSliceClick="HandleSliceClick"/>
+            </div>
+        }
     }
     else if (IsProcessing && ExpectedMetricCount.GetValueOrDefault() > 0)
     {
@@ -355,4 +299,17 @@
         }
     }
 
+    private void HandleSliceClick(MessageEvaluationMetricResponse metric)
+    {
+        // Navigate to the specific evaluation details page
+        if (metric.Id > 0)
+        {
+            NavigationManager.NavigateTo($"/admin/evaluations/{metric.Id}");
+        }
+        else if (metric.EvaluatorId.HasValue)
+        {
+            // Fallback: if no specific evaluation ID, navigate to evaluator page filtered by message
+            NavigationManager.NavigateTo($"/admin/evaluators/{metric.EvaluatorId}");
+        }
+    }
 }

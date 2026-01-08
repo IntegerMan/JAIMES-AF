@@ -1,0 +1,279 @@
+@page "/admin/evaluators/{EvaluatorId:int}"
+@rendermode InteractiveServer
+
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Helpers
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(_evaluator?.Name ?? "Evaluator Details")</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+    </MudStack>
+
+    @if (_isLoading)
+    {
+        <div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+            <MudProgressCircular Indeterminate="true" />
+        </div>
+    }
+    else if (_evaluator == null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4">Evaluator not found.</MudAlert>
+    }
+    else
+    {
+        @* Hero Section *@
+        <div class="agent-hero pa-3 mb-4" style="background: linear-gradient(135deg, rgba(3, 169, 244, 0.1) 0%, rgba(0, 150, 136, 0.1) 100%); 
+            border-radius: 16px; border: 1px solid rgba(3, 169, 244, 0.2);">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <div class="icon-badge icon-badge-info">
+                        <MudIcon Icon="@Icons.Material.Filled.Science" Style="color: white; font-size: 1.5rem;" />
+                    </div>
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.h5" Style="font-weight: 600; color: var(--mud-palette-info);">@_evaluator.Name</MudText>
+                        @if (!string.IsNullOrEmpty(_evaluator.Description))
+                        {
+                            <MudText Typo="Typo.caption" Class="text-muted">@_evaluator.Description</MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.caption" Class="text-muted">Automated quality evaluator</MudText>
+                        }
+                    </MudStack>
+                </MudStack>
+                <MudStack Row="true" Spacing="2" Style="flex-wrap: nowrap;">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.PlayArrow"
+                        Href="/admin/evaluators/test">Test Evaluator</MudButton>
+                </MudStack>
+            </MudStack>
+        </div>
+
+        @* Stats Cards *@
+        <MudGrid Spacing="3" Class="mb-4">
+            <MudItem xs="12" sm="6" md="2">
+                <div class="stat-card stat-card-info" style="height: 100px; display: flex; flex-direction: column; justify-content: center;">
+                    <MudText Typo="Typo.caption" Class="text-muted">Total Evaluations</MudText>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudIcon Icon="@Icons.Material.Filled.Assessment" Size="Size.Small" Color="Color.Info" />
+                        <MudText Typo="Typo.h6" Style="font-weight: 600; color: var(--mud-palette-info);">
+                            @_evaluator.TotalCount.ToString("N0")
+                        </MudText>
+                    </MudStack>
+                </div>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="2">
+                <div class="stat-card stat-card-success" style="height: 100px; display: flex; flex-direction: column; justify-content: center;">
+                    <MudText Typo="Typo.caption" Class="text-muted">Passed</MudText>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Success" />
+                        <MudText Typo="Typo.h6" Style="font-weight: 600; color: var(--mud-palette-success);">
+                            @_evaluator.PassCount.ToString("N0")
+                        </MudText>
+                        @if (_evaluator.TotalCount > 0)
+                        {
+                            <MudText Typo="Typo.caption" Class="text-muted ml-1">
+                                (@(((double)_evaluator.PassCount / _evaluator.TotalCount * 100).ToString("F0"))%)
+                            </MudText>
+                        }
+                    </MudStack>
+                </div>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="2">
+                <div class="stat-card stat-card-error" style="height: 100px; display: flex; flex-direction: column; justify-content: center;">
+                    <MudText Typo="Typo.caption" Class="text-muted">Failed</MudText>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Error" />
+                        <MudText Typo="Typo.h6" Style="font-weight: 600; color: var(--mud-palette-error);">
+                            @_evaluator.FailCount.ToString("N0")
+                        </MudText>
+                        @if (_evaluator.TotalCount > 0)
+                        {
+                            <MudText Typo="Typo.caption" Class="text-muted ml-1">
+                                (@(((double)_evaluator.FailCount / _evaluator.TotalCount * 100).ToString("F0"))%)
+                            </MudText>
+                        }
+                    </MudStack>
+                </div>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="2">
+                <div class="stat-card @GetScoreCardClass()" style="height: 100px; display: flex; flex-direction: column; justify-content: center;">
+                    <MudText Typo="Typo.caption" Class="text-muted">Average Score</MudText>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Small" Color="@GetScoreColor()" />
+                        @if (_evaluator.AverageScore.HasValue)
+                        {
+                            <MudText Typo="Typo.h6" Style="font-weight: 600;">
+                                @_evaluator.AverageScore.Value.ToString("F2") / 5
+                            </MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.h6" Class="text-muted">N/A</MudText>
+                        }
+                    </MudStack>
+                </div>
+            </MudItem>
+            @* Score Distribution Histogram Card *@
+            <MudItem xs="12" sm="6" md="4">
+                <div class="stat-card stat-card-secondary" style="height: 100px; display: flex; flex-direction: column; justify-content: space-between; padding: 12px;">
+                    <MudText Typo="Typo.caption" Class="text-muted">Score Distribution</MudText>
+                    @if (_evaluator.TotalCount > 0)
+                    {
+                        var distribution = _evaluator.ScoreDistribution;
+                        var maxCount = Math.Max(1, new[] { distribution.Score1, distribution.Score2, distribution.Score3, distribution.Score4, distribution.Score5 }.Max());
+                        <div style="display: flex; align-items: flex-end; justify-content: center; gap: 12px; height: 40px; max-width: 400px; margin: 0 auto;">
+                            @foreach (var (score, count, color) in new[] {
+                                (1, distribution.Score1, "var(--mud-palette-error-darken)"),
+                                (2, distribution.Score2, "var(--mud-palette-error)"),
+                                (3, distribution.Score3, "var(--mud-palette-error-lighten)"),
+                                (4, distribution.Score4, "var(--mud-palette-success-lighten)"),
+                                (5, distribution.Score5, "var(--mud-palette-success)")
+                            })
+                            {
+                                var heightPercent = maxCount > 0 ? (double)count / maxCount * 80 : 0;
+                                var minHeight = count > 0 ? 8 : 4;
+                                <MudTooltip Text="@($"Score {score}: {count}")" Placement="Placement.Top">
+                                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; max-width: 60px;">
+                                        <MudText Typo="Typo.caption" Style="font-weight: 600; font-size: 0.75rem;">@count</MudText>
+                                        <div style="width: 100%; height: @(Math.Max(minHeight, heightPercent * 0.7))px; max-height: 60px; background: @color; border-radius: 4px 4px 0 0; min-height: @(minHeight)px; transition: all 0.3s ease;"></div>
+                                        <MudText Typo="Typo.caption" Style="font-weight: 600; font-size: 0.75rem;">@score</MudText>
+                                    </div>
+                                </MudTooltip>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Class="text-muted">No data</MudText>
+                    }
+                </div>
+            </MudItem>
+        </MudGrid>
+
+        @* Context Info (if filtered) *@
+        @if (!string.IsNullOrEmpty(AgentId) || GameId.HasValue)
+        {
+            <MudAlert Severity="Severity.Info" Class="mb-4" Dense="true">
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                    <MudText Typo="Typo.body2">Filtered by:</MudText>
+                    @if (!string.IsNullOrEmpty(AgentId))
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Secondary">Agent: @AgentId</MudChip>
+                    }
+                    @if (VersionId.HasValue)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Secondary">Version: @VersionId</MudChip>
+                    }
+                    @if (GameId.HasValue)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary">Game: @GameId</MudChip>
+                    }
+                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                               OnClick="ClearFilters">Clear Filters</MudButton>
+                </MudStack>
+            </MudAlert>
+        }
+
+        @* Section Header *@
+        <div class="mb-3">
+            <MudText Typo="Typo.overline" Style="letter-spacing: 2px; color: var(--mud-palette-info); font-weight: bold;">
+                EVALUATION RESULTS
+            </MudText>
+        </div>
+
+        @* Metrics Grid *@
+        <div class="glass-card pa-4">
+            <MattEland.Jaimes.Web.Components.Shared.MetricsGrid 
+                EvaluatorId="@EvaluatorId"
+                AgentId="@AgentId"
+                InstructionVersionId="@VersionId"
+                GameId="@GameId" />
+        </div>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public int EvaluatorId { get; set; }
+    [Parameter, SupplyParameterFromQuery] public string? AgentId { get; set; }
+    [Parameter, SupplyParameterFromQuery] public int? VersionId { get; set; }
+    [Parameter, SupplyParameterFromQuery] public Guid? GameId { get; set; }
+
+    private EvaluatorStatsResponse? _evaluator;
+    private bool _isLoading = true;
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadEvaluatorAsync();
+    }
+
+    private async Task LoadEvaluatorAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            var queryParams = new List<string>();
+            if (!string.IsNullOrEmpty(AgentId))
+                queryParams.Add($"agentId={AgentId}");
+            if (VersionId.HasValue)
+                queryParams.Add($"instructionVersionId={VersionId}");
+            if (GameId.HasValue)
+                queryParams.Add($"gameId={GameId}");
+
+            var url = $"/admin/evaluators/{EvaluatorId}/stats";
+            if (queryParams.Any())
+                url += "?" + string.Join("&", queryParams);
+
+            _evaluator = await Http.GetFromJsonAsync<EvaluatorStatsResponse>(url);
+
+            _breadcrumbs = new List<BreadcrumbItem>
+            {
+                new BreadcrumbItem("Home", href: "/"),
+                new BreadcrumbItem("Admin", href: "/admin"),
+                new BreadcrumbItem("Evaluators", href: "/admin/evaluators"),
+                new BreadcrumbItem(_evaluator?.Name ?? "Evaluator", href: null, disabled: true)
+            };
+        }
+        catch (Exception)
+        {
+            _evaluator = null;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ClearFilters()
+    {
+        NavigationManager.NavigateTo($"/admin/evaluators/{EvaluatorId}");
+    }
+
+    private string GetScoreCardClass()
+    {
+        if (_evaluator?.AverageScore == null) return "stat-card-secondary";
+
+        return _evaluator.AverageScore.Value switch
+        {
+            >= 4.0 => "stat-card-success",
+            >= 3.0 => "stat-card-warning",
+            _ => "stat-card-error"
+        };
+    }
+
+    private Color GetScoreColor()
+    {
+        if (_evaluator?.AverageScore == null) return Color.Default;
+
+        return _evaluator.AverageScore.Value switch
+        {
+            >= 4.0 => Color.Success,
+            >= 3.0 => Color.Warning,
+            _ => Color.Error
+        };
+    }
+}

@@ -1,4 +1,5 @@
 using MattEland.Jaimes.Web.Components.Shared;
+using MudBlazor;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
 
@@ -16,14 +17,46 @@ public partial class RagCollections
     private List<BreadcrumbItem> _breadcrumbs = new();
     private string _filterType = "All";
 
+    private readonly ViewModeToggle<string>.ViewModeOption<string>[] _filterOptions =
+    [
+        new("All", "All", MudBlazor.Icons.Material.Filled.ViewList),
+        new("Sourcebook", "Sourcebooks", MudBlazor.Icons.Material.Filled.MenuBook),
+        new("Transcript", "Transcripts", MudBlazor.Icons.Material.Filled.Chat)
+    ];
+
+    // Computed properties for metrics
+    private int TotalDocuments => _statistics?.Summaries.Sum(s => s.DocumentCount) ?? 0;
+    private int TotalChunks => _statistics?.Summaries.Sum(s => s.TotalChunks) ?? 0;
+    private int TotalEmbedded => _statistics?.Summaries.Sum(s => s.EmbeddedChunks) ?? 0;
+    private int TotalQueries => _statistics?.Summaries.Sum(s => s.QueryCount) ?? 0;
+
+    private string EmbeddingPercentage =>
+        TotalChunks > 0 ? $"{TotalEmbedded * 100.0 / TotalChunks:F1}%" : "0%";
+
+    private MetricCard.MetricColorVariant EmbeddingColorVariant
+    {
+        get
+        {
+            if (TotalChunks == 0) return MetricCard.MetricColorVariant.Info;
+            var pct = TotalEmbedded * 100.0 / TotalChunks;
+            return pct >= 100 ? MetricCard.MetricColorVariant.Success
+                 : pct >= 80 ? MetricCard.MetricColorVariant.Warning
+                 : MetricCard.MetricColorVariant.Error;
+        }
+    }
+
     [SupplyParameterFromQuery(Name = "category")]
     public string? Category { get; set; }
 
+    [Parameter]
+    public string? RulesetId { get; set; }
+
     private RagCollectionDocumentInfo[] FilteredDocuments =>
         _statistics?.Documents
-            .Where(d => _filterType == "All" ||
-                        (_filterType == "Sourcebook" && d.DocumentKind == "Sourcebook") ||
-                        (_filterType == "Transcript" && d.DocumentKind == "Transcript"))
+            .Where(d => (_filterType == "All" ||
+                         (_filterType == "Sourcebook" && d.DocumentKind == "Sourcebook") ||
+                         (_filterType == "Transcript" && d.DocumentKind == "Transcript")) &&
+                        (string.IsNullOrEmpty(RulesetId) || string.Equals(d.RulesetId, RulesetId, StringComparison.OrdinalIgnoreCase)))
             .ToArray() ?? [];
 
     protected override async Task OnInitializedAsync()
@@ -32,8 +65,13 @@ public partial class RagCollections
         {
             new BreadcrumbItem("Home", href: "/"),
             new BreadcrumbItem("Admin", href: "/admin"),
-            new BreadcrumbItem("RAG Collections", href: null, disabled: true)
+            new BreadcrumbItem("RAG Collections", href: string.IsNullOrEmpty(RulesetId) ? null : "/admin/rag-collections", disabled: string.IsNullOrEmpty(RulesetId))
         };
+
+        if (!string.IsNullOrEmpty(RulesetId))
+        {
+            _breadcrumbs.Add(new BreadcrumbItem(RulesetId, href: null, disabled: true));
+        }
 
         // Initialize filter from query parameter
         if (!string.IsNullOrEmpty(Category))
@@ -67,11 +105,6 @@ public partial class RagCollections
         {
             _isLoading = false;
         }
-    }
-
-    private void SetFilter(string filterType)
-    {
-        _filterType = filterType;
     }
 
     private static string GetQueryLink(string collectionType)

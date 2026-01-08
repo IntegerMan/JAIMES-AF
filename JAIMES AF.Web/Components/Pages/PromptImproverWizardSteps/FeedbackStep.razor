@@ -1,0 +1,26 @@
+@*
+    FeedbackStep.razor - Second step of the Prompt Improvement Wizard.
+    Allows user to provide specific improvement requests.
+*@
+
+<MudText Typo="Typo.body1" Class="mb-4">
+    Optionally provide your own specific requests or observations to guide the prompt improvement.
+</MudText>
+
+<MudTextField @bind-Value="UserFeedback"
+              @bind-Value:after="OnUserFeedbackChanged"
+              Label="Your Specific Requests (optional)"
+              Variant="Variant.Outlined"
+              Lines="8"
+              Placeholder="E.g., 'Make responses shorter', 'Be more formal', 'Add more humor'"
+              HelperText="Describe specific changes or improvements you'd like to see in the agent's behavior."/>
+
+@code {
+    [Parameter] public string UserFeedback { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> UserFeedbackChanged { get; set; }
+
+    private async Task OnUserFeedbackChanged()
+    {
+        await UserFeedbackChanged.InvokeAsync(UserFeedback);
+    }
+}

@@ -32,4 +32,20 @@ public interface IEvaluatorService
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The evaluator details, or null if not found.</returns>
     Task<EvaluatorItemDto?> GetEvaluatorByIdAsync(int id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets statistics for a specific evaluator with optional filtering.
+    /// </summary>
+    /// <param name="evaluatorId">The evaluator ID.</param>
+    /// <param name="agentId">Optional agent ID to filter by.</param>
+    /// <param name="instructionVersionId">Optional instruction version ID to filter by.</param>
+    /// <param name="gameId">Optional game ID to filter by.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Statistics for the evaluator, or null if not found.</returns>
+    Task<EvaluatorStatsResponse?> GetEvaluatorStatsAsync(
+        int evaluatorId,
+        string? agentId = null,
+        int? instructionVersionId = null,
+        Guid? gameId = null,
+        CancellationToken cancellationToken = default);
 }

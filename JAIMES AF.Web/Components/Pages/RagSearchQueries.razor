@@ -1,57 +1,89 @@
 @page "/admin/rag-collections/{IndexName}/queries"
 @using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Shared
 @rendermode InteractiveServer
 
 <PageTitle>@(_statistics?.CollectionDisplayName ?? "RAG Search Queries")</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+
+	<CompactHeroSection Title="@(_statistics?.CollectionDisplayName ?? "Search Queries")"
+	                    Icon="@Icons.Material.Filled.Search"
+	                    Theme="CompactHeroSection.HeroTheme.Info"
+	                    ItemCount="@_statistics?.TotalCount"
+	                    ItemName="query"
+	                    Subtitle="executed"
+	                    SubtitleNoItems="No queries yet" />
+
 	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
 		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
 	</MudStack>
-	<MudPaper Class="pa-8" Elevation="2">
-		<MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">
-			@(_statistics?.CollectionDisplayName ?? "RAG Search Queries")
-		</MudText>
-		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">
-			View search queries that returned results from this collection
-		</MudText>
 
-		@if (!string.IsNullOrEmpty(_errorMessage))
+	@if (_statistics != null)
+	{
+		<MudGrid Spacing="3" Class="mb-4">
+			<MudItem xs="12" sm="4">
+				<MetricCard Icon="@Icons.Material.Filled.Search"
+				            Value="@_statistics.TotalCount.ToString("N0")"
+				            Label="Total Queries"
+				            ColorVariant="MetricCard.MetricColorVariant.Info"
+				            Tooltip="Total search queries executed against this collection" />
+			</MudItem>
+			<MudItem xs="12" sm="4">
+				<MetricCard Icon="@Icons.Material.Filled.TrendingUp"
+				            Value="@GetAverageResultCount()"
+				            Label="Avg Results"
+				            ColorVariant="MetricCard.MetricColorVariant.Primary"
+				            Tooltip="Average number of results returned per query" />
+			</MudItem>
+			<MudItem xs="12" sm="4">
+				<MetricCard Icon="@Icons.Material.Filled.ThumbUp"
+				            Value="@GetHighRelevancyPercentage()"
+				            Label="High Relevancy"
+				            ColorVariant="MetricCard.MetricColorVariant.Success"
+				            Tooltip="Percentage of results with ≥80% relevancy" />
+			</MudItem>
+		</MudGrid>
+	}
+
+	@if (!string.IsNullOrEmpty(_errorMessage))
+	{
+		<MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+	}
+
+	@if (_isLoading)
+	{
+		<MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4"/>
+	}
+
+	@if (_statistics != null)
+	{
+		@if (!string.IsNullOrWhiteSpace(DocumentName))
 		{
-			<MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
-		}
-
-		@if (_isLoading)
-		{
-			<MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4"/>
-		}
-
-		@if (_statistics != null)
-		{
-			<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Spacing="4">
-				<MudText Typo="Typo.body1">
-					<MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" Class="me-1"/>
-					<strong>@_statistics.TotalCount</strong> total queries
-				</MudText>
-
-				@if (!string.IsNullOrWhiteSpace(DocumentName))
-				{
-					<MudChip T="string" Color="Color.Primary" OnClose="ClearDocumentFilter" Icon="@Icons.Material.Filled.FilterAlt">
-						Filtering by: @DocumentName
-					</MudChip>
-				}
+			<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+				<MudChip T="string" Color="Color.Primary" OnClose="ClearDocumentFilter" Icon="@Icons.Material.Filled.FilterAlt">
+					Filtering by: @DocumentName
+				</MudChip>
 			</MudStack>
+		}
 
-			@if (_statistics.Queries.Length == 0)
-			{
-				<MudAlert Severity="Severity.Info" Class="mb-4">
-					No search queries found for this collection. Queries will appear here after users search against these documents.
-				</MudAlert>
-			}
-			else
-			{
-				<MudDataGrid T="RagSearchQueryInfo" Items="@_statistics.Queries" Dense="true" Striped="true" Hover="true"
-				             RowsPerPage="@_statistics.PageSize">
+		@if (_statistics.Queries.Length == 0)
+		{
+			<div class="glass-card pa-6" style="text-align: center;">
+				<MudStack AlignItems="AlignItems.Center" Spacing="3">
+					<MudIcon Icon="@Icons.Material.Filled.Search" Color="Color.Info"
+					         Style="font-size: 4rem; opacity: 0.5;"/>
+					<MudText Typo="Typo.h6">No search queries yet</MudText>
+					<MudText Class="text-muted mb-4">
+						Queries will appear here after users search against these documents.
+					</MudText>
+				</MudStack>
+			</div>
+		}
+		else
+		{
+			<MudDataGrid T="RagSearchQueryInfo" Items="@_statistics.Queries" Dense="true" Striped="true" Hover="true"
+			             RowsPerPage="@_statistics.PageSize">
 					<Columns>
 						<TemplateColumn Title="Query">
 							<CellTemplate>
@@ -152,13 +184,12 @@
 					</ChildRowContent>
 				</MudDataGrid>
 
-				@if (_statistics.TotalCount > _statistics.PageSize)
-				{
-					<MudStack Row="true" Justify="Justify.Center" Class="mt-4">
-						<MudPagination Count="@TotalPages" Selected="@_currentPage" SelectedChanged="OnPageChanged" Color="Color.Primary"/>
-					</MudStack>
-				}
+			@if (_statistics.TotalCount > _statistics.PageSize)
+			{
+				<MudStack Row="true" Justify="Justify.Center" Class="mt-4">
+					<MudPagination Count="@TotalPages" Selected="@_currentPage" SelectedChanged="OnPageChanged" Color="Color.Primary"/>
+				</MudStack>
 			}
 		}
-	</MudPaper>
+	}
 </MudContainer>

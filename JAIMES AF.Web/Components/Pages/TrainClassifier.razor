@@ -1,6 +1,7 @@
 @page "/admin/classification-models/train"
 @using MattEland.Jaimes.ServiceDefinitions.Requests
 @using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Shared
 @rendermode InteractiveServer
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
@@ -9,15 +10,16 @@
 <PageTitle>Train Classifier</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="pa-4">
+	<CompactHeroSection Title="Train New Classifier"
+	                    Icon="@Icons.Material.Filled.ModelTraining"
+	                    Theme="CompactHeroSection.HeroTheme.Error"
+	                    Subtitle="Train a custom sentiment classifier using labeled user messages"/>
+	
+	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+	</MudStack>
+	
 	<MudPaper Class="pa-8" Elevation="2">
-		<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
-			<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
-		</MudStack>
-		<MudText Typo="Typo.h3" GutterBottom="true" Class="mb-2">Train New Classifier</MudText>
-		<MudText Typo="Typo.subtitle1" GutterBottom="true" Class="mb-6 text-muted">
-			Train a custom sentiment classifier using labeled user messages.
-		</MudText>
-
 		@if (_loading)
 		{
 			<MudProgressCircular Indeterminate="true" Class="mb-4"/>
@@ -159,26 +161,14 @@
 					</MudPaper>
 
 					@* Submit Button *@
-					<MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-4">
-						<MudButton Variant="Variant.Text" Color="Color.Default"
-						           OnClick="@(() => NavigationManager.NavigateTo("/admin/classification-models"))">
-							Cancel
-						</MudButton>
-						<MudButton Variant="Variant.Filled" Color="Color.Primary"
-						           StartIcon="@Icons.Material.Filled.PlayArrow"
-						           Disabled="@(_submitting || !CanStartTraining)"
-						           OnClick="StartTraining">
-							@if (_submitting)
-							{
-								<MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2"/>
-								<span>Starting...</span>
-							}
-							else
-							{
-								<span>Start Training</span>
-							}
-						</MudButton>
-					</MudStack>
+					<FormActionButtons PrimaryText="Start Training"
+					                   PrimaryColor="Color.Primary"
+					                   PrimaryIcon="@Icons.Material.Filled.PlayArrow"
+					                   OnPrimary="StartTraining"
+					                   PrimaryDisabled="@(!CanStartTraining)"
+					                   IsSaving="_submitting"
+					                   SavingText="Starting..."
+					                   CancelHref="/admin/classification-models" />
 				</MudStack>
 			</MudForm>
 

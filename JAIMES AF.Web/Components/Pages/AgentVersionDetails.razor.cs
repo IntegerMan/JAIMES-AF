@@ -116,7 +116,6 @@ public partial class AgentVersionDetails
     // Tab and insights tracking
     private int _activeTabIndex;
     private bool _isGeneratingInsights;
-    private MattEland.Jaimes.Web.Components.Agents.AgentMessagesList? _messagesGrid;
     private MattEland.Jaimes.Web.Components.Shared.FeedbackGrid? _feedbackGrid;
     private MattEland.Jaimes.Web.Components.Shared.ToolUsageGrid? _toolUsageGrid;
     private MattEland.Jaimes.Web.Components.Shared.MetricsGrid? _metricsGrid;
@@ -131,9 +130,7 @@ public partial class AgentVersionDetails
         {
             switch (_activeTabIndex)
             {
-                case 0: // Messages
-                    if (_messagesGrid != null)
-                        await _messagesGrid.GenerateInsightsAsync();
+                case 0: // Instructions - no insights
                     break;
                 case 1: // Feedback
                     if (_feedbackGrid != null)
@@ -211,7 +208,8 @@ public partial class AgentVersionDetails
             var fileName = $"{AgentId}-v{VersionId}-{DateTime.UtcNow:yyyyMMdd-HHmmss}.jsonl";
 
             // Use JavaScript Interop to trigger download
-            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/jsonl", Convert.ToBase64String(bytes));
+            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/jsonl",
+                Convert.ToBase64String(bytes));
         }
         catch (Exception ex)
         {

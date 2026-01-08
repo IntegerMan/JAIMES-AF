@@ -1,13 +1,51 @@
 @page "/admin/transcript-messages/{MessageId:int}"
 @using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Shared
 @rendermode InteractiveServer
 
 <PageTitle>Message Details</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+
+	<CompactHeroSection Title="@($"Message {_response?.MessageId}")"
+	                    Icon="@Icons.Material.Filled.Chat"
+	                    Theme="CompactHeroSection.HeroTheme.Info"
+	                    Subtitle="@(_response?.GameTitle ?? "Transcript message details")" />
+
 	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
 		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
 	</MudStack>
+
+	@if (_response != null)
+	{
+		<MudGrid Spacing="3" Class="mb-4">
+			<MudItem xs="12" sm="4">
+				<MetricCard Icon="@(_response.Role == "user" ? Icons.Material.Filled.Person : Icons.Material.Filled.SmartToy)"
+				            Value="@_response.Role"
+				            Label="Role"
+				            ColorVariant="@(_response.Role == "user"
+				                ? MetricCard.MetricColorVariant.Primary
+				                : MetricCard.MetricColorVariant.Secondary)"
+				            Tooltip="Message sender role" />
+			</MudItem>
+			<MudItem xs="12" sm="4">
+				<MetricCard Icon="@Icons.Material.Filled.Memory"
+				            Value="@(_response.HasEmbedding ? _response.EmbeddingDimensions.ToString() : "N/A")"
+				            Label="Dimensions"
+				            ColorVariant="@(_response.HasEmbedding
+				                ? MetricCard.MetricColorVariant.Success
+				                : MetricCard.MetricColorVariant.Warning)"
+				            Tooltip="@(_response.HasEmbedding ? "Embedding vector dimensions" : "Not yet embedded")" />
+			</MudItem>
+			<MudItem xs="12" sm="4">
+				<MetricCard Icon="@Icons.Material.Filled.Search"
+				            Value="@_response.QueryAppearances.Length.ToString()"
+				            Label="Query Hits"
+				            ColorVariant="MetricCard.MetricColorVariant.Info"
+				            Tooltip="Number of search queries that returned this message" />
+			</MudItem>
+		</MudGrid>
+	}
 
 	@if (!string.IsNullOrEmpty(_errorMessage))
 	{

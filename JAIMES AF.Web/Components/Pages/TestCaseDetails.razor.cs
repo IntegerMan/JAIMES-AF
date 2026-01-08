@@ -1,5 +1,6 @@
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.Web.Components.Dialogs;
+using MattEland.Jaimes.Web.Components.Shared;
 using MudBlazor;
 
 namespace MattEland.Jaimes.Web.Components.Pages;
@@ -220,5 +221,30 @@ public partial class TestCaseDetails
             return $"{metricName}: {score:F2}";
         }
         return $"{metricName}: {score:F2}\n\nReasoning: {remarks}";
+    }
+
+    private double? GetAverageScore()
+    {
+        if (_runs == null || _runs.Count == 0) return null;
+        var allMetrics = _runs.SelectMany(r => r.Metrics ?? []).ToList();
+        return allMetrics.Count > 0 ? allMetrics.Average(m => m.Score) : null;
+    }
+
+    private double? GetAverageDuration()
+    {
+        if (_runs == null || _runs.Count == 0) return null;
+        var durations = _runs.Where(r => r.DurationMs.HasValue).Select(r => r.DurationMs!.Value).ToList();
+        return durations.Count > 0 ? durations.Average() : null;
+    }
+
+    private static MetricCard.MetricColorVariant GetScoreColorVariant(double? score)
+    {
+        if (!score.HasValue) return MetricCard.MetricColorVariant.Info;
+        return score.Value switch
+        {
+            >= 0.8 => MetricCard.MetricColorVariant.Success,
+            >= 0.5 => MetricCard.MetricColorVariant.Warning,
+            _ => MetricCard.MetricColorVariant.Error
+        };
     }
 }

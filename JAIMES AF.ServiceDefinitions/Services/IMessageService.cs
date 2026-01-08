@@ -19,13 +19,13 @@ public interface IMessageService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Retrieves a list of non-scripted messages for a specific agent and optional version.
+    /// Retrieves a list of non-scripted messages with optional filtering by agent and version.
     /// </summary>
-    /// <param name="agentId">The ID of the agent.</param>
+    /// <param name="agentId">The optional ID of the agent.</param>
     /// <param name="versionId">The optional instruction version ID.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A list of MessageContextDto objects.</returns>
-    Task<IEnumerable<MessageContextDto>> GetMessagesByAgentAsync(string agentId,
+    Task<IEnumerable<MessageContextDto>> GetMessagesByAgentAsync(string? agentId,
         int? versionId,
         CancellationToken cancellationToken = default);
 

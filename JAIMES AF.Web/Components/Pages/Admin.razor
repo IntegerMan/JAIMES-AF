@@ -30,9 +30,15 @@
 	<MudGrid Spacing="3" Class="mb-3">
 		@* Left Column (66%) - Stacked Pipeline Panels *@
 		<MudItem xs="12" lg="8">
-			<MudText Typo="Typo.overline" Class="mb-2" Style="letter-spacing: 1.5px; color: #7B2CBF; font-weight: 600;">
-				PIPELINE STATUS
-			</MudText>
+			<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-2">
+				<MudText Typo="Typo.overline" Style="letter-spacing: 1.5px; color: #7B2CBF; font-weight: 600;">
+					PIPELINE STATUS
+				</MudText>
+				<MudButton Variant="Variant.Text" Color="Color.Info" Size="Size.Small" 
+				           Href="/admin/monitoring" EndIcon="@Icons.Material.Filled.OpenInNew">
+					View All
+				</MudButton>
+			</MudStack>
 			
 			@* Document Processing Pipeline *@
 			<PipelineStatusPanel Class="mb-2" />
@@ -84,9 +90,9 @@
 					</MudItem>
 					<MudItem xs="6">
 						<MudLink Href="/players" Class="stat-card-link">
-							<div class="stat-card stat-card-tertiary">
+							<div class="stat-card stat-card-info">
 								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-									<MudIcon Icon="@Icons.Material.Filled.Person" Color="Color.Tertiary" Size="Size.Small" />
+									<MudIcon Icon="@Icons.Material.Filled.Person" Color="Color.Info" Size="Size.Small" />
 									<MudStack Spacing="0">
 										<span class="stat-value-sm">@_playersCount</span>
 										<MudText Typo="Typo.caption" Class="text-muted">Characters</MudText>
@@ -122,7 +128,7 @@
 						</MudLink>
 					</MudItem>
 					<MudItem xs="6">
-						<MudLink Href="/admin/rag-collections?category=transcripts" Class="stat-card-link">
+						<MudLink Href="/admin/messages" Class="stat-card-link">
 							<div class="stat-card stat-card-tertiary">
 								<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
 									<MudIcon Icon="@Icons.Material.Filled.Forum" Color="Color.Tertiary" Size="Size.Small" />
@@ -253,6 +259,7 @@
 				<CompactLinkCard Icon="@Icons.Material.Filled.SmartToy" IconColor="Color.Secondary" Title="Agents" Href="/agents" />
 				<CompactLinkCard Icon="@Icons.Material.Filled.Psychology" IconColor="Color.Error" Title="ML Models" Href="/admin/classification-models" />
 				<CompactLinkCard Icon="@Icons.Material.Filled.Inventory2" IconColor="Color.Info" Title="Sources / Transcripts" Href="/admin/rag-collections" />
+				<CompactLinkCard Icon="@Icons.Material.Filled.Monitor" IconColor="Color.Info" Title="Monitoring" Href="/admin/monitoring" />
 			</MudStack>
 		</MudItem>
 

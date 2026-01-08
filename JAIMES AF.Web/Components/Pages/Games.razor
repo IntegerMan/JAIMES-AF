@@ -6,17 +6,21 @@
 
 <PageTitle>Games</PageTitle>
 
-<MudPaper Class="pa-4">
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
+
+	<CompactHeroSection Title="Your Adventures"
+	                    Icon="@Icons.Material.Filled.SportsEsports"
+	                    Theme="CompactHeroSection.HeroTheme.Primary"
+	                    ItemCount="@_games?.Length"
+	                    ItemName="game"
+	                    Subtitle="in progress"
+	                    SubtitleNoItems="Start a new adventure"
+	                    ActionText="New Game"
+	                    ActionHref="/games/new"/>
+
 	<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
 		<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
 	</MudStack>
-	<MudText Typo="Typo.h4">Games</MudText>
-
-	<MudText Class="mb-4">This page lists your current in-progress games and allows you to start a new game.</MudText>
-
-	<MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/games/new" Class="mb-4">
-		New Game
-	</MudButton>
 
 	<div style="position: relative; min-height: 200px;">
 		@if (_isLoading)
@@ -28,60 +32,73 @@
 
 		@if (!_isLoading && !string.IsNullOrEmpty(_errorMessage))
 		{
-			<MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
+			<MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
 		}
 
 		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && (_games is null || _games.Length == 0))
 		{
-			<MudText Class="mb-4">
-				No games yet.
-				<MudLink Href="/games/new">Create a new game</MudLink>
-			</MudText>
+			<div class="glass-card pa-6" style="text-align: center;">
+				<MudStack AlignItems="AlignItems.Center" Spacing="3">
+					<MudIcon Icon="@Icons.Material.Filled.SportsEsports" Color="Color.Primary"
+					         Style="font-size: 4rem; opacity: 0.5;"/>
+					<MudText Typo="Typo.h6">No games yet</MudText>
+					<MudText Class="text-muted mb-4">Create your first adventure to get started!</MudText>
+					<MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+					           Href="/games/new" StartIcon="@Icons.Material.Filled.PlayArrow">
+						Start Your Adventure
+					</MudButton>
+				</MudStack>
+			</div>
 		}
 
 		@if (!_isLoading && string.IsNullOrEmpty(_errorMessage) && _games is not null && _games.Length > 0)
 		{
-			<MudTable Items="_games" Dense="true" Hover="true">
-				<HeaderContent>
-					<MudTh></MudTh>
-					<MudTh>Title</MudTh>
-					<MudTh>Agent</MudTh>
-					<MudTh>Created</MudTh>
-					<MudTh>Last Played</MudTh>
-					<MudTh align="Align.Right">Actions</MudTh>
-				</HeaderContent>
-				<RowTemplate>
-					<MudTd>
-						<MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-						           Href="@($"/games/{context.GameId}")">
-							Load
-						</MudButton>
-					</MudTd>
-					<MudTd>
-						<MudLink Href="@($"/games/{context.GameId}")">@context.Title</MudLink>
-					</MudTd>
-					<MudTd>
-						@if (!string.IsNullOrEmpty(context.AgentId))
-						{
-							<MattEland.Jaimes.Web.Components.Shared.AgentVersionDisplay 
-							AgentId="@context.AgentId" 
-							AgentName="@(context.AgentName ?? "Unknown")" 
-							VersionId="@context.InstructionVersionId"
-							VersionNumber="@context.VersionNumber" />
-						}
-						else
-						{
-							<MudText Typo="Typo.body2" Class="text-muted">None</MudText>
-						}
-					</MudTd>
-					<MudTd>@ToLocalTime(context.CreatedAt).ToString("g")</MudTd>
-					<MudTd>@(context.LastPlayedAt.HasValue ? ToLocalTime(context.LastPlayedAt.Value).ToString("g") : "Never")</MudTd>
-					<MudTd align="Align.Right">
-						<MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
-						               OnClick="@(() => DeleteGameAsync(context.GameId))"/>
-					</MudTd>
-				</RowTemplate>
-			</MudTable>
+			<MudPaper Elevation="0" Class="pa-0" Style="background: transparent;">
+				<MudTable Items="_games" Dense="true" Hover="true">
+					<HeaderContent>
+						<MudTh>Title</MudTh>
+						<MudTh>Agent</MudTh>
+						<MudTh>Created</MudTh>
+						<MudTh>Last Played</MudTh>
+						<MudTh Style="text-align: right;">Actions</MudTh>
+					</HeaderContent>
+					<RowTemplate>
+						<MudTd>
+							<MudLink Href="@($"/games/{context.GameId}")">@context.Title</MudLink>
+						</MudTd>
+						<MudTd>
+							@if (!string.IsNullOrEmpty(context.AgentId))
+							{
+								<MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Style="display: inline-flex;">
+									<MattEland.Jaimes.Web.Components.Shared.AgentLink
+										AgentId="@context.AgentId"
+										AgentName="@(context.AgentName ?? "Unknown")"/>
+									<MattEland.Jaimes.Web.Components.Shared.AgentVersionLink
+										AgentId="@context.AgentId"
+										VersionId="@context.InstructionVersionId"
+										VersionNumber="@context.VersionNumber"/>
+								</MudStack>
+							}
+							else
+							{
+								<MudText Typo="Typo.body2" Class="text-muted">None</MudText>
+							}
+						</MudTd>
+						<MudTd>@ToLocalTime(context.CreatedAt).ToString("g")</MudTd>
+						<MudTd>@(context.LastPlayedAt.HasValue ? ToLocalTime(context.LastPlayedAt.Value).ToString("g") : "Never")</MudTd>
+						<MudTd Style="text-align: right;">
+							<MudTooltip Text="Play Game" Placement="Placement.Top">
+								<MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Color="Color.Primary" Size="Size.Small"
+								               Href="@($"/games/{context.GameId}")"/>
+							</MudTooltip>
+							<MudTooltip Text="Delete Game" Placement="Placement.Top">
+								<MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+								               OnClick="@(() => DeleteGameAsync(context.GameId))"/>
+							</MudTooltip>
+						</MudTd>
+					</RowTemplate>
+				</MudTable>
+			</MudPaper>
 		}
 	</div>
-</MudPaper>
+</MudContainer>

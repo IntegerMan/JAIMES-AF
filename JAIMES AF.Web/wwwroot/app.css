@@ -10,13 +10,13 @@
 
     /* Secondary Colors */
     --color-secondary: #4361EE;
-    --color-tertiary: #4CC9F0;
+    --color-tertiary: #FF9800;
     --color-accent: #06D6A0;
 
     /* Semantic Colors */
     --color-games: #7B2CBF;
     --color-scenarios: #4361EE;
-    --color-characters: #4CC9F0;
+    --color-characters: #FF9800;
     --color-rulesets: #06D6A0;
     --color-admin: #2B2D42;
 
@@ -611,13 +611,33 @@ h1:focus {
 }
 
 .icon-badge-tertiary {
-    background: linear-gradient(135deg, var(--color-tertiary) 0%, #70D6F4 100%);
-    box-shadow: 0 4px 12px rgba(76, 201, 240, 0.3);
+    background: linear-gradient(135deg, var(--color-tertiary) 0%, #FFB74D 100%);
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
 }
 
 .icon-badge-accent {
     background: linear-gradient(135deg, var(--color-accent) 0%, #2FE6B5 100%);
     box-shadow: 0 4px 12px rgba(6, 214, 160, 0.3);
+}
+
+.icon-badge-success {
+    background: linear-gradient(135deg, var(--color-accent) 0%, #2FE6B5 100%);
+    box-shadow: 0 4px 12px rgba(6, 214, 160, 0.3);
+}
+
+.icon-badge-info {
+    background: linear-gradient(135deg, #4CC9F0 0%, #70D6F4 100%);
+    box-shadow: 0 4px 12px rgba(76, 201, 240, 0.3);
+}
+
+.icon-badge-error {
+    background: linear-gradient(135deg, #EF476F 0%, #F76D8B 100%);
+    box-shadow: 0 4px 12px rgba(239, 71, 111, 0.3);
+}
+
+.icon-badge-warning {
+    background: linear-gradient(135deg, #FF9800 0%, #FFB74D 100%);
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
 }
 
 .glass-card:hover .icon-badge {
@@ -1167,4 +1187,78 @@ h1:focus {
     background: linear-gradient(to right, rgba(76, 201, 240, 0.1), transparent);
     color: #4CC9F0;
     border-left-color: #4CC9F0;
+}
+
+/* ======================================
+   COMPARISON MATRIX COMPONENT STYLES
+   ====================================== */
+
+.comparison-matrix {
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: auto;
+    width: auto !important;
+    border: 1px solid var(--mud-palette-divider) !important;
+    background-color: var(--mud-palette-surface);
+}
+
+.comparison-matrix-sticky-column {
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    background-color: var(--mud-palette-surface) !important;
+    border-right: 2px solid var(--mud-palette-divider) !important;
+    min-width: 200px;
+    max-width: 400px;
+    white-space: normal;
+    overflow-wrap: break-word;
+    padding: 8px 16px !important;
+}
+
+th.comparison-matrix-sticky-column {
+    background-color: var(--mud-palette-background-grey) !important;
+    font-weight: bold;
+    z-index: 6;
+}
+
+.comparison-matrix-cell {
+    text-align: center;
+    width: 120px;
+    min-width: 100px;
+    border-right: 1px solid var(--mud-palette-divider) !important;
+    padding: 8px 12px !important;
+}
+
+.comparison-matrix-header-text {
+    font-size: 0.8rem;
+    line-height: 1.1;
+    display: block;
+    max-width: 100px;
+    margin: 0 auto;
+}
+
+.comparison-matrix-avg-cell {
+    font-weight: bold;
+    text-align: center;
+    width: 80px;
+    min-width: 80px;
+    border-right: 1px solid var(--mud-palette-divider) !important;
+    padding: 8px 12px !important;
+    background-color: var(--mud-palette-background-grey) !important;
+}
+
+.comparison-matrix-time-cell {
+    text-align: right;
+    width: 100px;
+    min-width: 100px;
+    padding: 8px 16px !important;
+}
+
+.comparison-matrix .mud-table-cell {
+    border-bottom: 1px solid var(--mud-palette-divider) !important;
+}
+
+/* Compact chips in comparison matrix */
+.comparison-matrix .mud-chip {
+    margin: 0 !important;
 }

@@ -6,15 +6,23 @@ public partial class Games
     private bool _isLoading = true;
     private string? _errorMessage;
 
+    [Parameter, SupplyParameterFromQuery] public string? AgentId { get; set; }
+
     private List<BreadcrumbItem> _breadcrumbs = new();
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
         _breadcrumbs = new List<BreadcrumbItem>
         {
             new BreadcrumbItem("Home", href: "/"),
             new BreadcrumbItem("Games", href: null, disabled: true)
         };
+
+        if (!string.IsNullOrEmpty(AgentId))
+        {
+            _breadcrumbs.Add(new BreadcrumbItem($"Agent: {AgentId}", href: null, disabled: true));
+        }
+
         await LoadGamesAsync();
     }
 
@@ -24,7 +32,13 @@ public partial class Games
         _errorMessage = null;
         try
         {
-            ListGamesResponse? resp = await Http.GetFromJsonAsync<ListGamesResponse>("/games");
+            string url = "/games";
+            if (!string.IsNullOrEmpty(AgentId))
+            {
+                url += $"?agentId={AgentId}";
+            }
+
+            ListGamesResponse? resp = await Http.GetFromJsonAsync<ListGamesResponse>(url);
             _games = resp?.Games ?? [];
         }
         catch (Exception ex)

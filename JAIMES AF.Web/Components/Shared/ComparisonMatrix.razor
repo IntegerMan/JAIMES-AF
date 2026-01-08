@@ -1,0 +1,246 @@
+@*
+    ComparisonMatrix.razor - Reusable matrix/table component for comparing metrics across dimensions.
+    Features sticky row labels, color-coded cells, and optional average column.
+    
+    Usage:
+    <ComparisonMatrix TRow="TestCaseRun" TColumn="string"
+                      Rows="@_runs"
+                      Columns="@_metricNames"
+                      RowLabel="@(r => r.TestCaseName)"
+                      ColumnHeader="@(c => c)"
+                      CellValue="@((r, c) => GetMetricScore(r, c))"
+                      CellColor="@((r, c) => GetMetricColor(r, c))"
+                      ShowAverageColumn="true"
+                      AverageValue="@(r => r.Metrics?.Average(m => m.Score))" />
+*@
+
+@typeparam TRow
+@typeparam TColumn
+
+<div style="overflow-x: auto;">
+    <MudSimpleTable Bordered="true" Striped="true" Hover="true" Dense="true" Class="comparison-matrix">
+        <thead>
+            <tr>
+                <MudTh Class="comparison-matrix-sticky-column">@RowHeaderLabel</MudTh>
+                @if (RowIndicator is not null)
+                {
+                    <MudTh Class="comparison-matrix-cell" Style="text-align: center;">@RowIndicatorHeader</MudTh>
+                }
+                @if (ShowAverageColumn)
+                {
+                    <MudTh Class="comparison-matrix-avg-cell">Avg</MudTh>
+                }
+                @foreach (var column in Columns)
+                {
+                    <MudTh Class="comparison-matrix-cell">
+                        <MudTooltip Text="@ColumnHeader(column)" Placement="Placement.Top">
+                            <span class="comparison-matrix-header-text">@GetShortHeader(ColumnHeader(column))</span>
+                        </MudTooltip>
+                    </MudTh>
+                }
+                @if (ShowTimeColumn && TimeValue is not null)
+                {
+                    <MudTh Class="comparison-matrix-time-cell">Time</MudTh>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in Rows)
+            {
+                <tr>
+                    <MudTd Class="comparison-matrix-sticky-column">
+                        @if (RowLabelContent is not null)
+                        {
+                            @RowLabelContent(row)
+                        }
+                        else if (RowLabelHref is not null)
+                        {
+                            <MudLink Href="@RowLabelHref(row)">@RowLabel(row)</MudLink>
+                        }
+                        else
+                        {
+                            @RowLabel(row)
+                        }
+                    </MudTd>
+                    @if (RowIndicator is not null)
+                    {
+                        <MudTd Class="comparison-matrix-cell" Style="text-align: center; padding: 4px;">
+                            @RowIndicator(row)
+                        </MudTd>
+                    }
+                    @if (ShowAverageColumn && AverageValue is not null)
+                    {
+                        var avgScore = AverageValue(row);
+                        var avgStyle = CellStyle?.Invoke(row, default!, avgScore);
+                        <MudTd Class="comparison-matrix-avg-cell" Style="@avgStyle">
+                            @if (avgScore.HasValue)
+                            {
+                                <MudText Typo="Typo.body2" Style="font-weight: 600; text-align: center;">
+                                    @avgScore.Value.ToString("F1")
+                                </MudText>
+                            }
+                            else
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                        </MudTd>
+                    }
+                    @foreach (var column in Columns)
+                    {
+                        var cellVal = CellValue(row, column);
+                        var tooltip = CellTooltip?.Invoke(row, column);
+                        var cellStyle = CellStyle?.Invoke(row, column, cellVal);
+                        <MudTd Class="comparison-matrix-cell" Style="@cellStyle">
+                            @if (cellVal.HasValue)
+                            {
+                                @if (!string.IsNullOrEmpty(tooltip))
+                                {
+                                    <MudTooltip Text="@tooltip" Placement="Placement.Top">
+                                        <MudText Typo="Typo.body2" Style="font-weight: 500; text-align: center; cursor: help;">
+                                            @cellVal.Value.ToString("F1")
+                                        </MudText>
+                                    </MudTooltip>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2" Style="font-weight: 500; text-align: center;">
+                                        @cellVal.Value.ToString("F1")
+                                    </MudText>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                        </MudTd>
+                    }
+                    @if (ShowTimeColumn && TimeValue is not null)
+                    {
+                        var time = TimeValue(row);
+                        <MudTd Class="comparison-matrix-time-cell">
+                            <MudText Typo="Typo.caption" Class="text-muted">@(time?.ToString("N0") ?? "-") ms</MudText>
+                        </MudTd>
+                    }
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+</div>
+
+@code {
+    /// <summary>
+    /// The data rows to display.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public IEnumerable<TRow> Rows { get; set; } = [];
+
+    /// <summary>
+    /// The columns to display (e.g., metric names).
+    /// </summary>
+    [Parameter, EditorRequired]
+    public IEnumerable<TColumn> Columns { get; set; } = [];
+
+    /// <summary>
+    /// Function to get the label for each row.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Func<TRow, string> RowLabel { get; set; } = _ => "";
+
+    /// <summary>
+    /// Optional function to get the href for each row label (makes it a link).
+    /// </summary>
+    [Parameter]
+    public Func<TRow, string>? RowLabelHref { get; set; }
+
+    /// <summary>
+    /// Optional custom render fragment for row labels.
+    /// </summary>
+    [Parameter]
+    public RenderFragment<TRow>? RowLabelContent { get; set; }
+
+    /// <summary>
+    /// Optional render fragment for row indicator (e.g., pie chart) displayed as its own column.
+    /// </summary>
+    [Parameter]
+    public RenderFragment<TRow>? RowIndicator { get; set; }
+
+    /// <summary>
+    /// Header label for the RowIndicator column.
+    /// </summary>
+    [Parameter]
+    public string RowIndicatorHeader { get; set; } = "";
+
+    /// <summary>
+    /// Function to get the header text for each column.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Func<TColumn, string> ColumnHeader { get; set; } = c => c?.ToString() ?? "";
+
+    /// <summary>
+    /// Function to get the cell value (score) for a row/column combination.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Func<TRow, TColumn, double?> CellValue { get; set; } = (_, _) => null;
+
+    /// <summary>
+    /// Optional function to get the cell color. If not provided, uses score-based coloring.
+    /// </summary>
+    [Parameter]
+    public Func<TRow, TColumn, Color>? CellColor { get; set; }
+
+    /// <summary>
+    /// Optional function to get tooltip text for a cell.
+    /// </summary>
+    [Parameter]
+    public Func<TRow, TColumn, string?>? CellTooltip { get; set; }
+
+    /// <summary>
+    /// Optional function to get inline CSS style for a cell (e.g., for heatmap backgrounds).
+    /// Parameters are: row, column, cellValue.
+    /// </summary>
+    [Parameter]
+    public Func<TRow, TColumn, double?, string?>? CellStyle { get; set; }
+
+    /// <summary>
+    /// Whether to show an average column after the row label.
+    /// </summary>
+    [Parameter]
+    public bool ShowAverageColumn { get; set; } = true;
+
+    /// <summary>
+    /// Function to calculate the average for a row. Required if ShowAverageColumn is true.
+    /// </summary>
+    [Parameter]
+    public Func<TRow, double?>? AverageValue { get; set; }
+
+    /// <summary>
+    /// Whether to show a time/duration column at the end.
+    /// </summary>
+    [Parameter]
+    public bool ShowTimeColumn { get; set; }
+
+    /// <summary>
+    /// Function to get the time value for a row. Required if ShowTimeColumn is true.
+    /// </summary>
+    [Parameter]
+    public Func<TRow, double?>? TimeValue { get; set; }
+
+    /// <summary>
+    /// Label for the row header column.
+    /// </summary>
+    [Parameter]
+    public string RowHeaderLabel { get; set; } = "Item";
+
+    private static Color GetScoreColor(double score) => score switch
+    {
+        >= 0.8 => Color.Success,
+        >= 0.5 => Color.Warning,
+        _ => Color.Error
+    };
+
+    private static string GetShortHeader(string header)
+    {
+        // Truncate long headers for display, full text in tooltip
+        return header.Length > 12 ? header[..10] + "…" : header;
+    }
+}

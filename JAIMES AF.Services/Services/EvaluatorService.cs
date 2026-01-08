@@ -30,6 +30,7 @@ public class EvaluatorService(IDbContextFactory<JaimesDbContext> contextFactory)
         // Build query for metrics with optional filters
         IQueryable<Repositories.Entities.MessageEvaluationMetric> metricsQuery = context.MessageEvaluationMetrics
             .AsNoTracking()
+            .Where(m => !m.Message!.IsScriptedMessage)
             .Include(m => m.Message)
             .ThenInclude(msg => msg!.InstructionVersion);
 
@@ -129,7 +130,7 @@ public class EvaluatorService(IDbContextFactory<JaimesDbContext> contextFactory)
         // Fetch statistics for this evaluator
         var stats = await context.MessageEvaluationMetrics
             .AsNoTracking()
-            .Where(m => m.EvaluatorId == id)
+            .Where(m => m.EvaluatorId == id && !m.Message!.IsScriptedMessage)
             .GroupBy(m => m.EvaluatorId)
             .Select(g => new
             {
@@ -150,6 +151,100 @@ public class EvaluatorService(IDbContextFactory<JaimesDbContext> contextFactory)
             AverageScore = stats?.AverageScore,
             PassCount = stats?.PassCount ?? 0,
             FailCount = stats?.FailCount ?? 0
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task<EvaluatorStatsResponse?> GetEvaluatorStatsAsync(
+        int evaluatorId,
+        string? agentId = null,
+        int? instructionVersionId = null,
+        Guid? gameId = null,
+        CancellationToken cancellationToken = default)
+    {
+        await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
+
+        var evaluator = await context.Evaluators
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == evaluatorId, cancellationToken);
+
+        if (evaluator == null) return null;
+
+        // Build query for metrics with filters
+        IQueryable<Repositories.Entities.MessageEvaluationMetric> metricsQuery = context.MessageEvaluationMetrics
+            .AsNoTracking()
+            .Where(m => m.EvaluatorId == evaluatorId && !m.Message!.IsScriptedMessage)
+            .Include(m => m.Message)
+            .ThenInclude(msg => msg!.InstructionVersion);
+
+        // Apply optional filters
+        if (instructionVersionId.HasValue)
+        {
+            metricsQuery = metricsQuery.Where(m =>
+                m.Message != null && m.Message.InstructionVersionId == instructionVersionId.Value);
+        }
+        else if (!string.IsNullOrEmpty(agentId))
+        {
+            metricsQuery = metricsQuery.Where(m =>
+                m.Message != null &&
+                m.Message.InstructionVersion != null &&
+                m.Message.InstructionVersion.AgentId == agentId);
+        }
+
+        if (gameId.HasValue)
+        {
+            metricsQuery = metricsQuery.Where(m => m.Message != null && m.Message.GameId == gameId.Value);
+        }
+
+        // Fetch all scores to compute statistics and distribution
+        var scores = await metricsQuery
+            .Select(m => m.Score)
+            .ToListAsync(cancellationToken);
+
+        if (scores.Count == 0)
+        {
+            return new EvaluatorStatsResponse
+            {
+                EvaluatorId = evaluator.Id,
+                Name = evaluator.Name,
+                Description = evaluator.Description,
+                CreatedAt = evaluator.CreatedAt,
+                TotalCount = 0,
+                AverageScore = null,
+                PassCount = 0,
+                FailCount = 0,
+                ScoreDistribution = new ScoreDistribution()
+            };
+        }
+
+        // Compute statistics
+        int totalCount = scores.Count;
+        double averageScore = scores.Average();
+        int passCount = scores.Count(s => s >= 3);
+        int failCount = scores.Count(s => s < 3);
+
+        // Compute score distribution (buckets: 1 = [0,2), 2 = [2,3), 3 = [3,4), 4 = [4,5), 5 = [5,∞))
+        // Note: Score1 captures all scores < 2 to ensure distribution sums to totalCount
+        var distribution = new ScoreDistribution
+        {
+            Score1 = scores.Count(s => s < 2),
+            Score2 = scores.Count(s => s >= 2 && s < 3),
+            Score3 = scores.Count(s => s >= 3 && s < 4),
+            Score4 = scores.Count(s => s >= 4 && s < 5),
+            Score5 = scores.Count(s => s >= 5)
+        };
+
+        return new EvaluatorStatsResponse
+        {
+            EvaluatorId = evaluator.Id,
+            Name = evaluator.Name,
+            Description = evaluator.Description,
+            CreatedAt = evaluator.CreatedAt,
+            TotalCount = totalCount,
+            AverageScore = averageScore,
+            PassCount = passCount,
+            FailCount = failCount,
+            ScoreDistribution = distribution
         };
     }
 }

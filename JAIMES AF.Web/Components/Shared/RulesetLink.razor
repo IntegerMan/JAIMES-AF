@@ -1,0 +1,50 @@
+@*
+RulesetLink.razor - Reusable component for displaying ruleset name with link to ruleset edit page.
+Displays as a chip with a book icon for consistent styling throughout the UI.
+*@
+
+<MudTooltip Text="@TooltipText" Placement="Placement.Top">
+    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text"
+        Icon="@Icons.Material.Filled.AutoStories" Href="@RulesetHref" Disabled="@(!HasRulesetId)" Label="true">
+        @DisplayName
+    </MudChip>
+</MudTooltip>
+
+@code {
+    /// <summary>
+    /// The ruleset's unique identifier.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string? RulesetId { get; set; }
+
+    /// <summary>
+    /// Display name for the ruleset.
+    /// </summary>
+    [Parameter]
+    public string? RulesetName { get; set; }
+
+    /// <summary>
+    /// Description for the ruleset (shown in tooltip).
+    /// </summary>
+    [Parameter]
+    public string? RulesetDescription { get; set; }
+
+    private bool HasRulesetId => !string.IsNullOrWhiteSpace(RulesetId);
+
+    private string? RulesetHref => HasRulesetId ? $"/rulesets/{RulesetId}/edit" : null;
+
+    private string DisplayName => RulesetId ?? "Unknown";
+
+    private string TooltipText
+    {
+        get
+        {
+            string name = string.IsNullOrWhiteSpace(RulesetName) ? RulesetId ?? "Unknown" : RulesetName;
+            if (!string.IsNullOrWhiteSpace(RulesetDescription))
+            {
+                return $"{name}: {RulesetDescription}";
+            }
+            return name;
+        }
+    }
+}

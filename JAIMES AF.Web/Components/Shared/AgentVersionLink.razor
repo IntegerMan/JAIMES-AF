@@ -1,17 +1,39 @@
 @* 
     AgentVersionLink.razor - Reusable component for displaying version number with link to version details.
-    Displays as a chip with an update icon for consistent styling throughout the Admin UI.
+    When VersionId is null, displays a "Latest" chip indicating the game uses the latest active version.
+    Displays as a chip with appropriate icon for consistent styling throughout the Admin UI.
 *@
 
-<MudChip T="string"
-         Size="Size.Small"
-         Color="Color.Info"
-         Variant="Variant.Text"
-         Icon="@Icons.Material.Filled.Update"
-         Href="@($"/agents/{AgentId}/versions/{VersionId}")"
-         Label="true">
-    @VersionNumber
-</MudChip>
+@if (VersionId.HasValue)
+{
+    string displayValue = !string.IsNullOrEmpty(VersionNumber) ? VersionNumber : $"v{VersionId.Value}";
+    
+    <MudTooltip Text="View Version Details" Placement="Placement.Top">
+        <MudChip T="string"
+                 Size="Size.Small"
+                 Color="Color.Info"
+                 Variant="Variant.Text"
+                 Icon="@Icons.Material.Filled.Update"
+                 Href="@($"/agents/{AgentId}/versions/{VersionId}")"
+                 Label="true">
+            @displayValue
+        </MudChip>
+    </MudTooltip>
+}
+else
+{
+    <MudTooltip Text="Always use the latest active version" Placement="Placement.Top">
+        <MudChip T="string"
+                 Size="Size.Small"
+                 Color="Color.Primary"
+                 Variant="Variant.Filled"
+                 Icon="@Icons.Material.Filled.NewReleases"
+                 Href="@($"/agents/{AgentId}")"
+                 Label="true">
+            Latest
+        </MudChip>
+    </MudTooltip>
+}
 
 @code {
     /// <summary>
@@ -21,14 +43,14 @@
     public string AgentId { get; set; } = string.Empty;
 
     /// <summary>
-    /// The instruction version ID.
+    /// The instruction version ID. If null, displays "Latest" chip.
     /// </summary>
-    [Parameter, EditorRequired]
-    public int VersionId { get; set; }
+    [Parameter]
+    public int? VersionId { get; set; }
 
     /// <summary>
-    /// Display version number (e.g., "v1.0", "v2.3").
+    /// Display version number (e.g., "v1.0", "v2.3"). If null/empty and VersionId is null, displays "Latest".
     /// </summary>
-    [Parameter, EditorRequired]
-    public string VersionNumber { get; set; } = string.Empty;
+    [Parameter]
+    public string? VersionNumber { get; set; }
 }

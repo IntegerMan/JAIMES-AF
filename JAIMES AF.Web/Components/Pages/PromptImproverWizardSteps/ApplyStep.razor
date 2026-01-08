@@ -1,0 +1,78 @@
+@*
+    ApplyStep.razor - Fourth step of the Prompt Improvement Wizard.
+    Shows the improved prompt with edit, copy, apply, and regenerate options.
+*@
+
+<MudText Typo="Typo.body1" Class="mb-3">
+    Review and edit the improved prompt below, then apply it to open the edit page.
+</MudText>
+
+<MudGrid Spacing="3" Class="mb-4">
+    @* Original Prompt (Before) *@
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4" Elevation="2" Style="height: 100%; border: 2px solid var(--mud-palette-lines-default);">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-2">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" Color="Color.Default"/>
+                    <MudText Typo="Typo.subtitle2">Original Prompt</MudText>
+                </MudStack>
+            </MudStack>
+            <MudText Typo="Typo.body2" Style="white-space: pre-wrap; max-height: 300px; overflow-y: auto;">
+                @CurrentPrompt
+            </MudText>
+        </MudPaper>
+    </MudItem>
+    
+    @* Improved Prompt (After) *@
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4" Elevation="2" Style="height: 100%; border: 2px solid var(--mud-palette-success);">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-2">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Small" Color="Color.Success"/>
+                    <MudText Typo="Typo.subtitle2">Improved Prompt</MudText>
+                </MudStack>
+                <MudTooltip Text="Copy to clipboard" Placement="Placement.Top">
+                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" 
+                                   Size="Size.Small" 
+                                   OnClick="OnCopyToClipboard"/>
+                </MudTooltip>
+            </MudStack>
+            <MudTextField @bind-Value="ImprovedPrompt"
+                          @bind-Value:after="OnImprovedPromptChanged"
+                          Variant="Variant.Outlined"
+                          Lines="12"
+                          FullWidth="true"/>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<MudStack Row="true" Spacing="2">
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               Size="Size.Large"
+               StartIcon="@Icons.Material.Filled.Check"
+               OnClick="OnApply">
+        Apply
+    </MudButton>
+    <MudButton Variant="Variant.Outlined"
+               Color="Color.Secondary"
+               StartIcon="@Icons.Material.Filled.Refresh"
+               OnClick="OnRegenerate">
+        Regenerate
+    </MudButton>
+</MudStack>
+
+@code {
+    [Parameter] public string CurrentPrompt { get; set; } = string.Empty;
+    [Parameter] public string ImprovedPrompt { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ImprovedPromptChanged { get; set; }
+    
+    [Parameter] public EventCallback OnCopyToClipboard { get; set; }
+    [Parameter] public EventCallback OnApply { get; set; }
+    [Parameter] public EventCallback OnRegenerate { get; set; }
+
+    private async Task OnImprovedPromptChanged()
+    {
+        await ImprovedPromptChanged.InvokeAsync(ImprovedPrompt);
+    }
+}

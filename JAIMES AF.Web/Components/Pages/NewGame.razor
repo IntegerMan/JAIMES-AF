@@ -4,11 +4,15 @@
 <PageTitle>Create New Game</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
-	<MudPaper Class="pa-4">
-		<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+	<FormPageHeader Title="Create New Game"
+	                Icon="@Icons.Material.Filled.SportsEsports"
+	                Theme="FormPageHeader.HeroTheme.Primary"
+	                Subtitle="Start a new game session" />
+
+	<MudPaper Class="pa-6" Elevation="2">
+		<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
 			<MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
 		</MudStack>
-		<MudText Typo="Typo.h4" Class="mb-4">Create New Game</MudText>
 
 		@if (_isLoading)
 		{
@@ -56,21 +60,14 @@
 					}
 				</MudSelect>
 
-				<MudButton Variant="Variant.Filled"
-				           Color="Color.Primary"
-				           OnClick="CreateGameAsync"
-				           Disabled="_isCreating || string.IsNullOrEmpty(_selectedScenarioId) || string.IsNullOrEmpty(_selectedPlayerId)"
-				           Class="mt-2">
-					@if (_isCreating)
-					{
-						<MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
-						<span class="ms-2">Creating...</span>
-					}
-					else
-					{
-						<span>Create Game</span>
-					}
-				</MudButton>
+				<FormActionButtons PrimaryText="Create Game"
+				                   PrimaryColor="Color.Primary"
+				                   PrimaryIcon="@Icons.Material.Filled.Add"
+				                   OnPrimary="CreateGameAsync"
+				                   PrimaryDisabled="@(string.IsNullOrEmpty(_selectedScenarioId) || string.IsNullOrEmpty(_selectedPlayerId))"
+				                   IsSaving="_isCreating"
+				                   SavingText="Creating..."
+				                   CancelHref="/games" />
 			</MudForm>
 		}
 	</MudPaper>

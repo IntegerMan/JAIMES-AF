@@ -1,0 +1,132 @@
+@page "/admin/messages"
+@rendermode InteractiveServer
+
+@using MattEland.Jaimes.ServiceDefinitions.Responses
+@using MattEland.Jaimes.Web.Components.Shared
+@inject NavigationManager NavigationManager
+@inject HttpClient Http
+
+<PageTitle>Agent Messages</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+        <MudBreadcrumbs Items="_breadcrumbs" Separator=">"></MudBreadcrumbs>
+    </MudStack>
+
+    <div class="agent-hero pa-3 mb-4" style="background: linear-gradient(135deg, rgba(67, 97, 238, 0.1) 0%, rgba(76, 201, 240, 0.1) 100%); 
+        border-radius: 16px; border: 1px solid rgba(67, 97, 238, 0.2);">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Spacing="3">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                <div class="icon-badge icon-badge-secondary">
+                    <MudIcon Icon="@Icons.Material.Filled.Chat" Style="color: white; font-size: 1.5rem;" />
+                </div>
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.h5" Style="font-weight: 600; color: #4361EE;">Agent Messages</MudText>
+                    <MudText Typo="Typo.caption" Class="text-muted">
+                        @if (string.IsNullOrEmpty(AgentId))
+                        {
+                            <span>Viewing all messages</span>
+                        }
+                        else
+                        {
+                            <span>Viewing messages for @_displayAgentName @(VersionId.HasValue ? $" version {VersionId}" :
+                            "")</span>
+                        }
+                    </MudText>
+                </MudStack>
+            </MudStack>
+
+            @* Aggregate Evaluations Display *@
+            @if (_aggregateStats?.EvaluationMetrics != null && _aggregateStats.EvaluationMetrics.Count > 0)
+            {
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Style="padding: 8px 12px; background: rgba(255,255,255,0.5); border-radius: 8px;">
+                    <EvaluationProgressRing Size="32" 
+                        TotalSegments="@_aggregateStats.EvaluationMetrics.Count"
+                        Metrics="@_aggregateStats.EvaluationMetrics.Select(m => new MessageEvaluationMetricResponse { MetricName = m.MetricName, Score = m.AverageScore, EvaluatorId = m.EvaluatorId }).ToList()"
+                        OnSliceClick="HandleEvaluationSliceClick" />
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.body2" Style="font-weight: 600; color: var(--mud-palette-primary);">
+                            @_aggregateStats.EvaluationMetrics.Average(m => m.AverageScore).ToString("F1") / 5
+                        </MudText>
+                        <MudText Typo="Typo.caption" Class="text-muted">Avg Score</MudText>
+                    </MudStack>
+                </MudStack>
+            }
+        </MudStack>
+    </div>
+
+    <div class="glass-card pa-4">
+        <MattEland.Jaimes.Web.Components.Agents.AgentMessagesList AgentId="@AgentId" VersionId="@VersionId" />
+    </div>
+</MudContainer>
+
+@code {
+    [Parameter, SupplyParameterFromQuery] public string? AgentId { get; set; }
+    [Parameter, SupplyParameterFromQuery] public int? VersionId { get; set; }
+
+    private List<BreadcrumbItem> _breadcrumbs = new();
+    private string? _displayAgentName;
+    private MessagesAggregateStatsResponse? _aggregateStats;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _displayAgentName = AgentId;
+
+        _breadcrumbs = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Home", href: "/"),
+            new BreadcrumbItem("Admin", href: "/admin"),
+            new BreadcrumbItem("Agents", href: "/agents"),
+        };
+
+        if (!string.IsNullOrEmpty(AgentId))
+        {
+            _breadcrumbs.Add(new BreadcrumbItem(AgentId, href: $"/agents/{AgentId}"));
+        }
+
+        _breadcrumbs.Add(new BreadcrumbItem("Messages", href: null, disabled: true));
+
+        await LoadAggregateStatsAsync();
+    }
+
+    private async Task LoadAggregateStatsAsync()
+    {
+        try
+        {
+            var queryParams = new List<string>();
+            if (!string.IsNullOrEmpty(AgentId))
+                queryParams.Add($"agentId={AgentId}");
+            if (VersionId.HasValue)
+                queryParams.Add($"versionId={VersionId}");
+
+            var url = "/admin/messages/aggregate-stats";
+            if (queryParams.Any())
+                url += "?" + string.Join("&", queryParams);
+
+            _aggregateStats = await Http.GetFromJsonAsync<MessagesAggregateStatsResponse>(url);
+        }
+        catch
+        {
+            _aggregateStats = null;
+        }
+    }
+
+    private void HandleEvaluationSliceClick(MessageEvaluationMetricResponse metric)
+    {
+        // Navigate to evaluator details page with current filters
+        if (metric.EvaluatorId.HasValue)
+        {
+            var queryParams = new List<string>();
+            if (!string.IsNullOrEmpty(AgentId))
+                queryParams.Add($"agentId={AgentId}");
+            if (VersionId.HasValue)
+                queryParams.Add($"versionId={VersionId}");
+
+            var url = $"/admin/evaluators/{metric.EvaluatorId}";
+            if (queryParams.Any())
+                url += "?" + string.Join("&", queryParams);
+
+            NavigationManager.NavigateTo(url);
+        }
+    }
+}
