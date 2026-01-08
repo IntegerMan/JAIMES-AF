@@ -27,13 +27,18 @@ public class ListAgentsEndpoint : Ep.NoReq.Res<AgentListResponse>
                 a.Name,
                 a.Role,
                 VersionCount = a.InstructionVersions.Count(),
-                FeedbackPos = DbContext.MessageFeedbacks.Count(f => f.Message!.AgentId == a.Id && f.IsPositive),
-                FeedbackNeg = DbContext.MessageFeedbacks.Count(f => f.Message!.AgentId == a.Id && !f.IsPositive),
-                SentimentPos = DbContext.MessageSentiments.Count(s => s.Message!.AgentId == a.Id && s.Sentiment > 0),
-                SentimentNeu = DbContext.MessageSentiments.Count(s => s.Message!.AgentId == a.Id && s.Sentiment == 0),
-                SentimentNeg = DbContext.MessageSentiments.Count(s => s.Message!.AgentId == a.Id && s.Sentiment < 0),
+                FeedbackPos = DbContext.MessageFeedbacks.Count(f =>
+                    f.Message!.AgentId == a.Id && !f.Message!.IsScriptedMessage && f.IsPositive),
+                FeedbackNeg = DbContext.MessageFeedbacks.Count(f =>
+                    f.Message!.AgentId == a.Id && !f.Message!.IsScriptedMessage && !f.IsPositive),
+                SentimentPos = DbContext.MessageSentiments.Count(s =>
+                    s.Message!.AgentId == a.Id && !s.Message!.IsScriptedMessage && s.Sentiment > 0),
+                SentimentNeu = DbContext.MessageSentiments.Count(s =>
+                    s.Message!.AgentId == a.Id && !s.Message!.IsScriptedMessage && s.Sentiment == 0),
+                SentimentNeg = DbContext.MessageSentiments.Count(s =>
+                    s.Message!.AgentId == a.Id && !s.Message!.IsScriptedMessage && s.Sentiment < 0),
                 Metrics = DbContext.MessageEvaluationMetrics
-                    .Where(m => m.Message!.AgentId == a.Id)
+                    .Where(m => m.Message!.AgentId == a.Id && !m.Message!.IsScriptedMessage)
                     .GroupBy(m => new { m.MetricName, m.EvaluatorId })
                     .Select(g => new AgentEvaluatorMetricSummaryDto
                     {
@@ -45,9 +50,10 @@ public class ListAgentsEndpoint : Ep.NoReq.Res<AgentListResponse>
             .ToListAsync(ct);
 
         int totalVersions = await DbContext.AgentInstructionVersions.CountAsync(ct);
-        int totalFeedback = await DbContext.MessageFeedbacks.CountAsync(ct);
-        double? avgEval = await DbContext.MessageEvaluationMetrics.AnyAsync(ct)
-            ? await DbContext.MessageEvaluationMetrics.AverageAsync(m => m.Score, ct)
+        int totalFeedback = await DbContext.MessageFeedbacks.CountAsync(f => !f.Message!.IsScriptedMessage, ct);
+        double? avgEval = await DbContext.MessageEvaluationMetrics.AnyAsync(m => !m.Message!.IsScriptedMessage, ct)
+            ? await DbContext.MessageEvaluationMetrics.Where(m => !m.Message!.IsScriptedMessage)
+                .AverageAsync(m => m.Score, ct)
             : null;
 
         await Send.OkAsync(new AgentListResponse

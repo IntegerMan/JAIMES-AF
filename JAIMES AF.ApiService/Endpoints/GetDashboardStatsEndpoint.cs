@@ -30,11 +30,12 @@ public class GetDashboardStatsEndpoint : EndpointWithoutRequest<DashboardStatsRe
         int rulesetsCount = await DbContext.Rulesets.CountAsync(ct);
         int agentsCount = await DbContext.Agents.CountAsync(ct);
         int versionsCount = await DbContext.AgentInstructionVersions.CountAsync(ct);
-        int messagesCount = await DbContext.Messages.CountAsync(ct);
+        int messagesCount = await DbContext.Messages.CountAsync(m => !m.IsScriptedMessage, ct);
         int mlModelsCount = await DbContext.ClassificationModels.CountAsync(ct);
-        int sentimentsCount = await DbContext.MessageSentiments.CountAsync(ct);
-        int feedbackCount = await DbContext.MessageFeedbacks.CountAsync(ct);
-        int evaluationsCount = await DbContext.MessageEvaluationMetrics.CountAsync(ct);
+        int sentimentsCount = await DbContext.MessageSentiments.CountAsync(s => !s.Message!.IsScriptedMessage, ct);
+        int feedbackCount = await DbContext.MessageFeedbacks.CountAsync(f => !f.Message!.IsScriptedMessage, ct);
+        int evaluationsCount =
+            await DbContext.MessageEvaluationMetrics.CountAsync(m => !m.Message!.IsScriptedMessage, ct);
         int testCasesCount = await DbContext.TestCases.CountAsync(ct);
         int testReportsCount = await DbContext.StoredFiles.CountAsync(f => f.ItemKind == "TestReport", ct);
         int sourcebooksCount =

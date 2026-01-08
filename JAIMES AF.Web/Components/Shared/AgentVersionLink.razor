@@ -4,8 +4,10 @@
     Displays as a chip with appropriate icon for consistent styling throughout the Admin UI.
 *@
 
-@if (VersionId.HasValue && !string.IsNullOrEmpty(VersionNumber))
+@if (VersionId.HasValue)
 {
+    string displayValue = !string.IsNullOrEmpty(VersionNumber) ? VersionNumber : $"v{VersionId.Value}";
+    
     <MudTooltip Text="View Version Details" Placement="Placement.Top">
         <MudChip T="string"
                  Size="Size.Small"
@@ -14,7 +16,7 @@
                  Icon="@Icons.Material.Filled.Update"
                  Href="@($"/agents/{AgentId}/versions/{VersionId}")"
                  Label="true">
-            @VersionNumber
+            @displayValue
         </MudChip>
     </MudTooltip>
 }

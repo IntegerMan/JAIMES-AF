@@ -411,12 +411,12 @@
         return _metricNames.Select(name => new MessageEvaluationMetricResponse
         {
             MetricName = name,
-            Score = GetAverageScoreForMetric(name) ?? 0 // Already on 0-5 scale from test metrics
+            Score = GetAverageScoreForMetric(name) ?? 0 // Already on 1-5 scale from test metrics
         }).ToList();
     }
 
     /// <summary>
-    /// Get average score for a specific metric across all runs (0-1 scale)
+    /// Get average score for a specific metric across all runs (1-5 scale)
     /// </summary>
     private double? GetAverageScoreForMetric(string metricName)
     {
@@ -447,7 +447,7 @@
             return new MessageEvaluationMetricResponse
             {
                 MetricName = name,
-                Score = avgScore // Already on 0-5 scale from test metrics
+                Score = avgScore // Already on 1-5 scale from test metrics
             };
         }).ToList();
     }
@@ -464,7 +464,7 @@
             return new MessageEvaluationMetricResponse
             {
                 MetricName = name,
-                Score = score // Already on 0-5 scale from test metrics
+                Score = score // Already on 1-5 scale from test metrics
             };
         }).ToList();
     }
@@ -503,8 +503,8 @@
 
         return avg.Value switch
         {
-            >= 0.8 => "stat-card-success",
-            >= 0.5 => "stat-card-warning",
+            >= 4.0 => "stat-card-success",
+            >= 2.5 => "stat-card-warning",
             _ => "stat-card-error"
         };
     }
@@ -518,8 +518,8 @@
 
         return vr.AvgScore.Value switch
         {
-            >= 0.8 => "stat-card-success",
-            >= 0.5 => "stat-card-warning",
+            >= 4.0 => "stat-card-success",
+            >= 2.5 => "stat-card-warning",
             _ => "stat-card-error"
         };
     }

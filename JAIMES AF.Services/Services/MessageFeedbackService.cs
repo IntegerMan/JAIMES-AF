@@ -76,6 +76,7 @@ public class MessageFeedbackService(IDbContextFactory<JaimesDbContext> contextFa
 
         IQueryable<MessageFeedback> query = context.MessageFeedbacks
             .AsNoTracking()
+            .Where(mf => !mf.Message!.IsScriptedMessage)
             .Include(mf => mf.Message)
             .ThenInclude(m => m!.Game)
             .ThenInclude(g => g!.Player)
@@ -216,6 +217,7 @@ public class MessageFeedbackService(IDbContextFactory<JaimesDbContext> contextFa
 
         IQueryable<MessageFeedback> query = context.MessageFeedbacks
             .AsNoTracking()
+            .Where(mf => !mf.Message!.IsScriptedMessage)
             .Include(mf => mf.Message)
             .ThenInclude(m => m!.ToolCalls)
             .Include(mf => mf.Message)

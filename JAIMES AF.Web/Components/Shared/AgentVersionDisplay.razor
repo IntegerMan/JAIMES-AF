@@ -5,7 +5,7 @@
 
 <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Style="display: inline-flex;">
     <AgentLink AgentId="@AgentId" AgentName="@AgentName" />
-    @if (!string.IsNullOrEmpty(VersionNumber) && VersionId.HasValue)
+    @if (VersionId.HasValue)
     {
         <AgentVersionLink AgentId="@AgentId" VersionId="@VersionId.Value" VersionNumber="@VersionNumber" />
     }

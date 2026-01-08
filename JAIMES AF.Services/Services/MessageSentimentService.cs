@@ -24,6 +24,7 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
 
         IQueryable<MessageSentiment> query = context.MessageSentiments
             .AsNoTracking()
+            .Where(s => !s.Message!.IsScriptedMessage)
             .Include(s => s.Message)
             .ThenInclude(m => m!.Game)
             .ThenInclude(g => g!.Player)
@@ -319,6 +320,7 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
 
         IQueryable<MessageSentiment> query = context.MessageSentiments
             .AsNoTracking()
+            .Where(s => !s.Message!.IsScriptedMessage)
             .Include(s => s.Message)
             .ThenInclude(m => m!.PreviousMessage);
 

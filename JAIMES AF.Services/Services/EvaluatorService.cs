@@ -30,6 +30,7 @@ public class EvaluatorService(IDbContextFactory<JaimesDbContext> contextFactory)
         // Build query for metrics with optional filters
         IQueryable<Repositories.Entities.MessageEvaluationMetric> metricsQuery = context.MessageEvaluationMetrics
             .AsNoTracking()
+            .Where(m => !m.Message!.IsScriptedMessage)
             .Include(m => m.Message)
             .ThenInclude(msg => msg!.InstructionVersion);
 
@@ -129,7 +130,7 @@ public class EvaluatorService(IDbContextFactory<JaimesDbContext> contextFactory)
         // Fetch statistics for this evaluator
         var stats = await context.MessageEvaluationMetrics
             .AsNoTracking()
-            .Where(m => m.EvaluatorId == id)
+            .Where(m => m.EvaluatorId == id && !m.Message!.IsScriptedMessage)
             .GroupBy(m => m.EvaluatorId)
             .Select(g => new
             {
@@ -172,9 +173,9 @@ public class EvaluatorService(IDbContextFactory<JaimesDbContext> contextFactory)
         // Build query for metrics with filters
         IQueryable<Repositories.Entities.MessageEvaluationMetric> metricsQuery = context.MessageEvaluationMetrics
             .AsNoTracking()
+            .Where(m => m.EvaluatorId == evaluatorId && !m.Message!.IsScriptedMessage)
             .Include(m => m.Message)
-            .ThenInclude(msg => msg!.InstructionVersion)
-            .Where(m => m.EvaluatorId == evaluatorId);
+            .ThenInclude(msg => msg!.InstructionVersion);
 
         // Apply optional filters
         if (instructionVersionId.HasValue)
