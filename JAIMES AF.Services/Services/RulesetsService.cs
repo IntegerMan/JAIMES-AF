@@ -91,8 +91,17 @@ public class RulesetsService(IDbContextFactory<JaimesDbContext> contextFactory) 
         };
 
         context.Rulesets.Add(newRuleset);
-        await context.SaveChangesAsync(cancellationToken);
 
-        return true;
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+        catch (DbUpdateException)
+        {
+            // Handle race condition: another caller created the ruleset between our check and save.
+            // This is expected behavior for TryCreate - we return false indicating we didn't create it.
+            return false;
+        }
     }
 }
