@@ -27,14 +27,37 @@ public class GetMessagesAggregateStatsEndpoint : EndpointWithoutRequest<Messages
         int? versionId = Query<int?>("versionId", false);
         Guid? gameId = Query<Guid?>("gameId", false);
 
+        // Defensive ID resolution: Try exact match first, then fallback to case-insensitive match
+        string? resolvedAgentId = null;
+        if (!string.IsNullOrEmpty(agentId))
+        {
+            resolvedAgentId = await DbContext.Agents
+                .AsNoTracking()
+                .Where(a => a.Id == agentId)
+                .Select(a => a.Id)
+                .FirstOrDefaultAsync(ct);
+
+            if (resolvedAgentId == null)
+            {
+                resolvedAgentId = await DbContext.Agents
+                    .AsNoTracking()
+                    .Where(a => a.Id.ToLower() == agentId.ToLower())
+                    .Select(a => a.Id)
+                    .FirstOrDefaultAsync(ct);
+            }
+
+            // Use the query param as fallback if nothing found
+            resolvedAgentId ??= agentId;
+        }
+
         // Build base message query
         IQueryable<Message> messagesQuery = DbContext.Messages
             .Where(m => !m.IsScriptedMessage);
 
         // Apply optional filters
-        if (!string.IsNullOrEmpty(agentId))
+        if (!string.IsNullOrEmpty(resolvedAgentId))
         {
-            messagesQuery = messagesQuery.Where(m => m.AgentId == agentId);
+            messagesQuery = messagesQuery.Where(m => m.AgentId == resolvedAgentId);
         }
 
         if (versionId.HasValue && versionId.Value > 0)
@@ -55,9 +78,9 @@ public class GetMessagesAggregateStatsEndpoint : EndpointWithoutRequest<Messages
         IQueryable<Repositories.Entities.MessageEvaluationMetric> metricBase = DbContext.MessageEvaluationMetrics
             .Where(m => !m.Message!.IsScriptedMessage);
 
-        if (!string.IsNullOrEmpty(agentId))
+        if (!string.IsNullOrEmpty(resolvedAgentId))
         {
-            metricBase = metricBase.Where(m => m.Message!.AgentId == agentId);
+            metricBase = metricBase.Where(m => m.Message!.AgentId == resolvedAgentId);
         }
 
         if (versionId.HasValue && versionId.Value > 0)
