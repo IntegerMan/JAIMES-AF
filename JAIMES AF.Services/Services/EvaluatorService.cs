@@ -223,10 +223,11 @@ public class EvaluatorService(IDbContextFactory<JaimesDbContext> contextFactory)
         int passCount = scores.Count(s => s >= 3);
         int failCount = scores.Count(s => s < 3);
 
-        // Compute score distribution (buckets: 1 = [1,2), 2 = [2,3), 3 = [3,4), 4 = [4,5), 5 = [5,5])
+        // Compute score distribution (buckets: 1 = [0,2), 2 = [2,3), 3 = [3,4), 4 = [4,5), 5 = [5,∞))
+        // Note: Score1 captures all scores < 2 to ensure distribution sums to totalCount
         var distribution = new ScoreDistribution
         {
-            Score1 = scores.Count(s => s >= 1 && s < 2),
+            Score1 = scores.Count(s => s < 2),
             Score2 = scores.Count(s => s >= 2 && s < 3),
             Score3 = scores.Count(s => s >= 3 && s < 4),
             Score4 = scores.Count(s => s >= 4 && s < 5),
