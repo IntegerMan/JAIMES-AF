@@ -103,7 +103,7 @@ public class AgentsTests : Bunit.TestContext
         cut.WaitForState(() => cut.FindAll(".mud-progress-circular").Count == 0);
 
         // Assert
-        cut.Markup.ShouldContain("3 agents available");
+        cut.Markup.ShouldContain("3 agents configured");
     }
 
     [Fact]
@@ -119,8 +119,8 @@ public class AgentsTests : Bunit.TestContext
         cut.WaitForState(() => cut.FindAll(".mud-progress-circular").Count == 0);
 
         // Assert
-        cut.Markup.ShouldContain("1 agent available");
-        cut.Markup.ShouldNotContain("1 agents available");
+        cut.Markup.ShouldContain("1 agent configured");
+        cut.Markup.ShouldNotContain("1 agents configured");
     }
 
     [Fact]
