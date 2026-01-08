@@ -11,17 +11,17 @@ public record SentimentSummaryResponse
     public int TotalCount { get; init; }
 
     /// <summary>
-    /// Count of positive sentiment records (sentiment = 1).
+    /// Count of positive sentiment records (sentiment = <see cref="MattEland.Jaimes.Domain.SentimentValue.Positive"/>).
     /// </summary>
     public int PositiveCount { get; init; }
 
     /// <summary>
-    /// Count of neutral sentiment records (sentiment = 0).
+    /// Count of neutral sentiment records (sentiment = <see cref="MattEland.Jaimes.Domain.SentimentValue.Neutral"/>).
     /// </summary>
     public int NeutralCount { get; init; }
 
     /// <summary>
-    /// Count of negative sentiment records (sentiment = -1).
+    /// Count of negative sentiment records (sentiment = <see cref="MattEland.Jaimes.Domain.SentimentValue.Negative"/>).
     /// </summary>
     public int NegativeCount { get; init; }
 

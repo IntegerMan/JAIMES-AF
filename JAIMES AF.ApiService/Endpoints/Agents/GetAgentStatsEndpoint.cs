@@ -107,9 +107,9 @@ public class GetAgentStatsEndpoint : Endpoint<AgentStatsRequest, AgentStatsRespo
         int feedbackPos = await feedbackBase.CountAsync(f => f.IsPositive, ct);
         int feedbackNeg = await feedbackBase.CountAsync(f => !f.IsPositive, ct);
 
-        int sentimentPos = await sentimentBase.CountAsync(s => s.Sentiment > 0, ct);
-        int sentimentNeu = await sentimentBase.CountAsync(s => s.Sentiment == 0, ct);
-        int sentimentNeg = await sentimentBase.CountAsync(s => s.Sentiment < 0, ct);
+        int sentimentPos = await sentimentBase.CountAsync(s => s.Sentiment == SentimentValue.Positive, ct);
+        int sentimentNeu = await sentimentBase.CountAsync(s => s.Sentiment == SentimentValue.Neutral, ct);
+        int sentimentNeg = await sentimentBase.CountAsync(s => s.Sentiment == SentimentValue.Negative, ct);
 
         int toolCallCount = await toolBase.CountAsync(ct);
         double toolUsageRate = aiMessageCount > 0 ? (double)toolCallCount / aiMessageCount : 0;

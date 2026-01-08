@@ -24,7 +24,8 @@ public class MessageSentiment
     public int MessageId { get; set; }
 
     /// <summary>
-    /// Gets or sets the sentiment value: -1 (negative), 0 (neutral), 1 (positive).
+    /// Gets or sets the sentiment value: use <see cref="MattEland.Jaimes.Domain.SentimentValue"/> constants
+    /// (Negative = -1, Neutral = 0, Positive = 1).
     /// </summary>
     [Required]
     public int Sentiment { get; set; }

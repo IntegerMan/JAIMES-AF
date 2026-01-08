@@ -1,3 +1,4 @@
+using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
@@ -406,9 +407,11 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
         }
 
         int totalCount = await query.CountAsync(cancellationToken);
-        int positiveCount = await query.Where(s => s.Sentiment == 1).CountAsync(cancellationToken);
-        int neutralCount = await query.Where(s => s.Sentiment == 0).CountAsync(cancellationToken);
-        int negativeCount = await query.Where(s => s.Sentiment == -1).CountAsync(cancellationToken);
+        int positiveCount =
+            await query.Where(s => s.Sentiment == SentimentValue.Positive).CountAsync(cancellationToken);
+        int neutralCount = await query.Where(s => s.Sentiment == SentimentValue.Neutral).CountAsync(cancellationToken);
+        int negativeCount =
+            await query.Where(s => s.Sentiment == SentimentValue.Negative).CountAsync(cancellationToken);
 
         double? avgConfidence = null;
         if (await query.AnyAsync(s => s.Confidence.HasValue, cancellationToken))

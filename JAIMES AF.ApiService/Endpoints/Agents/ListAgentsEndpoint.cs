@@ -1,3 +1,4 @@
+using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using Microsoft.EntityFrameworkCore;
@@ -32,11 +33,14 @@ public class ListAgentsEndpoint : Ep.NoReq.Res<AgentListResponse>
                 FeedbackNeg = DbContext.MessageFeedbacks.Count(f =>
                     f.Message!.AgentId == a.Id && !f.Message!.IsScriptedMessage && !f.IsPositive),
                 SentimentPos = DbContext.MessageSentiments.Count(s =>
-                    s.Message!.AgentId == a.Id && !s.Message!.IsScriptedMessage && s.Sentiment > 0),
+                    s.Message!.AgentId == a.Id && !s.Message!.IsScriptedMessage &&
+                    s.Sentiment == SentimentValue.Positive),
                 SentimentNeu = DbContext.MessageSentiments.Count(s =>
-                    s.Message!.AgentId == a.Id && !s.Message!.IsScriptedMessage && s.Sentiment == 0),
+                    s.Message!.AgentId == a.Id && !s.Message!.IsScriptedMessage &&
+                    s.Sentiment == SentimentValue.Neutral),
                 SentimentNeg = DbContext.MessageSentiments.Count(s =>
-                    s.Message!.AgentId == a.Id && !s.Message!.IsScriptedMessage && s.Sentiment < 0),
+                    s.Message!.AgentId == a.Id && !s.Message!.IsScriptedMessage &&
+                    s.Sentiment == SentimentValue.Negative),
                 Metrics = DbContext.MessageEvaluationMetrics
                     .Where(m => m.Message!.AgentId == a.Id && !m.Message!.IsScriptedMessage)
                     .GroupBy(m => new { m.MetricName, m.EvaluatorId })
