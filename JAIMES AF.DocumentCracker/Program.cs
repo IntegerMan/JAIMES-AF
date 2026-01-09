@@ -1,8 +1,8 @@
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
-// Configure OpenTelemetry for Aspire telemetry
-// This sets up OTLP exporter, logging, metrics, and tracing
-builder.ConfigureOpenTelemetry();
+// Add service defaults (telemetry, health checks, service discovery)
+// This includes ConfigureOpenTelemetry() AND AddOpenTelemetryExporters() for OTLP export
+builder.AddServiceDefaults();
 
 // Verify OTLP exporter is configured (for debugging)
 string? otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]
@@ -13,14 +13,6 @@ if (string.IsNullOrWhiteSpace(otlpEndpoint))
 else
     Console.WriteLine($"OTLP Exporter configured: {otlpEndpoint}");
 
-// Configure logging with OpenTelemetry
-builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
-builder.Logging.AddOpenTelemetry(logging =>
-{
-    logging.IncludeFormattedMessage = true;
-    logging.IncludeScopes = true;
-});
 
 builder.Configuration
     .SetBasePath(Directory.GetCurrentDirectory())
@@ -50,25 +42,6 @@ builder.Services.AddSingleton<IMessagePublisher, MessagePublisher>();
 const string activitySourceName = "Jaimes.DocumentCracker";
 ActivitySource activitySource = new(activitySourceName);
 
-// Register ActivitySource with OpenTelemetry tracing
-// The issue: Multiple AddOpenTelemetry() calls should be additive, but the ActivitySource isn't being registered.
-// The wildcard "Jaimes.*" in ConfigureOpenTelemetry should match "Jaimes.DocumentCracker", but it's not working.
-// We're explicitly registering it here to ensure it's registered.
-builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource
-        .AddService(activitySourceName, serviceVersion: "1.0.0"))
-    .WithMetrics(metrics =>
-    {
-        metrics.AddRuntimeInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddMeter(activitySourceName);
-    })
-    .WithTracing(tracing =>
-    {
-        // CRITICAL: Explicitly add the ActivitySource - this MUST register the listener
-        // If this doesn't work, the issue is that multiple AddOpenTelemetry() calls aren't chaining properly
-        tracing.AddSource(activitySourceName);
-    });
 
 // Register ActivitySource for dependency injection
 builder.Services.AddSingleton(activitySource);

@@ -3,6 +3,7 @@ using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Shouldly;
@@ -20,8 +21,10 @@ public class GameMechanicsEvaluatorTests
         _mockChatClient = new Mock<IChatClient>();
         _mockRulesSearchService = new Mock<IRulesSearchService>();
         Mock<ILogger<GameMechanicsEvaluator>> mockLogger = new();
+        Mock<IConfiguration> mockConfiguration = new();
         _evaluator =
-            new GameMechanicsEvaluator(_mockChatClient.Object, _mockRulesSearchService.Object, mockLogger.Object);
+            new GameMechanicsEvaluator(_mockChatClient.Object, _mockRulesSearchService.Object, mockLogger.Object,
+                mockConfiguration.Object);
     }
 
     [Fact]

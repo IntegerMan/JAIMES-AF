@@ -9,14 +9,6 @@ HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 // Add service defaults (telemetry, health checks, service discovery)
 builder.AddServiceDefaults();
 
-// Configure logging with OpenTelemetry
-builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
-builder.Logging.AddOpenTelemetry(logging =>
-{
-    logging.IncludeFormattedMessage = true;
-    logging.IncludeScopes = true;
-});
 
 // Load configuration
 builder.Configuration
@@ -101,20 +93,6 @@ builder.Services.AddHostedService(serviceProvider =>
 const string activitySourceName = "Jaimes.Workers.UserMessageWorker";
 ActivitySource activitySource = new(activitySourceName);
 
-builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource
-        .AddService(activitySourceName))
-    .WithMetrics(metrics =>
-    {
-        metrics.AddRuntimeInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddMeter(activitySourceName);
-    })
-    .WithTracing(tracing =>
-    {
-        tracing.AddSource(activitySourceName)
-            .AddHttpClientInstrumentation();
-    });
 
 // Register ActivitySource for dependency injection
 builder.Services.AddSingleton(activitySource);

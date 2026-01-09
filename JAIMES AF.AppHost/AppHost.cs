@@ -39,6 +39,13 @@ bool isEmbedOllama = string.Equals(embedConfig.Provider, "Ollama", StringCompari
 bool needsOllamaContainer = (isTextGenOllama && string.IsNullOrWhiteSpace(textGenConfig.Endpoint)) ||
                             (isEmbedOllama && string.IsNullOrWhiteSpace(embedConfig.Endpoint));
 
+// Add parameter for enabling sensitive data in OpenTelemetry AI traces
+// When enabled, prompts and responses will be visible in telemetry traces
+// Defaults to false for security; enable in development for debugging
+bool enableSensitiveLogging = bool.TryParse(
+    configuration["Parameters:enable-sensitive-logging"] ?? "false",
+    out bool sensitiveLogValue) && sensitiveLogValue;
+
 // See https://storybooks.fluentui.dev/react/?path=/docs/icons-catalog--docs for available icons. Icon names should not end in "Regular", "Filled", etc.
 
 // Conditionally create Ollama container only if needed
@@ -235,6 +242,9 @@ apiService = apiService
             ollama,
             isTextGenOllama);
         SetModelProviderEnvironmentVariables(SetVar, "EmbeddingModel", embedConfig, embedModel, ollama, isEmbedOllama);
+
+        // Pass sensitive logging setting to AI services
+        SetVar("AI__EnableSensitiveLogging", enableSensitiveLogging.ToString());
     });
 
 webApp = webApp
@@ -332,7 +342,9 @@ IResourceBuilder<ProjectResource> userMessageWorker = builder
     .WaitFor(postgres)
     .WaitFor(postgresdb)
     .WithParentRelationship(workersGroup)
-    .WithReplicas(int.TryParse(configuration["Parameters:user-worker-replicas"], out int userReplicas) ? userReplicas : 1);
+    .WithReplicas(int.TryParse(configuration["Parameters:user-worker-replicas"], out int userReplicas)
+        ? userReplicas
+        : 1);
 
 // Add parameter for assistant-message-worker replicas (configurable parallelism)
 IResourceBuilder<ParameterResource> assistantWorkerReplicas = builder.AddParameter("assistant-worker-replicas", "1")
@@ -349,12 +361,14 @@ IResourceBuilder<ProjectResource> assistantMessageWorker = builder
     .WithIconName("SettingsChat")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
+    .WithReference(qdrant) // Required for GameMechanicsEvaluator rules search
     .WithReference(apiService) // For SignalR notification HTTP calls
-    .WithOllamaReferences(ollama, chatModel, embedModel, needsChatModel: true, needsEmbedModel: false)
+    .WithOllamaReferences(ollama, chatModel, embedModel, needsChatModel: true, needsEmbedModel: true)
     .WaitFor(databaseMigrationWorker)
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
+    .WaitFor(qdrant)
     .WithParentRelationship(workersGroup)
     .WithReplicas(assistantWorkerReplicaCount)
     .WithEnvironment(context =>
@@ -367,6 +381,11 @@ IResourceBuilder<ProjectResource> assistantMessageWorker = builder
             chatModel,
             ollama,
             isTextGenOllama);
+        SetModelProviderEnvironmentVariables(SetVar, "EmbeddingModel", embedConfig, embedModel, ollama, isEmbedOllama);
+        SetQdrantEnvironmentVariables(SetVar, "DocumentChunking", qdrant, qdrantApiKey);
+
+        // Pass sensitive logging setting to AI services
+        SetVar("AI__EnableSensitiveLogging", enableSensitiveLogging.ToString());
     });
 
 IResourceBuilder<ProjectResource> conversationEmbeddingWorker = builder

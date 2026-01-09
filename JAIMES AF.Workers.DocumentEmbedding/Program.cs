@@ -1,16 +1,9 @@
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
-// Configure OpenTelemetry for Aspire telemetry
-builder.ConfigureOpenTelemetry();
+// Add service defaults (telemetry, health checks, service discovery)
+// This includes ConfigureOpenTelemetry() AND AddOpenTelemetryExporters() for OTLP export
+builder.AddServiceDefaults();
 
-// Configure logging with OpenTelemetry
-builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
-builder.Logging.AddOpenTelemetry(logging =>
-{
-    logging.IncludeFormattedMessage = true;
-    logging.IncludeScopes = true;
-});
 
 // Reduce HTTP client logging verbosity
 builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
@@ -93,20 +86,6 @@ builder.Services.AddSingleton<IDocumentEmbeddingService>(sp =>
 const string activitySourceName = "Jaimes.Workers.DocumentEmbedding";
 ActivitySource activitySource = new(activitySourceName);
 
-builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource
-        .AddService(activitySourceName))
-    .WithMetrics(metrics =>
-    {
-        metrics.AddRuntimeInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddMeter(activitySourceName);
-    })
-    .WithTracing(tracing =>
-    {
-        tracing.AddSource(activitySourceName)
-            .AddHttpClientInstrumentation();
-    });
 
 // Register ActivitySource for dependency injection
 builder.Services.AddSingleton(activitySource);
@@ -117,8 +96,8 @@ builder.Services.AddSingleton(connectionFactory);
 
 // Configure HTTP client for API service communication (pipeline status reporting)
 string? apiBaseUrl = builder.Configuration["Services:apiservice:http:0"]
-    ?? builder.Configuration["Services:apiservice:https:0"]
-    ?? builder.Configuration["ApiService:BaseUrl"];
+                     ?? builder.Configuration["Services:apiservice:https:0"]
+                     ?? builder.Configuration["ApiService:BaseUrl"];
 
 // Register pipeline status reporter if API service is configured
 if (!string.IsNullOrEmpty(apiBaseUrl))
@@ -133,7 +112,8 @@ if (!string.IsNullOrEmpty(apiBaseUrl))
     {
         IHttpClientFactory httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
         HttpClient httpClient = httpClientFactory.CreateClient("ApiService");
-        ILogger<HttpPipelineStatusReporter> reporterLogger = sp.GetRequiredService<ILogger<HttpPipelineStatusReporter>>();
+        ILogger<HttpPipelineStatusReporter> reporterLogger =
+            sp.GetRequiredService<ILogger<HttpPipelineStatusReporter>>();
         return new HttpPipelineStatusReporter(httpClient, reporterLogger, "DocumentEmbeddingWorker");
     });
 }
@@ -145,11 +125,13 @@ builder.Services.AddSingleton<IMessageConsumer<ChunkReadyForEmbeddingMessage>, C
 builder.Services.AddHostedService(sp =>
 {
     IConnectionFactory connFactory = sp.GetRequiredService<IConnectionFactory>();
-    IMessageConsumer<ChunkReadyForEmbeddingMessage> consumer = sp.GetRequiredService<IMessageConsumer<ChunkReadyForEmbeddingMessage>>();
-    ILogger<MessageConsumerService<ChunkReadyForEmbeddingMessage>> consumerLogger = sp.GetRequiredService<ILogger<MessageConsumerService<ChunkReadyForEmbeddingMessage>>>();
+    IMessageConsumer<ChunkReadyForEmbeddingMessage> consumer =
+        sp.GetRequiredService<IMessageConsumer<ChunkReadyForEmbeddingMessage>>();
+    ILogger<MessageConsumerService<ChunkReadyForEmbeddingMessage>> consumerLogger =
+        sp.GetRequiredService<ILogger<MessageConsumerService<ChunkReadyForEmbeddingMessage>>>();
     ActivitySource? activity = sp.GetService<ActivitySource>();
     IPipelineStatusReporter? statusReporter = sp.GetService<IPipelineStatusReporter>();
-    
+
     return new MessageConsumerService<ChunkReadyForEmbeddingMessage>(
         connFactory, consumer, consumerLogger, activity, statusReporter, "embedding");
 });

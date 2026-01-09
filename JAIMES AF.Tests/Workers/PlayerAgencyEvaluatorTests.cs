@@ -1,6 +1,7 @@
 using MattEland.Jaimes.Evaluators;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Shouldly;
@@ -16,7 +17,8 @@ public class PlayerAgencyEvaluatorTests
     {
         _mockChatClient = new Mock<IChatClient>();
         Mock<ILogger<PlayerAgencyEvaluator>> mockLogger = new();
-        _evaluator = new PlayerAgencyEvaluator(_mockChatClient.Object, mockLogger.Object);
+        Mock<IConfiguration> mockConfiguration = new();
+        _evaluator = new PlayerAgencyEvaluator(_mockChatClient.Object, mockLogger.Object, mockConfiguration.Object);
     }
 
     [Fact]

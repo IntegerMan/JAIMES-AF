@@ -18,14 +18,6 @@ HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 // Add service defaults (telemetry, health checks, service discovery)
 builder.AddServiceDefaults();
 
-// Configure logging with OpenTelemetry
-builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
-builder.Logging.AddOpenTelemetry(logging =>
-{
-    logging.IncludeFormattedMessage = true;
-    logging.IncludeScopes = true;
-});
 
 // Load configuration
 builder.Configuration
