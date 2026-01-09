@@ -1,6 +1,7 @@
 using MattEland.Jaimes.Evaluators;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Shouldly;
 
@@ -14,7 +15,8 @@ public class StorytellerEvaluatorTests
     public StorytellerEvaluatorTests()
     {
         _mockChatClient = new Mock<IChatClient>();
-        _evaluator = new StorytellerEvaluator(_mockChatClient.Object);
+        Mock<ILogger<StorytellerEvaluator>> mockLogger = new();
+        _evaluator = new StorytellerEvaluator(_mockChatClient.Object, mockLogger.Object);
     }
 
     [Fact]

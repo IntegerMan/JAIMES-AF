@@ -3,6 +3,7 @@ using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
+using Microsoft.Extensions.Logging;
 
 namespace MattEland.Jaimes.Evaluators;
 
@@ -12,9 +13,10 @@ namespace MattEland.Jaimes.Evaluators;
 /// </summary>
 /// <param name="chatClient">The chat client to use for evaluation.</param>
 /// <param name="rulesSearchService">The rules search service to find relevant game rules.</param>
+/// <param name="logger">The logger for telemetry instrumentation.</param>
 [Description("Evaluates assistant responses for adherence to game mechanics and rules from the specified ruleset.")]
-public class GameMechanicsEvaluator(IChatClient chatClient, IRulesSearchService rulesSearchService)
-    : LlmBasedEvaluator(chatClient)
+public class GameMechanicsEvaluator(IChatClient chatClient, IRulesSearchService rulesSearchService, ILogger<GameMechanicsEvaluator> logger)
+    : LlmBasedEvaluator(chatClient, logger)
 {
     /// <summary>
     /// The name of the metric produced by this evaluator.

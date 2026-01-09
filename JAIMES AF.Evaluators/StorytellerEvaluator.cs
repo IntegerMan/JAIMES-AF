@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
+using Microsoft.Extensions.Logging;
 
 namespace MattEland.Jaimes.Evaluators;
 
@@ -10,8 +11,9 @@ namespace MattEland.Jaimes.Evaluators;
 /// interactions rather than just the final response.
 /// </summary>
 /// <param name="chatClient">The chat client to use for evaluation.</param>
+/// <param name="logger">The logger for telemetry instrumentation.</param>
 [Description("Evaluates assistant responses for narrative engagement, pacing, tension, and storytelling quality across recent interactions.")]
-public class StorytellerEvaluator(IChatClient chatClient) : LlmBasedEvaluator(chatClient)
+public class StorytellerEvaluator(IChatClient chatClient, ILogger<StorytellerEvaluator> logger) : LlmBasedEvaluator(chatClient, logger)
 {
     /// <summary>
     /// The name of the metric produced by this evaluator.

@@ -93,6 +93,10 @@ public static class Extensions
                     .AddSource("Jaimes.DocumentCracker")
                     .AddSource("Jaimes.Workers.*")
                     .AddSource("Jaimes.Agents.*")
+                    .AddSource("Jaimes.SentimentAnalysis") // Sentiment classification telemetry
+                    // Azure SDK and OpenAI activity sources for gen_ai semantic conventions
+                    .AddSource("OpenAI.*") // OpenAI SDK built-in tracing
+                    .AddSource("Azure.AI.*") // Azure AI SDK tracing
                     // Agent framework sources (explicit patterns for reliability)
                     .AddSource("Microsoft.Extensions.AI")
                     .AddSource("Microsoft.Agents.AI");
@@ -146,13 +150,19 @@ public static class Extensions
         return builder;
     }
 
-    private static TBuilder AddOpenTelemetryExporters<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    private static TBuilder AddOpenTelemetryExporters<TBuilder>(this TBuilder builder)
+        where TBuilder : IHostApplicationBuilder
     {
-        var useOtlpExporter = !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]);
+        var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
+        var useOtlpExporter = !string.IsNullOrWhiteSpace(otlpEndpoint);
 
         if (useOtlpExporter)
         {
-            builder.Services.AddOpenTelemetry().UseOtlpExporter();
+            // Explicitly use HTTP/protobuf protocol to avoid HTTP/2 vs HTTP/1.1 protocol mismatch issues
+            // gRPC requires HTTP/2 which can be inconsistent on Windows; HTTP/protobuf works over HTTP/1.1
+            builder.Services.AddOpenTelemetry().UseOtlpExporter(
+                OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf,
+                new Uri(otlpEndpoint!));
         }
 
         return builder;

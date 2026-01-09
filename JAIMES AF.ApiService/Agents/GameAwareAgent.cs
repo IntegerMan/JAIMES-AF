@@ -347,7 +347,7 @@ public class GameAwareAgent(
                 .AsNoTracking()
                 .Where(v => v.AgentId == agentId && v.IsActive)
                 .OrderByDescending(v => v.CreatedAt)
-                .Select(v => new {v.Id})
+                .Select(v => new { v.Id })
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (latestVersion != null)
@@ -361,7 +361,7 @@ public class GameAwareAgent(
                     .AsNoTracking()
                     .Where(v => v.AgentId == agentId)
                     .OrderByDescending(v => v.CreatedAt)
-                    .Select(v => new {v.Id})
+                    .Select(v => new { v.Id })
                     .FirstOrDefaultAsync(cancellationToken);
 
                 if (anyVersion != null)
@@ -405,7 +405,7 @@ public class GameAwareAgent(
             .Where(m => m.GameId == gameId)
             .OrderByDescending(m => m.CreatedAt)
             .ThenByDescending(m => m.Id)
-            .Select(m => new {m.AgentId, m.InstructionVersionId})
+            .Select(m => new { m.AgentId, m.InstructionVersionId })
             .FirstOrDefaultAsync(cancellationToken);
         if (lastMessageEntry != null)
         {

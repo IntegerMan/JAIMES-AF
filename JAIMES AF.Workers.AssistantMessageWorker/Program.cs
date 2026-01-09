@@ -9,6 +9,10 @@ using Microsoft.Extensions.AI.Evaluation;
 using Microsoft.Extensions.AI.Evaluation.Quality;
 using MattEland.Jaimes.Evaluators;
 
+// Enable experimental OpenTelemetry tracing for Azure OpenAI SDK
+// This enables gen_ai.* semantic conventions for rich AI telemetry in Aspire dashboard
+AppContext.SetSwitch("OpenAI.Experimental.EnableOpenTelemetry", true);
+
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
 // Add service defaults (telemetry, health checks, service discovery)
@@ -117,24 +121,15 @@ builder.Services.AddHostedService(serviceProvider =>
         actSource);
 });
 
-// Configure OpenTelemetry ActivitySource
+// Configure OpenTelemetry ActivitySource for this worker
+// Note: AddServiceDefaults() already configured OpenTelemetry with all necessary sources including:
+// - "Jaimes.Workers.*" (matches this worker's activity source)
+// - "Jaimes.Agents.*" (matches ChatClientMiddleware)
+// - "Jaimes.ApiService" (matches WrapWithInstrumentation)
+// - "Microsoft.Extensions.AI" (matches UseOpenTelemetry from chat client)
+// We only need to register the ActivitySource for DI injection.
 const string activitySourceName = "Jaimes.Workers.AssistantMessageWorker";
 ActivitySource activitySource = new(activitySourceName);
-
-builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource
-        .AddService(activitySourceName))
-    .WithMetrics(metrics =>
-    {
-        metrics.AddRuntimeInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddMeter(activitySourceName);
-    })
-    .WithTracing(tracing =>
-    {
-        tracing.AddSource(activitySourceName)
-            .AddHttpClientInstrumentation();
-    });
 
 // Register ActivitySource for dependency injection
 builder.Services.AddSingleton(activitySource);
