@@ -19,6 +19,27 @@ public class MessageUpdateNotifier : IMessageUpdateNotifier
         _logger = logger;
     }
 
+    public async Task NotifyEarlySentimentAsync(
+        Guid trackingGuid,
+        Guid gameId,
+        int sentiment,
+        double confidence,
+        CancellationToken cancellationToken = default)
+    {
+        MessageUpdateNotification notification = new()
+        {
+            MessageId = null,
+            TrackingGuid = trackingGuid,
+            GameId = gameId,
+            UpdateType = MessageUpdateType.SentimentAnalyzed,
+            Sentiment = sentiment,
+            SentimentConfidence = confidence,
+            SentimentSource = 0 // Model
+        };
+
+        await SendNotificationAsync(notification, cancellationToken);
+    }
+
     public async Task NotifySentimentAnalyzedAsync(int messageId,
         Guid gameId,
         int sentiment,

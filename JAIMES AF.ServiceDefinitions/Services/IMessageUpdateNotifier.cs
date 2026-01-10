@@ -9,6 +9,22 @@ namespace MattEland.Jaimes.ServiceDefinitions.Services;
 public interface IMessageUpdateNotifier
 {
     /// <summary>
+    /// Notifies the API that early sentiment classification completed for a user message (before message persistence).
+    /// Uses a tracking GUID for client correlation.
+    /// </summary>
+    /// <param name="trackingGuid">The tracking GUID for client correlation.</param>
+    /// <param name="gameId">The game ID.</param>
+    /// <param name="sentiment">The sentiment value (-1, 0, or 1).</param>
+    /// <param name="confidence">The sentiment confidence score (0.0 to 1.0).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task NotifyEarlySentimentAsync(
+        Guid trackingGuid,
+        Guid gameId,
+        int sentiment,
+        double confidence,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Notifies the API that a user message has been analyzed for sentiment.
     /// </summary>
     /// <param name="messageId">The message ID.</param>

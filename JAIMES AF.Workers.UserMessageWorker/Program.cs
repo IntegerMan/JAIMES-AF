@@ -1,4 +1,8 @@
 using MattEland.Jaimes.Repositories;
+using MattEland.Jaimes.ServiceDefinitions.Messages;
+using MattEland.Jaimes.ServiceDefinitions.Services;
+using MattEland.Jaimes.Services.Services;
+using MattEland.Jaimes.Workers.UserMessageWorker.Consumers;
 using MattEland.Jaimes.Workers.UserMessageWorker.Options;
 using MattEland.Jaimes.Workers.UserMessageWorker.Services;
 using Microsoft.EntityFrameworkCore;
@@ -41,6 +45,12 @@ builder.Services.AddSingleton<SentimentModelService>(serviceProvider =>
     return new SentimentModelService(logger, scopeFactory, contextFactory, options);
 });
 
+// Register lightweight sentiment classification service for early classification
+builder.Services.AddSingleton<ISentimentClassificationService, SentimentClassificationService>();
+
+// Register pending sentiment cache for early classification correlation
+builder.Services.AddSingleton<IPendingSentimentCache, MattEland.Jaimes.Services.Services.MemorySentimentCache>();
+
 // Configure message consuming and publishing using RabbitMQ.Client (LavinMQ compatible)
 IConnectionFactory connectionFactory = RabbitMqConnectionFactory.CreateConnectionFactory(builder.Configuration);
 builder.Services.AddSingleton(connectionFactory);
@@ -60,6 +70,8 @@ builder.Services.AddSingleton<ClassifierTrainingService>();
 // Register consumers
 builder.Services.AddSingleton<IMessageConsumer<ConversationMessageQueuedMessage>, UserMessageConsumer>();
 builder.Services.AddSingleton<IMessageConsumer<TrainClassifierMessage>, ClassifierTrainingConsumer>();
+builder.Services
+    .AddSingleton<IMessageConsumer<EarlySentimentClassificationMessage>, EarlySentimentClassificationConsumer>();
 
 // Register consumer service for user messages (background service) with role-based routing
 builder.Services.AddHostedService(serviceProvider =>
@@ -89,6 +101,17 @@ builder.Services.AddHostedService(serviceProvider =>
     return new MessageConsumerService<TrainClassifierMessage>(factory, consumer, logger);
 });
 
+// Register consumer service for early sentiment classification messages
+builder.Services.AddHostedService(serviceProvider =>
+{
+    IConnectionFactory factory = serviceProvider.GetRequiredService<IConnectionFactory>();
+    IMessageConsumer<EarlySentimentClassificationMessage> consumer =
+        serviceProvider.GetRequiredService<IMessageConsumer<EarlySentimentClassificationMessage>>();
+    ILogger<MessageConsumerService<EarlySentimentClassificationMessage>> logger = serviceProvider
+        .GetRequiredService<ILogger<MessageConsumerService<EarlySentimentClassificationMessage>>>();
+    return new MessageConsumerService<EarlySentimentClassificationMessage>(factory, consumer, logger);
+});
+
 // Configure OpenTelemetry ActivitySource
 const string activitySourceName = "Jaimes.Workers.UserMessageWorker";
 ActivitySource activitySource = new(activitySourceName);
@@ -109,6 +132,14 @@ logger.LogInformation("Loading or training sentiment analysis model...");
 SentimentModelService sentimentModelService = host.Services.GetRequiredService<SentimentModelService>();
 await sentimentModelService.LoadOrTrainModelAsync();
 logger.LogInformation("Sentiment analysis model ready");
+
+// Pre-load lightweight sentiment classification model for early classification
+logger.LogInformation("Pre-loading lightweight sentiment classification model...");
+ISentimentClassificationService sentimentClassificationService =
+    host.Services.GetRequiredService<ISentimentClassificationService>();
+// Trigger initialization by classifying a dummy message
+await sentimentClassificationService.ClassifyAsync("initialization", CancellationToken.None);
+logger.LogInformation("Lightweight sentiment classification model ready");
 
 // Reclassify all user messages on startup if configured
 IOptions<SentimentAnalysisOptions> sentimentOptions =

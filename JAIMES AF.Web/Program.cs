@@ -21,6 +21,20 @@ builder.Services.AddHttpClient("Api", ConfigureHttpClient)
     .AddServiceDiscovery()
     .AddStandardResilienceHandler(options => { ConfigureGetOnlyResiliency(options, httpClientTimeout); });
 
+// Add dedicated HttpClient for early sentiment classification with minimal timeout and no resilience
+// This prevents connection pool exhaustion when main chat streaming is in progress
+builder.Services.AddHttpClient("EarlyClassification", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10); // Fast timeout - this should be quick
+    client.BaseAddress = new Uri("http://jaimes-api"); // Will be resolved by service discovery
+})
+    .AddServiceDiscovery()
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+    {
+        PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+        MaxConnectionsPerServer = 10 // Allow more concurrent connections
+    });
+
 // Make the named client the default HttpClient that's injected with `@inject HttpClient Http`
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api"));
 

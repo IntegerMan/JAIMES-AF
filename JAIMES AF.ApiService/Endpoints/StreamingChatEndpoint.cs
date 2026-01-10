@@ -35,12 +35,12 @@ public class StreamingChatEndpoint : Endpoint<ChatRequest, EmptyResponse>
 
         try
         {
-            await StreamChatResponseAsync(responseStream, req.Message, ct);
+            await StreamChatResponseAsync(responseStream, req.Message, req.TrackingGuid, ct);
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error during streaming chat for game {GameId}", req.GameId);
-            await SendSseEventAsync(responseStream, "error", new { Error = ex.Message, Type = ex.GetType().Name }, ct);
+            await SendSseEventAsync(responseStream, "error", new {Error = ex.Message, Type = ex.GetType().Name}, ct);
             await responseStream.FlushAsync(ct);
         }
     }
@@ -54,9 +54,18 @@ public class StreamingChatEndpoint : Endpoint<ChatRequest, EmptyResponse>
         HttpContext.Response.StatusCode = 200;
     }
 
-    private async Task StreamChatResponseAsync(Stream responseStream, string message, CancellationToken ct)
+    private async Task StreamChatResponseAsync(Stream responseStream,
+        string message,
+        Guid? trackingGuid,
+        CancellationToken ct)
     {
-        List<ChatMessage> messagesToSend = new() { new ChatMessage(ChatRole.User, message) };
+        List<ChatMessage> messagesToSend = new() {new ChatMessage(ChatRole.User, message)};
+
+        // Pass trackingGuid in the items dictionary of the HttpContext for GameAwareAgent to find it
+        if (trackingGuid.HasValue)
+        {
+            HttpContext.Items["TrackingGuid"] = trackingGuid.Value;
+        }
 
         await foreach (var update in GameAwareAgent.RunStreamingAsync(messagesToSend, thread: null, options: null, ct))
         {
@@ -82,16 +91,19 @@ public class StreamingChatEndpoint : Endpoint<ChatRequest, EmptyResponse>
             await responseStream.FlushAsync(ct);
         }
 
-        await SendSseEventAsync(responseStream, "done", new { Message = "Stream complete" }, ct);
+        await SendSseEventAsync(responseStream, "done", new {Message = "Stream complete"}, ct);
         await responseStream.FlushAsync(ct);
     }
 
     private static async Task SendSseEventAsync<T>(Stream stream, string eventType, T data, CancellationToken ct)
     {
-        string json = data is string str ? str : JsonSerializer.Serialize(data, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        });
+        string json = data is string str
+            ? str
+            : JsonSerializer.Serialize(data,
+                new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                });
 
         string sseMessage = $"event: {eventType}\ndata: {json}\n\n";
         byte[] bytes = Encoding.UTF8.GetBytes(sseMessage);

@@ -1,7 +1,5 @@
 using System.Text.Json;
 using MattEland.Jaimes.Agents.Helpers;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.Tools;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
@@ -58,6 +56,7 @@ public class GameAwareAgent(
         List<ChatMessage> messagesList = messages.ToList();
         Dictionary<string, AgentRunResponseUpdate> assistantUpdatesByMessageId = new();
         AgentRunResponseUpdate? lastUpdate = null;
+
         await foreach (AgentRunResponseUpdate update in gameAgent.RunStreamingAsync(messagesList,
                            gameThread ?? thread,
                            options,
@@ -502,7 +501,9 @@ public class GameAwareAgent(
 
                     try
                     {
-                        await _messageUpdateNotifier.NotifyToolCallsProcessedAsync(
+                        IMessageUpdateNotifier messageUpdateNotifier =
+                            context!.RequestServices.GetRequiredService<IMessageUpdateNotifier>();
+                        await messageUpdateNotifier.NotifyToolCallsProcessedAsync(
                             lastAiMessage.Id,
                             gameId,
                             true,
@@ -560,11 +561,23 @@ public class GameAwareAgent(
 
         if (newUserMessage.Role != ChatRole.Tool)
         {
+            // Get tracking GUID from HTTP context if available
+            // The worker will check its own cache to determine if sentiment analysis should be skipped
+            Guid? trackingGuid = null;
+            if (_httpContextAccessor.HttpContext?.Items.TryGetValue("TrackingGuid", out object? tgObj) == true &&
+                tgObj is Guid tg)
+            {
+                trackingGuid = tg;
+            }
+
             ConversationMessageQueuedMessage userQueueMessage = new()
             {
                 MessageId = userMessageEntity.Id,
                 GameId = gameId,
-                Role = ChatRole.User
+                Role = ChatRole.User,
+                // Don't set SkipSentimentAnalysis here - let the worker decide based on its own cache
+                SkipSentimentAnalysis = false,
+                TrackingGuid = trackingGuid
             };
             await messagePublisher.PublishAsync(userQueueMessage, cancellationToken);
         }

@@ -268,9 +268,9 @@
                await InvokeAsync(async () =>
                {
                    // Remove from pending set
-                   if (_reevaluatingMessageIds.Contains(notification.MessageId))
+                   if (notification.MessageId.HasValue && _reevaluatingMessageIds.Contains(notification.MessageId.Value))
                    {
-                       _reevaluatingMessageIds.Remove(notification.MessageId);
+                       _reevaluatingMessageIds.Remove(notification.MessageId.Value);
                        StateHasChanged(); // Force UI update immediately to allow button removal/update
                    }
                    

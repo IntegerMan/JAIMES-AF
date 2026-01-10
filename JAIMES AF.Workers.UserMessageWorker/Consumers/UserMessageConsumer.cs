@@ -14,6 +14,7 @@ public class UserMessageConsumer(
     ActivitySource activitySource,
     IOptions<SentimentAnalysisOptions> sentimentOptions,
     SentimentModelService sentimentModelService,
+    IPendingSentimentCache pendingSentimentCache,
     IMessageUpdateNotifier messageUpdateNotifier) : IMessageConsumer<ConversationMessageQueuedMessage>
 {
     public async Task HandleAsync(ConversationMessageQueuedMessage message,
@@ -128,8 +129,70 @@ public class UserMessageConsumer(
                 MessagePipelineStage.EmbeddingQueue,
                 cancellationToken);
 
-            bool sentimentAnalysisSucceeded =
-                await AnalyzeSentimentAsync(messageEntity, activity, context, cancellationToken);
+            // Check if early sentiment classification result is available in our cache
+            bool sentimentAnalysisSucceeded;
+
+            if (message.TrackingGuid.HasValue &&
+                pendingSentimentCache.TryGet(message.TrackingGuid.Value, out var cachedResult))
+            {
+                logger.LogInformation(
+                    "Using cached early sentiment classification for message {MessageId} (TrackingGuid: {TrackingGuid})",
+                    message.MessageId,
+                    message.TrackingGuid.Value);
+
+                // Update entity with cached results
+                if (messageEntity.MessageSentiment == null)
+                {
+                    DateTime now = DateTime.UtcNow;
+                    messageEntity.MessageSentiment = new MessageSentiment
+                    {
+                        MessageId = messageEntity.Id,
+                        Sentiment = cachedResult!.Sentiment,
+                        Confidence = cachedResult.Confidence,
+                        CreatedAt = now,
+                        UpdatedAt = now,
+                        SentimentSource = SentimentSource.Model
+                    };
+                    context.MessageSentiments.Add(messageEntity.MessageSentiment);
+                }
+                else if (messageEntity.MessageSentiment.SentimentSource != SentimentSource.Player)
+                {
+                    messageEntity.MessageSentiment.Sentiment = cachedResult!.Sentiment;
+                    messageEntity.MessageSentiment.Confidence = cachedResult.Confidence;
+                    messageEntity.MessageSentiment.UpdatedAt = DateTime.UtcNow;
+                }
+
+                // Save the cached sentiment to database
+                await context.SaveChangesAsync(cancellationToken);
+
+                // Notify web clients via SignalR
+                await messageUpdateNotifier.NotifySentimentAnalyzedAsync(
+                    messageEntity.Id,
+                    messageEntity.GameId,
+                    cachedResult!.Sentiment,
+                    cachedResult.Confidence,
+                    messageEntity.Text ?? string.Empty,
+                    cancellationToken);
+
+                sentimentAnalysisSucceeded = true;
+
+                // Clean up the cache entry now that we've used it
+                pendingSentimentCache.Remove(message.TrackingGuid.Value);
+            }
+            else if (message.SkipSentimentAnalysis && messageEntity.MessageSentiment != null)
+            {
+                // Sentiment already set (maybe from a previous attempt or already persisted)
+                logger.LogInformation(
+                    "Skipping sentiment analysis for message {MessageId} (already has sentiment)",
+                    message.MessageId);
+                sentimentAnalysisSucceeded = true;
+            }
+            else
+            {
+                // No cached result available, run sentiment analysis
+                sentimentAnalysisSucceeded =
+                    await AnalyzeSentimentAsync(messageEntity, activity, context, cancellationToken);
+            }
 
             // Notify pipeline stage: Complete or Failed
             if (sentimentAnalysisSucceeded)
@@ -171,9 +234,20 @@ public class UserMessageConsumer(
         }
     }
 
-    private async Task<bool> AnalyzeSentimentAsync(Message messageEntity, Activity? activity, JaimesDbContext context,
+    private async Task<bool> AnalyzeSentimentAsync(Message messageEntity,
+        Activity? activity,
+        JaimesDbContext context,
         CancellationToken cancellationToken)
     {
+        // Check if sentiment already exists (early classification or manual override)
+        if (messageEntity.MessageSentiment != null)
+        {
+            logger.LogInformation("Message {MessageId} already has sentiment (source: {Source}), skipping analysis",
+                messageEntity.Id,
+                messageEntity.MessageSentiment.SentimentSource);
+            return true;
+        }
+
         // Perform sentiment analysis
         if (!string.IsNullOrWhiteSpace(messageEntity.Text))
         {
@@ -266,7 +340,7 @@ public class UserMessageConsumer(
                     messageEntity.GameId,
                     sentiment,
                     confidence,
-                    messageEntity.Text,
+                    messageEntity.Text ?? string.Empty,
                     cancellationToken);
 
                 return true;

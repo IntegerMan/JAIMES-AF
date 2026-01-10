@@ -1,6 +1,7 @@
 using MattEland.Jaimes.Agents.Services;
 using MattEland.Jaimes.ApiService.Agents;
 using MattEland.Jaimes.ApiService.Endpoints;
+using MattEland.Jaimes.ApiService.Endpoints.Internal;
 using MattEland.Jaimes.ApiService.Hubs;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using MattEland.Jaimes.ServiceLayer;
@@ -133,6 +134,11 @@ public class Program
         builder.Services.AddScoped<ITestCaseService, MattEland.Jaimes.Services.Services.TestCaseService>();
         builder.Services.AddScoped<ITestCaseReportService, MattEland.Jaimes.Services.Services.TestCaseReportService>();
 
+        // Register early sentiment classification services
+        builder.Services.AddScoped<IClassificationModelService, MattEland.Jaimes.ServiceLayer.Services.ClassificationModelService>();
+        builder.Services.AddSingleton<IPendingSentimentCache, MattEland.Jaimes.Services.Services.MemorySentimentCache>();
+        builder.Services.AddSingleton<ISentimentClassificationService, MattEland.Jaimes.Services.Services.SentimentClassificationService>();
+
         // Configure Qdrant client for embedding management using centralized extension method
         // ApiService uses "qdrant" as default API key and allows fallback to localhost:6334
         builder.Services.AddQdrantClient(builder.Configuration,
@@ -193,6 +199,9 @@ public class Program
         // Map evaluation maintenance endpoints
         app.MapGetMissingEvaluatorsEndpoint();
         app.MapTriggerReEvaluationEndpoint();
+
+        // Map early sentiment classification endpoint
+        app.MapClassifySentimentEarlyEndpoint();
 
         // Map SignalR hub for real-time message updates
         app.MapHub<MessageHub>("/hubs/messages");
