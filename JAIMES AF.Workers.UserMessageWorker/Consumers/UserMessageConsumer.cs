@@ -129,62 +129,67 @@ public class UserMessageConsumer(
                 MessagePipelineStage.EmbeddingQueue,
                 cancellationToken);
 
-            // Check if sentiment analysis should be skipped (already completed during early classification)
+            // Check if early sentiment classification result is available in our cache
             bool sentimentAnalysisSucceeded;
-            if (message.SkipSentimentAnalysis)
+
+            if (message.TrackingGuid.HasValue &&
+                pendingSentimentCache.TryGet(message.TrackingGuid.Value, out var cachedResult))
             {
                 logger.LogInformation(
-                    "Skipping sentiment analysis for message {MessageId} (already completed during early classification)",
+                    "Using cached early sentiment classification for message {MessageId} (TrackingGuid: {TrackingGuid})",
+                    message.MessageId,
+                    message.TrackingGuid.Value);
+
+                // Update entity with cached results
+                if (messageEntity.MessageSentiment == null)
+                {
+                    DateTime now = DateTime.UtcNow;
+                    messageEntity.MessageSentiment = new MessageSentiment
+                    {
+                        MessageId = messageEntity.Id,
+                        Sentiment = cachedResult!.Sentiment,
+                        Confidence = cachedResult.Confidence,
+                        CreatedAt = now,
+                        UpdatedAt = now,
+                        SentimentSource = SentimentSource.Model
+                    };
+                    context.MessageSentiments.Add(messageEntity.MessageSentiment);
+                }
+                else if (messageEntity.MessageSentiment.SentimentSource != SentimentSource.Player)
+                {
+                    messageEntity.MessageSentiment.Sentiment = cachedResult!.Sentiment;
+                    messageEntity.MessageSentiment.Confidence = cachedResult.Confidence;
+                    messageEntity.MessageSentiment.UpdatedAt = DateTime.UtcNow;
+                }
+
+                // Save the cached sentiment to database
+                await context.SaveChangesAsync(cancellationToken);
+
+                // Notify web clients via SignalR
+                await messageUpdateNotifier.NotifySentimentAnalyzedAsync(
+                    messageEntity.Id,
+                    messageEntity.GameId,
+                    cachedResult!.Sentiment,
+                    cachedResult.Confidence,
+                    messageEntity.Text ?? string.Empty,
+                    cancellationToken);
+
+                sentimentAnalysisSucceeded = true;
+
+                // Clean up the cache entry now that we've used it
+                pendingSentimentCache.Remove(message.TrackingGuid.Value);
+            }
+            else if (message.SkipSentimentAnalysis && messageEntity.MessageSentiment != null)
+            {
+                // Sentiment already set (maybe from a previous attempt or already persisted)
+                logger.LogInformation(
+                    "Skipping sentiment analysis for message {MessageId} (already has sentiment)",
                     message.MessageId);
-
-                // Attempt to retrieve result from cache if we have a tracking GUID
-                if (message.TrackingGuid.HasValue &&
-                    pendingSentimentCache.TryGet(message.TrackingGuid.Value, out var cachedResult))
-                {
-                    // Update entity with cached results
-                    // We need to create a MessageSentiment entity if it doesn't exist
-                    if (messageEntity.MessageSentiment == null)
-                    {
-                        DateTime now = DateTime.UtcNow;
-                        messageEntity.MessageSentiment = new MessageSentiment
-                        {
-                            MessageId = messageEntity.Id,
-                            Sentiment = cachedResult!.Sentiment,
-                            Confidence = cachedResult.Confidence,
-                            CreatedAt = now,
-                            UpdatedAt = now,
-                            SentimentSource = SentimentSource.Model
-                        };
-                        context.MessageSentiments.Add(messageEntity.MessageSentiment);
-                    }
-                    else if (messageEntity.MessageSentiment.SentimentSource != SentimentSource.Player)
-                    {
-                        messageEntity.MessageSentiment.Sentiment = cachedResult!.Sentiment;
-                        messageEntity.MessageSentiment.Confidence = cachedResult.Confidence;
-                        messageEntity.MessageSentiment.UpdatedAt = DateTime.UtcNow;
-                    }
-
-                    sentimentAnalysisSucceeded = true;
-
-                    // Clean up the cache entry now that we've used it
-                    pendingSentimentCache.Remove(message.TrackingGuid.Value);
-                }
-                else if (messageEntity.MessageSentiment != null)
-                {
-                    // Sentiment already set (maybe from a previous attempt or already persisted)
-                    sentimentAnalysisSucceeded = true;
-                }
-                else
-                {
-                    logger.LogWarning(
-                        "SkipSentimentAnalysis was true but no sentiment data found in cache or DB for message {MessageId}",
-                        message.MessageId);
-                    sentimentAnalysisSucceeded =
-                        await AnalyzeSentimentAsync(messageEntity, activity, context, cancellationToken);
-                }
+                sentimentAnalysisSucceeded = true;
             }
             else
             {
+                // No cached result available, run sentiment analysis
                 sentimentAnalysisSucceeded =
                     await AnalyzeSentimentAsync(messageEntity, activity, context, cancellationToken);
             }
@@ -335,7 +340,7 @@ public class UserMessageConsumer(
                     messageEntity.GameId,
                     sentiment,
                     confidence,
-                    messageEntity.Text,
+                    messageEntity.Text ?? string.Empty,
                     cancellationToken);
 
                 return true;

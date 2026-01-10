@@ -14,4 +14,10 @@ public class ClassifySentimentEarlyRequest
     /// The message text to classify.
     /// </summary>
     public required string MessageText { get; set; }
+
+    /// <summary>
+    /// Optional tracking GUID provided by the client for correlation.
+    /// If not provided, the server will generate one.
+    /// </summary>
+    public Guid? TrackingGuid { get; set; }
 }

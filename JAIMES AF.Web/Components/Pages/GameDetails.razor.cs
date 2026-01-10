@@ -377,10 +377,14 @@ public partial class GameDetails : IAsyncDisposable
             // This ensures the user message appears immediately, not after streaming starts
             await Task.Delay(50);
 
+            // Generate tracking GUID upfront and store it immediately to avoid race condition
+            // The ChatRequest needs this GUID before the early classification HTTP call completes
+            Guid trackingGuid = Guid.NewGuid();
+            _messageTrackingGuids[currentMessageIndex] = trackingGuid;
+
             // Call early sentiment classification endpoint (fire and forget - result comes via SignalR)
             // Use Task.Run to completely detach from Blazor synchronization context
-            int capturedMessageIndex = currentMessageIndex;
-            _ = Task.Run(() => CallEarlySentimentClassificationAsync(GameId, messageText, capturedMessageIndex));
+            _ = Task.Run(() => CallEarlySentimentClassificationAsync(GameId, messageText, trackingGuid));
 
             // TEST_CONTENT_MODERATION: Simulate content moderation error without hitting the API
             if (messageText.Trim().Equals("TEST_CONTENT_MODERATION", StringComparison.OrdinalIgnoreCase))
@@ -426,9 +430,7 @@ public partial class GameDetails : IAsyncDisposable
                     {
                         GameId = GameId,
                         Message = messageText,
-                        TrackingGuid = _messageTrackingGuids.TryGetValue(currentMessageIndex, out Guid guid)
-                            ? guid
-                            : null
+                        TrackingGuid = trackingGuid
                     };
 
                     HttpRequestMessage httpRequest = new(HttpMethod.Post, $"/games/{GameId}/chat")
@@ -678,7 +680,7 @@ public partial class GameDetails : IAsyncDisposable
 
     private record ErrorEvent(string Error, string Type);
 
-    private async Task CallEarlySentimentClassificationAsync(Guid gameId, string messageText, int messageIndex)
+    private async Task CallEarlySentimentClassificationAsync(Guid gameId, string messageText, Guid trackingGuid)
     {
         try
         {
@@ -686,7 +688,8 @@ public partial class GameDetails : IAsyncDisposable
             ClassifySentimentEarlyRequest classificationRequest = new()
             {
                 GameId = gameId,
-                MessageText = messageText
+                MessageText = messageText,
+                TrackingGuid = trackingGuid
             };
 
             var classificationResponse = await classificationClient.PostAsJsonAsync(
@@ -695,16 +698,9 @@ public partial class GameDetails : IAsyncDisposable
 
             if (classificationResponse.IsSuccessStatusCode)
             {
-                var result = await classificationResponse.Content.ReadFromJsonAsync<ClassifySentimentEarlyResponse>();
-                if (result != null)
-                {
-                    // Store tracking GUID for this message index
-                    _messageTrackingGuids[messageIndex] = result.TrackingGuid;
-                    _logger?.LogDebug(
-                        "Early sentiment classification requested with tracking GUID {TrackingGuid} for message index {MessageIndex}",
-                        result.TrackingGuid,
-                        messageIndex);
-                }
+                _logger?.LogDebug(
+                    "Early sentiment classification requested with tracking GUID {TrackingGuid}",
+                    trackingGuid);
             }
             else
             {

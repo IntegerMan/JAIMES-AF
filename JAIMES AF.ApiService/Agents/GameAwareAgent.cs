@@ -1,7 +1,5 @@
 using System.Text.Json;
 using MattEland.Jaimes.Agents.Helpers;
-using MattEland.Jaimes.ServiceDefinitions.Services;
-using MattEland.Jaimes.ServiceDefaults;
 using MattEland.Jaimes.Tools;
 using Microsoft.Extensions.AI;
 
@@ -13,12 +11,10 @@ namespace MattEland.Jaimes.ApiService.Agents;
 public class GameAwareAgent(
     IServiceProvider serviceProvider,
     IHttpContextAccessor httpContextAccessor,
-    IPendingSentimentCache pendingSentimentCache,
     ILogger<GameAwareAgent> logger) : AIAgent
 {
     private readonly IServiceProvider _serviceProvider = serviceProvider;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
-    private readonly IPendingSentimentCache _pendingSentimentCache = pendingSentimentCache;
     private readonly ILogger<GameAwareAgent> _logger = logger;
 
     public override async Task<AgentRunResponse> RunAsync(
@@ -554,18 +550,13 @@ public class GameAwareAgent(
 
         if (newUserMessage.Role != ChatRole.Tool)
         {
+            // Get tracking GUID from HTTP context if available
+            // The worker will check its own cache to determine if sentiment analysis should be skipped
             Guid? trackingGuid = null;
-            bool skipSentiment = false;
-
             if (_httpContextAccessor.HttpContext?.Items.TryGetValue("TrackingGuid", out object? tgObj) == true &&
                 tgObj is Guid tg)
             {
                 trackingGuid = tg;
-                // Check if we have a result in the cache
-                if (_pendingSentimentCache.TryGet(tg, out _))
-                {
-                    skipSentiment = true;
-                }
             }
 
             ConversationMessageQueuedMessage userQueueMessage = new()
@@ -573,7 +564,8 @@ public class GameAwareAgent(
                 MessageId = userMessageEntity.Id,
                 GameId = gameId,
                 Role = ChatRole.User,
-                SkipSentimentAnalysis = skipSentiment,
+                // Don't set SkipSentimentAnalysis here - let the worker decide based on its own cache
+                SkipSentimentAnalysis = false,
                 TrackingGuid = trackingGuid
             };
             await messagePublisher.PublishAsync(userQueueMessage, cancellationToken);

@@ -19,8 +19,8 @@ public static class ClassifySentimentEarlyEndpoint
                     ILogger<IMessagePublisher> logger,
                     CancellationToken cancellationToken) =>
                 {
-                    // Generate tracking GUID for correlation
-                    Guid trackingGuid = Guid.NewGuid();
+                    // Use client-provided GUID or generate a new one for correlation
+                    Guid trackingGuid = request.TrackingGuid ?? Guid.NewGuid();
 
                     // Create queue message for worker
                     EarlySentimentClassificationMessage queueMessage = new()

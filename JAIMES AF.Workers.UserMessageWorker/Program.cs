@@ -56,6 +56,9 @@ builder.Services.AddSingleton<SentimentModelService>(serviceProvider =>
 // Register lightweight sentiment classification service for early classification
 builder.Services.AddSingleton<ISentimentClassificationService, SentimentClassificationService>();
 
+// Register pending sentiment cache for early classification correlation
+builder.Services.AddSingleton<IPendingSentimentCache, MattEland.Jaimes.Services.Services.MemorySentimentCache>();
+
 // Configure message consuming and publishing using RabbitMQ.Client (LavinMQ compatible)
 IConnectionFactory connectionFactory = RabbitMqConnectionFactory.CreateConnectionFactory(builder.Configuration);
 builder.Services.AddSingleton(connectionFactory);
@@ -75,7 +78,8 @@ builder.Services.AddSingleton<ClassifierTrainingService>();
 // Register consumers
 builder.Services.AddSingleton<IMessageConsumer<ConversationMessageQueuedMessage>, UserMessageConsumer>();
 builder.Services.AddSingleton<IMessageConsumer<TrainClassifierMessage>, ClassifierTrainingConsumer>();
-builder.Services.AddSingleton<IMessageConsumer<EarlySentimentClassificationMessage>, EarlySentimentClassificationConsumer>();
+builder.Services
+    .AddSingleton<IMessageConsumer<EarlySentimentClassificationMessage>, EarlySentimentClassificationConsumer>();
 
 // Register consumer service for user messages (background service) with role-based routing
 builder.Services.AddHostedService(serviceProvider =>
@@ -153,7 +157,8 @@ logger.LogInformation("Sentiment analysis model ready");
 
 // Pre-load lightweight sentiment classification model for early classification
 logger.LogInformation("Pre-loading lightweight sentiment classification model...");
-ISentimentClassificationService sentimentClassificationService = host.Services.GetRequiredService<ISentimentClassificationService>();
+ISentimentClassificationService sentimentClassificationService =
+    host.Services.GetRequiredService<ISentimentClassificationService>();
 // Trigger initialization by classifying a dummy message
 await sentimentClassificationService.ClassifyAsync("initialization", CancellationToken.None);
 logger.LogInformation("Lightweight sentiment classification model ready");
