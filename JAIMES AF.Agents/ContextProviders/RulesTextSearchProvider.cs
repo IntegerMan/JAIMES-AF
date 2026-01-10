@@ -141,10 +141,10 @@ public class RulesTextSearchProvider : AIContextProvider
                 return new AIContext();
             }
 
-            // Deduplicate by ChunkId (in case multiple queries return the same rule)
+            // Deduplicate by ChunkId, keeping the highest relevancy match for each chunk
             List<SearchRuleResult> uniqueResults = allResults
                 .GroupBy(r => r.ChunkId)
-                .Select(g => g.First())
+                .Select(g => g.MaxBy(x => x.Relevancy)!)
                 .OrderByDescending(r => r.Relevancy)
                 .Take(9) // Max 9 unique results (3 queries * 3 results, but may overlap)
                 .ToList();
