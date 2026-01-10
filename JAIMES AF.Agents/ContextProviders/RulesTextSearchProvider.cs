@@ -1,10 +1,12 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using MattEland.Jaimes.Agents.Helpers;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using MattEland.Jaimes.ServiceDefinitions.Services;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -21,6 +23,7 @@ public class RulesTextSearchProvider : AIContextProvider
     private readonly string _rulesetId;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<RulesTextSearchProvider> _logger;
+    private readonly IConfiguration _configuration;
 
     // Store the last user query for context injection
     private string? _lastUserQuery;
@@ -31,11 +34,13 @@ public class RulesTextSearchProvider : AIContextProvider
     public RulesTextSearchProvider(
         string rulesetId,
         IServiceProvider serviceProvider,
-        ILogger<RulesTextSearchProvider> logger)
+        ILogger<RulesTextSearchProvider> logger,
+        IConfiguration configuration)
     {
         _rulesetId = rulesetId ?? throw new ArgumentNullException(nameof(rulesetId));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
     }
 
     /// <summary>
@@ -45,9 +50,10 @@ public class RulesTextSearchProvider : AIContextProvider
         string rulesetId,
         IServiceProvider serviceProvider,
         ILogger<RulesTextSearchProvider> logger,
+        IConfiguration configuration,
         JsonElement serializedState,
         JsonSerializerOptions? jsonSerializerOptions = null)
-        : this(rulesetId, serviceProvider, logger)
+        : this(rulesetId, serviceProvider, logger, configuration)
     {
         // Restore last query from serialized state if available
         if (serializedState.ValueKind == JsonValueKind.Object &&
@@ -176,6 +182,10 @@ public class RulesTextSearchProvider : AIContextProvider
             return [userMessage];
         }
 
+        // Wrap with instrumentation to respect AI:EnableSensitiveLogging configuration
+        bool enableSensitiveLogging = bool.TryParse(_configuration["AI:EnableSensitiveLogging"], out bool val) && val;
+        IChatClient instrumentedClient = chatClient.WrapWithInstrumentation(_logger, enableSensitiveLogging);
+
         try
         {
             string extractionPrompt = """
@@ -191,7 +201,7 @@ public class RulesTextSearchProvider : AIContextProvider
                                       User message: {0}
                                       """;
 
-            ChatResponse response = await chatClient.GetResponseAsync(
+            ChatResponse response = await instrumentedClient.GetResponseAsync(
                 string.Format(extractionPrompt, userMessage),
                 new ChatOptions
                 {
