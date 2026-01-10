@@ -23,7 +23,10 @@ public class MessageHub : Hub<IMessageHubClient>
     {
         string groupName = GetGameGroupName(gameId);
         await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
-        _logger.LogDebug("Client {ConnectionId} joined game group {GameId}", Context.ConnectionId, gameId);
+        _logger.LogDebug(
+            "Client {ConnectionId} joined game group {GroupName}",
+            Context.ConnectionId,
+            groupName);
     }
 
     /// <summary>

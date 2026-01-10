@@ -8,7 +8,6 @@ namespace MattEland.Jaimes.ServiceDefinitions.Services;
 public class MessagePublisher : IMessagePublisher, IDisposable
 {
     private readonly IConnection _connection;
-    private readonly IChannel _channel;
     private readonly ILogger<MessagePublisher> _logger;
     private readonly JsonSerializerOptions _jsonOptions;
     private bool _disposed;
@@ -17,7 +16,6 @@ public class MessagePublisher : IMessagePublisher, IDisposable
     {
         _logger = logger;
         _connection = connectionFactory.CreateConnectionAsync().GetAwaiter().GetResult();
-        _channel = _connection.CreateChannelAsync().GetAwaiter().GetResult();
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
@@ -28,6 +26,9 @@ public class MessagePublisher : IMessagePublisher, IDisposable
     {
         if (_disposed) throw new ObjectDisposedException(nameof(MessagePublisher));
 
+        // Create a new channel per publish for thread safety
+        // RabbitMQ channels are not thread-safe, so we create one per operation
+        IChannel channel = await _connection.CreateChannelAsync(cancellationToken: cancellationToken);
         try
         {
             // Get the message type name for exchange/queue naming
@@ -35,7 +36,7 @@ public class MessagePublisher : IMessagePublisher, IDisposable
 
             // Declare exchange (topic exchange for routing)
             string exchangeName = messageTypeName;
-            await _channel.ExchangeDeclareAsync(exchangeName,
+            await channel.ExchangeDeclareAsync(exchangeName,
                 ExchangeType.Topic,
                 true,
                 false,
@@ -66,7 +67,7 @@ public class MessagePublisher : IMessagePublisher, IDisposable
                     conversationMessage.Role);
             }
 
-            await _channel.BasicPublishAsync(
+            await channel.BasicPublishAsync(
                 exchangeName,
                 routingKey,
                 false,
@@ -84,13 +85,18 @@ public class MessagePublisher : IMessagePublisher, IDisposable
             _logger.LogError(ex, "Failed to publish message of type {MessageType}", typeof(T).Name);
             throw;
         }
+        finally
+        {
+            // Dispose channel after use
+            await channel.CloseAsync(cancellationToken: cancellationToken);
+            channel.Dispose();
+        }
     }
 
     public void Dispose()
     {
         if (_disposed) return;
 
-        _channel?.Dispose();
         _connection?.Dispose();
         _disposed = true;
     }

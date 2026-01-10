@@ -1,4 +1,3 @@
-using FastEndpoints;
 using MattEland.Jaimes.ApiService.Hubs;
 using MattEland.Jaimes.ServiceDefinitions.Responses;
 using Microsoft.AspNetCore.SignalR;
@@ -38,10 +37,11 @@ public class NotifyMessageUpdateEndpoint : Endpoint<MessageUpdateNotification>
         string groupName = MessageHub.GetGameGroupName(notification.GameId);
 
         _logger.LogDebug(
-            "Broadcasting {UpdateType} update for message {MessageId} to game group {GameId}",
+            "Broadcasting {UpdateType} update for game {GameId} (MessageId: {MessageId}, TrackingGuid: {TrackingGuid})",
             notification.UpdateType,
+            notification.GameId,
             notification.MessageId,
-            notification.GameId);
+            notification.TrackingGuid);
 
         await _hubContext.Clients.Group(groupName).MessageUpdated(notification);
         await _hubContext.Clients.Group("admin").MessageUpdated(notification);

@@ -13,6 +13,33 @@ public class SignalRMessageUpdateNotifier(
     IHubContext<MessageHub, IMessageHubClient> hubContext,
     ILogger<SignalRMessageUpdateNotifier> logger) : IMessageUpdateNotifier
 {
+    public async Task NotifyEarlySentimentAsync(
+        Guid trackingGuid,
+        Guid gameId,
+        int sentiment,
+        double confidence,
+        CancellationToken cancellationToken = default)
+    {
+        MessageUpdateNotification notification = new()
+        {
+            MessageId = null,
+            TrackingGuid = trackingGuid,
+            GameId = gameId,
+            UpdateType = MessageUpdateType.SentimentAnalyzed,
+            Sentiment = sentiment,
+            SentimentConfidence = confidence,
+            SentimentSource = 0 // Model
+        };
+
+        logger.LogDebug(
+            "Broadcasting early sentiment ({Sentiment}, confidence: {Confidence:P0}) for tracking GUID {TrackingGuid}",
+            sentiment,
+            confidence,
+            trackingGuid);
+
+        await BroadcastUpdateAsync(notification);
+    }
+
     public async Task NotifySentimentAnalyzedAsync(int messageId,
         Guid gameId,
         int sentiment,

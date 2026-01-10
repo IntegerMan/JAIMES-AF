@@ -140,7 +140,12 @@
 					MessageFeedbackResponse? feedback = messageId.HasValue && _messageFeedback.TryGetValue(messageId.Value, out var fb) ? fb : null;
 					List<MessageToolCallResponse>? toolCalls = messageId.HasValue && _messageToolCalls.TryGetValue(messageId.Value, out var tc) ? tc : null;
 					List<MessageEvaluationMetricResponse>? metrics = messageId.HasValue && _messageMetrics.TryGetValue(messageId.Value, out var met) ? met : null;
-					MessageSentimentInfo? sentimentInfo = messageId.HasValue && _messageSentiment.TryGetValue(messageId.Value, out var si) ? si : null;
+					// Try to get sentiment from real messageId first, then fall back to temporary index-based ID for early classification
+					MessageSentimentInfo? sentimentInfo = messageId.HasValue && _messageSentiment.TryGetValue(messageId.Value, out var si)
+						? si
+						: _messageSentiment.TryGetValue(-(msgIndex + 1), out var tempSi)
+							? tempSi
+							: null;
 
 					List<string> paragraphs = ChatHelpers.SplitIntoParagraphs(m.Text).ToList();
 					@foreach ((string paragraph, int index) in paragraphs.Select((p, i) => (p, i)))

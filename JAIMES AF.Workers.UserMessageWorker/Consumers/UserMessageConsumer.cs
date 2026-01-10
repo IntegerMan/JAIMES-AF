@@ -128,8 +128,18 @@ public class UserMessageConsumer(
                 MessagePipelineStage.EmbeddingQueue,
                 cancellationToken);
 
-            bool sentimentAnalysisSucceeded =
-                await AnalyzeSentimentAsync(messageEntity, activity, context, cancellationToken);
+            // Check if sentiment analysis should be skipped (already completed during early classification)
+            bool sentimentAnalysisSucceeded;
+            if (message.SkipSentimentAnalysis)
+            {
+                logger.LogInformation("Skipping sentiment analysis for message {MessageId} (already completed during early classification)", message.MessageId);
+                sentimentAnalysisSucceeded = true;
+            }
+            else
+            {
+                sentimentAnalysisSucceeded =
+                    await AnalyzeSentimentAsync(messageEntity, activity, context, cancellationToken);
+            }
 
             // Notify pipeline stage: Complete or Failed
             if (sentimentAnalysisSucceeded)
@@ -174,6 +184,14 @@ public class UserMessageConsumer(
     private async Task<bool> AnalyzeSentimentAsync(Message messageEntity, Activity? activity, JaimesDbContext context,
         CancellationToken cancellationToken)
     {
+        // Check if sentiment already exists (early classification or manual override)
+        if (messageEntity.MessageSentiment != null)
+        {
+            logger.LogInformation("Message {MessageId} already has sentiment (source: {Source}), skipping analysis",
+                messageEntity.Id, messageEntity.MessageSentiment.SentimentSource);
+            return true;
+        }
+
         // Perform sentiment analysis
         if (!string.IsNullOrWhiteSpace(messageEntity.Text))
         {

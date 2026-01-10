@@ -14,14 +14,10 @@ public class GameAwareAgent(
     IServiceProvider serviceProvider,
     IHttpContextAccessor httpContextAccessor,
     ILogger<GameAwareAgent> logger) : AIAgent
-
 {
     private readonly IServiceProvider _serviceProvider = serviceProvider;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
     private readonly ILogger<GameAwareAgent> _logger = logger;
-
-    private readonly IMessageUpdateNotifier _messageUpdateNotifier =
-        serviceProvider.GetRequiredService<IMessageUpdateNotifier>();
 
     public override async Task<AgentRunResponse> RunAsync(
         IEnumerable<ChatMessage> messages,
@@ -53,6 +49,7 @@ public class GameAwareAgent(
         List<ChatMessage> messagesList = messages.ToList();
         Dictionary<string, AgentRunResponseUpdate> assistantUpdatesByMessageId = new();
         AgentRunResponseUpdate? lastUpdate = null;
+
         await foreach (AgentRunResponseUpdate update in gameAgent.RunStreamingAsync(messagesList,
                            gameThread ?? thread,
                            options,
@@ -495,7 +492,8 @@ public class GameAwareAgent(
 
                     try
                     {
-                        await _messageUpdateNotifier.NotifyToolCallsProcessedAsync(
+                        IMessageUpdateNotifier messageUpdateNotifier = context!.RequestServices.GetRequiredService<IMessageUpdateNotifier>();
+                        await messageUpdateNotifier.NotifyToolCallsProcessedAsync(
                             lastAiMessage.Id,
                             gameId,
                             true,

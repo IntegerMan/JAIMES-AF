@@ -21,6 +21,7 @@ public partial class GameDetails : IAsyncDisposable
 
     private List<ChatMessage> _messages = [];
     private List<int?> _messageIds = []; // Parallel list to track message IDs
+    private Dictionary<int, Guid> _messageTrackingGuids = new(); // Track tracking GUIDs for early sentiment classification (key: message index)
     private HashSet<int> _streamingMessageIndexes = new(); // Track which message indexes are currently streaming
     private HashSet<int> _contentModerationMessageIndexes = new(); // Track which user message indexes triggered content moderation
     private Dictionary<int, MessageFeedbackResponse> _messageFeedback = new();
@@ -358,6 +359,15 @@ public partial class GameDetails : IAsyncDisposable
                 await ScrollToBottomAsync();
             });
 
+            // Give Blazor time to flush UI updates to the browser before starting streaming
+            // This ensures the user message appears immediately, not after streaming starts
+            await Task.Delay(50);
+
+            // Call early sentiment classification endpoint (fire and forget - result comes via SignalR)
+            // Use Task.Run to completely detach from Blazor synchronization context
+            int capturedMessageIndex = currentMessageIndex;
+            _ = Task.Run(() => CallEarlySentimentClassificationAsync(GameId, messageText, capturedMessageIndex));
+
             // TEST_CONTENT_MODERATION: Simulate content moderation error without hitting the API
             if (messageText.Trim().Equals("TEST_CONTENT_MODERATION", StringComparison.OrdinalIgnoreCase))
             {
@@ -390,209 +400,238 @@ public partial class GameDetails : IAsyncDisposable
                 return;
             }
 
-            // Send message to API using SSE
-            HttpClient httpClient = HttpClientFactory.CreateClient("Api");
-            ChatRequest request = new()
+            // Run the streaming operation on a background thread to avoid blocking the Blazor circuit
+            // This allows SignalR notifications to be processed immediately (e.g., early sentiment classification)
+            await Task.Run(async () =>
             {
-                GameId = GameId,
-                Message = messageText
-            };
-
-            HttpRequestMessage httpRequest = new(HttpMethod.Post, $"/games/{GameId}/chat")
-            {
-                Content = JsonContent.Create(request)
-            };
-
-            HttpResponseMessage response =
-                await httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead);
-            response.EnsureSuccessStatusCode();
-
-            // Track accumulated text per message ID
-            Dictionary<string, System.Text.StringBuilder> messageBuilders = new();
-            Dictionary<string, int> messageIndexes = new();
-
-            // Read SSE stream
-            await using Stream stream = await response.Content.ReadAsStreamAsync();
-            using StreamReader reader = new(stream);
-
-            while (!reader.EndOfStream)
-            {
-                string? line = await reader.ReadLineAsync();
-                if (string.IsNullOrWhiteSpace(line)) continue;
-
-                // Parse SSE format: "event: eventType" and "data: jsonData"
-                if (line.StartsWith("event: ", StringComparison.Ordinal))
+                try
                 {
-                    string eventType = line.Substring(7);
-
-                    // Read the data line
-                    string? dataLine = await reader.ReadLineAsync();
-                    if (dataLine == null || !dataLine.StartsWith("data: ", StringComparison.Ordinal)) continue;
-
-                    string jsonData = dataLine.Substring(6);
-
-                    if (eventType == "delta")
+                    // Send message to API using SSE
+                    HttpClient httpClient = HttpClientFactory.CreateClient("Api");
+                    ChatRequest request = new()
                     {
-                        // Parse streaming delta
-                        var delta = JsonSerializer.Deserialize<ChatStreamEvent>(jsonData,
-                            new JsonSerializerOptions
-                            {
-                                PropertyNameCaseInsensitive = true
-                            });
+                        GameId = GameId,
+                        Message = messageText
+                    };
 
-                        if (delta == null) continue;
-
-                        // Accumulate text per message
-                        if (!messageBuilders.TryGetValue(delta.MessageId, out var builder))
-                        {
-                            builder = new System.Text.StringBuilder();
-                            messageBuilders[delta.MessageId] = builder;
-                        }
-
-                        builder.Append(delta.TextDelta);
-                        string accumulatedText = builder.ToString();
-
-                        // Check if this is a content moderation error message from the middleware
-                        if (accumulatedText.Contains("filtered by Azure's content moderation policy", StringComparison.OrdinalIgnoreCase))
-                        {
-                            _isContentModerationError = true;
-                            _errorMessage = "Content moderation error";
-                            _failedMessageIndex = currentMessageIndex;
-                            _contentModerationMessageIndexes.Add(currentMessageIndex);
-
-                            // CRITICAL FIX: Remove the partial assistant message from UI to prevent duplicate error display
-                            if (messageIndexes.TryGetValue(delta.MessageId, out int partialMsgIndex))
-                            {
-                                _messages.RemoveAt(partialMsgIndex);
-                                _messageIds.RemoveAt(partialMsgIndex);
-                                _streamingMessageIndexes.Remove(partialMsgIndex);
-                                messageIndexes.Remove(delta.MessageId);
-                            }
-
-                            // Don't add this as a regular assistant message - it will be shown as an error
-                            break;
-                        }
-
-                        // Check if message already exists in UI
-                        bool isExisting = messageIndexes.TryGetValue(delta.MessageId, out int msgIndex);
-
-                        // Only show message if we have content
-                        if (string.IsNullOrWhiteSpace(accumulatedText) && !isExisting)
-                        {
-                            continue;
-                        }
-
-                        // Stop typing indicator once we have content
-                        if (_isSending)
-                        {
-                            _isSending = false;
-                            await InvokeAsync(StateHasChanged);
-                        }
-
-                        if (!isExisting)
-                        {
-                            // Create new message
-                            var newMessage = new ChatMessage(ChatRole.Assistant, accumulatedText)
-                            {
-                                AuthorName = delta.AuthorName
-                            };
-
-                            _messages.Add(newMessage);
-                            _messageIds.Add(null); // Will be set in persisted event
-                            msgIndex = _messages.Count - 1;
-                            messageIndexes[delta.MessageId] = msgIndex;
-
-                            // Mark this message as streaming
-                            _streamingMessageIndexes.Add(msgIndex);
-                        }
-                        else
-                        {
-                            // Update existing message
-                            var oldMsg = _messages[msgIndex];
-                            _messages[msgIndex] = new ChatMessage(oldMsg.Role, accumulatedText)
-                            {
-                                AuthorName = delta.AuthorName ?? oldMsg.AuthorName
-                            };
-                        }
-
-                        // Update UI and scroll immediately during streaming
-                        await InvokeAsync(async () =>
-                        {
-                            StateHasChanged();
-                            // Scroll immediately without waiting for AfterRender
-                            await ScrollToBottomAsync();
-                        });
-                    }
-                    else if (eventType == "persisted")
+                    HttpRequestMessage httpRequest = new(HttpMethod.Post, $"/games/{GameId}/chat")
                     {
-                        // Parse persisted message IDs
-                        var persistedData = JsonSerializer.Deserialize<MessagePersistedEvent>(jsonData,
-                            new JsonSerializerOptions
-                            {
-                                PropertyNameCaseInsensitive = true
-                            });
+                        Content = JsonContent.Create(request)
+                    };
 
-                        if (persistedData != null)
+                    HttpResponseMessage response =
+                        await httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead);
+                    response.EnsureSuccessStatusCode();
+
+                    // Track accumulated text per message ID
+                    Dictionary<string, System.Text.StringBuilder> messageBuilders = new();
+                    Dictionary<string, int> messageIndexes = new();
+
+                    // Read SSE stream
+                    await using Stream stream = await response.Content.ReadAsStreamAsync();
+                    using StreamReader reader = new(stream);
+
+                    while (!reader.EndOfStream)
+                    {
+                        string? line = await reader.ReadLineAsync();
+                        if (string.IsNullOrWhiteSpace(line)) continue;
+
+                        // Parse SSE format: "event: eventType" and "data: jsonData"
+                        if (line.StartsWith("event: ", StringComparison.Ordinal))
                         {
-                            // Set user message ID
-                            if (persistedData.UserMessageId.HasValue && currentMessageIndex >= 0)
-                            {
-                                _messageIds[currentMessageIndex] = persistedData.UserMessageId.Value;
+                            string eventType = line.Substring(7);
 
-                                // Add agent info for this user message
-                                _messageAgentInfo[persistedData.UserMessageId.Value] = GetCurrentAgentInfo();
-                            }
+                            // Read the data line
+                            string? dataLine = await reader.ReadLineAsync();
+                            if (dataLine == null || !dataLine.StartsWith("data: ", StringComparison.Ordinal)) continue;
 
-                            // Set assistant message IDs
-                            if (persistedData.AssistantMessageIds != null)
+                            string jsonData = dataLine.Substring(6);
+
+                            if (eventType == "delta")
                             {
-                                int assistantStartIndex = currentMessageIndex + 1;
-                                for (int i = 0; i < persistedData.AssistantMessageIds.Count; i++)
-                                {
-                                    int messageIndex = assistantStartIndex + i;
-                                    if (messageIndex < _messageIds.Count)
+                                // Parse streaming delta
+                                var delta = JsonSerializer.Deserialize<ChatStreamEvent>(jsonData,
+                                    new JsonSerializerOptions
                                     {
-                                        int dbId = persistedData.AssistantMessageIds[i];
-                                        _messageIds[messageIndex] = dbId;
+                                        PropertyNameCaseInsensitive = true
+                                    });
 
-                                        // Add agent info for assistant message
-                                        _messageAgentInfo[dbId] = GetCurrentAgentInfo();
+                                if (delta == null) continue;
+
+                                // Accumulate text per message
+                                if (!messageBuilders.TryGetValue(delta.MessageId, out var builder))
+                                {
+                                    builder = new System.Text.StringBuilder();
+                                    messageBuilders[delta.MessageId] = builder;
+                                }
+
+                                builder.Append(delta.TextDelta);
+                                string accumulatedText = builder.ToString();
+
+                                // Check if this is a content moderation error message from the middleware
+                                if (accumulatedText.Contains("filtered by Azure's content moderation policy", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    await InvokeAsync(() =>
+                                    {
+                                        _isContentModerationError = true;
+                                        _errorMessage = "Content moderation error";
+                                        _failedMessageIndex = currentMessageIndex;
+                                        _contentModerationMessageIndexes.Add(currentMessageIndex);
+
+                                        // CRITICAL FIX: Remove the partial assistant message from UI to prevent duplicate error display
+                                        if (messageIndexes.TryGetValue(delta.MessageId, out int partialMsgIndex))
+                                        {
+                                            _messages.RemoveAt(partialMsgIndex);
+                                            _messageIds.RemoveAt(partialMsgIndex);
+                                            _streamingMessageIndexes.Remove(partialMsgIndex);
+                                            messageIndexes.Remove(delta.MessageId);
+                                        }
+                                    });
+
+                                    // Don't add this as a regular assistant message - it will be shown as an error
+                                    break;
+                                }
+
+                                // Check if message already exists in UI
+                                bool isExisting = messageIndexes.TryGetValue(delta.MessageId, out int msgIndex);
+
+                                // Only show message if we have content
+                                if (string.IsNullOrWhiteSpace(accumulatedText) && !isExisting)
+                                {
+                                    continue;
+                                }
+
+                                // Stop typing indicator once we have content
+                                if (_isSending)
+                                {
+                                    await InvokeAsync(() =>
+                                    {
+                                        _isSending = false;
+                                        StateHasChanged();
+                                    });
+                                }
+
+                                await InvokeAsync(async () =>
+                                {
+                                    if (!isExisting)
+                                    {
+                                        // Create new message
+                                        var newMessage = new ChatMessage(ChatRole.Assistant, accumulatedText)
+                                        {
+                                            AuthorName = delta.AuthorName
+                                        };
+
+                                        _messages.Add(newMessage);
+                                        _messageIds.Add(null); // Will be set in persisted event
+                                        msgIndex = _messages.Count - 1;
+                                        messageIndexes[delta.MessageId] = msgIndex;
+
+                                        // Mark this message as streaming
+                                        _streamingMessageIndexes.Add(msgIndex);
                                     }
+                                    else
+                                    {
+                                        // Update existing message
+                                        var oldMsg = _messages[msgIndex];
+                                        _messages[msgIndex] = new ChatMessage(oldMsg.Role, accumulatedText)
+                                        {
+                                            AuthorName = delta.AuthorName ?? oldMsg.AuthorName
+                                        };
+                                    }
+
+                                    // Update UI and scroll immediately during streaming
+                                    StateHasChanged();
+                                    await ScrollToBottomAsync();
+                                });
+                            }
+                            else if (eventType == "persisted")
+                            {
+                                // Parse persisted message IDs
+                                var persistedData = JsonSerializer.Deserialize<MessagePersistedEvent>(jsonData,
+                                    new JsonSerializerOptions
+                                    {
+                                        PropertyNameCaseInsensitive = true
+                                    });
+
+                                if (persistedData != null)
+                                {
+                                    await InvokeAsync(() =>
+                                    {
+                                        // Set user message ID
+                                        if (persistedData.UserMessageId.HasValue && currentMessageIndex >= 0)
+                                        {
+                                            _messageIds[currentMessageIndex] = persistedData.UserMessageId.Value;
+
+                                            // Add agent info for this user message
+                                            _messageAgentInfo[persistedData.UserMessageId.Value] = GetCurrentAgentInfo();
+                                        }
+
+                                        // Set assistant message IDs
+                                        if (persistedData.AssistantMessageIds != null)
+                                        {
+                                            int assistantStartIndex = currentMessageIndex + 1;
+                                            for (int i = 0; i < persistedData.AssistantMessageIds.Count; i++)
+                                            {
+                                                int messageIndex = assistantStartIndex + i;
+                                                if (messageIndex < _messageIds.Count)
+                                                {
+                                                    int dbId = persistedData.AssistantMessageIds[i];
+                                                    _messageIds[messageIndex] = dbId;
+
+                                                    // Add agent info for assistant message
+                                                    _messageAgentInfo[dbId] = GetCurrentAgentInfo();
+                                                }
+                                            }
+                                        }
+
+                                        StateHasChanged();
+                                    });
                                 }
                             }
-
-                            await InvokeAsync(StateHasChanged);
-                        }
-                    }
-                    else if (eventType == "done")
-                    {
-                        break;
-                    }
-                    else if (eventType == "error")
-                    {
-                        var errorData = JsonSerializer.Deserialize<ErrorEvent>(jsonData,
-                            new JsonSerializerOptions
+                            else if (eventType == "done")
                             {
-                                PropertyNameCaseInsensitive = true
-                            });
-                        _errorMessage = $"Server error: {errorData?.Error ?? "Unknown error"}";
-                        _failedMessageIndex = currentMessageIndex;
+                                break;
+                            }
+                            else if (eventType == "error")
+                            {
+                                var errorData = JsonSerializer.Deserialize<ErrorEvent>(jsonData,
+                                    new JsonSerializerOptions
+                                    {
+                                        PropertyNameCaseInsensitive = true
+                                    });
 
-                        // Check if this is a content moderation error
-                        string errorText = errorData?.Error?.ToLowerInvariant() ?? string.Empty;
-                        _isContentModerationError = errorText.Contains("content moderation") ||
-                                                     errorText.Contains("content_filter") ||
-                                                     errorText.Contains("content management policy");
+                                await InvokeAsync(() =>
+                                {
+                                    _errorMessage = $"Server error: {errorData?.Error ?? "Unknown error"}";
+                                    _failedMessageIndex = currentMessageIndex;
 
-                        if (_isContentModerationError)
-                        {
-                            _contentModerationMessageIndexes.Add(currentMessageIndex);
+                                    // Check if this is a content moderation error
+                                    string errorText = errorData?.Error.ToLowerInvariant() ?? string.Empty;
+                                    _isContentModerationError = errorText.Contains("content moderation") ||
+                                                                 errorText.Contains("content_filter") ||
+                                                                 errorText.Contains("content management policy");
+
+                                    if (_isContentModerationError)
+                                    {
+                                        _contentModerationMessageIndexes.Add(currentMessageIndex);
+                                    }
+                                });
+
+                                break;
+                            }
                         }
-
-                        break;
                     }
                 }
-            }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to process streaming response");
+                    await InvokeAsync(() =>
+                    {
+                        _errorMessage = $"Failed to send message: {ex.Message}";
+                        _failedMessageIndex = currentMessageIndex != -1 ? currentMessageIndex : _messages.Count - 1;
+                    });
+                }
+            });
         }
         catch (Exception ex)
         {
@@ -619,6 +658,44 @@ public partial class GameDetails : IAsyncDisposable
     private record MessagePersistedEvent(string Type, int? UserMessageId, List<int>? AssistantMessageIds);
 
     private record ErrorEvent(string Error, string Type);
+
+    private async Task CallEarlySentimentClassificationAsync(Guid gameId, string messageText, int messageIndex)
+    {
+        try
+        {
+            HttpClient classificationClient = HttpClientFactory.CreateClient("EarlyClassification");
+            ClassifySentimentEarlyRequest classificationRequest = new()
+            {
+                GameId = gameId,
+                MessageText = messageText
+            };
+
+            var classificationResponse = await classificationClient.PostAsJsonAsync(
+                "/api/internal/classify-sentiment-early",
+                classificationRequest);
+
+            if (classificationResponse.IsSuccessStatusCode)
+            {
+                var result = await classificationResponse.Content.ReadFromJsonAsync<ClassifySentimentEarlyResponse>();
+                if (result != null)
+                {
+                    // Store tracking GUID for this message index
+                    _messageTrackingGuids[messageIndex] = result.TrackingGuid;
+                    _logger?.LogDebug("Early sentiment classification requested with tracking GUID {TrackingGuid} for message index {MessageIndex}",
+                        result.TrackingGuid, messageIndex);
+                }
+            }
+            else
+            {
+                _logger?.LogWarning("Early sentiment classification request failed with status {StatusCode}",
+                    classificationResponse.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to request early sentiment classification");
+        }
+    }
 
     private async Task RetryMessageAsync(int messageIndex)
     {
@@ -874,30 +951,66 @@ public partial class GameDetails : IAsyncDisposable
 
             // Handle message updates
             _hubConnection.On<MessageUpdateNotification>("MessageUpdated",
-                async notification =>
+                notification =>
                 {
-                    await InvokeAsync(async () =>
+                    _ = InvokeAsync(async () =>
                     {
                         // Update local state based on update type
                         if (notification.UpdateType == MessageUpdateType.SentimentAnalyzed &&
                             notification.Sentiment.HasValue)
                         {
-                            // Store sentiment info
-                            _messageSentiment[notification.MessageId] = new MessageSentimentInfo
+                            // Check if this is an early sentiment (has tracking GUID, no message ID)
+                            if (notification.TrackingGuid.HasValue && !notification.MessageId.HasValue)
                             {
-                                Sentiment = notification.Sentiment.Value,
-                                Confidence = notification.SentimentConfidence,
-                                SentimentSource = notification.SentimentSource
-                            };
+                                // Find the message index that matches this tracking GUID
+                                var matchingEntry = _messageTrackingGuids
+                                    .FirstOrDefault(kvp => kvp.Value == notification.TrackingGuid.Value);
+
+                                if (matchingEntry.Key != 0 || _messageTrackingGuids.ContainsKey(0))
+                                {
+                                    int messageIndex = matchingEntry.Key;
+                                    // Create a temporary message ID for this message
+                                    // Use negative index to avoid collision with real IDs
+                                    int tempMessageId = -(messageIndex + 1);
+                                    _messageSentiment[tempMessageId] = new MessageSentimentInfo
+                                    {
+                                        Sentiment = notification.Sentiment.Value,
+                                        Confidence = notification.SentimentConfidence,
+                                        SentimentSource = notification.SentimentSource
+                                    };
+
+                                    _logger?.LogDebug("Updated early sentiment for message index {MessageIndex} with tracking GUID {TrackingGuid}",
+                                        messageIndex, notification.TrackingGuid.Value);
+
+                                    StateHasChanged();
+                                }
+                                else
+                                {
+                                    _logger?.LogWarning("Received early sentiment notification with unknown tracking GUID {TrackingGuid}",
+                                        notification.TrackingGuid.Value);
+                                }
+                            }
+                            else if (notification.MessageId.HasValue)
+                            {
+                                // Store sentiment info with actual message ID
+                                _messageSentiment[notification.MessageId.Value] = new MessageSentimentInfo
+                                {
+                                    Sentiment = notification.Sentiment.Value,
+                                    Confidence = notification.SentimentConfidence,
+                                    SentimentSource = notification.SentimentSource
+                                };
+                            }
                         }
                         else if (notification.UpdateType == MessageUpdateType.MetricEvaluated &&
-                                 notification.Metrics != null)
+                                 notification.Metrics != null &&
+                                 notification.MessageId.HasValue)
                         {
                             // Streaming update: single metric arrived
-                            if (!_messageMetrics.TryGetValue(notification.MessageId, out var existingMetrics))
+                            int messageId = notification.MessageId.Value;
+                            if (!_messageMetrics.TryGetValue(messageId, out var existingMetrics))
                             {
                                 existingMetrics = [];
-                                _messageMetrics[notification.MessageId] = existingMetrics;
+                                _messageMetrics[messageId] = existingMetrics;
                             }
 
                             // Add new metrics (typically just one at a time)
@@ -913,17 +1026,17 @@ public partial class GameDetails : IAsyncDisposable
                             // Track expected count if provided
                             if (notification.ExpectedMetricCount.HasValue)
                             {
-                                _messageExpectedMetricCount[notification.MessageId] = notification.ExpectedMetricCount.Value;
+                                _messageExpectedMetricCount[messageId] = notification.ExpectedMetricCount.Value;
                             }
 
                             // Track errors if this was an error notification
                             if (notification.IsError == true && !string.IsNullOrEmpty(notification.ErrorMessage) &&
                                 notification.Metrics.Count > 0)
                             {
-                                if (!_messageMetricErrors.TryGetValue(notification.MessageId, out var errorDict))
+                                if (!_messageMetricErrors.TryGetValue(messageId, out var errorDict))
                                 {
                                     errorDict = new Dictionary<string, string>();
-                                    _messageMetricErrors[notification.MessageId] = errorDict;
+                                    _messageMetricErrors[messageId] = errorDict;
                                 }
 
                                 foreach (var metric in notification.Metrics)
@@ -936,19 +1049,21 @@ public partial class GameDetails : IAsyncDisposable
                             if (notification.ExpectedMetricCount.HasValue &&
                                 existingMetrics.Count >= notification.ExpectedMetricCount.Value)
                             {
-                                _loadedMetricsMessageIds.Add(notification.MessageId);
+                                _loadedMetricsMessageIds.Add(messageId);
                             }
                         }
                         else if (notification.UpdateType == MessageUpdateType.MetricsEvaluated &&
-                                 notification.Metrics != null)
+                                 notification.Metrics != null &&
+                                 notification.MessageId.HasValue)
                         {
                             // Final update: all metrics complete (backward compatibility)
-                            _messageMetrics[notification.MessageId] = notification.Metrics;
-                            _loadedMetricsMessageIds.Add(notification.MessageId);
+                            int messageId = notification.MessageId.Value;
+                            _messageMetrics[messageId] = notification.Metrics;
+                            _loadedMetricsMessageIds.Add(messageId);
 
                             // Rebuild error dictionary to preserve errors for metrics with score 0 and "failed" remarks
                             // This ensures error styling persists in the UI for actually failed evaluations
-                            if (_messageMetricErrors.TryGetValue(notification.MessageId, out var errorDict))
+                            if (_messageMetricErrors.TryGetValue(messageId, out var errorDict))
                             {
                                 // Create a new dictionary with only the metrics that are actually errors
                                 var updatedErrors = new Dictionary<string, string>();
@@ -961,29 +1076,30 @@ public partial class GameDetails : IAsyncDisposable
                                         updatedErrors[metric.MetricName] = errorMsg;
                                     }
                                 }
-                                
+
                                 // Update or remove the error dictionary
                                 if (updatedErrors.Count > 0)
                                 {
-                                    _messageMetricErrors[notification.MessageId] = updatedErrors;
+                                    _messageMetricErrors[messageId] = updatedErrors;
                                 }
                                 else
                                 {
-                                    _messageMetricErrors.Remove(notification.MessageId);
+                                    _messageMetricErrors.Remove(messageId);
                                 }
                             }
 
                             if (notification.HasMissingEvaluators.HasValue)
                             {
-                                _messageHasMissingEvaluators[notification.MessageId] =
+                                _messageHasMissingEvaluators[messageId] =
                                     notification.HasMissingEvaluators.Value;
                             }
                         }
                         else if (notification.UpdateType == MessageUpdateType.ToolCallsProcessed &&
-                                 notification.HasToolCalls == true)
+                                 notification.HasToolCalls == true &&
+                                 notification.MessageId.HasValue)
                         {
                             // Fetch metadata for this message immediately to get the tool calls
-                            await LoadMessagesMetadataAsync(new List<int> {notification.MessageId});
+                            await LoadMessagesMetadataAsync(new List<int> {notification.MessageId.Value});
                         }
 
                         StateHasChanged();
@@ -992,7 +1108,9 @@ public partial class GameDetails : IAsyncDisposable
 
             // Start connection and join game group
             await _hubConnection.StartAsync();
+            _logger?.LogInformation("[SignalR] Connected to hub, joining game group for GameId: {GameId}", GameId);
             await _hubConnection.InvokeAsync("JoinGame", GameId);
+            _logger?.LogInformation("[SignalR] Successfully joined game group for GameId: {GameId}", GameId);
         }
         catch (Exception ex)
         {

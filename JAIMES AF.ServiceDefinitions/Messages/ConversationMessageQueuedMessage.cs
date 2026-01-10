@@ -32,5 +32,10 @@ public class ConversationMessageQueuedMessage
     /// Optional list of specific evaluator class names to run. If null, all applicable evaluators are run.
     /// </summary>
     public List<string>? EvaluatorsToRun { get; set; }
+
+    /// <summary>
+    /// When true, skip sentiment analysis (already completed during early classification).
+    /// </summary>
+    public bool SkipSentimentAnalysis { get; set; }
 }
 

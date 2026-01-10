@@ -9,28 +9,30 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Remove="NewFolder\**"/>
-        <EmbeddedResource Remove="NewFolder\**"/>
-        <None Remove="NewFolder\**"/>
+        <Compile Remove="NewFolder\**" />
+        <EmbeddedResource Remove="NewFolder\**" />
+        <None Remove="NewFolder\**" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\JAIMES AF.Agents\JAIMES AF.Agents.csproj"/>
-        <ProjectReference Include="..\JAIMES AF.Domain\JAIMES AF.Domain.csproj"/>
-        <ProjectReference Include="..\JAIMES AF.Evaluators\JAIMES AF.Evaluators.csproj"/>
-        <ProjectReference Include="..\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj"/>
-        <ProjectReference Include="..\JAIMES AF.ServiceDefinitions\JAIMES AF.ServiceDefinitions.csproj"/>
-        <ProjectReference Include="..\JAIMES AF.Tools\JAIMES AF.Tools.csproj"/>
+        <ProjectReference Include="..\JAIMES AF.Agents\JAIMES AF.Agents.csproj" />
+        <ProjectReference Include="..\JAIMES AF.Domain\JAIMES AF.Domain.csproj" />
+        <ProjectReference Include="..\JAIMES AF.Evaluators\JAIMES AF.Evaluators.csproj" />
+        <ProjectReference Include="..\JAIMES AF.Repositories\JAIMES AF.Repositories.csproj" />
+        <ProjectReference Include="..\JAIMES AF.ServiceDefinitions\JAIMES AF.ServiceDefinitions.csproj" />
+        <ProjectReference Include="..\JAIMES AF.Tools\JAIMES AF.Tools.csproj" />
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection"/>
+        <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" />
         <PackageReference Include="Microsoft.Extensions.AI.Evaluation" />
         <PackageReference Include="Microsoft.Extensions.AI.Evaluation.Quality" />
         <PackageReference Include="Microsoft.Extensions.AI.Evaluation.Reporting" />
-        <PackageReference Include="Microsoft.Extensions.Http.Polly"/>
-        <PackageReference Include="Riok.Mapperly"/>
-        <PackageReference Include="Scrutor"/>
+        <PackageReference Include="Microsoft.Extensions.Http.Polly" />
+        <PackageReference Include="Microsoft.Extensions.ObjectPool" />
+        <PackageReference Include="Microsoft.ML" />
+        <PackageReference Include="Riok.Mapperly" />
+        <PackageReference Include="Scrutor" />
     </ItemGroup>
 
 </Project>

@@ -7,7 +7,14 @@
       "Bash(git log:*)",
       "Bash(dir /s /b *.tsx)",
       "Bash(cat:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(dotnet add:*)",
+      "Bash(dotnet add package:*)",
+      "Bash(Select-String -Pattern \"error|Build FAILED|Build succeeded\")",
+      "Bash(Select-Object -Last 10)",
+      "Bash(Select-String -Pattern \"RabbitMQ\" -Context 0,1)"
     ]
   }
 }

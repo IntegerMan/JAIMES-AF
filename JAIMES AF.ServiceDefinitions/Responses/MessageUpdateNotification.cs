@@ -8,8 +8,15 @@ public record MessageUpdateNotification
 {
     /// <summary>
     /// The ID of the message that was updated.
+    /// Null for early sentiment classification (use TrackingGuid instead).
     /// </summary>
-    public required int MessageId { get; init; }
+    public int? MessageId { get; init; }
+
+    /// <summary>
+    /// Tracking GUID for early sentiment classification (before message persistence).
+    /// Null for regular message updates (use MessageId instead).
+    /// </summary>
+    public Guid? TrackingGuid { get; init; }
 
     /// <summary>
     /// The ID of the game the message belongs to.
