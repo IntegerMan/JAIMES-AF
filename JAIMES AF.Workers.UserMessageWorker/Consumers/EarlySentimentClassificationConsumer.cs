@@ -11,6 +11,7 @@ namespace MattEland.Jaimes.Workers.UserMessageWorker.Consumers;
 public class EarlySentimentClassificationConsumer(
     ISentimentClassificationService sentimentService,
     IMessageUpdateNotifier messageUpdateNotifier,
+    IPendingSentimentCache pendingSentimentCache,
     ILogger<EarlySentimentClassificationConsumer> logger,
     ActivitySource activitySource) : IMessageConsumer<EarlySentimentClassificationMessage>
 {
@@ -47,6 +48,9 @@ public class EarlySentimentClassificationConsumer(
                 sentiment,
                 confidence,
                 cancellationToken);
+
+            // Store in cache for correlation with persisted message
+            pendingSentimentCache.Store(message.TrackingGuid, sentiment, confidence);
 
             logger.LogDebug(
                 "Broadcasted early sentiment for tracking GUID {TrackingGuid}",

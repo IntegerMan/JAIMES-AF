@@ -14,6 +14,7 @@ public class UserMessageConsumer(
     ActivitySource activitySource,
     IOptions<SentimentAnalysisOptions> sentimentOptions,
     SentimentModelService sentimentModelService,
+    IPendingSentimentCache pendingSentimentCache,
     IMessageUpdateNotifier messageUpdateNotifier) : IMessageConsumer<ConversationMessageQueuedMessage>
 {
     public async Task HandleAsync(ConversationMessageQueuedMessage message,
@@ -132,8 +133,55 @@ public class UserMessageConsumer(
             bool sentimentAnalysisSucceeded;
             if (message.SkipSentimentAnalysis)
             {
-                logger.LogInformation("Skipping sentiment analysis for message {MessageId} (already completed during early classification)", message.MessageId);
-                sentimentAnalysisSucceeded = true;
+                logger.LogInformation(
+                    "Skipping sentiment analysis for message {MessageId} (already completed during early classification)",
+                    message.MessageId);
+
+                // Attempt to retrieve result from cache if we have a tracking GUID
+                if (message.TrackingGuid.HasValue &&
+                    pendingSentimentCache.TryGet(message.TrackingGuid.Value, out var cachedResult))
+                {
+                    // Update entity with cached results
+                    // We need to create a MessageSentiment entity if it doesn't exist
+                    if (messageEntity.MessageSentiment == null)
+                    {
+                        DateTime now = DateTime.UtcNow;
+                        messageEntity.MessageSentiment = new MessageSentiment
+                        {
+                            MessageId = messageEntity.Id,
+                            Sentiment = cachedResult!.Sentiment,
+                            Confidence = cachedResult.Confidence,
+                            CreatedAt = now,
+                            UpdatedAt = now,
+                            SentimentSource = SentimentSource.Model
+                        };
+                        context.MessageSentiments.Add(messageEntity.MessageSentiment);
+                    }
+                    else if (messageEntity.MessageSentiment.SentimentSource != SentimentSource.Player)
+                    {
+                        messageEntity.MessageSentiment.Sentiment = cachedResult!.Sentiment;
+                        messageEntity.MessageSentiment.Confidence = cachedResult.Confidence;
+                        messageEntity.MessageSentiment.UpdatedAt = DateTime.UtcNow;
+                    }
+
+                    sentimentAnalysisSucceeded = true;
+
+                    // Clean up the cache entry now that we've used it
+                    pendingSentimentCache.Remove(message.TrackingGuid.Value);
+                }
+                else if (messageEntity.MessageSentiment != null)
+                {
+                    // Sentiment already set (maybe from a previous attempt or already persisted)
+                    sentimentAnalysisSucceeded = true;
+                }
+                else
+                {
+                    logger.LogWarning(
+                        "SkipSentimentAnalysis was true but no sentiment data found in cache or DB for message {MessageId}",
+                        message.MessageId);
+                    sentimentAnalysisSucceeded =
+                        await AnalyzeSentimentAsync(messageEntity, activity, context, cancellationToken);
+                }
             }
             else
             {
@@ -181,14 +229,17 @@ public class UserMessageConsumer(
         }
     }
 
-    private async Task<bool> AnalyzeSentimentAsync(Message messageEntity, Activity? activity, JaimesDbContext context,
+    private async Task<bool> AnalyzeSentimentAsync(Message messageEntity,
+        Activity? activity,
+        JaimesDbContext context,
         CancellationToken cancellationToken)
     {
         // Check if sentiment already exists (early classification or manual override)
         if (messageEntity.MessageSentiment != null)
         {
             logger.LogInformation("Message {MessageId} already has sentiment (source: {Source}), skipping analysis",
-                messageEntity.Id, messageEntity.MessageSentiment.SentimentSource);
+                messageEntity.Id,
+                messageEntity.MessageSentiment.SentimentSource);
             return true;
         }
 

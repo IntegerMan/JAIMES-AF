@@ -425,7 +425,10 @@ public partial class GameDetails : IAsyncDisposable
                     ChatRequest request = new()
                     {
                         GameId = GameId,
-                        Message = messageText
+                        Message = messageText,
+                        TrackingGuid = _messageTrackingGuids.TryGetValue(currentMessageIndex, out Guid guid)
+                            ? guid
+                            : null
                     };
 
                     HttpRequestMessage httpRequest = new(HttpMethod.Post, $"/games/{GameId}/chat")

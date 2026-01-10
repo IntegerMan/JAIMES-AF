@@ -37,5 +37,10 @@ public class ConversationMessageQueuedMessage
     /// When true, skip sentiment analysis (already completed during early classification).
     /// </summary>
     public bool SkipSentimentAnalysis { get; set; }
+
+    /// <summary>
+    /// Optional tracking GUID to correlate with early sentiment classification results.
+    /// </summary>
+    public Guid? TrackingGuid { get; set; }
 }
 
