@@ -67,6 +67,8 @@ HTTP/Protobuf was chosen over gRPC because:
 
 ## Aspire Parameters
 
+These parameters are configured in the **AppHost's** `appsettings.json` under the `Parameters` section. The AppHost reads these values and passes them to services as environment variables.
+
 ### `otel-log-level`
 
 Controls OpenTelemetry SDK diagnostic logging verbosity.
@@ -79,7 +81,7 @@ Controls OpenTelemetry SDK diagnostic logging verbosity.
 | `debug` | Verbose export diagnostics |
 | `trace` | Most verbose SDK internals |
 
-**Example `appsettings.json`:**
+**Configuration in `JAIMES AF.AppHost/appsettings.json`:**
 ```json
 {
   "Parameters": {
@@ -87,6 +89,8 @@ Controls OpenTelemetry SDK diagnostic logging verbosity.
   }
 }
 ```
+
+This gets passed to services as the `OTEL_LOG_LEVEL` environment variable.
 
 ### `enable-sensitive-logging`
 
@@ -96,6 +100,17 @@ When enabled, AI prompts and responses are included in telemetry traces.
 |-------|-------------|
 | `false` (default) | Sensitive data excluded |
 | `true` | Prompts/responses visible in traces |
+
+**Configuration in `JAIMES AF.AppHost/appsettings.json`:**
+```json
+{
+  "Parameters": {
+    "enable-sensitive-logging": "true"
+  }
+}
+```
+
+This gets passed to services as the `AI__EnableSensitiveLogging` environment variable.
 
 > [!WARNING]
 > Enable sensitive logging only in development. Never enable in production.
