@@ -723,11 +723,21 @@ public partial class GameDetails : IAsyncDisposable
 
         // Remove the failed message and any subsequent messages from the list (cleanup failed attempt)
         int countToRemove = _messages.Count - messageIndex;
+
+        // Cleanup tracking for removed messages
+        for (int i = 0; i < countToRemove; i++)
+        {
+            int currentIdx = messageIndex + i;
+            _messageTrackingGuids.TryRemove(currentIdx, out _);
+            _messageSentiment.Remove(-(currentIdx + 1));
+        }
+
         _messages.RemoveRange(messageIndex, countToRemove);
         _messageIds.RemoveRange(messageIndex, countToRemove);
 
-        // Clear content moderation tracking for removed messages
+        // Clear index-based tracking for removed messages
         _contentModerationMessageIndexes.RemoveWhere(idx => idx >= messageIndex);
+        _streamingMessageIndexes.RemoveWhere(idx => idx >= messageIndex);
 
         _failedMessageIndex = null;
         _errorMessage = null;
