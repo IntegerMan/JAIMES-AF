@@ -75,6 +75,12 @@ catch (Exception ex)
     Environment.ExitCode = 1;
     throw;
 }
+finally
+{
+    // Properly stop the host to trigger OpenTelemetry flush.
+    // This ensures all traces and logs are exported before the process exits.
+    await host.StopAsync();
+}
 
 /// <summary>
 /// Uploads the bundled sentiment classification model to the database if not already present.

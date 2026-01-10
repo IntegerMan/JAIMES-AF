@@ -50,6 +50,30 @@ public static class Extensions
     public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder)
         where TBuilder : IHostApplicationBuilder
     {
+        // Enable OpenTelemetry SDK self-diagnostics for troubleshooting export issues
+        // The SDK supports file-based self-diagnostics via OTEL_DIAGNOSTICS_FILE environment variable
+        // Create a otel-diagnostics.json file in the app directory with content like:
+        // {"LogDirectory": ".", "FileSize": 32768, "LogLevel": "Error"}
+        // Alternatively, set these environment variables for verbose logging:
+        // - OTEL_LOG_LEVEL=debug  (for verbose OTLP exporter logging)
+        // - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf (we already default to this)
+
+        // Log OTLP exporter configuration for debugging at startup
+        var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
+        var otelLogLevel = builder.Configuration["OTEL_LOG_LEVEL"];
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+        {
+            Console.WriteLine($"[OTel-Startup] OTLP Endpoint: {otlpEndpoint}");
+            Console.WriteLine($"[OTel-Startup] Protocol: HttpProtobuf (HTTP/1.1)");
+            Console.WriteLine($"[OTel-Startup] Application: {builder.Environment.ApplicationName}");
+            if (!string.IsNullOrWhiteSpace(otelLogLevel))
+            {
+                Console.WriteLine($"[OTel-Startup] Log Level: {otelLogLevel}");
+            }
+
+            Console.WriteLine("[OTel-Startup] Tip: Set OTEL_LOG_LEVEL=debug for verbose export diagnostics");
+        }
+
         builder.Logging.AddOpenTelemetry(logging =>
         {
             logging.IncludeFormattedMessage = true;
@@ -158,8 +182,8 @@ public static class Extensions
 
         if (useOtlpExporter)
         {
-            // Explicitly use HTTP/protobuf protocol to avoid HTTP/2 vs HTTP/1.1 protocol mismatch issues
-            // gRPC requires HTTP/2 which can be inconsistent on Windows; HTTP/protobuf works over HTTP/1.1
+            // Explicitly use HTTP/protobuf protocol for consistency
+            // Aspire's OTLP receiver must also be configured for HTTP via DOTNET_DASHBOARD_OTLP_HTTP_ENDPOINT_URL
             builder.Services.AddOpenTelemetry().UseOtlpExporter(
                 OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf,
                 new Uri(otlpEndpoint!));

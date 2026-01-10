@@ -11,6 +11,7 @@
         "DOTNET_ENVIRONMENT": "Development",
         "ASPNETCORE_URLS": "http://localhost:15000;https://localhost:15001",
         "ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL": "https://localhost:21188",
+        "ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL": "https://localhost:21189",
         "ASPIRE_RESOURCE_SERVICE_ENDPOINT_URL": "https://localhost:22267"
       }
     },
@@ -24,6 +25,7 @@
         "DOTNET_ENVIRONMENT": "Development",
         "ASPNETCORE_URLS": "http://localhost:15000",
         "ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL": "http://localhost:19287",
+        "ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL": "http://localhost:19288",
         "ASPIRE_RESOURCE_SERVICE_ENDPOINT_URL": "http://localhost:20027"
       }
     }
