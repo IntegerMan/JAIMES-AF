@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Text.Json;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
@@ -21,9 +22,15 @@ public partial class GameDetails : IAsyncDisposable
 
     private List<ChatMessage> _messages = [];
     private List<int?> _messageIds = []; // Parallel list to track message IDs
-    private Dictionary<int, Guid> _messageTrackingGuids = new(); // Track tracking GUIDs for early sentiment classification (key: message index)
+
+    private ConcurrentDictionary<int, Guid>
+        _messageTrackingGuids = new(); // Track tracking GUIDs for early sentiment classification (key: message index)
+
     private HashSet<int> _streamingMessageIndexes = new(); // Track which message indexes are currently streaming
-    private HashSet<int> _contentModerationMessageIndexes = new(); // Track which user message indexes triggered content moderation
+
+    private HashSet<int>
+        _contentModerationMessageIndexes = new(); // Track which user message indexes triggered content moderation
+
     private Dictionary<int, MessageFeedbackResponse> _messageFeedback = new();
     private Dictionary<int, List<MessageToolCallResponse>> _messageToolCalls = new();
     private Dictionary<int, List<MessageEvaluationMetricResponse>> _messageMetrics = new();
@@ -32,7 +39,10 @@ public partial class GameDetails : IAsyncDisposable
     private Dictionary<int, int> _messageTestCases = new(); // Key: messageId, Value: testCaseId
     private Dictionary<int, MessageAgentInfo> _messageAgentInfo = new();
     private Dictionary<int, int> _messageExpectedMetricCount = new(); // Key: messageId, Value: expected count
-    private Dictionary<int, Dictionary<string, string>> _messageMetricErrors = new(); // Key: messageId, Value: metric name -> error message
+
+    private Dictionary<int, Dictionary<string, string>>
+        _messageMetricErrors = new(); // Key: messageId, Value: metric name -> error message
+
     private string? _defaultAgentId;
     private string? _defaultAgentName;
     private int? _defaultInstructionVersionId;
@@ -212,14 +222,14 @@ public partial class GameDetails : IAsyncDisposable
     {
         var parameters = new DialogParameters<Dialogs.GameSettingsDialog>
         {
-            { nameof(Dialogs.GameSettingsDialog.AvailableAgents), _availableAgents },
-            { nameof(Dialogs.GameSettingsDialog.AvailableVersions), _availableVersions },
-            { nameof(Dialogs.GameSettingsDialog.SelectedAgentId), _selectedAgentId },
-            { nameof(Dialogs.GameSettingsDialog.SelectedAgentName), GetCurrentAgentName() },
-            { nameof(Dialogs.GameSettingsDialog.SelectedVersionId), _selectedVersionId },
-            { nameof(Dialogs.GameSettingsDialog.SelectedVersionNumber), GetCurrentVersionNumber() },
-            { nameof(Dialogs.GameSettingsDialog.GameTitle), _game?.Title },
-            { nameof(Dialogs.GameSettingsDialog.DefaultTitle), $"{_game?.PlayerName} in {_game?.ScenarioName}" }
+            {nameof(Dialogs.GameSettingsDialog.AvailableAgents), _availableAgents},
+            {nameof(Dialogs.GameSettingsDialog.AvailableVersions), _availableVersions},
+            {nameof(Dialogs.GameSettingsDialog.SelectedAgentId), _selectedAgentId},
+            {nameof(Dialogs.GameSettingsDialog.SelectedAgentName), GetCurrentAgentName()},
+            {nameof(Dialogs.GameSettingsDialog.SelectedVersionId), _selectedVersionId},
+            {nameof(Dialogs.GameSettingsDialog.SelectedVersionNumber), GetCurrentVersionNumber()},
+            {nameof(Dialogs.GameSettingsDialog.GameTitle), _game?.Title},
+            {nameof(Dialogs.GameSettingsDialog.DefaultTitle), $"{_game?.PlayerName} in {_game?.ScenarioName}"}
         };
 
         var options = new DialogOptions
@@ -232,7 +242,7 @@ public partial class GameDetails : IAsyncDisposable
         var dialog = await DialogService.ShowAsync<Dialogs.GameSettingsDialog>("Game Settings", parameters, options);
         var result = await dialog.Result;
 
-        if (result is { Canceled: false, Data: Dialogs.GameSettingsDialog.GameSettingsResult settings })
+        if (result is {Canceled: false, Data: Dialogs.GameSettingsDialog.GameSettingsResult settings})
         {
             // Apply title change if different
             if (settings.Title != _game?.Title)
@@ -240,12 +250,13 @@ public partial class GameDetails : IAsyncDisposable
                 _editableTitle = settings.Title;
                 await SaveTitleAsync();
             }
-            
+
             // Apply the agent/version settings
             if (settings.AgentId != _selectedAgentId)
             {
                 await OnAgentChanged(settings.AgentId!);
             }
+
             if (settings.VersionId != _selectedVersionId)
             {
                 await OnVersionChanged(settings.VersionId);
@@ -263,6 +274,7 @@ public partial class GameDetails : IAsyncDisposable
             var agent = _availableAgents.FirstOrDefault(a => a.Id == _selectedAgentId);
             if (agent != null) return agent.Name;
         }
+
         return _defaultAgentName ?? "Agent";
     }
 
@@ -276,6 +288,7 @@ public partial class GameDetails : IAsyncDisposable
             var version = _availableVersions.FirstOrDefault(v => v.Id == _selectedVersionId.Value);
             if (version != null) return version.VersionNumber;
         }
+
         return _defaultVersionNumber ?? "Latest";
     }
 
@@ -295,11 +308,12 @@ public partial class GameDetails : IAsyncDisposable
     {
         var agentId = _selectedAgentId ?? _defaultAgentId;
         var versionId = _selectedVersionId ?? _defaultInstructionVersionId;
-        
+
         if (!string.IsNullOrEmpty(agentId) && versionId.HasValue)
         {
             return $"/agents/{agentId}/versions/{versionId}";
         }
+
         return GetAgentLink();
     }
 
@@ -310,7 +324,7 @@ public partial class GameDetails : IAsyncDisposable
 
         // Clear input immediately - native binding just works
         _userMessageText = string.Empty;
-        
+
         // Send the message
         await SendMessagePrivateAsync(message);
 
@@ -469,7 +483,8 @@ public partial class GameDetails : IAsyncDisposable
                                 string accumulatedText = builder.ToString();
 
                                 // Check if this is a content moderation error message from the middleware
-                                if (accumulatedText.Contains("filtered by Azure's content moderation policy", StringComparison.OrdinalIgnoreCase))
+                                if (accumulatedText.Contains("filtered by Azure's content moderation policy",
+                                        StringComparison.OrdinalIgnoreCase))
                                 {
                                     await InvokeAsync(() =>
                                     {
@@ -563,7 +578,8 @@ public partial class GameDetails : IAsyncDisposable
                                             _messageIds[currentMessageIndex] = persistedData.UserMessageId.Value;
 
                                             // Add agent info for this user message
-                                            _messageAgentInfo[persistedData.UserMessageId.Value] = GetCurrentAgentInfo();
+                                            _messageAgentInfo[persistedData.UserMessageId.Value] =
+                                                GetCurrentAgentInfo();
                                         }
 
                                         // Set assistant message IDs
@@ -606,10 +622,10 @@ public partial class GameDetails : IAsyncDisposable
                                     _failedMessageIndex = currentMessageIndex;
 
                                     // Check if this is a content moderation error
-                                    string errorText = errorData?.Error.ToLowerInvariant() ?? string.Empty;
+                                    string errorText = errorData?.Error?.ToLowerInvariant() ?? string.Empty;
                                     _isContentModerationError = errorText.Contains("content moderation") ||
-                                                                 errorText.Contains("content_filter") ||
-                                                                 errorText.Contains("content management policy");
+                                                                errorText.Contains("content_filter") ||
+                                                                errorText.Contains("content management policy");
 
                                     if (_isContentModerationError)
                                     {
@@ -681,8 +697,10 @@ public partial class GameDetails : IAsyncDisposable
                 {
                     // Store tracking GUID for this message index
                     _messageTrackingGuids[messageIndex] = result.TrackingGuid;
-                    _logger?.LogDebug("Early sentiment classification requested with tracking GUID {TrackingGuid} for message index {MessageIndex}",
-                        result.TrackingGuid, messageIndex);
+                    _logger?.LogDebug(
+                        "Early sentiment classification requested with tracking GUID {TrackingGuid} for message index {MessageIndex}",
+                        result.TrackingGuid,
+                        messageIndex);
                 }
             }
             else
@@ -966,7 +984,7 @@ public partial class GameDetails : IAsyncDisposable
                                 var matchingEntry = _messageTrackingGuids
                                     .FirstOrDefault(kvp => kvp.Value == notification.TrackingGuid.Value);
 
-                                if (matchingEntry.Key != 0 || _messageTrackingGuids.ContainsKey(0))
+                                if (matchingEntry.Value == notification.TrackingGuid.Value)
                                 {
                                     int messageIndex = matchingEntry.Key;
                                     // Create a temporary message ID for this message
@@ -979,14 +997,17 @@ public partial class GameDetails : IAsyncDisposable
                                         SentimentSource = notification.SentimentSource
                                     };
 
-                                    _logger?.LogDebug("Updated early sentiment for message index {MessageIndex} with tracking GUID {TrackingGuid}",
-                                        messageIndex, notification.TrackingGuid.Value);
+                                    _logger?.LogDebug(
+                                        "Updated early sentiment for message index {MessageIndex} with tracking GUID {TrackingGuid}",
+                                        messageIndex,
+                                        notification.TrackingGuid.Value);
 
                                     StateHasChanged();
                                 }
                                 else
                                 {
-                                    _logger?.LogWarning("Received early sentiment notification with unknown tracking GUID {TrackingGuid}",
+                                    _logger?.LogWarning(
+                                        "Received early sentiment notification with unknown tracking GUID {TrackingGuid}",
                                         notification.TrackingGuid.Value);
                                 }
                             }
@@ -1071,7 +1092,9 @@ public partial class GameDetails : IAsyncDisposable
                                 {
                                     // Check if this metric was previously marked as an error and still appears to be one
                                     if (errorDict.TryGetValue(metric.MetricName, out var errorMsg) &&
-                                        (metric.Score == 0 || metric.Remarks?.Contains("failed", StringComparison.OrdinalIgnoreCase) == true))
+                                        (metric.Score == 0 ||
+                                         metric.Remarks?.Contains("failed", StringComparison.OrdinalIgnoreCase) ==
+                                         true))
                                     {
                                         updatedErrors[metric.MetricName] = errorMsg;
                                     }

@@ -75,7 +75,8 @@ public class MessagePublisher : IMessagePublisher, IDisposable
                 body,
                 cancellationToken);
 
-            _logger.LogDebug("Published message of type {MessageType} to exchange {Exchange} with routing key {RoutingKey}",
+            _logger.LogDebug(
+                "Published message of type {MessageType} to exchange {Exchange} with routing key {RoutingKey}",
                 messageTypeName,
                 exchangeName,
                 routingKey);
@@ -88,8 +89,18 @@ public class MessagePublisher : IMessagePublisher, IDisposable
         finally
         {
             // Dispose channel after use
-            await channel.CloseAsync(cancellationToken: cancellationToken);
-            channel.Dispose();
+            try
+            {
+                await channel.CloseAsync(cancellationToken: cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                // Ignore cancellation – we're disposing anyway
+            }
+            finally
+            {
+                channel.Dispose();
+            }
         }
     }
 
