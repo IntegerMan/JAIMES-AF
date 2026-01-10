@@ -85,7 +85,8 @@ internal static class AppHostHelpers
         if (modelResource != null)
         {
             var connectionStringName = sectionPrefix == "TextGenerationModel" ? "chatModel" : "embedModel";
-            setVariable($"ConnectionStrings__{connectionStringName}", modelResource.Resource.ConnectionStringExpression);
+            setVariable($"ConnectionStrings__{connectionStringName}",
+                modelResource.Resource.ConnectionStringExpression);
         }
     }
 
@@ -123,6 +124,51 @@ internal static class AppHostHelpers
         else if (!string.IsNullOrWhiteSpace(externalEndpoint))
         {
             setVariable(legacyKey, externalEndpoint);
+        }
+    }
+
+    /// <summary>
+    /// Adds OpenTelemetry configuration environment variables to a project resource.
+    /// This sets OTEL_LOG_LEVEL and OTEL_EXPORTER_OTLP_ENDPOINT (HTTP) when configured.
+    /// </summary>
+    /// <param name="resource">The project resource to configure.</param>
+    /// <param name="otelLogLevel">The OTEL_LOG_LEVEL value (e.g., "debug", "trace").</param>
+    /// <param name="otlpHttpEndpoint">The HTTP OTLP endpoint URL to override gRPC default.</param>
+    internal static IResourceBuilder<ProjectResource> WithOtelConfiguration(
+        this IResourceBuilder<ProjectResource> resource,
+        string? otelLogLevel,
+        string? otlpHttpEndpoint)
+    {
+        return resource.WithEnvironment(context =>
+        {
+            if (!string.IsNullOrWhiteSpace(otelLogLevel))
+            {
+                context.EnvironmentVariables["OTEL_LOG_LEVEL"] = otelLogLevel;
+            }
+
+            if (!string.IsNullOrWhiteSpace(otlpHttpEndpoint))
+            {
+                context.EnvironmentVariables["OTEL_EXPORTER_OTLP_ENDPOINT"] = otlpHttpEndpoint;
+            }
+        });
+    }
+
+    /// <summary>
+    /// Sets OpenTelemetry configuration using the SetVar pattern for services with other environment needs.
+    /// </summary>
+    internal static void SetOtelEnvironmentVariables(
+        Action<string, object> setVariable,
+        string? otelLogLevel,
+        string? otlpHttpEndpoint)
+    {
+        if (!string.IsNullOrWhiteSpace(otelLogLevel))
+        {
+            setVariable("OTEL_LOG_LEVEL", otelLogLevel);
+        }
+
+        if (!string.IsNullOrWhiteSpace(otlpHttpEndpoint))
+        {
+            setVariable("OTEL_EXPORTER_OTLP_ENDPOINT", otlpHttpEndpoint);
         }
     }
 }

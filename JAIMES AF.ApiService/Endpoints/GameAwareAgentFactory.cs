@@ -6,6 +6,7 @@ using Microsoft.Agents.AI;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -21,19 +22,22 @@ public class GameAwareAgentFactory
     private readonly ILogger<GameAwareAgentFactory> _logger;
     private readonly IChatHistoryService _chatHistoryService;
     private readonly IServiceProvider _serviceProvider;
+    private readonly bool _enableSensitiveLogging;
 
     public GameAwareAgentFactory(
         IGameService gameService,
         IChatClient chatClient,
         IChatHistoryService chatHistoryService,
         ILogger<GameAwareAgentFactory> logger,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        IConfiguration configuration)
     {
         _gameService = gameService;
         _chatClient = chatClient;
         _logger = logger;
         _chatHistoryService = chatHistoryService;
         _serviceProvider = serviceProvider;
+        _enableSensitiveLogging = bool.TryParse(configuration["AI:EnableSensitiveLogging"], out bool val) && val;
     }
 
     public async Task<AIAgent> CreateAgentForGameAsync(Guid gameId, CancellationToken cancellationToken = default)
@@ -61,6 +65,8 @@ public class GameAwareAgentFactory
             gameDto.Title ?? "Game Master",
             systemPrompt,
             null, // No tools needed for basic factory creation for AGUI consumption in this context
-            () => _serviceProvider);
+            () => _serviceProvider,
+            _enableSensitiveLogging);
     }
 }
+

@@ -39,6 +39,22 @@ bool isEmbedOllama = string.Equals(embedConfig.Provider, "Ollama", StringCompari
 bool needsOllamaContainer = (isTextGenOllama && string.IsNullOrWhiteSpace(textGenConfig.Endpoint)) ||
                             (isEmbedOllama && string.IsNullOrWhiteSpace(embedConfig.Endpoint));
 
+// Add parameter for enabling sensitive data in OpenTelemetry AI traces
+// When enabled, prompts and responses will be visible in telemetry traces
+// Defaults to false for security; enable in development for debugging
+bool enableSensitiveLogging = bool.TryParse(
+    configuration["Parameters:enable-sensitive-logging"] ?? "false",
+    out bool sensitiveLogValue) && sensitiveLogValue;
+
+// Add parameter for OpenTelemetry diagnostic logging level
+// Use "debug" or "trace" to see verbose OTLP export diagnostics (connection errors, protocol issues)
+// Leave empty or omit to use default logging (minimal output)
+string otelLogLevel = configuration["Parameters:otel-log-level"] ?? "";
+
+// Read the HTTP OTLP endpoint from environment variables (set in launchSettings.json)
+// This allows us to override OTEL_EXPORTER_OTLP_ENDPOINT for all services to use HTTP instead of gRPC
+string? otlpHttpEndpoint = Environment.GetEnvironmentVariable("ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL");
+
 // See https://storybooks.fluentui.dev/react/?path=/docs/icons-catalog--docs for available icons. Icon names should not end in "Regular", "Filled", etc.
 
 // Conditionally create Ollama container only if needed
@@ -84,7 +100,8 @@ IResourceBuilder<ProjectResource> webApp = builder.AddProject<Projects.JAIMES_AF
         {
             Url = "/games",
             DisplayText = "🎮 Games"
-        });
+        })
+    .WithOtelConfiguration(otelLogLevel, otlpHttpEndpoint);
 
 // ========================================
 // API SERVICE (Second in UI)
@@ -129,7 +146,6 @@ IResourceBuilder<ContainerResource> dataGroup = builder
     .WithIconName("Database")
     .WithEnvironment("DOTNET_RUNNING_IN_CONTAINER", "true")
     .ExcludeFromManifest();
-
 if (needsOllamaContainer)
 {
     ollama = builder.AddOllama("ollama-models")
@@ -155,7 +171,6 @@ IResourceBuilder<PostgresServerResource> postgres = builder.AddPostgres("postgre
     .WithIconName("DatabaseSwitch")
     .WithDataVolume("jaimes-pg17-v7", false)
     .WithParentRelationship(dataGroup);
-
 IResourceBuilder<PostgresServerResource> pgAdmin = postgres.WithPgAdmin(admin =>
 {
     admin.WithIconName("TaskListSquareDatabase");
@@ -211,7 +226,8 @@ IResourceBuilder<ProjectResource> databaseMigrationWorker = builder
     .WithReference(postgresdb)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
-    .WithParentRelationship(workersGroup);
+    .WithParentRelationship(workersGroup)
+    .WithOtelConfiguration(otelLogLevel, otlpHttpEndpoint);
 
 
 apiService = apiService
@@ -235,6 +251,12 @@ apiService = apiService
             ollama,
             isTextGenOllama);
         SetModelProviderEnvironmentVariables(SetVar, "EmbeddingModel", embedConfig, embedModel, ollama, isEmbedOllama);
+
+        // Pass sensitive logging setting to AI services
+        SetVar("AI__EnableSensitiveLogging", enableSensitiveLogging.ToString());
+
+        // Configure OpenTelemetry HTTP endpoint
+        SetOtelEnvironmentVariables(SetVar, otelLogLevel, otlpHttpEndpoint);
     });
 
 webApp = webApp
@@ -259,6 +281,7 @@ IResourceBuilder<ProjectResource> documentCrackerWorker = builder
     .WaitFor(postgres)
     .WaitFor(postgresdb)
     .WithEnvironment("DocumentCrackerWorker__UploadDocumentsWhenCracking", uploadDocumentsWhenCracking.ToString())
+    .WithOtelConfiguration(otelLogLevel, otlpHttpEndpoint)
     .WithParentRelationship(workersGroup);
 
 IResourceBuilder<ProjectResource> documentChangeDetector = builder
@@ -271,6 +294,7 @@ IResourceBuilder<ProjectResource> documentChangeDetector = builder
     .WaitFor(postgres)
     .WaitFor(postgresdb)
     .WithEnvironment("DocumentChangeDetector__UploadDocumentsWhenCracking", uploadDocumentsWhenCracking.ToString())
+    .WithOtelConfiguration(otelLogLevel, otlpHttpEndpoint)
     .WithParentRelationship(workersGroup);
 
 IResourceBuilder<ProjectResource> documentChunkingWorker = builder
@@ -293,6 +317,7 @@ IResourceBuilder<ProjectResource> documentChunkingWorker = builder
         SetQdrantEnvironmentVariables(SetVar, "DocumentChunking", qdrant, qdrantApiKey);
         SetModelProviderEnvironmentVariables(SetVar, "EmbeddingModel", embedConfig, embedModel, ollama, isEmbedOllama);
         SetLegacyOllamaEndpoint(SetVar, "DocumentChunking__OllamaEndpoint", ollama, embedModel, embedConfig.Endpoint);
+        SetOtelEnvironmentVariables(SetVar, otelLogLevel, otlpHttpEndpoint);
     });
 
 IResourceBuilder<ProjectResource> documentEmbeddingWorker = builder
@@ -315,6 +340,7 @@ IResourceBuilder<ProjectResource> documentEmbeddingWorker = builder
         SetQdrantEnvironmentVariables(SetVar, "DocumentEmbedding", qdrant, qdrantApiKey);
         SetModelProviderEnvironmentVariables(SetVar, "EmbeddingModel", embedConfig, embedModel, ollama, isEmbedOllama);
         SetLegacyOllamaEndpoint(SetVar, "DocumentEmbedding__OllamaEndpoint", ollama, embedModel, embedConfig.Endpoint);
+        SetOtelEnvironmentVariables(SetVar, otelLogLevel, otlpHttpEndpoint);
     });
 
 // Add parameter for user-message-worker replicas (configurable parallelism)
@@ -332,7 +358,10 @@ IResourceBuilder<ProjectResource> userMessageWorker = builder
     .WaitFor(postgres)
     .WaitFor(postgresdb)
     .WithParentRelationship(workersGroup)
-    .WithReplicas(int.TryParse(configuration["Parameters:user-worker-replicas"], out int userReplicas) ? userReplicas : 1);
+    .WithReplicas(int.TryParse(configuration["Parameters:user-worker-replicas"], out int userReplicas)
+        ? userReplicas
+        : 1)
+    .WithOtelConfiguration(otelLogLevel, otlpHttpEndpoint);
 
 // Add parameter for assistant-message-worker replicas (configurable parallelism)
 IResourceBuilder<ParameterResource> assistantWorkerReplicas = builder.AddParameter("assistant-worker-replicas", "1")
@@ -349,12 +378,14 @@ IResourceBuilder<ProjectResource> assistantMessageWorker = builder
     .WithIconName("SettingsChat")
     .WithReference(lavinmq)
     .WithReference(postgresdb)
+    .WithReference(qdrant) // Required for GameMechanicsEvaluator rules search
     .WithReference(apiService) // For SignalR notification HTTP calls
-    .WithOllamaReferences(ollama, chatModel, embedModel, needsChatModel: true, needsEmbedModel: false)
+    .WithOllamaReferences(ollama, chatModel, embedModel, needsChatModel: true, needsEmbedModel: true)
     .WaitFor(databaseMigrationWorker)
     .WaitFor(lavinmq)
     .WaitFor(postgres)
     .WaitFor(postgresdb)
+    .WaitFor(qdrant)
     .WithParentRelationship(workersGroup)
     .WithReplicas(assistantWorkerReplicaCount)
     .WithEnvironment(context =>
@@ -367,6 +398,14 @@ IResourceBuilder<ProjectResource> assistantMessageWorker = builder
             chatModel,
             ollama,
             isTextGenOllama);
+        SetModelProviderEnvironmentVariables(SetVar, "EmbeddingModel", embedConfig, embedModel, ollama, isEmbedOllama);
+        SetQdrantEnvironmentVariables(SetVar, "DocumentChunking", qdrant, qdrantApiKey);
+
+        // Pass sensitive logging setting to AI services
+        SetVar("AI__EnableSensitiveLogging", enableSensitiveLogging.ToString());
+
+        // Configure OpenTelemetry HTTP endpoint
+        SetOtelEnvironmentVariables(SetVar, otelLogLevel, otlpHttpEndpoint);
     });
 
 IResourceBuilder<ProjectResource> conversationEmbeddingWorker = builder
@@ -388,6 +427,7 @@ IResourceBuilder<ProjectResource> conversationEmbeddingWorker = builder
 
         SetQdrantEnvironmentVariables(SetVar, "ConversationEmbedding", qdrant, qdrantApiKey);
         SetModelProviderEnvironmentVariables(SetVar, "EmbeddingModel", embedConfig, embedModel, ollama, isEmbedOllama);
+        SetOtelEnvironmentVariables(SetVar, otelLogLevel, otlpHttpEndpoint);
     });
 
 DistributedApplication app = builder.Build();

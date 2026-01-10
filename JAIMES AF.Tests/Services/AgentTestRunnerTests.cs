@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
 using Microsoft.Extensions.AI.Evaluation.Reporting;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -107,9 +108,10 @@ public class AgentTestRunnerTests : IAsyncLifetime
 
         var mockResultStore = new Mock<IEvaluationResultStore>();
         var emptyEvaluators = new List<IEvaluator>();
+        var mockConfiguration = new Mock<IConfiguration>();
 
         _testRunner = new AgentTestRunner(_contextFactory, _mockChatClient.Object, emptyEvaluators,
-            mockResultStore.Object, _mockLogger.Object);
+            mockResultStore.Object, _mockLogger.Object, mockConfiguration.Object);
     }
 
     public async ValueTask DisposeAsync()

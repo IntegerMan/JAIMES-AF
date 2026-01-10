@@ -1,6 +1,7 @@
 using MattEland.Jaimes.Agents.Helpers;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace MattEland.Jaimes.ServiceLayer;
@@ -43,14 +44,19 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<AIAgent>(s =>
         {
             IChatClient chat = s.GetRequiredService<IChatClient>();
+            IConfiguration config = s.GetRequiredService<IConfiguration>();
+
+            // Read sensitive logging setting from configuration (set by AppHost)
+            bool enableSensitiveLogging = bool.TryParse(config["AI:EnableSensitiveLogging"], out bool val) && val;
 
             var logs = s.GetRequiredService<ILoggerFactory>();
             ILogger logger = logs.CreateLogger("JaimesChatClient");
-            chat = chat.WrapWithInstrumentation(logger);
+            chat = chat.WrapWithInstrumentation(logger, enableSensitiveLogging);
             // Get system prompt from somewhere else
             // Link up tools
             return chat.CreateJaimesAgent(logger, "JAIMES-AF",
-                "You are an AI game master running a role playing game with the player as the sole human player.");
+                "You are an AI game master running a role playing game with the player as the sole human player.",
+                enableSensitiveData: enableSensitiveLogging);
         });
 
         return services;

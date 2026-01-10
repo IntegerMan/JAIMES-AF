@@ -13,6 +13,10 @@ public class Program
 {
     public static async Task Main(string[] args)
     {
+        // Enable experimental OpenTelemetry tracing for Azure OpenAI SDK
+        // This enables gen_ai.* semantic conventions for rich AI telemetry in Aspire dashboard
+        AppContext.SetSwitch("OpenAI.Experimental.EnableOpenTelemetry", true);
+
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
         // Add service defaults & Aspire client integrations.

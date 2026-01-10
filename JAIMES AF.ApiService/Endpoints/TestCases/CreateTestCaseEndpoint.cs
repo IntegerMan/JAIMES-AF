@@ -32,7 +32,7 @@ public class CreateTestCaseEndpoint : Ep.Req<CreateTestCaseRequest>.Res<TestCase
         {
             Logger.LogWarning(ex, "Failed to create test case for message {MessageId}: {Message}", req.MessageId,
                 ex.Message);
-            ThrowError(ex.Message);
+            ThrowError(ex.Message, StatusCodes.Status400BadRequest);
         }
     }
 }

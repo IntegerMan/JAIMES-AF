@@ -1,5 +1,6 @@
 using MattEland.Jaimes.Agents.Helpers;
 using MattEland.Jaimes.Repositories;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json;
 
@@ -9,7 +10,8 @@ public class ChatService(
     IChatClient chatClient,
     ILogger<ChatService> logger,
     IChatHistoryService chatHistoryService,
-    IServiceProvider serviceProvider)
+    IServiceProvider serviceProvider,
+    IConfiguration configuration)
     : IChatService
 {
     private readonly IChatClient _chatClient = chatClient ?? throw new ArgumentNullException(nameof(chatClient));
@@ -20,6 +22,9 @@ public class ChatService(
 
     private readonly IServiceProvider _serviceProvider =
         serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+
+    private readonly bool _enableSensitiveLogging =
+        bool.TryParse(configuration["AI:EnableSensitiveLogging"], out bool val) && val;
 
     private AIAgent CreateAgent(string systemPrompt, GameDto? game = null)
     {
@@ -151,7 +156,7 @@ public class ChatService(
 
                 // Log the full tool object for debugging
                 _logger.LogDebug("Full tool details: {ToolDetails}",
-                    JsonSerializer.Serialize(tool, new JsonSerializerOptions {WriteIndented = true}));
+                    JsonSerializer.Serialize(tool, new JsonSerializerOptions { WriteIndented = true }));
             }
 
             _logger.LogInformation(
@@ -164,7 +169,7 @@ public class ChatService(
             _logger.LogWarning("Agent created with no tools available");
         }
 
-        IChatClient instrumentedChatClient = _chatClient.WrapWithInstrumentation(_logger);
+        IChatClient instrumentedChatClient = _chatClient.WrapWithInstrumentation(_logger, _enableSensitiveLogging);
 
         _logger.LogInformation(
             "Chat client instrumented with OpenTelemetry and chat client middleware (source: {SourceName})",
@@ -175,7 +180,8 @@ public class ChatService(
         // Per Microsoft docs: https://learn.microsoft.com/en-us/agent-framework/user-guide/agents/agent-middleware?pivots=programming-language-csharp
         // Register agent run middleware on the agent builder
         AIAgent agent =
-            instrumentedChatClient.CreateJaimesAgent(_logger, $"JaimesAgent-{game!.GameId}", systemPrompt, tools);
+            instrumentedChatClient.CreateJaimesAgent(_logger, $"JaimesAgent-{game!.GameId}", systemPrompt, tools,
+                enableSensitiveData: _enableSensitiveLogging);
 
         _logger.LogInformation(
             "Agent created with OpenTelemetry, agent run middleware, and tool invocation middleware");

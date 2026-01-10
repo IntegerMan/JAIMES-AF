@@ -50,6 +50,30 @@ public static class Extensions
     public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder)
         where TBuilder : IHostApplicationBuilder
     {
+        // Enable OpenTelemetry SDK self-diagnostics for troubleshooting export issues
+        // The SDK supports file-based self-diagnostics via OTEL_DIAGNOSTICS_FILE environment variable
+        // Create a otel-diagnostics.json file in the app directory with content like:
+        // {"LogDirectory": ".", "FileSize": 32768, "LogLevel": "Error"}
+        // Alternatively, set these environment variables for verbose logging:
+        // - OTEL_LOG_LEVEL=debug  (for verbose OTLP exporter logging)
+        // - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf (we already default to this)
+
+        // Log OTLP exporter configuration for debugging at startup
+        var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
+        var otelLogLevel = builder.Configuration["OTEL_LOG_LEVEL"];
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+        {
+            Console.WriteLine($"[OTel-Startup] OTLP Endpoint: {otlpEndpoint}");
+            Console.WriteLine($"[OTel-Startup] Protocol: HttpProtobuf (HTTP/1.1)");
+            Console.WriteLine($"[OTel-Startup] Application: {builder.Environment.ApplicationName}");
+            if (!string.IsNullOrWhiteSpace(otelLogLevel))
+            {
+                Console.WriteLine($"[OTel-Startup] Log Level: {otelLogLevel}");
+            }
+
+            Console.WriteLine("[OTel-Startup] Tip: Set OTEL_LOG_LEVEL=debug for verbose export diagnostics");
+        }
+
         builder.Logging.AddOpenTelemetry(logging =>
         {
             logging.IncludeFormattedMessage = true;
@@ -93,6 +117,10 @@ public static class Extensions
                     .AddSource("Jaimes.DocumentCracker")
                     .AddSource("Jaimes.Workers.*")
                     .AddSource("Jaimes.Agents.*")
+                    .AddSource("Jaimes.SentimentAnalysis") // Sentiment classification telemetry
+                    // Azure SDK and OpenAI activity sources for gen_ai semantic conventions
+                    .AddSource("OpenAI.*") // OpenAI SDK built-in tracing
+                    .AddSource("Azure.AI.*") // Azure AI SDK tracing
                     // Agent framework sources (explicit patterns for reliability)
                     .AddSource("Microsoft.Extensions.AI")
                     .AddSource("Microsoft.Agents.AI");
@@ -146,13 +174,19 @@ public static class Extensions
         return builder;
     }
 
-    private static TBuilder AddOpenTelemetryExporters<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    private static TBuilder AddOpenTelemetryExporters<TBuilder>(this TBuilder builder)
+        where TBuilder : IHostApplicationBuilder
     {
-        var useOtlpExporter = !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]);
+        var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
+        var useOtlpExporter = !string.IsNullOrWhiteSpace(otlpEndpoint);
 
         if (useOtlpExporter)
         {
-            builder.Services.AddOpenTelemetry().UseOtlpExporter();
+            // Explicitly use HTTP/protobuf protocol for consistency
+            // Aspire's OTLP receiver must also be configured for HTTP via DOTNET_DASHBOARD_OTLP_HTTP_ENDPOINT_URL
+            builder.Services.AddOpenTelemetry().UseOtlpExporter(
+                OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf,
+                new Uri(otlpEndpoint!));
         }
 
         return builder;
