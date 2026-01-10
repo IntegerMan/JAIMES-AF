@@ -364,6 +364,8 @@ Lists game rulesets for managing game mechanics and rules.
 
 Browse and manage locations filtered by game, with nearby locations and event counts.
 
+![Locations Page](Images/Locations.png)
+
 **Style Guide Violations:**
 - ❌ Tooltip on "View Details" (line 108) missing `Placement.Top`
 - ❌ Tooltip on "Edit Location" (line 113) missing `Placement.Top`
@@ -379,6 +381,8 @@ Browse and manage locations filtered by game, with nearby locations and event co
 **Route:** `/admin/locations/{id}`
 
 Displays detailed information about a specific location including nearby locations and events.
+
+![Location Details Page](Images/LocationDetails.png)
 
 **Style Guide Violations:**
 - Review for tooltip placement consistency
@@ -400,13 +404,12 @@ Pages for managing AI agents, ML models, and RAG collections.
 
 Lists AI agents with their roles and action buttons for viewing, improving prompts, testing, and editing.
 
+![Agents Page](Images/Agents.png)
+
 **Style Guide Compliance:** ✅ Good — Uses proper tooltip placement and icon conventions
 
 **Improvement Ideas:**
-- ⚠️ Add compact hero section with agent count (following List Page Pattern from `Games.razor`)
-- Add version count column
 - Add last activity or creation date
-- Consider adding agent status indicators
 
 ---
 
@@ -414,6 +417,14 @@ Lists AI agents with their roles and action buttons for viewing, improving promp
 **Route:** `/agents/{id}`
 
 Detailed view of a specific agent including versions, metrics, and related game data.
+
+![Agent Details Versions Tab](Images/AgentDetails.png)
+
+![Agent Details Feedback Tab](Images/AgentDetailsFeedback.png)
+
+![Agent Details Tools Tab](Images/AgentDetailsTools.png)
+
+![Agent Details Evaluation Tab](Images/AgentDetailsEvaluations.png)
 
 **Style Guide Violations:**
 - Review for `AgentLink` and `AgentVersionLink` component usage
@@ -429,6 +440,16 @@ Detailed view of a specific agent including versions, metrics, and related game 
 
 Detailed view of a specific agent instruction version with its prompt content and metrics.
 
+![Agent Version Details](Images/AgentVersionDetails.png)
+
+![Agent Version Details Feedback Tab](Images/AgentVersionDetailsFeedback.png)
+
+![Agent Version Details Tools Tab](Images/AgentVersionDetailsTools.png)
+
+![Agent Version Details Metrics Tab](Images/AgentVersionDetailsMetrics.png)
+
+![Agent Version Details Sentiment Tab](Images/AgentVersionDetailsSentiment.png)
+
 **Style Guide Violations:**
 - Review for proper tooltip placements
 
@@ -443,6 +464,8 @@ Detailed view of a specific agent instruction version with its prompt content an
 
 Lists ML.NET classification models used for sentiment analysis and other ML tasks.
 
+![Classification Models](Images/ClassificationModels.png)
+
 **Style Guide Compliance:** ✅ Good — Uses CompactHeroSection with Error theme, MudTable with action buttons, glass-card empty state, proper tooltip placement
 
 **Improvement Ideas:**
@@ -456,6 +479,8 @@ Lists ML.NET classification models used for sentiment analysis and other ML task
 
 Detailed view of a specific ML classification model including training parameters, evaluation metrics, and confusion matrix.
 
+![Classification Model Details](Images/ClassificationModelDetails.png)
+
 **Style Guide Compliance:** ✅ Good — Uses CompactHeroSection with Error theme, stat-card metrics, overline section headers, enhanced confusion matrix with tooltips
 
 **Improvement Ideas:**
@@ -468,6 +493,8 @@ Detailed view of a specific ML classification model including training parameter
 **Route:** `/admin/rag-collections`
 
 Browse and manage RAG (Retrieval Augmented Generation) vector collections for rules and transcripts.
+
+![RAG Collections](Images/RAGCollections.png)
 
 **Style Guide Violations:**
 - Review for tooltip placement consistency
@@ -490,6 +517,8 @@ Pages for testing, evaluating, and monitoring AI quality.
 
 Lists registered evaluators with their aggregate metrics including pass/fail counts and average scores.
 
+![Evaluators](Images/Evaluators.png)
+
 **Style Guide Violations:**
 - ❌ Tooltip on "View Metrics" button (line 113) missing `Placement.Top`
 
@@ -510,6 +539,8 @@ Lists registered evaluators with their aggregate metrics including pass/fail cou
 
 Detailed view of a specific evaluator showing aggregate statistics (pass/fail counts, average score) and an embedded MetricsGrid filtered to that evaluator. Supports contextual filtering when navigated from agent or game contexts.
 
+![Evaluator Details](Images/EvaluatorDetails.png)
+
 **Style Guide Compliance:** ✅ Good — Uses hero section, stat cards, glass-card patterns
 
 **Features:**
@@ -524,6 +555,8 @@ Detailed view of a specific evaluator showing aggregate statistics (pass/fail co
 **Route:** `/admin/evaluations/{EvaluationId:int}`
 
 Detailed view of a single evaluation result showing the score, pass/fail status, evaluator remarks, message context, and raw diagnostics data. Provides links to the source message and the evaluator that produced the result.
+
+![Evaluation Details](Images/EvaluationDetails.png)
 
 **Style Guide Compliance:** ✅ Good — Uses hero section with dynamic styling based on pass/fail, stat cards, expansion panels
 
@@ -542,6 +575,8 @@ Detailed view of a single evaluation result showing the score, pass/fail status,
 
 Displays evaluation metrics with filtering by evaluator, agent, and version.
 
+![Evaluation Metrics](Images/EvaluationMetrics.png)
+
 **Style Guide Violations:**
 - Review for tooltip and icon consistency
 
@@ -556,6 +591,8 @@ Displays evaluation metrics with filtering by evaluator, agent, and version.
 
 Interactive testing interface for running evaluators against sample messages.
 
+![Evaluator Test](Images/TestEvaluation.png)
+
 **Style Guide Violations:**
 - Review for form layout and button patterns
 
@@ -569,6 +606,8 @@ Interactive testing interface for running evaluators against sample messages.
 **Route:** `/admin/test-cases`
 
 Lists test cases for agent evaluation with run counts, status, and source agent links.
+
+![Test Cases](Images/TestCases.png)
 
 **Style Guide Compliance:** ✅ Good — Uses `AgentLink` component and proper tooltip placements
 
@@ -585,6 +624,8 @@ Lists test cases for agent evaluation with run counts, status, and source agent 
 
 Detailed view of a specific test case including run history and results.
 
+![Test Case Details](Images/TestCaseDetails.png)
+
 **Style Guide Compliance:** ✅ Good — Uses CompactHeroSection with Info theme, MetricCard for stats (Total Runs, Avg Score, Avg Duration), MudExpansionPanel for context, breadcrumbs below hero.
 
 **Improvement Ideas:**
@@ -598,6 +639,8 @@ Detailed view of a specific test case including run history and results.
 
 Lists test execution reports with agent versions, evaluator counts, and results.
 
+![Test Reports](Images/TestReports.png)
+
 **Style Guide Compliance:** ✅ Good — Uses CompactHeroSection with Info theme, includes report count and action button.
 
 **Improvement Ideas:**
@@ -610,6 +653,10 @@ Lists test execution reports with agent versions, evaluator counts, and results.
 **Route:** `/admin/run-tests`
 
 Interface for running test cases against selected agent versions with evaluator configuration.
+
+![Run Tests](Images/RunTests.png)
+
+![Run Tests in Progress](Images/RunTestsProgress.png)
 
 **Style Guide Violations:**
 - Review for form layout consistency
@@ -626,6 +673,10 @@ Interface for running test cases against selected agent versions with evaluator 
 
 Matrix comparison view of test results across multiple agent versions.
 
+![Test Run Comparison grouped by agent](Images/TestRunComparisonByAgent.png)
+
+![Test Run Comparison grouped by test case](Images/TestRunComparisonByTestCase.png)
+
 **Style Guide Compliance:** ✅ Good — Uses CompactHeroSection with Info theme, ViewModeToggle for grouping, ComparisonMatrix for metrics display with color-coded scores and tooltips.
 - Include export to CSV/Excel functionality
 
@@ -637,15 +688,19 @@ Matrix comparison view of test results across multiple agent versions.
 
 Pages for tools, feedback, and sentiment analysis.
 
+### [Monitoring.razor](JAIMES%20AF.Web/Components/Pages/Monitoring.razor)
+**Route:** `/admin/monitoring`
+
+Monitoring page for tracking system health and performance. 
+
+![Monitoring](Images/Monitoring.png)
+
 ### [FeedbackList.razor](JAIMES%20AF.Web/Components/Pages/FeedbackList.razor)
 **Route:** `/admin/feedback`
 
 Lists user feedback entries with professional admin styling. Features a compact hero section with purple/cyan gradient, summary stat cards (positive, negative, with comments, positive rate) that filter the grid when clicked, and `AdminFilters` for filtering by game, agent, version, and feedback type.
 
-**Recent Updates:**
-- Added compact hero section consistent with SentimentList style
-- Implemented stat card row showing feedback statistics with click-to-filter behavior
-- Added loading skeleton for stats while data loads
+![Feedback List](Images/FeedbackList.png)
 
 **Improvement Ideas:**
 - Add export functionality (CSV/Excel) for filtered feedback data
@@ -657,6 +712,8 @@ Lists user feedback entries with professional admin styling. Features a compact 
 **Route:** `/admin/feedback/{id}`
 
 Detailed view of specific feedback including message context and response.
+
+![Feedback Details](Images/FeedbackDetails.png)
 
 **Style Guide Violations:**
 - Review for chat message component usage
@@ -674,6 +731,8 @@ Detailed view of specific feedback including message context and response.
 
 Lists sentiment analysis results across messages. Features CompactHeroSection with Primary theme, sentiment summary stat cards (positive/neutral/negative breakdown with clickable filters), and a link to Classification Models.
 
+![Sentiment List](Images/SentimentList.png)
+
 **Style Guide Compliance:** ✅ Good — Uses CompactHeroSection, follows List Page Pattern with hero section, stat cards, and consistent component usage
 
 **Improvement Ideas:**
@@ -689,6 +748,8 @@ Lists sentiment analysis results across messages. Features CompactHeroSection wi
 
 Detailed view of a specific sentiment analysis including message context.
 
+![Sentiment Details](Images/SentimentDetails.png)
+
 **Style Guide Compliance:** ✅ Good — Uses CompactHeroSection with Primary theme, breadcrumbs, MudCard for sentiment info
 
 **Improvement Ideas:**
@@ -701,6 +762,8 @@ Detailed view of a specific sentiment analysis including message context.
 **Route:** `/admin/tools`
 
 Displays tool call statistics and usage metrics across agents.
+
+![Tool Usage](Images/ToolUsageList.png)
 
 **Style Guide Compliance:** ✅ Good — Clean layout with proper breadcrumbs
 
@@ -716,12 +779,18 @@ Displays tool call statistics and usage metrics across agents.
 
 Detailed view of a specific tool including call history and parameters.
 
+![Tool Details](Images/ToolDetails.png)
+
+![Tool Call Details](Images/ToolCallDetails.png)
+
 **Style Guide Violations:**
 - Review for tooltip placements
 
 **Improvement Ideas:**
 - Add parameter distribution visualization
 - Include execution time histogram
+- Add a link to test the tool
+- Add a stats card row
 
 ---
 
@@ -729,6 +798,8 @@ Detailed view of a specific tool including call history and parameters.
 **Route:** `/admin/tool-test`
 
 Interactive testing interface for agent tools.
+
+![Tool Test](Images/ToolTest.png)
 
 **Style Guide Violations:**
 - Review for form and button consistency
@@ -812,6 +883,8 @@ Pages involved in the game playing experience.
 
 Main game playing interface with chat conversation, message input, and game state management.
 
+![Game Details](Images/GameDetails.png)
+
 **Style Guide Violations:**
 - Review for `PlayerMessage`, `AssistantMessage`, and `ErrorMessage` component usage
 - Review for `MessageIndicators` and `SentimentIcon` usage in chat footers
@@ -862,6 +935,8 @@ Form pages for creating and editing entities.
 **Route:** `/agents/{id}/edit`
 
 Form for editing agent instructions (creates new version).
+
+![Edit Agent](Images/AgentEdit.png)
 
 **Style Guide Compliance:** ✅ Good — Follows form page structure pattern
 
@@ -1009,6 +1084,14 @@ Error display page shown when unhandled exceptions occur.
 
 Multi-step wizard for AI-assisted prompt improvement.
 
+![Prompt Improver Insights](Images/PromptImprovementInsights.png)
+
+![Prompt Improver Feedback](Images/PromptImprovementFeedback.png)
+
+![Prompt Improver Generate](Images/PromptImprovementGenerate.png)
+
+![Prompt Improver Apply](Images/PromptImprovementApply.png)
+
 **Style Guide Violations:**
 - Review for wizard step consistency
 
@@ -1023,6 +1106,8 @@ Multi-step wizard for AI-assisted prompt improvement.
 **Route:** `/admin/classification-models/train`
 
 Interface for training ML classification models with confidence threshold, model type selection, and training data preview.
+
+![Train Classifier](Images/ClassificationTraining.png)
 
 **Style Guide Compliance:** ✅ Good — Uses CompactHeroSection with Error theme, MudPaper form container, breadcrumbs, MudSlider for confidence threshold
 
