@@ -16,17 +16,10 @@ using OpenTelemetry.Trace;
 
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
-// Configure OpenTelemetry for Aspire telemetry
-builder.ConfigureOpenTelemetry();
+// Add service defaults (telemetry, health checks, service discovery)
+// This includes ConfigureOpenTelemetry() AND AddOpenTelemetryExporters() for OTLP export
+builder.AddServiceDefaults();
 
-// Configure logging with OpenTelemetry
-builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
-builder.Logging.AddOpenTelemetry(logging =>
-{
-    logging.IncludeFormattedMessage = true;
-    logging.IncludeScopes = true;
-});
 
 // Load configuration
 builder.Configuration
@@ -68,20 +61,7 @@ builder.Services.AddSingleton<IMessagePublisher, MessagePublisher>();
 const string activitySourceName = "Jaimes.Workers.DocumentChangeDetector";
 ActivitySource activitySource = new(activitySourceName);
 
-builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource
-        .AddService(serviceName: activitySourceName, serviceVersion: "1.0.0"))
-    .WithMetrics(metrics =>
-    {
-        metrics.AddRuntimeInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddMeter(activitySourceName);
-    })
-    .WithTracing(tracing =>
-    {
-        tracing.AddSource(activitySourceName)
-            .AddHttpClientInstrumentation();
-    });
+
 
 // Register ActivitySource for dependency injection
 builder.Services.AddSingleton(activitySource);

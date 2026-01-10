@@ -1,16 +1,9 @@
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
-// Configure OpenTelemetry for Aspire telemetry
-builder.ConfigureOpenTelemetry();
+// Add service defaults (telemetry, health checks, service discovery)
+// This includes ConfigureOpenTelemetry() AND AddOpenTelemetryExporters() for OTLP export
+builder.AddServiceDefaults();
 
-// Configure logging with OpenTelemetry
-builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
-builder.Logging.AddOpenTelemetry(logging =>
-{
-    logging.IncludeFormattedMessage = true;
-    logging.IncludeScopes = true;
-});
 
 // Reduce HTTP client logging verbosity - filter out embedding request logs
 builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
@@ -115,20 +108,6 @@ builder.Services.AddSingleton<IDocumentChunkingService, DocumentChunkingService>
 const string activitySourceName = "Jaimes.Workers.DocumentChunking";
 ActivitySource activitySource = new(activitySourceName);
 
-builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource
-        .AddService(activitySourceName))
-    .WithMetrics(metrics =>
-    {
-        metrics.AddRuntimeInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddMeter(activitySourceName);
-    })
-    .WithTracing(tracing =>
-    {
-        tracing.AddSource(activitySourceName)
-            .AddHttpClientInstrumentation();
-    });
 
 // Register ActivitySource for dependency injection (before MessageConsumerService)
 builder.Services.AddSingleton(activitySource);
@@ -139,8 +118,8 @@ builder.Services.AddSingleton(connectionFactory);
 
 // Configure HTTP client for API service communication (pipeline status reporting)
 string? apiBaseUrl = builder.Configuration["Services:apiservice:http:0"]
-    ?? builder.Configuration["Services:apiservice:https:0"]
-    ?? builder.Configuration["ApiService:BaseUrl"];
+                     ?? builder.Configuration["Services:apiservice:https:0"]
+                     ?? builder.Configuration["ApiService:BaseUrl"];
 
 // Register pipeline status reporter if API service is configured
 if (!string.IsNullOrEmpty(apiBaseUrl))
@@ -155,7 +134,8 @@ if (!string.IsNullOrEmpty(apiBaseUrl))
     {
         IHttpClientFactory httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
         HttpClient httpClient = httpClientFactory.CreateClient("ApiService");
-        ILogger<HttpPipelineStatusReporter> reporterLogger = sp.GetRequiredService<ILogger<HttpPipelineStatusReporter>>();
+        ILogger<HttpPipelineStatusReporter> reporterLogger =
+            sp.GetRequiredService<ILogger<HttpPipelineStatusReporter>>();
         return new HttpPipelineStatusReporter(httpClient, reporterLogger, "DocumentChunkingWorker");
     });
 }
@@ -167,11 +147,13 @@ builder.Services.AddSingleton<IMessageConsumer<DocumentReadyForChunkingMessage>,
 builder.Services.AddHostedService(sp =>
 {
     IConnectionFactory connFactory = sp.GetRequiredService<IConnectionFactory>();
-    IMessageConsumer<DocumentReadyForChunkingMessage> consumer = sp.GetRequiredService<IMessageConsumer<DocumentReadyForChunkingMessage>>();
-    ILogger<MessageConsumerService<DocumentReadyForChunkingMessage>> consumerLogger = sp.GetRequiredService<ILogger<MessageConsumerService<DocumentReadyForChunkingMessage>>>();
+    IMessageConsumer<DocumentReadyForChunkingMessage> consumer =
+        sp.GetRequiredService<IMessageConsumer<DocumentReadyForChunkingMessage>>();
+    ILogger<MessageConsumerService<DocumentReadyForChunkingMessage>> consumerLogger =
+        sp.GetRequiredService<ILogger<MessageConsumerService<DocumentReadyForChunkingMessage>>>();
     ActivitySource? activity = sp.GetService<ActivitySource>();
     IPipelineStatusReporter? statusReporter = sp.GetService<IPipelineStatusReporter>();
-    
+
     return new MessageConsumerService<DocumentReadyForChunkingMessage>(
         connFactory, consumer, consumerLogger, activity, statusReporter, "chunking");
 });

@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace MattEland.Jaimes.Evaluators;
 
@@ -8,8 +10,10 @@ namespace MattEland.Jaimes.Evaluators;
 /// An evaluator that scores a conversation based on how much the AI assistant respected the player's agency.
 /// </summary>
 /// <param name="chatClient">The chat client to use for evaluation.</param>
+/// <param name="logger">The logger for telemetry instrumentation.</param>
+/// <param name="configuration">Configuration to read sensitive logging setting.</param>
 [Description("Evaluates assistant responses for how well they preserve player agency by avoiding making decisions on the player's behalf or presenting restrictive choice lists.")]
-public class PlayerAgencyEvaluator(IChatClient chatClient) : LlmBasedEvaluator(chatClient)
+public class PlayerAgencyEvaluator(IChatClient chatClient, ILogger<PlayerAgencyEvaluator> logger, IConfiguration configuration) : LlmBasedEvaluator(chatClient, logger, configuration)
 {
     /// <summary>
     /// The name of the metric produced by this evaluator.

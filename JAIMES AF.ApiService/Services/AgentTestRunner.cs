@@ -12,6 +12,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
 using Microsoft.Extensions.AI.Evaluation.Reporting;
 using Microsoft.Extensions.AI.Evaluation.Reporting.Formats.Html;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace MattEland.Jaimes.ApiService.Services;
@@ -25,9 +26,13 @@ public class AgentTestRunner(
     IChatClient chatClient,
     IEnumerable<IEvaluator> evaluators,
     IEvaluationResultStore resultStore,
-    ILogger<AgentTestRunner> logger) : IAgentTestRunner
+    ILogger<AgentTestRunner> logger,
+    IConfiguration configuration) : IAgentTestRunner
 {
     private const int MaxContextMessages = 10;
+
+    private readonly bool _enableSensitiveLogging =
+        bool.TryParse(configuration["AI:EnableSensitiveLogging"], out bool val) && val;
 
     /// <inheritdoc/>
     public async Task<TestRunResultResponse> RunTestCasesAsync(
@@ -147,7 +152,8 @@ public class AgentTestRunner(
             logger,
             $"TestAgent-{agent.Id}-{version.Id}",
             version.Instructions,
-            tools: null); // No tools for test runs to keep them isolated
+            tools: null,
+            enableSensitiveData: _enableSensitiveLogging); // No tools for test runs to keep them isolated
 
         // Run the agent
         Stopwatch sw = Stopwatch.StartNew();

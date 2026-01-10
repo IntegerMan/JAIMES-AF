@@ -2,6 +2,7 @@ using System.Text.Json;
 using MattEland.Jaimes.Agents.Helpers;
 using MattEland.Jaimes.Tools;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Configuration;
 
 namespace MattEland.Jaimes.ApiService.Agents;
 
@@ -11,11 +12,19 @@ namespace MattEland.Jaimes.ApiService.Agents;
 public class GameAwareAgent(
     IServiceProvider serviceProvider,
     IHttpContextAccessor httpContextAccessor,
-    ILogger<GameAwareAgent> logger) : AIAgent
+    ILogger<GameAwareAgent> logger,
+    IConfiguration configuration) : AIAgent
+
 {
     private readonly IServiceProvider _serviceProvider = serviceProvider;
     private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
     private readonly ILogger<GameAwareAgent> _logger = logger;
+
+    private readonly bool _enableSensitiveLogging =
+        bool.TryParse(configuration["AI:EnableSensitiveLogging"], out bool val) && val;
+
+    private readonly IMessageUpdateNotifier _messageUpdateNotifier =
+        serviceProvider.GetRequiredService<IMessageUpdateNotifier>();
 
     public override async Task<AgentRunResponse> RunAsync(
         IEnumerable<ChatMessage> messages,
@@ -176,13 +185,14 @@ public class GameAwareAgent(
         }
 
         IList<AITool>? tools = CreateTools(gameDto, requestServices);
-        IChatClient instrumentedChatClient = chatClient.WrapWithInstrumentation(scopedLogger);
+        IChatClient instrumentedChatClient = chatClient.WrapWithInstrumentation(scopedLogger, _enableSensitiveLogging);
         AIAgent gameAgent = instrumentedChatClient.CreateJaimesAgent(
             scopedLogger,
             $"JaimesAgent-{gameId}",
             systemPrompt,
             tools,
-            () => _httpContextAccessor.HttpContext?.RequestServices);
+            () => _httpContextAccessor.HttpContext?.RequestServices,
+            _enableSensitiveLogging);
 
         // Cache it for this request
         context.Items[cacheKey] = gameAgent;
@@ -191,6 +201,7 @@ public class GameAwareAgent(
 
         return gameAgent;
     }
+
 
     private async Task<AgentThread?> GetOrCreateGameThreadAsync(AIAgent agent, CancellationToken cancellationToken)
     {
@@ -342,7 +353,7 @@ public class GameAwareAgent(
                 .AsNoTracking()
                 .Where(v => v.AgentId == agentId && v.IsActive)
                 .OrderByDescending(v => v.CreatedAt)
-                .Select(v => new {v.Id})
+                .Select(v => new { v.Id })
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (latestVersion != null)
@@ -356,7 +367,7 @@ public class GameAwareAgent(
                     .AsNoTracking()
                     .Where(v => v.AgentId == agentId)
                     .OrderByDescending(v => v.CreatedAt)
-                    .Select(v => new {v.Id})
+                    .Select(v => new { v.Id })
                     .FirstOrDefaultAsync(cancellationToken);
 
                 if (anyVersion != null)
@@ -400,7 +411,7 @@ public class GameAwareAgent(
             .Where(m => m.GameId == gameId)
             .OrderByDescending(m => m.CreatedAt)
             .ThenByDescending(m => m.Id)
-            .Select(m => new {m.AgentId, m.InstructionVersionId})
+            .Select(m => new { m.AgentId, m.InstructionVersionId })
             .FirstOrDefaultAsync(cancellationToken);
         if (lastMessageEntry != null)
         {

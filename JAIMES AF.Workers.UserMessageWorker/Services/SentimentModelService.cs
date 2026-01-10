@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using MattEland.Jaimes.Workers.UserMessageWorker.Options;
 using Microsoft.Extensions.DependencyInjection;
 using MattEland.Jaimes.ServiceDefinitions.Services;
@@ -22,6 +23,7 @@ public class SentimentModelService(
 {
     private const string ModelFileName = "Result/SentimentModel.zip";
     private const string TrainingDataFileName = "sentiment_analysis.csv";
+    private static readonly ActivitySource ActivitySource = new("Jaimes.SentimentAnalysis");
     private readonly ILogger<SentimentModelService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     private ObjectPool<PredictionEngine<SentimentData, SentimentPrediction>>? _predictionEnginePool;
     private ITransformer? _trainedModel;
@@ -171,13 +173,16 @@ public class SentimentModelService(
     /// </summary>
     public (int Prediction, double Confidence) PredictSentiment(string text)
     {
+        using Activity? activity = ActivitySource.StartActivity("SentimentAnalysis.Classify");
+        activity?.SetTag("input.text_length", text.Length);
+
         ArgumentException.ThrowIfNullOrWhiteSpace(text);
         if (_predictionEnginePool == null)
         {
             throw new InvalidOperationException("Model has not been loaded. Call LoadOrTrainModelAsync first.");
         }
 
-        SentimentData input = new() {Text = text};
+        SentimentData input = new() { Text = text };
 
         // Get a prediction engine from the thread-safe pool
         PredictionEngine<SentimentData, SentimentPrediction> predictionEngine = _predictionEnginePool.Get();
@@ -192,13 +197,19 @@ public class SentimentModelService(
                 : 0f;
 
             // Map the predicted label to our sentiment values
-            return prediction.PredictedLabel?.ToLowerInvariant().Trim() switch
+            (int sentiment, double confidence) = prediction.PredictedLabel?.ToLowerInvariant().Trim() switch
             {
-                "positive" => (1, maxScore),
-                "negative" => (-1, maxScore),
-                "neutral" => (0, maxScore),
-                _ => (0, maxScore) // Default to neutral if label is unexpected
+                "positive" => (1, (double)maxScore),
+                "negative" => (-1, (double)maxScore),
+                "neutral" => (0, (double)maxScore),
+                _ => (0, (double)maxScore) // Default to neutral if label is unexpected
             };
+
+            activity?.SetTag("result.sentiment", sentiment);
+            activity?.SetTag("result.confidence", confidence);
+            activity?.SetTag("result.label", prediction.PredictedLabel);
+
+            return (sentiment, confidence);
         }
         finally
         {

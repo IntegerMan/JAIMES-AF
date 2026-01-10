@@ -1,6 +1,9 @@
 using System.Text.RegularExpressions;
+using MattEland.Jaimes.Agents.Helpers;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.AI.Evaluation;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace MattEland.Jaimes.Evaluators;
 
@@ -9,12 +12,17 @@ namespace MattEland.Jaimes.Evaluators;
 /// Provides common functionality for response parsing, metric creation, and LLM request execution.
 /// </summary>
 /// <param name="chatClient">The chat client to use for evaluation.</param>
-public abstract class LlmBasedEvaluator(IChatClient chatClient) : IEvaluator
+/// <param name="logger">The logger for telemetry instrumentation.</param>
+/// <param name="configuration">Configuration to read sensitive logging setting.</param>
+public abstract class LlmBasedEvaluator(IChatClient chatClient, ILogger logger, IConfiguration configuration) : IEvaluator
 {
     /// <summary>
-    /// Gets the chat client used for evaluation.
+    /// Gets the chat client used for evaluation (wrapped with instrumentation for telemetry).
     /// </summary>
-    protected IChatClient ChatClient { get; } = chatClient;
+    protected IChatClient ChatClient { get; } = chatClient.WrapWithInstrumentation(
+        logger, 
+        bool.TryParse(configuration["AI:EnableSensitiveLogging"], out bool val) && val);
+
 
     /// <summary>
     /// Gets the name of the metric this evaluator produces.

@@ -18,6 +18,7 @@ JAIMES AF is a .NET Aspire solution that coordinates FastEndpoints APIs, Blazor 
 - **[Chat Streaming](CHAT_STREAMING.md)** - Architecture of the real-time chat streaming system (Server-Sent Events).
 - **[Message Bus & Workers](MESSAGE_BUS.md)** - Overview of the message bus and background worker roles.
 - **[Vector Search & RAG](VECTOR_SEARCH.md)** - Explanation of the RAG pipeline and vector search implementation.
+- **[Observability](OBSERVABILITY.md)** - OpenTelemetry configuration, Aspire dashboard, and telemetry debugging.
 - **[Database Schema](SCHEMA.md)** - Database schema and entity relationships.
 - **[Technical Topics](TECHNICAL_DETAILS.md)** - Comprehensive index of technical topics.
 - **[UI Style Guide](STYLE_GUIDE.md)** - UI conventions, reusable components, and styling patterns for the Blazor frontend.

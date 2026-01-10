@@ -1,16 +1,9 @@
 HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 
-// Configure OpenTelemetry for Aspire telemetry
-builder.ConfigureOpenTelemetry();
+// Add service defaults (telemetry, health checks, service discovery)
+// This includes ConfigureOpenTelemetry() AND AddOpenTelemetryExporters() for OTLP export
+builder.AddServiceDefaults();
 
-// Configure logging with OpenTelemetry
-builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
-builder.Logging.AddOpenTelemetry(logging =>
-{
-    logging.IncludeFormattedMessage = true;
-    logging.IncludeScopes = true;
-});
 
 // Load configuration
 builder.Configuration
@@ -96,20 +89,6 @@ builder.Services.AddHostedService(sp =>
 const string activitySourceName = "Jaimes.Workers.DocumentCrackerWorker";
 ActivitySource activitySource = new(activitySourceName);
 
-builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource
-        .AddService(activitySourceName))
-    .WithMetrics(metrics =>
-    {
-        metrics.AddRuntimeInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddMeter(activitySourceName);
-    })
-    .WithTracing(tracing =>
-    {
-        tracing.AddSource(activitySourceName)
-            .AddHttpClientInstrumentation();
-    });
 
 // Register ActivitySource for dependency injection
 builder.Services.AddSingleton(activitySource);
