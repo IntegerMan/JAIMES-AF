@@ -1,4 +1,3 @@
-using MattEland.Jaimes.Domain;
 using MattEland.Jaimes.Repositories;
 using MattEland.Jaimes.Repositories.Entities;
 using MattEland.Jaimes.ServiceDefinitions.Requests;
@@ -25,7 +24,6 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
 
         IQueryable<MessageSentiment> query = context.MessageSentiments
             .AsNoTracking()
-            .Where(s => !s.Message!.IsScriptedMessage)
             .Include(s => s.Message)
             .ThenInclude(m => m!.Game)
             .ThenInclude(g => g!.Player)
@@ -75,10 +73,10 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
             if (filters.InstructionVersionId.HasValue)
             {
                 // Sentiment is on user messages, so look at the previous message (AI response) for version filtering
+                // Also check the message itself as a fallback for edge cases
                 query = query.Where(s => s.Message != null &&
                                          ((s.Message.PreviousMessage != null &&
-                                           s.Message.PreviousMessage.InstructionVersionId ==
-                                           filters.InstructionVersionId.Value) ||
+                                           s.Message.PreviousMessage.InstructionVersionId == filters.InstructionVersionId.Value) ||
                                           s.Message.InstructionVersionId == filters.InstructionVersionId.Value));
             }
 
@@ -182,7 +180,7 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
                 Id = s.Id,
                 MessageId = s.MessageId,
                 Sentiment = s.Sentiment,
-                SentimentSource = (int)s.SentimentSource,
+                SentimentSource = (int) s.SentimentSource,
                 Confidence = s.Confidence,
                 CreatedAt = s.CreatedAt,
                 UpdatedAt = s.UpdatedAt,
@@ -270,7 +268,7 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
                 var msg = await context.Messages
                     .AsNoTracking()
                     .Where(m => m.Id == sentiment.MessageId)
-                    .Select(m => new { m.NextMessageId })
+                    .Select(m => new {m.NextMessageId})
                     .FirstOrDefaultAsync(cancellationToken);
 
                 if (msg?.NextMessageId != null)
@@ -283,8 +281,7 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
             {
                 feedback = await context.MessageFeedbacks
                     .AsNoTracking()
-                    .FirstOrDefaultAsync(f => f.MessageId == sentiment.Message.NextMessageId.Value,
-                        cancellationToken);
+                    .FirstOrDefaultAsync(f => f.MessageId == sentiment.Message.NextMessageId.Value, cancellationToken);
             }
         }
 
@@ -293,7 +290,7 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
             Id = sentiment.Id,
             MessageId = sentiment.MessageId,
             Sentiment = sentiment.Sentiment,
-            SentimentSource = (int)sentiment.SentimentSource,
+            SentimentSource = (int) sentiment.SentimentSource,
             Confidence = sentiment.Confidence,
             CreatedAt = sentiment.CreatedAt,
             UpdatedAt = sentiment.UpdatedAt,
@@ -304,8 +301,7 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
             AgentVersion = sentiment.Message?.InstructionVersion?.VersionNumber,
             AgentId = sentiment.Message?.InstructionVersion?.AgentId ?? sentiment.Message?.AgentId,
             // Tool names from the previous assistant message (the one the user is reacting to)
-            ToolNames =
-                sentiment.Message?.PreviousMessage?.ToolCalls?.Select(tc => tc.ToolName).Distinct().ToList(),
+            ToolNames = sentiment.Message?.PreviousMessage?.ToolCalls?.Select(tc => tc.ToolName).Distinct().ToList(),
             HasFeedback = feedback != null,
             FeedbackIsPositive = feedback?.IsPositive,
             FeedbackComment = feedback?.Comment,
@@ -314,16 +310,11 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
     }
 
     /// <inheritdoc />
-    public async Task<SentimentSummaryResponse> GetSentimentSummaryAsync(AdminFilterParams? filters = null,
-        CancellationToken cancellationToken = default)
+    public async Task<SentimentSummaryResponse> GetSentimentSummaryAsync(AdminFilterParams? filters = null, CancellationToken cancellationToken = default)
     {
         await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
-        IQueryable<MessageSentiment> query = context.MessageSentiments
-            .AsNoTracking()
-            .Where(s => !s.Message!.IsScriptedMessage)
-            .Include(s => s.Message)
-            .ThenInclude(m => m!.PreviousMessage);
+        IQueryable<MessageSentiment> query = context.MessageSentiments.AsNoTracking();
 
         if (filters != null)
         {
@@ -336,8 +327,7 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
             {
                 query = query.Where(s => s.Message != null &&
                                          s.Message.PreviousMessage != null &&
-                                         s.Message.PreviousMessage.ToolCalls.Any(tc =>
-                                             tc.ToolName.ToLower() == filters.ToolName.ToLower()));
+                                         s.Message.PreviousMessage.ToolCalls.Any(tc => tc.ToolName.ToLower() == filters.ToolName.ToLower()));
             }
 
             if (filters.Sentiment.HasValue)
@@ -356,10 +346,10 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
             if (filters.InstructionVersionId.HasValue)
             {
                 // Sentiment is on user messages, so look at the previous message (AI response) for version filtering
+                // Also check the message itself as a fallback for edge cases
                 query = query.Where(s => s.Message != null &&
                                          ((s.Message.PreviousMessage != null &&
-                                           s.Message.PreviousMessage.InstructionVersionId ==
-                                           filters.InstructionVersionId.Value) ||
+                                           s.Message.PreviousMessage.InstructionVersionId == filters.InstructionVersionId.Value) ||
                                           s.Message.InstructionVersionId == filters.InstructionVersionId.Value));
             }
 
@@ -370,15 +360,13 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
                 {
                     query = query.Where(s => s.Message != null &&
                                              s.Message.NextMessageId.HasValue &&
-                                             context.MessageFeedbacks.Any(f =>
-                                                 f.MessageId == s.Message.NextMessageId.Value));
+                                             context.MessageFeedbacks.Any(f => f.MessageId == s.Message.NextMessageId.Value));
                 }
                 else
                 {
                     query = query.Where(s => s.Message != null &&
                                              (!s.Message.NextMessageId.HasValue ||
-                                              !context.MessageFeedbacks.Any(f =>
-                                                  f.MessageId == s.Message.NextMessageId.Value)));
+                                              !context.MessageFeedbacks.Any(f => f.MessageId == s.Message.NextMessageId.Value)));
                 }
             }
 
@@ -389,15 +377,13 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
                 {
                     query = query.Where(s => s.Message != null &&
                                              s.Message.NextMessageId.HasValue &&
-                                             context.MessageFeedbacks.Any(f =>
-                                                 f.MessageId == s.Message.NextMessageId.Value && f.IsPositive));
+                                             context.MessageFeedbacks.Any(f => f.MessageId == s.Message.NextMessageId.Value && f.IsPositive));
                 }
                 else if (feedbackType < 0)
                 {
                     query = query.Where(s => s.Message != null &&
                                              s.Message.NextMessageId.HasValue &&
-                                             context.MessageFeedbacks.Any(f =>
-                                                 f.MessageId == s.Message.NextMessageId.Value && !f.IsPositive));
+                                             context.MessageFeedbacks.Any(f => f.MessageId == s.Message.NextMessageId.Value && !f.IsPositive));
                 }
                 else
                 {
@@ -407,17 +393,14 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
         }
 
         int totalCount = await query.CountAsync(cancellationToken);
-        int positiveCount =
-            await query.Where(s => s.Sentiment == SentimentValue.Positive).CountAsync(cancellationToken);
-        int neutralCount = await query.Where(s => s.Sentiment == SentimentValue.Neutral).CountAsync(cancellationToken);
-        int negativeCount =
-            await query.Where(s => s.Sentiment == SentimentValue.Negative).CountAsync(cancellationToken);
+        int positiveCount = await query.Where(s => s.Sentiment == 1).CountAsync(cancellationToken);
+        int neutralCount = await query.Where(s => s.Sentiment == 0).CountAsync(cancellationToken);
+        int negativeCount = await query.Where(s => s.Sentiment == -1).CountAsync(cancellationToken);
 
         double? avgConfidence = null;
         if (await query.AnyAsync(s => s.Confidence.HasValue, cancellationToken))
         {
-            avgConfidence = await query.Where(s => s.Confidence.HasValue)
-                .AverageAsync(s => s.Confidence!.Value, cancellationToken);
+            avgConfidence = await query.Where(s => s.Confidence.HasValue).AverageAsync(s => s.Confidence!.Value, cancellationToken);
         }
 
         return new SentimentSummaryResponse

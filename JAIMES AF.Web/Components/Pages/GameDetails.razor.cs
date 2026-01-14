@@ -97,7 +97,7 @@ public partial class GameDetails : IAsyncDisposable
                     new ChatMessage(m.Participant == ChatParticipant.Player ? ChatRole.User : ChatRole.Assistant,
                         m.Text))
                 .ToList();
-            _messageIds = orderedMessages.Select(m => (int?) m.Id).ToList();
+            _messageIds = orderedMessages.Select(m => (int?)m.Id).ToList();
 
             // Batch load all metadata (Feedback, ToolCalls, Metrics, Sentiment)
             await LoadMessagesMetadataAsync(orderedMessages.Select(m => m.Id).ToList());
@@ -186,7 +186,7 @@ public partial class GameDetails : IAsyncDisposable
         try
         {
             HttpClient httpClient = HttpClientFactory.CreateClient("Api");
-            var request = new UpdateGameRequest {Title = _editableTitle};
+            var request = new UpdateGameRequest { Title = _editableTitle };
             var response = await httpClient.PutAsJsonAsync($"/games/{GameId}", request);
 
             if (response.IsSuccessStatusCode)
@@ -195,7 +195,7 @@ public partial class GameDetails : IAsyncDisposable
                 if (updatedGame != null)
                 {
                     // Update local game state with new title
-                    _game = _game with {Title = updatedGame.Title};
+                    _game = _game with { Title = updatedGame.Title };
                     UpdateBreadcrumbs(_game.Title ?? $"{_game.PlayerName} in {_game.ScenarioName}");
                 }
             }
@@ -222,14 +222,14 @@ public partial class GameDetails : IAsyncDisposable
     {
         var parameters = new DialogParameters<Dialogs.GameSettingsDialog>
         {
-            {nameof(Dialogs.GameSettingsDialog.AvailableAgents), _availableAgents},
-            {nameof(Dialogs.GameSettingsDialog.AvailableVersions), _availableVersions},
-            {nameof(Dialogs.GameSettingsDialog.SelectedAgentId), _selectedAgentId},
-            {nameof(Dialogs.GameSettingsDialog.SelectedAgentName), GetCurrentAgentName()},
-            {nameof(Dialogs.GameSettingsDialog.SelectedVersionId), _selectedVersionId},
-            {nameof(Dialogs.GameSettingsDialog.SelectedVersionNumber), GetCurrentVersionNumber()},
-            {nameof(Dialogs.GameSettingsDialog.GameTitle), _game?.Title},
-            {nameof(Dialogs.GameSettingsDialog.DefaultTitle), $"{_game?.PlayerName} in {_game?.ScenarioName}"}
+            { nameof(Dialogs.GameSettingsDialog.AvailableAgents), _availableAgents },
+            { nameof(Dialogs.GameSettingsDialog.AvailableVersions), _availableVersions },
+            { nameof(Dialogs.GameSettingsDialog.SelectedAgentId), _selectedAgentId },
+            { nameof(Dialogs.GameSettingsDialog.SelectedAgentName), GetCurrentAgentName() },
+            { nameof(Dialogs.GameSettingsDialog.SelectedVersionId), _selectedVersionId },
+            { nameof(Dialogs.GameSettingsDialog.SelectedVersionNumber), GetCurrentVersionNumber() },
+            { nameof(Dialogs.GameSettingsDialog.GameTitle), _game?.Title },
+            { nameof(Dialogs.GameSettingsDialog.DefaultTitle), $"{_game?.PlayerName} in {_game?.ScenarioName}" }
         };
 
         var options = new DialogOptions
@@ -242,7 +242,7 @@ public partial class GameDetails : IAsyncDisposable
         var dialog = await DialogService.ShowAsync<Dialogs.GameSettingsDialog>("Game Settings", parameters, options);
         var result = await dialog.Result;
 
-        if (result is {Canceled: false, Data: Dialogs.GameSettingsDialog.GameSettingsResult settings})
+        if (result is { Canceled: false, Data: Dialogs.GameSettingsDialog.GameSettingsResult settings })
         {
             // Apply title change if different
             if (settings.Title != _game?.Title)
@@ -800,7 +800,7 @@ public partial class GameDetails : IAsyncDisposable
         {
             // Show existing feedback info
             MessageFeedbackResponse existing = _messageFeedback[messageId];
-            await DialogService.ShowMessageBox(
+            await DialogService.ShowMessageBoxAsync(
                 "Feedback Already Submitted",
                 $"You have already submitted {(existing.IsPositive ? "positive" : "negative")} feedback for this message." +
                 (string.IsNullOrWhiteSpace(existing.Comment) ? "" : $"\n\nYour comment: {existing.Comment}"),
@@ -813,8 +813,8 @@ public partial class GameDetails : IAsyncDisposable
         IDialogReference? dialogRef = null;
         var parameters = new DialogParameters<FeedbackDialog>
         {
-            {nameof(FeedbackDialog.MessageId), messageId},
-            {nameof(FeedbackDialog.PreSelectedFeedback), isPositive},
+            { nameof(FeedbackDialog.MessageId), messageId },
+            { nameof(FeedbackDialog.PreSelectedFeedback), isPositive },
             {
                 nameof(FeedbackDialog.OnFeedbackSubmitted), EventCallback.Factory.Create<FeedbackSubmission?>(this,
                     async (FeedbackSubmission? feedback) =>
@@ -875,13 +875,13 @@ public partial class GameDetails : IAsyncDisposable
             {
                 string errorMessage = await response.Content.ReadAsStringAsync();
                 _logger?.LogError("Failed to submit feedback: {Error}", errorMessage);
-                await DialogService.ShowMessageBox("Error", $"Failed to submit feedback: {errorMessage}", "OK");
+                await DialogService.ShowMessageBoxAsync("Error", $"Failed to submit feedback: {errorMessage}", "OK");
             }
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to submit feedback");
-            await DialogService.ShowMessageBox("Error", $"Failed to submit feedback: {ex.Message}", "OK");
+            await DialogService.ShowMessageBoxAsync("Error", $"Failed to submit feedback: {ex.Message}", "OK");
         }
     }
 
@@ -908,7 +908,7 @@ public partial class GameDetails : IAsyncDisposable
         {
             HttpClient httpClient = HttpClientFactory.CreateClient("Api");
 
-            var request = new MessagesMetadataRequest {MessageIds = messageIds};
+            var request = new MessagesMetadataRequest { MessageIds = messageIds };
             var response = await httpClient.PostAsJsonAsync("/messages/metadata", request);
 
             if (response.IsSuccessStatusCode)
@@ -1131,7 +1131,7 @@ public partial class GameDetails : IAsyncDisposable
                                  notification.MessageId.HasValue)
                         {
                             // Fetch metadata for this message immediately to get the tool calls
-                            await LoadMessagesMetadataAsync(new List<int> {notification.MessageId.Value});
+                            await LoadMessagesMetadataAsync(new List<int> { notification.MessageId.Value });
                         }
 
                         StateHasChanged();

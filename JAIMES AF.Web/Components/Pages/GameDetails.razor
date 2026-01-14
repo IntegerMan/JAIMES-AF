@@ -215,20 +215,20 @@
 				}
 
 				@if (_isSending)
-				{
-					<MudChat ChatPosition="ChatBubblePosition.Start"
-					         Variant="Variant.Filled"
-					         Color="Color.Default">
-						<MudChatHeader Name="Game Master"/>
-						<MudChatBubble>
-							<div class="typing-indicator">
-								<span></span>
-								<span></span>
-								<span></span>
-							</div>
-						</MudChatBubble>
-					</MudChat>
-				}
+			{
+				<ChatBubble Position="ChatBubblePosition.Start"
+				            Variant="Variant.Filled"
+				            Color="Color.Default">
+					<ChatHeader Name="Game Master"/>
+					<div class="chat-bubble-content">
+						<div class="typing-indicator">
+							<span></span>
+							<span></span>
+							<span></span>
+						</div>
+					</div>
+				</ChatBubble>
+			}
 			</div>
 
 			<div class="message-bar">

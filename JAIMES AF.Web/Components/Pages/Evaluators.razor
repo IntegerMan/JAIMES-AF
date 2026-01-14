@@ -162,7 +162,7 @@
         };
     }
 
-    private async Task<GridData<EvaluatorItemDto>> ServerReload(GridState<EvaluatorItemDto> state)
+    private async Task<GridData<EvaluatorItemDto>> ServerReload(GridState<EvaluatorItemDto> state, CancellationToken cancellationToken)
     {
         try
         {

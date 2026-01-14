@@ -1,0 +1,17 @@
+<div class="chat-footer @Class">
+    @ChildContent
+</div>
+
+@code {
+    /// <summary>
+    /// Content for the footer (typically action buttons)
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Additional CSS classes
+    /// </summary>
+    [Parameter]
+    public string? Class { get; set; }
+}

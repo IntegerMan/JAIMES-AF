@@ -1,6 +1,7 @@
 @page "/admin/classification-models/{Id:int}"
 @using MattEland.Jaimes.ServiceDefinitions.Responses
 @using MattEland.Jaimes.Web.Components.Shared
+@using MudBlazor
 @rendermode InteractiveServer
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
@@ -357,7 +358,7 @@
 
 	private async Task ConfirmActivation()
 	{
-		bool? result = await DialogService.ShowMessageBox(
+		bool? result = await DialogService.ShowMessageBoxAsync(
 			"Activate Model",
 			$"Are you sure you want to activate '{_model?.Name}'? This will make it the active model for sentiment classification and redirect all inference to use this model.",
 			yesText: "Activate",

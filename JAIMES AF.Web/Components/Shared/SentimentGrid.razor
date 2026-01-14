@@ -171,7 +171,7 @@
         return message[..maxLength] + "...";
     }
 
-    private async Task<GridData<SentimentListItemDto>> ServerReload(GridState<SentimentListItemDto> state)
+    private async Task<GridData<SentimentListItemDto>> ServerReload(GridState<SentimentListItemDto> state, CancellationToken cancellationToken)
     {
         try
         {
@@ -202,7 +202,7 @@
                 queryParams.Add($"hasFeedback={HasFeedback.Value.ToString().ToLower()}");
 
             string queryString = string.Join("&", queryParams);
-            var response = await client.GetFromJsonAsync<SentimentListResponse>($"/admin/sentiments?{queryString}");
+            var response = await client.GetFromJsonAsync<SentimentListResponse>($"/admin/sentiments?{queryString}", cancellationToken);
 
             if (response != null)
             {
