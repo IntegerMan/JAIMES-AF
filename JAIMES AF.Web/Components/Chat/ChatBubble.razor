@@ -1,6 +1,6 @@
 @using MudBlazor
 
-<div class="chat-bubble chat-bubble-@(Position.ToString().ToLower()) chat-bubble-@(Variant.ToString().ToLower()) chat-bubble-@(GetColorClass())">
+<div class="chat-bubble chat-bubble-@(Position.ToString().ToLower()) chat-bubble-@(Variant.ToString().ToLower()) chat-bubble-@(GetColorClass()) @Class">
     @ChildContent
 </div>
 

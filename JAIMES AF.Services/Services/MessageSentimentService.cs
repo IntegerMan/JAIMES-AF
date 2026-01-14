@@ -72,8 +72,10 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
 
             if (filters.InstructionVersionId.HasValue)
             {
+                // Sentiment is on user messages, so look at the previous message (AI response) for version filtering
                 query = query.Where(s => s.Message != null &&
-                                         s.Message.InstructionVersionId == filters.InstructionVersionId.Value);
+                                         s.Message.PreviousMessage != null &&
+                                         s.Message.PreviousMessage.InstructionVersionId == filters.InstructionVersionId.Value);
             }
 
             // Apply feedback filters in the database query (Use NextMessageId to link to the response message)
@@ -341,8 +343,10 @@ public class MessageSentimentService(IDbContextFactory<JaimesDbContext> contextF
 
             if (filters.InstructionVersionId.HasValue)
             {
+                // Sentiment is on user messages, so look at the previous message (AI response) for version filtering
                 query = query.Where(s => s.Message != null &&
-                                         s.Message.InstructionVersionId == filters.InstructionVersionId.Value);
+                                         s.Message.PreviousMessage != null &&
+                                         s.Message.PreviousMessage.InstructionVersionId == filters.InstructionVersionId.Value);
             }
 
             if (filters.HasFeedback.HasValue)
