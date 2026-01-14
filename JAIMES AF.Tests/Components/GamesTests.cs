@@ -211,7 +211,7 @@ public class GamesTests : Bunit.TestContext
 
         // Setup mock to return null (cancel) from the dialog
         _dialogServiceMock
-            .Setup(x => x.ShowMessageBox(
+            .Setup(x => x.ShowMessageBoxAsync(
                 It.Is<string>(s => s == "Delete Game"),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
@@ -235,7 +235,7 @@ public class GamesTests : Bunit.TestContext
         await cut.InvokeAsync(() => deleteButtons.First().Instance.OnClick.InvokeAsync());
 
         // Assert - Verify the confirmation dialog was shown
-        _dialogServiceMock.Verify(x => x.ShowMessageBox(
+        _dialogServiceMock.Verify(x => x.ShowMessageBoxAsync(
             "Delete Game",
             It.IsAny<string>(),
             "Delete",
@@ -328,7 +328,7 @@ public class GamesTests : Bunit.TestContext
 
         // Setup mock dialog to confirm deletion (return true)
         _dialogServiceMock
-            .Setup(x => x.ShowMessageBox(
+            .Setup(x => x.ShowMessageBoxAsync(
                 It.Is<string>(s => s == "Delete Game"),
                 It.IsAny<string>(),
                 It.IsAny<string>(),

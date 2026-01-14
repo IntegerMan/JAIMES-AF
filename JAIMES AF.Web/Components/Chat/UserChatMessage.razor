@@ -1,20 +1,22 @@
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@using MudBlazor
 
-<MudChat ChatPosition="ChatBubblePosition.End"
-         Variant="Variant.Filled"
-         Color="@(Highlighted ? Color.Info : Color)">
+<ChatBubble Position="ChatBubblePosition.End"
+            Variant="Variant.Filled"
+            Color="@(Highlighted ? Color.Info : Color)">
     @if (IsFirstParagraph)
     {
-        <MudChatHeader Name="Player"/>
+        <ChatHeader Name="Player"/>
     }
-    <MudChatBubble>
+    <div class="chat-bubble-content">
         @Text
-    </MudChatBubble>
+    </div>
 
     @if (IsLastParagraph)
     {
-        <MudChatFooter Class="d-flex justify-content-end align-items-center gap-2 mt-1">
+        <ChatFooter Class="d-flex justify-content-end align-items-center gap-2 mt-1">
             @if (TriggeredContentModeration)
             {
                 <MudTooltip Text="This message triggered Azure's content moderation policy. Click to learn more." Placement="Placement.Top">
@@ -117,11 +119,9 @@
                              Class="spin-icon"/>
                 </MudTooltip>
             }
-        </MudChatFooter>
+        </ChatFooter>
     }
-</MudChat>
-
-@inject ISnackbar Snackbar
+</ChatBubble>
 
 @code {
     [Parameter] public required string Text { get; set; }

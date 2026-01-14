@@ -1,0 +1,50 @@
+@using MudBlazor
+
+<div class="chat-bubble chat-bubble-@(Position.ToString().ToLower()) chat-bubble-@(Variant.ToString().ToLower()) chat-bubble-@(GetColorClass())">
+    @ChildContent
+</div>
+
+@code {
+    /// <summary>
+    /// Position of the chat bubble (Start = left, End = right)
+    /// </summary>
+    [Parameter]
+    public ChatBubblePosition Position { get; set; } = ChatBubblePosition.Start;
+
+    /// <summary>
+    /// Visual variant of the bubble
+    /// </summary>
+    [Parameter]
+    public Variant Variant { get; set; } = Variant.Filled;
+
+    /// <summary>
+    /// Color theme for the bubble
+    /// </summary>
+    [Parameter]
+    public Color Color { get; set; } = Color.Default;
+
+    /// <summary>
+    /// Content to display inside the bubble
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Additional CSS class
+    /// </summary>
+    [Parameter]
+    public string? Class { get; set; }
+
+    private string GetColorClass() => Color switch
+    {
+        Color.Primary => "primary",
+        Color.Secondary => "secondary",
+        Color.Tertiary => "tertiary",
+        Color.Info => "info",
+        Color.Success => "success",
+        Color.Warning => "warning",
+        Color.Error => "error",
+        Color.Dark => "dark",
+        _ => "default"
+    };
+}

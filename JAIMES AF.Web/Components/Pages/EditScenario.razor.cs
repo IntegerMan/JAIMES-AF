@@ -348,7 +348,7 @@ public partial class EditScenario
 
     private async Task RemoveAgentAsync(ScenarioAgentWithDetails scenarioAgent)
     {
-        bool? result = await DialogService.ShowMessageBox(
+        bool? result = await DialogService.ShowMessageBoxAsync(
             "Remove Agent",
             $"Are you sure you want to remove agent '{scenarioAgent.AgentName}' from this scenario?",
             yesText: "Remove", cancelText: "Cancel");

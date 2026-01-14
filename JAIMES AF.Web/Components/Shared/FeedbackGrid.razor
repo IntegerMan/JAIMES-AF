@@ -168,7 +168,7 @@
         return queryParams.Count > 0 ? $"{baseUrl}?{string.Join("&", queryParams)}" : baseUrl;
     }
 
-    private async Task<GridData<FeedbackListItemDto>> ServerReload(GridState<FeedbackListItemDto> state)
+    private async Task<GridData<FeedbackListItemDto>> ServerReload(GridState<FeedbackListItemDto> state, CancellationToken cancellationToken)
     {
         try
         {

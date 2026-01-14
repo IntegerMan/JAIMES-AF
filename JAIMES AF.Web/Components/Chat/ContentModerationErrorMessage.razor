@@ -1,10 +1,10 @@
 @using MudBlazor
 
-<MudChat ChatPosition="ChatBubblePosition.Start"
-         Variant="Variant.Filled"
-         Color="Color.Error">
-    <MudChatHeader Name="System"/>
-    <MudChatBubble>
+<ChatBubble Position="ChatBubblePosition.Start"
+            Variant="Variant.Filled"
+            Color="Color.Error">
+    <ChatHeader Name="System"/>
+    <div class="chat-bubble-content">
         <MudStack Spacing="2">
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                 <MudIcon Icon="@Icons.Material.Filled.Block" Size="Size.Small"/>
@@ -17,8 +17,8 @@
                 This may be due to sensitive content in your message. Please rephrase your request and try again.
             </MudText>
         </MudStack>
-    </MudChatBubble>
-    <MudChatFooter Class="feedback-footer">
+    </div>
+    <ChatFooter Class="feedback-footer">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Justify="Justify.SpaceBetween" Style="width: 100%;">
             <MudTooltip Text="Learn More" Placement="Placement.Top">
                 <MudIconButton Icon="@Icons.Material.Filled.Link"
@@ -38,8 +38,8 @@
                 </MudButton>
             }
         </MudStack>
-    </MudChatFooter>
-</MudChat>
+    </ChatFooter>
+</ChatBubble>
 
 @code {
     [Parameter]

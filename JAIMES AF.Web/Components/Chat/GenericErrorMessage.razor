@@ -1,10 +1,10 @@
 @using MudBlazor
 
-<MudChat ChatPosition="ChatBubblePosition.Start"
-         Variant="Variant.Filled"
-         Color="Color.Error">
-    <MudChatHeader Name="System"/>
-    <MudChatBubble>
+<ChatBubble Position="ChatBubblePosition.Start"
+            Variant="Variant.Filled"
+            Color="Color.Error">
+    <ChatHeader Name="System"/>
+    <div class="chat-bubble-content">
         <MudStack Spacing="2">
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                 <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Small"/>
@@ -16,10 +16,10 @@
                 @ErrorMessage
             </MudText>
         </MudStack>
-    </MudChatBubble>
+    </div>
     @if (OnRetry.HasDelegate)
     {
-        <MudChatFooter Class="feedback-footer">
+        <ChatFooter Class="feedback-footer">
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Justify="Justify.FlexEnd">
                 <MudButton Variant="Variant.Text"
                            Color="Color.Inherit"
@@ -29,9 +29,9 @@
                     Retry
                 </MudButton>
             </MudStack>
-        </MudChatFooter>
+        </ChatFooter>
     }
-</MudChat>
+</ChatBubble>
 
 @code {
     [Parameter]

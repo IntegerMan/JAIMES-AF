@@ -346,12 +346,12 @@
 
     private async Task ShowDiagnostics(EvaluationMetricListItemDto item)
     {
-        await DialogService.ShowMessageBox(
+        await DialogService.ShowMessageBoxAsync(
             $"Diagnostics: {item.MetricName}",
             item.Diagnostics ?? "No diagnostics available");
     }
 
-    private async Task<GridData<EvaluationMetricListItemDto>> ServerReload(GridState<EvaluationMetricListItemDto> state)
+    private async Task<GridData<EvaluationMetricListItemDto>> ServerReload(GridState<EvaluationMetricListItemDto> state, CancellationToken cancellationToken)
     {
         try
         {

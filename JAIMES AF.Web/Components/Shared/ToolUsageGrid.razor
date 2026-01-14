@@ -200,7 +200,7 @@
         };
     }
 
-    private async Task<GridData<ToolUsageItemDto>> ServerReload(GridState<ToolUsageItemDto> state)
+    private async Task<GridData<ToolUsageItemDto>> ServerReload(GridState<ToolUsageItemDto> state, CancellationToken cancellationToken)
     {
         try
         {

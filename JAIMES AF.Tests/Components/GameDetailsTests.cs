@@ -55,7 +55,7 @@ public class GameDetailsTests : Bunit.TestContext
 
         // Assert
         // Should find the "Analyzing Sentiment..." tooltip or icon
-        var footer = cut.FindComponent<MudChatFooter>();
+        var footer = cut.FindComponent<ChatFooter>();
         footer.ShouldNotBeNull();
 
         // Check for the spinning hourglass icon

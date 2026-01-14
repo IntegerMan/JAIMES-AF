@@ -3,6 +3,7 @@
 
 @using MattEland.Jaimes.ServiceDefinitions.Responses
 @using MattEland.Jaimes.Web.Components.Shared
+@using MudBlazor
 
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
@@ -265,7 +266,7 @@
 
     private async Task ConfirmDeleteReport(StoredReportResponse report)
     {
-        bool? result = await DialogService.ShowMessageBox(
+        bool? result = await DialogService.ShowMessageBoxAsync(
             "Delete Report",
             $"Delete report file for '{report.ExecutionName}'? The test run metrics will be preserved.",
             "Delete",

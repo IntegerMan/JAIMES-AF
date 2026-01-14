@@ -1,4 +1,6 @@
-﻿namespace MattEland.Jaimes.Web.Components.Pages;
+﻿using MudBlazor;
+
+namespace MattEland.Jaimes.Web.Components.Pages;
 
 public partial class Games
 {
@@ -55,7 +57,7 @@ public partial class Games
 
     private async Task DeleteGameAsync(Guid gameId)
     {
-        bool? result = await DialogService.ShowMessageBox(
+        bool? result = await DialogService.ShowMessageBoxAsync(
             "Delete Game",
             "Are you sure you want to delete this game? This action cannot be undone.",
             "Delete",

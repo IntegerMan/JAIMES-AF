@@ -176,7 +176,7 @@
         <MudText Typo="Typo.subtitle2" Class="mb-2">Messages Processed (Last 5 Minutes)</MudText>
         <MudChart ChartType="ChartType.Line" 
                   ChartSeries="@_chartSeries" 
-                  XAxisLabels="@_chartLabels"
+                  ChartLabels="@_chartLabels"
                   Width="100%" 
                   Height="80px"
                   ChartOptions="@_chartOptions" />
@@ -188,9 +188,9 @@
     private HubConnection? _hubConnection;
     private bool _isConnected;
     private readonly List<int> _throughputHistory = new();
-    private readonly List<ChartSeries> _chartSeries = new();
+    private readonly List<ChartSeries<double>> _chartSeries = new();
     private string[] _chartLabels = Array.Empty<string>();
-    private readonly ChartOptions _chartOptions = new() { YAxisLines = false, XAxisLines = false };
+    private readonly ChartOptions _chartOptions = new();
     private System.Timers.Timer? _staleCheckTimer;
     private System.Timers.Timer? _throughputTimer;
     private int _messagesCompletedThisMinute;
@@ -261,7 +261,7 @@
     private void UpdateChartData()
     {
         _chartSeries.Clear();
-        _chartSeries.Add(new ChartSeries
+        _chartSeries.Add(new ChartSeries<double>
         {
             Name = "Messages",
             Data = _throughputHistory.Select(x => (double)x).ToArray()

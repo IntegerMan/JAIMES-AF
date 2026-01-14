@@ -5,19 +5,19 @@
 
 @if (!string.IsNullOrWhiteSpace(Text))
 {
-    <MudChat ChatPosition="ChatBubblePosition.Start"
-             Variant="Variant.Filled"
-             Color="@(Highlighted ? Color.Primary : Color)">
+    <ChatBubble Position="ChatBubblePosition.Start"
+                Variant="Variant.Filled"
+                Color="@(Highlighted ? Color.Primary : Color)">
         @if (IsFirstParagraph)
         {
-            <MudChatHeader Name="Game Master"/>
+            <ChatHeader Name="Game Master"/>
         }
-        <MudChatBubble>
+        <div class="chat-bubble-content">
             @((MarkupString) ChatHelpers.RenderMarkdown(Text))
-        </MudChatBubble>
+        </div>
         @if (IsLastParagraph && !IsStreaming)
         {
-            <MudChatFooter Class="feedback-footer">
+            <ChatFooter Class="feedback-footer">
                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                     @if (!string.IsNullOrEmpty(AgentId) && !IsScriptedMessage)
                     {
@@ -51,9 +51,9 @@
                         ExpectedMetricCount="@ExpectedMetricCount"
                         ErrorsByMetric="@ErrorsByMetric"/>
                 </MudStack>
-            </MudChatFooter>
+            </ChatFooter>
         }
-    </MudChat>
+    </ChatBubble>
 }
 
 @code {
@@ -96,4 +96,3 @@
     [Parameter] public int? ExpectedMetricCount { get; set; }
     [Parameter] public Dictionary<string, string>? ErrorsByMetric { get; set; }
 }
-

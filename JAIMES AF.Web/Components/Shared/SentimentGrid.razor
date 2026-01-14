@@ -171,7 +171,7 @@
         return message[..maxLength] + "...";
     }
 
-    private async Task<GridData<SentimentListItemDto>> ServerReload(GridState<SentimentListItemDto> state)
+    private async Task<GridData<SentimentListItemDto>> ServerReload(GridState<SentimentListItemDto> state, CancellationToken cancellationToken)
     {
         try
         {
