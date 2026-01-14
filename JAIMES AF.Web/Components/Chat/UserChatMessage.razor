@@ -10,7 +10,7 @@
     {
         <ChatHeader Name="Player"/>
     }
-    <div class="chat-bubble-content">
+    <div class="@GetContentClasses()">
         @Text
     </div>
 
@@ -309,6 +309,16 @@
     private string GetClickableTooltipText()
     {
         return GetSentimentTooltipText() + " - Click to view details";
+    }
+
+    private string GetContentClasses()
+    {
+        var classes = "chat-bubble-content";
+        if (IsFirstParagraph)
+        {
+            classes += " has-pointer";
+        }
+        return classes;
     }
 
 }
