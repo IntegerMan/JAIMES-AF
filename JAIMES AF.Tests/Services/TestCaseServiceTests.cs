@@ -122,7 +122,7 @@ public class TestCaseServiceTests : IAsyncLifetime
     public async Task CreateTestCaseAsync_ThrowsException_WhenMessageNotFound()
     {
         // Arrange
-        int nonExistentMessageId = 99999;
+        int nonExistentMessageId = 100099;
 
         // Act & Assert
         var exception = await Should.ThrowAsync<InvalidOperationException>(async () =>
@@ -130,7 +130,7 @@ public class TestCaseServiceTests : IAsyncLifetime
                 nonExistentMessageId, "Test", null,
                 TestContext.Current.CancellationToken));
 
-        exception.Message.ShouldContain("99999");
+        exception.Message.ShouldContain("100099");
         exception.Message.ShouldContain("not found");
     }
 
@@ -202,7 +202,7 @@ public class TestCaseServiceTests : IAsyncLifetime
     public async Task GetTestCaseAsync_ReturnsNull_WhenNotExists()
     {
         // Act
-        var result = await _testCaseService.GetTestCaseAsync(99999, TestContext.Current.CancellationToken);
+        var result = await _testCaseService.GetTestCaseAsync(100099, TestContext.Current.CancellationToken);
 
         // Assert
         result.ShouldBeNull();
@@ -218,7 +218,8 @@ public class TestCaseServiceTests : IAsyncLifetime
             message.Id, "By Message Test", null, TestContext.Current.CancellationToken);
 
         // Act
-        var result = await _testCaseService.GetTestCaseByMessageIdAsync(message.Id, TestContext.Current.CancellationToken);
+        var result =
+            await _testCaseService.GetTestCaseByMessageIdAsync(message.Id, TestContext.Current.CancellationToken);
 
         // Assert
         result.ShouldNotBeNull();
@@ -251,11 +252,14 @@ public class TestCaseServiceTests : IAsyncLifetime
         // Arrange
         var game = await CreateTestGameAsync();
         var message = await CreatePlayerMessageAsync(game.Id);
-        await _testCaseService.CreateTestCaseAsync(message.Id, "Agent Filter Test", null, TestContext.Current.CancellationToken);
+        await _testCaseService.CreateTestCaseAsync(message.Id, "Agent Filter Test", null,
+            TestContext.Current.CancellationToken);
 
         // Act
-        var resultMatching = await _testCaseService.ListTestCasesAsync("test-agent", false, TestContext.Current.CancellationToken);
-        var resultNonMatching = await _testCaseService.ListTestCasesAsync("other-agent", false, TestContext.Current.CancellationToken);
+        var resultMatching =
+            await _testCaseService.ListTestCasesAsync("test-agent", false, TestContext.Current.CancellationToken);
+        var resultNonMatching =
+            await _testCaseService.ListTestCasesAsync("other-agent", false, TestContext.Current.CancellationToken);
 
         // Assert
         resultMatching.ShouldNotBeEmpty();
@@ -287,7 +291,7 @@ public class TestCaseServiceTests : IAsyncLifetime
     public async Task DeleteTestCaseAsync_ReturnsFalse_WhenNotExists()
     {
         // Act
-        var result = await _testCaseService.DeleteTestCaseAsync(99999, TestContext.Current.CancellationToken);
+        var result = await _testCaseService.DeleteTestCaseAsync(100099, TestContext.Current.CancellationToken);
 
         // Assert
         result.ShouldBeFalse();
@@ -317,7 +321,7 @@ public class TestCaseServiceTests : IAsyncLifetime
     {
         // Act
         var result = await _testCaseService.UpdateTestCaseAsync(
-            99999, "Name", "Desc", TestContext.Current.CancellationToken);
+            100099, "Name", "Desc", TestContext.Current.CancellationToken);
 
         // Assert
         result.ShouldBeNull();
@@ -326,6 +330,7 @@ public class TestCaseServiceTests : IAsyncLifetime
     private class TestDbContextFactory(DbContextOptions<JaimesDbContext> options) : IDbContextFactory<JaimesDbContext>
     {
         public JaimesDbContext CreateDbContext() => new(options);
+
         public Task<JaimesDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
             => Task.FromResult(new JaimesDbContext(options));
     }

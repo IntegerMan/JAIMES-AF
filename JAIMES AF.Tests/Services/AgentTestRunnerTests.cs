@@ -150,14 +150,14 @@ public class AgentTestRunnerTests : IAsyncLifetime
     public async Task RunTestCasesAsync_ThrowsException_WhenVersionNotFound()
     {
         // Arrange
-        int nonExistentVersionId = 99999;
+        int nonExistentVersionId = 200099;
 
         // Act & Assert
         var exception = await Should.ThrowAsync<KeyNotFoundException>(async () =>
             await _testRunner.RunTestCasesAsync("test-agent", nonExistentVersionId, null, null, null,
                 TestContext.Current.CancellationToken));
 
-        exception.Message.ShouldContain("99999");
+        exception.Message.ShouldContain("200099");
         exception.Message.ShouldContain("not found");
     }
 

@@ -77,7 +77,7 @@ public class TestCaseEndpointTests : EndpointTestBase
     {
         // Arrange
         CancellationToken ct = TestContext.Current.CancellationToken;
-        var request = new { MessageId = 99999, Name = "Test", Description = (string?)null };
+        var request = new { MessageId = 300099, Name = "Test", Description = (string?)null };
 
         // Act
         HttpResponseMessage response = await Client.PostAsJsonAsync("/test-cases", request, ct);
@@ -111,7 +111,7 @@ public class TestCaseEndpointTests : EndpointTestBase
     {
         // Act
         CancellationToken ct = TestContext.Current.CancellationToken;
-        HttpResponseMessage response = await Client.GetAsync("/test-cases/99999", ct);
+        HttpResponseMessage response = await Client.GetAsync("/test-cases/300099", ct);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
@@ -166,7 +166,7 @@ public class TestCaseEndpointTests : EndpointTestBase
     {
         // Act
         CancellationToken ct = TestContext.Current.CancellationToken;
-        HttpResponseMessage response = await Client.DeleteAsync("/test-cases/99999", ct);
+        HttpResponseMessage response = await Client.DeleteAsync("/test-cases/300099", ct);
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
