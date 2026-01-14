@@ -1403,6 +1403,11 @@ th.comparison-matrix-sticky-column {
     border-left-color: var(--mud-palette-primary);
 }
 
+/* Highlighted assistant messages use primary color with start position (::before) */
+.chat-bubble-filled.chat-bubble-primary .chat-bubble-content.has-pointer::before {
+    border-right-color: var(--mud-palette-primary);
+}
+
 .chat-bubble-filled.chat-bubble-error .chat-bubble-content.has-pointer::before {
     border-right-color: var(--mud-palette-error);
 }
