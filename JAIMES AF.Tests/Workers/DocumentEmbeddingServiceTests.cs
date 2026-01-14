@@ -225,7 +225,7 @@ public class DocumentEmbeddingServiceTests
         using DocumentEmbeddingServiceTestContext context = new();
 
         // Use a non-existent document ID (but don't insert it into the database)
-        int nonExistentDocumentId = 999999;
+        int nonExistentDocumentId = 400099;
 
         ChunkReadyForEmbeddingMessage message = new()
         {

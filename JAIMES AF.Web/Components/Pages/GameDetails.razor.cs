@@ -977,10 +977,12 @@ public partial class GameDetails : IAsyncDisposable
                 .Build();
 
             // Handle message updates
+            // Use async handler to ensure notifications are processed sequentially,
+            // preventing race conditions when multiple metrics arrive rapidly
             _hubConnection.On<MessageUpdateNotification>("MessageUpdated",
-                notification =>
+                async notification =>
                 {
-                    _ = InvokeAsync(async () =>
+                    await InvokeAsync(async () =>
                     {
                         // Update local state based on update type
                         if (notification.UpdateType == MessageUpdateType.SentimentAnalyzed &&
@@ -1040,18 +1042,22 @@ public partial class GameDetails : IAsyncDisposable
                             if (!_messageMetrics.TryGetValue(messageId, out var existingMetrics))
                             {
                                 existingMetrics = [];
-                                _messageMetrics[messageId] = existingMetrics;
                             }
 
                             // Add new metrics (typically just one at a time)
+                            // Create a new list to trigger Blazor's change detection for child components
+                            var updatedMetrics = new List<MessageEvaluationMetricResponse>(existingMetrics);
                             foreach (var metric in notification.Metrics)
                             {
                                 // Avoid duplicates by checking metric name
-                                if (!existingMetrics.Any(m => m.MetricName == metric.MetricName))
+                                if (!updatedMetrics.Any(m => m.MetricName == metric.MetricName))
                                 {
-                                    existingMetrics.Add(metric);
+                                    updatedMetrics.Add(metric);
                                 }
                             }
+
+                            // Replace with new list instance to ensure Blazor detects the parameter change
+                            _messageMetrics[messageId] = updatedMetrics;
 
                             // Track expected count if provided
                             if (notification.ExpectedMetricCount.HasValue)
@@ -1077,7 +1083,7 @@ public partial class GameDetails : IAsyncDisposable
 
                             // Check if all metrics have arrived
                             if (notification.ExpectedMetricCount.HasValue &&
-                                existingMetrics.Count >= notification.ExpectedMetricCount.Value)
+                                updatedMetrics.Count >= notification.ExpectedMetricCount.Value)
                             {
                                 _loadedMetricsMessageIds.Add(messageId);
                             }
@@ -1086,9 +1092,32 @@ public partial class GameDetails : IAsyncDisposable
                                  notification.Metrics != null &&
                                  notification.MessageId.HasValue)
                         {
-                            // Final update: all metrics complete (backward compatibility)
+                            // Final update: merge with any existing metrics to avoid losing streaming updates
                             int messageId = notification.MessageId.Value;
-                            _messageMetrics[messageId] = notification.Metrics;
+
+                            // Get existing metrics or start with empty list
+                            if (!_messageMetrics.TryGetValue(messageId, out var existingMetrics))
+                            {
+                                existingMetrics = [];
+                            }
+
+                            // Merge: update existing metrics or add new ones
+                            var mergedMetrics = new List<MessageEvaluationMetricResponse>(existingMetrics);
+                            foreach (var metric in notification.Metrics)
+                            {
+                                var existingIndex = mergedMetrics.FindIndex(m => m.MetricName == metric.MetricName);
+                                if (existingIndex >= 0)
+                                {
+                                    // Update existing metric with potentially newer data
+                                    mergedMetrics[existingIndex] = metric;
+                                }
+                                else
+                                {
+                                    mergedMetrics.Add(metric);
+                                }
+                            }
+
+                            _messageMetrics[messageId] = mergedMetrics;
                             _loadedMetricsMessageIds.Add(messageId);
 
                             // Rebuild error dictionary to preserve errors for metrics with score 0 and "failed" remarks
@@ -1097,7 +1126,7 @@ public partial class GameDetails : IAsyncDisposable
                             {
                                 // Create a new dictionary with only the metrics that are actually errors
                                 var updatedErrors = new Dictionary<string, string>();
-                                foreach (var metric in notification.Metrics)
+                                foreach (var metric in mergedMetrics)
                                 {
                                     // Check if this metric was previously marked as an error and still appears to be one
                                     if (errorDict.TryGetValue(metric.MetricName, out var errorMsg) &&
