@@ -197,7 +197,7 @@
                 queryParams.Add($"gameId={GameId.Value}");
 
             string queryString = string.Join("&", queryParams);
-            var response = await client.GetFromJsonAsync<FeedbackListResponse>($"/admin/feedback?{queryString}");
+            var response = await client.GetFromJsonAsync<FeedbackListResponse>($"/admin/feedback?{queryString}", cancellationToken);
 
             if (response != null)
             {
