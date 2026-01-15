@@ -1345,23 +1345,27 @@ th.comparison-matrix-sticky-column {
 }
 
 .chat-bubble-filled.chat-bubble-success>div:not(.chat-header):not(.chat-footer) {
-    background-color: var(--mud-palette-success);
-    color: var(--mud-palette-success-text);
+    background-color: #E8F8F1;
+    color: #2B2D42;
+    border: 2px solid #06D6A0;
 }
 
 .chat-bubble-filled.chat-bubble-warning>div:not(.chat-header):not(.chat-footer) {
-    background-color: var(--mud-palette-warning);
-    color: var(--mud-palette-warning-text);
+    background-color: #FFF8E1;
+    color: #2B2D42;
+    border: 2px solid #FFD60A;
 }
 
 .chat-bubble-filled.chat-bubble-error>div:not(.chat-header):not(.chat-footer) {
-    background-color: var(--mud-palette-error);
-    color: var(--mud-palette-error-text);
+    background-color: #FDECEF;
+    color: #2B2D42;
+    border: 2px solid #EF476F;
 }
 
 .chat-bubble-filled.chat-bubble-dark>div:not(.chat-header):not(.chat-footer) {
-    background-color: var(--mud-palette-dark);
-    color: var(--mud-palette-dark-text);
+    background-color: #E8E8EC;
+    color: #2B2D42;
+    border: 2px solid #2B2D42;
 }
 
 /* Bubble corner radius adjustments based on position */
