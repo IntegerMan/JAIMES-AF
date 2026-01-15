@@ -295,7 +295,7 @@ public partial class GameDetails : IAsyncDisposable
             return $"Latest ({activeVersion.VersionNumber})";
         }
 
-        return _defaultVersionNumber ?? "Latest";
+        return "Latest";
     }
 
     /// <summary>
@@ -1351,7 +1351,7 @@ public partial class GameDetails : IAsyncDisposable
             // Using "Latest" - use the active version if found
             versionNumber = version != null
                 ? $"Latest ({version.VersionNumber})"
-                : (_defaultVersionNumber ?? "Latest");
+                : "Latest";
             instructionVersionId = version?.Id ?? _defaultInstructionVersionId;
         }
 
