@@ -1382,7 +1382,7 @@ th.comparison-matrix-sticky-column {
 .chat-bubble-start .chat-bubble-content.has-pointer::before {
     content: '';
     position: absolute;
-    left: -8px;
+    left: -10px;
     top: 12px;
     width: 0;
     height: 0;
@@ -1426,6 +1426,11 @@ th.comparison-matrix-sticky-column {
 /* Primary messages pointer */
 .chat-bubble-filled.chat-bubble-primary .chat-bubble-content.has-pointer::after {
     border-left-color: #7B2CBF;
+}
+
+/* Primary start position pointer (for assistant messages with Color.Primary) */
+.chat-bubble-filled.chat-bubble-primary .chat-bubble-content.has-pointer::before {
+    border-right-color: #7B2CBF;
 }
 
 .chat-bubble-filled.chat-bubble-error .chat-bubble-content.has-pointer::before {
