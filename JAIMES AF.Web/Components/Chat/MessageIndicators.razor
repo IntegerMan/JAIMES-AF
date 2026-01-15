@@ -26,7 +26,7 @@
         else
         {
             @* Show completed progress ring or pie chart icon *@
-            <div style="cursor: pointer;" @onclick="OnMetricsClicked">
+            <div @onclick="OnMetricsClicked" @onclick:stopPropagation="true" style="cursor: pointer;">
                 <EvaluationProgressRing 
                     TotalSegments="@(ExpectedMetricCount.GetValueOrDefault() > 0 ? ExpectedMetricCount.GetValueOrDefault() : Metrics.Count)"
                     Metrics="Metrics"
