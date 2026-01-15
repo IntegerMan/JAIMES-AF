@@ -14,26 +14,21 @@
     }
     else
     {
-        <MudMenu AnchorOrigin="Origin.TopCenter" TransformOrigin="Origin.BottomCenter" Dense="true">
-            <ActivatorContent>
-                <MudTooltip Text="@GetSentimentTooltipText()" Placement="Placement.Top">
-                    <MudIconButton Icon="@GetSentimentIcon()"
-                                   Color="@GetSentimentColor()"
-                                   Size="Size.Small"
-                                   Variant="Variant.Text"
-                                   Class="pa-0"/>
-                </MudTooltip>
-            </ActivatorContent>
-            <ChildContent>
-                <MudMenuItem OnClick="@(() => SetSentimentAsync(1))" Icon="@Icons.Material.Filled.ThumbUp" IconColor="Color.Success">Positive</MudMenuItem>
-                <MudMenuItem OnClick="@(() => SetSentimentAsync(0))" Icon="@Icons.Material.Filled.Balance" IconColor="Color.Default">Neutral</MudMenuItem>
-                <MudMenuItem OnClick="@(() => SetSentimentAsync(-1))" Icon="@Icons.Material.Filled.ThumbDown" IconColor="Color.Error">Negative</MudMenuItem>
-                @if (ShowViewDetails && SentimentId.HasValue)
-                {
-                    <MudDivider/>
-                    <MudMenuItem OnClick="ViewDetails" Icon="@Icons.Material.Filled.Visibility" IconColor="Color.Primary">View Details</MudMenuItem>
-                }
-            </ChildContent>
+        @* MudMenu with sentiment options - using Icon parameter for simpler API *@
+        <MudMenu Icon="@GetSentimentIcon()" 
+                 Color="@GetSentimentColor()" 
+                 Size="Size.Small" 
+                 Dense="true"
+                 AnchorOrigin="Origin.TopCenter" 
+                 TransformOrigin="Origin.BottomCenter">
+            <MudMenuItem OnClick="@(() => SetSentimentAsync(1))" Icon="@Icons.Material.Filled.ThumbUp" IconColor="Color.Success" Label="Positive" />
+            <MudMenuItem OnClick="@(() => SetSentimentAsync(0))" Icon="@Icons.Material.Filled.Balance" IconColor="Color.Default" Label="Neutral" />
+            <MudMenuItem OnClick="@(() => SetSentimentAsync(-1))" Icon="@Icons.Material.Filled.ThumbDown" IconColor="Color.Error" Label="Negative" />
+            @if (ShowViewDetails && SentimentId.HasValue)
+            {
+                <MudDivider/>
+                <MudMenuItem OnClick="ViewDetails" Icon="@Icons.Material.Filled.Visibility" IconColor="Color.Primary" Label="View Details" />
+            }
         </MudMenu>
     }
 }
