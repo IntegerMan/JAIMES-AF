@@ -611,8 +611,8 @@ h1:focus {
 }
 
 .icon-badge-tertiary {
-    background: linear-gradient(135deg, var(--color-tertiary) 0%, #FFB74D 100%);
-    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+    background: linear-gradient(135deg, var(--color-tertiary) 0%, #4DB6AC 100%);
+    box-shadow: 0 4px 12px rgba(47, 158, 158, 0.3);
 }
 
 .icon-badge-accent {
