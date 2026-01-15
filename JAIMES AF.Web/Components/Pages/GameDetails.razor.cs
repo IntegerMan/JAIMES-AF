@@ -286,7 +286,7 @@ public partial class GameDetails : IAsyncDisposable
         if (_selectedVersionId.HasValue)
         {
             var version = _availableVersions.FirstOrDefault(v => v.Id == _selectedVersionId.Value);
-            if (version != null) return version.VersionNumber;
+            return version?.VersionNumber ?? _defaultVersionNumber ?? "Unknown";
         }
 
         var activeVersion = _availableVersions.FirstOrDefault(v => v.IsActive);
