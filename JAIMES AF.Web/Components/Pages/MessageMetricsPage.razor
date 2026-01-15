@@ -74,7 +74,14 @@
                                     <CardHeaderContent>
                                         <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
                                          <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                             <MudText Typo="Typo.h6">@metric.MetricName</MudText>
+                                             @if (metric.Id > 0)
+                                             {
+                                                 <MudLink Href="@($"/admin/evaluations/{metric.Id}")" Typo="Typo.h6">@metric.MetricName</MudLink>
+                                             }
+                                             else
+                                             {
+                                                 <MudText Typo="Typo.h6">@metric.MetricName</MudText>
+                                             }
                                              @if (metric.EvaluatorId.HasValue)
                                              {
                                                  <MudLink Typo="Typo.caption" Href="@($"/admin/metrics?evaluatorId={metric.EvaluatorId}")" Class="mt-1">
