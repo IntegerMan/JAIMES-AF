@@ -301,15 +301,15 @@
 
     private void HandleSliceClick(MessageEvaluationMetricResponse metric)
     {
-        // Navigate to the specific evaluation details page
-        if (metric.Id > 0)
+        // Navigate to the message metrics page for this message
+        if (MessageId.HasValue)
         {
-            NavigationManager.NavigateTo($"/admin/evaluations/{metric.Id}");
+            NavigationManager.NavigateTo($"/admin/metrics/{MessageId}");
         }
-        else if (metric.EvaluatorId.HasValue)
+        else if (metric.Id > 0)
         {
-            // Fallback: if no specific evaluation ID, navigate to evaluator page filtered by message
-            NavigationManager.NavigateTo($"/admin/evaluators/{metric.EvaluatorId}");
+            // Fallback for when MessageId is not available for some reason
+            NavigationManager.NavigateTo($"/admin/evaluations/{metric.Id}");
         }
     }
 }
