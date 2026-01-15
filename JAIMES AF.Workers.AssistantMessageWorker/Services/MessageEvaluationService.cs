@@ -141,167 +141,171 @@ public class MessageEvaluationService(
 
             try
             {
-                    // Create ReportingConfiguration for this single evaluator
-                    ReportingConfiguration reportConfig = new(
-                        [evaluator],
-                        resultStore,
-                        executionName: $"Assistant Message Quality - {evaluatorName}",
-                        chatConfiguration: chatConfiguration);
+                // Create ReportingConfiguration for this single evaluator
+                ReportingConfiguration reportConfig = new(
+                    [evaluator],
+                    resultStore,
+                    executionName: $"Assistant Message Quality - {evaluatorName}",
+                    chatConfiguration: chatConfiguration);
 
-                    // Perform evaluation for this evaluator
-                    EvaluationResult result = await PerformEvaluationInternalAsync(
-                        reportConfig,
-                        message,
-                        evaluationContext,
-                        assistantResponse,
-                        cancellationToken);
+                // Perform evaluation for this evaluator
+                EvaluationResult result = await PerformEvaluationInternalAsync(
+                    reportConfig,
+                    message,
+                    evaluationContext,
+                    assistantResponse,
+                    cancellationToken);
 
-                    // Merge results and save to database
-                    DateTime evaluatedAt = DateTime.UtcNow;
-                    foreach (var kvp in result.Metrics)
-                    {
-                        allResults.Metrics[kvp.Key] = kvp.Value;
-
-                        // Save each metric to database
-                        string metricName = kvp.Key;
-                        if (kvp.Value is NumericMetric metric && metric.Value != null)
-                        {
-                            // Find evaluator ID
-                            int? evaluatorId = null;
-                            if (evaluatorIdLookup.TryGetValue(evaluatorName.ToLower(), out int id))
-                            {
-                                evaluatorId = id;
-                            }
-
-                            // Serialize diagnostics
-                            string? diagnosticsJson = null;
-                            try
-                            {
-                                var diagnostics = new Dictionary<string, object?>
-                                {
-                                    { "MetricName", metricName },
-                                    { "EvaluatedAt", evaluatedAt },
-                                    { "Messages", metric.Diagnostics?.Select(d => d.Message).ToList() ?? [] }
-                                };
-                                diagnosticsJson = JsonSerializer.Serialize(diagnostics);
-                            }
-                            catch (Exception diagEx)
-                            {
-                                logger.LogWarning(diagEx, "Failed to serialize diagnostics for metric {MetricName}", metricName);
-                            }
-
-                            // Save metric to database
-                            await using JaimesDbContext metricContext = await contextFactory.CreateDbContextAsync(cancellationToken);
-                            MessageEvaluationMetric evaluationMetric = new()
-                            {
-                                MessageId = message.Id,
-                                MetricName = metricName,
-                                Score = metric.Value.Value,
-                                Remarks = metric.Reason,
-                                EvaluatedAt = evaluatedAt,
-                                Diagnostics = diagnosticsJson,
-                                EvaluationModelId = evaluationModel?.Id,
-                                EvaluatorId = evaluatorId
-                            };
-
-                            metricContext.MessageEvaluationMetrics.Add(evaluationMetric);
-                            await metricContext.SaveChangesAsync(cancellationToken);
-
-                            logger.LogDebug(
-                                "Stored evaluation metric: MessageId={MessageId}, MetricName={MetricName}, Score={Score}, EvaluatorId={EvaluatorId}",
-                                message.Id,
-                                metricName,
-                                metric.Value.Value,
-                                evaluatorId);
-
-                            // Create response for notification
-                            var metricResponse = new MessageEvaluationMetricResponse
-                            {
-                                MessageId = message.Id,
-                                MetricName = metricName,
-                                Score = metric.Value.Value,
-                                Remarks = metric.Reason,
-                                EvaluatedAt = evaluatedAt,
-                                EvaluatorId = evaluatorId,
-                                EvaluatorName = evaluatorName
-                            };
-
-                            allMetricResponses.Add(metricResponse);
-
-                            // Increment completed count and notify
-                            completedMetricCount++;
-
-                            // Send streaming notification for this metric
-                            await messageUpdateNotifier.NotifyMetricEvaluatedAsync(
-                                message.Id,
-                                message.GameId,
-                                metricResponse,
-                                totalExpectedMetrics,
-                                completedMetricCount,
-                                isError: false,
-                                errorMessage: null,
-                                cancellationToken);
-                        }
-                    }
-
-                    logger.LogDebug(
-                        "Evaluator {EvaluatorName} ({Index}/{Total}) completed for message {MessageId}",
-                        evaluatorName,
-                        evaluatorIndex,
-                        totalEvaluators,
-                        message.Id);
-
-                    // Notify evaluator completed (only on success)
-                    await messageUpdateNotifier.NotifyEvaluatorCompletedAsync(
-                        message.Id,
-                        message.GameId,
-                        evaluatorName,
-                        evaluatorIndex,
-                        totalEvaluators,
-                        cancellationToken);
-                }
-                catch (Exception ex)
+                // Merge results and save to database
+                DateTime evaluatedAt = DateTime.UtcNow;
+                foreach (var kvp in result.Metrics)
                 {
-                    logger.LogError(ex, "Evaluator {EvaluatorName} failed for message {MessageId}", evaluatorName, message.Id);
+                    allResults.Metrics[kvp.Key] = kvp.Value;
 
-                    // Create error metric responses - one for each expected metric from this evaluator
-                    int expectedForThisEvaluator = EvaluatorMetricCountHelper.GetExpectedMetricCount(evaluator);
-                    DateTime errorTime = DateTime.UtcNow;
-
-                    for (int j = 0; j < expectedForThisEvaluator; j++)
+                    // Save each metric to database
+                    string metricName = kvp.Key;
+                    if (kvp.Value is NumericMetric metric && metric.Value != null)
                     {
-                        string metricName = expectedForThisEvaluator > 1
-                            ? $"{evaluatorName}_{j + 1}"
-                            : evaluatorName;
+                        // Find evaluator ID
+                        int? evaluatorId = null;
+                        if (evaluatorIdLookup.TryGetValue(evaluatorName.ToLower(), out int id))
+                        {
+                            evaluatorId = id;
+                        }
 
-                        var errorMetricResponse = new MessageEvaluationMetricResponse
+                        // Serialize diagnostics
+                        string? diagnosticsJson = null;
+                        try
+                        {
+                            var diagnostics = new Dictionary<string, object?>
+                            {
+                                { "MetricName", metricName },
+                                { "EvaluatedAt", evaluatedAt },
+                                { "Messages", metric.Diagnostics?.Select(d => d.Message).ToList() ?? [] }
+                            };
+                            diagnosticsJson = JsonSerializer.Serialize(diagnostics);
+                        }
+                        catch (Exception diagEx)
+                        {
+                            logger.LogWarning(diagEx, "Failed to serialize diagnostics for metric {MetricName}",
+                                metricName);
+                        }
+
+                        // Save metric to database
+                        await using JaimesDbContext metricContext =
+                            await contextFactory.CreateDbContextAsync(cancellationToken);
+                        MessageEvaluationMetric evaluationMetric = new()
                         {
                             MessageId = message.Id,
                             MetricName = metricName,
-                            Score = 0,
-                            Remarks = $"Evaluation failed: {ex.Message}",
-                            EvaluatedAt = errorTime,
+                            Score = metric.Value.Value,
+                            Remarks = metric.Reason,
+                            EvaluatedAt = evaluatedAt,
+                            Diagnostics = diagnosticsJson,
+                            EvaluationModelId = evaluationModel?.Id,
+                            EvaluatorId = evaluatorId
+                        };
+
+                        metricContext.MessageEvaluationMetrics.Add(evaluationMetric);
+                        await metricContext.SaveChangesAsync(cancellationToken);
+
+                        logger.LogDebug(
+                            "Stored evaluation metric: MessageId={MessageId}, MetricName={MetricName}, Score={Score}, EvaluatorId={EvaluatorId}",
+                            message.Id,
+                            metricName,
+                            metric.Value.Value,
+                            evaluatorId);
+
+                        // Create response for notification
+                        var metricResponse = new MessageEvaluationMetricResponse
+                        {
+                            Id = evaluationMetric.Id,
+                            MessageId = message.Id,
+                            MetricName = metricName,
+                            Score = metric.Value.Value,
+                            Remarks = metric.Reason,
+                            EvaluatedAt = evaluatedAt,
+                            EvaluatorId = evaluatorId,
                             EvaluatorName = evaluatorName
                         };
 
-                        allMetricResponses.Add(errorMetricResponse);
+                        allMetricResponses.Add(metricResponse);
 
-                        // Increment completed count (even for errors, we're "done" with this metric)
+                        // Increment completed count and notify
                         completedMetricCount++;
 
-                        // Send error notification
+                        // Send streaming notification for this metric
                         await messageUpdateNotifier.NotifyMetricEvaluatedAsync(
                             message.Id,
                             message.GameId,
-                            errorMetricResponse,
+                            metricResponse,
                             totalExpectedMetrics,
                             completedMetricCount,
-                            isError: true,
-                            errorMessage: ex.Message,
+                            isError: false,
+                            errorMessage: null,
                             cancellationToken);
                     }
                 }
+
+                logger.LogDebug(
+                    "Evaluator {EvaluatorName} ({Index}/{Total}) completed for message {MessageId}",
+                    evaluatorName,
+                    evaluatorIndex,
+                    totalEvaluators,
+                    message.Id);
+
+                // Notify evaluator completed (only on success)
+                await messageUpdateNotifier.NotifyEvaluatorCompletedAsync(
+                    message.Id,
+                    message.GameId,
+                    evaluatorName,
+                    evaluatorIndex,
+                    totalEvaluators,
+                    cancellationToken);
             }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Evaluator {EvaluatorName} failed for message {MessageId}", evaluatorName,
+                    message.Id);
+
+                // Create error metric responses - one for each expected metric from this evaluator
+                int expectedForThisEvaluator = EvaluatorMetricCountHelper.GetExpectedMetricCount(evaluator);
+                DateTime errorTime = DateTime.UtcNow;
+
+                for (int j = 0; j < expectedForThisEvaluator; j++)
+                {
+                    string metricName = expectedForThisEvaluator > 1
+                        ? $"{evaluatorName}_{j + 1}"
+                        : evaluatorName;
+
+                    var errorMetricResponse = new MessageEvaluationMetricResponse
+                    {
+                        MessageId = message.Id,
+                        MetricName = metricName,
+                        Score = 0,
+                        Remarks = $"Evaluation failed: {ex.Message}",
+                        EvaluatedAt = errorTime,
+                        EvaluatorName = evaluatorName
+                    };
+
+                    allMetricResponses.Add(errorMetricResponse);
+
+                    // Increment completed count (even for errors, we're "done" with this metric)
+                    completedMetricCount++;
+
+                    // Send error notification
+                    await messageUpdateNotifier.NotifyMetricEvaluatedAsync(
+                        message.Id,
+                        message.GameId,
+                        errorMetricResponse,
+                        totalExpectedMetrics,
+                        completedMetricCount,
+                        isError: true,
+                        errorMessage: ex.Message,
+                        cancellationToken);
+                }
+            }
+        }
 
         // Calculate if all evaluators have run
         await using JaimesDbContext finalContext = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -367,9 +371,10 @@ public class MessageEvaluationService(
         if (string.IsNullOrWhiteSpace(message.Text))
         {
             logger.LogWarning("Cannot evaluate message {MessageId} - message text is empty", message.Id);
-            
+
             // Write a completion marker so the evaluator is counted as complete
-            await WriteEvaluatorCompletionMarkerAsync(message.Id, evaluatorName, "Empty message text", cancellationToken);
+            await WriteEvaluatorCompletionMarkerAsync(message.Id, evaluatorName, "Empty message text",
+                cancellationToken);
             return;
         }
 
@@ -383,9 +388,10 @@ public class MessageEvaluationService(
                 "Evaluator {EvaluatorName} not found for message {MessageId}",
                 evaluatorName,
                 message.Id);
-            
+
             // Write a completion marker so the evaluator is counted as complete
-            await WriteEvaluatorCompletionMarkerAsync(message.Id, evaluatorName, "Evaluator not found", cancellationToken);
+            await WriteEvaluatorCompletionMarkerAsync(message.Id, evaluatorName, "Evaluator not found",
+                cancellationToken);
             return;
         }
 
@@ -496,25 +502,30 @@ public class MessageEvaluationService(
 
             await context.SaveChangesAsync(cancellationToken);
 
-            // Notify web clients via SignalR
-            List<MessageEvaluationMetricResponse> metricResponses = result.Metrics.Keys
-                .Select(metricName =>
+            // Build notification responses directly from saved entities (avoids DateTime precision issues with database)
+            List<MessageEvaluationMetricResponse> metricResponses = [];
+            foreach (var metricPair in result.Metrics)
+            {
+                string metricName = metricPair.Key;
+                if (metricPair.Value is NumericMetric metric && metric.Value != null)
                 {
-                    NumericMetric? metric = result.Get<NumericMetric>(metricName);
-                    return metric != null && metric.Value.HasValue
-                        ? new MessageEvaluationMetricResponse
-                        {
-                            MessageId = message.Id,
-                            MetricName = metricName,
-                            Score = metric.Value.Value,
-                            Remarks = metric.Reason,
-                            EvaluatedAt = evaluatedAt
-                        }
-                        : null;
-                })
-                .Where(m => m != null)
-                .Cast<MessageEvaluationMetricResponse>()
-                .ToList();
+                    // Find the saved entity to get its database-assigned ID
+                    var savedMetric = context.MessageEvaluationMetrics.Local
+                        .FirstOrDefault(m => m.MessageId == message.Id && m.MetricName == metricName);
+
+                    metricResponses.Add(new MessageEvaluationMetricResponse
+                    {
+                        Id = savedMetric?.Id ?? 0,
+                        MessageId = message.Id,
+                        MetricName = metricName,
+                        Score = metric.Value.Value,
+                        Remarks = metric.Reason,
+                        EvaluatedAt = evaluatedAt,
+                        EvaluatorId = evaluatorEntity?.Id,
+                        EvaluatorName = evaluatorName
+                    });
+                }
+            }
 
             // Calculate if all evaluators have run
             var totalEvaluatorCount = await context.Evaluators.CountAsync(cancellationToken);
@@ -545,10 +556,11 @@ public class MessageEvaluationService(
         {
             logger.LogError(ex, "Failed to run evaluator {EvaluatorName} for message {MessageId}",
                 evaluatorName, message.Id);
-            
+
             // Write a completion marker so the evaluator is counted as complete even on failure
-            await WriteEvaluatorCompletionMarkerAsync(message.Id, evaluatorName, $"Exception: {ex.Message}", cancellationToken);
-            
+            await WriteEvaluatorCompletionMarkerAsync(message.Id, evaluatorName, $"Exception: {ex.Message}",
+                cancellationToken);
+
             throw;
         }
     }
@@ -566,7 +578,7 @@ public class MessageEvaluationService(
         try
         {
             await using JaimesDbContext context = await contextFactory.CreateDbContextAsync(cancellationToken);
-            
+
             // Get or create the evaluator entity
             var evaluatorEntity = await context.Evaluators
                 .FirstOrDefaultAsync(e => e.Name.ToLower() == evaluatorName.ToLower(), cancellationToken);
@@ -597,7 +609,7 @@ public class MessageEvaluationService(
 
             context.MessageEvaluationMetrics.Add(marker);
             await context.SaveChangesAsync(cancellationToken);
-            
+
             logger.LogInformation(
                 "Wrote completion marker for evaluator {EvaluatorName} on message {MessageId}: {Reason}",
                 evaluatorName,
