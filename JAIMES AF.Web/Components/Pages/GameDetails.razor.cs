@@ -1339,22 +1339,27 @@ public partial class GameDetails : IAsyncDisposable
             : _availableVersions.FirstOrDefault(v => v.IsActive);
 
         string versionNumber;
+        int? instructionVersionId;
+
         if (_selectedVersionId.HasValue)
         {
             versionNumber = version?.VersionNumber ?? _defaultVersionNumber ?? "Unknown";
+            instructionVersionId = _selectedVersionId;
         }
         else
         {
+            // Using "Latest" - use the active version if found
             versionNumber = version != null
                 ? $"Latest ({version.VersionNumber})"
                 : (_defaultVersionNumber ?? "Latest");
+            instructionVersionId = version?.Id ?? _defaultInstructionVersionId;
         }
 
         return new MessageAgentInfo
         {
             AgentId = _selectedAgentId ?? _defaultAgentId,
             AgentName = agent?.Name ?? _defaultAgentName,
-            InstructionVersionId = _selectedVersionId ?? _defaultInstructionVersionId,
+            InstructionVersionId = instructionVersionId,
             VersionNumber = versionNumber,
             IsScriptedMessage = false
         };
