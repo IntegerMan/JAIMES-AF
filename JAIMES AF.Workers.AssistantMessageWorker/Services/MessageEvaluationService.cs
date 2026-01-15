@@ -503,8 +503,10 @@ public class MessageEvaluationService(
             await context.SaveChangesAsync(cancellationToken);
 
             // Notify web clients via SignalR
+            // Filter by EvaluatorId to avoid picking up metrics from concurrent evaluators running for the same message
             List<MessageEvaluationMetricResponse> metricResponses = context.MessageEvaluationMetrics
-                .Where(m => m.MessageId == message.Id && m.EvaluatedAt >= evaluatedAt) // Get the ones we just added
+                .Where(m => m.MessageId == message.Id && m.EvaluatedAt >= evaluatedAt &&
+                            m.EvaluatorId == evaluatorEntity!.Id)
                 .Select(m => new MessageEvaluationMetricResponse
                 {
                     Id = m.Id,
