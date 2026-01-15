@@ -10,7 +10,7 @@
 
     /* Secondary Colors */
     --color-secondary: #4361EE;
-    --color-tertiary: #FF9800;
+    --color-tertiary: #2F9E9E;
     --color-accent: #06D6A0;
 
     /* Semantic Colors */
@@ -1303,10 +1303,11 @@ th.comparison-matrix-sticky-column {
     color: var(--mud-palette-text-primary);
 }
 
-/* Default/Assistant messages - secondary color for better contrast */
+/* Default/Assistant messages - soft teal for better readability on projectors */
 .chat-bubble-filled.chat-bubble-default>div:not(.chat-header):not(.chat-footer) {
-    background-color: var(--mud-palette-secondary);
-    color: var(--mud-palette-secondary-text);
+    background-color: #E0F5F5;
+    color: #2B2D42;
+    border: 2px solid #2F9E9E;
 }
 
 /* Outlined Variant */
@@ -1320,18 +1321,27 @@ th.comparison-matrix-sticky-column {
 
 /* Color Variants - Filled */
 .chat-bubble-filled.chat-bubble-primary>div:not(.chat-header):not(.chat-footer) {
-    background-color: var(--mud-palette-primary);
-    color: var(--mud-palette-primary-text);
+    background-color: #F3E8FF;
+    color: #2B2D42;
+    border: 2px solid #7B2CBF;
 }
 
 .chat-bubble-filled.chat-bubble-secondary>div:not(.chat-header):not(.chat-footer) {
-    background-color: var(--mud-palette-secondary);
-    color: var(--mud-palette-secondary-text);
+    background-color: #E8EDFF;
+    color: #2B2D42;
+    border: 2px solid #4361EE;
+}
+
+.chat-bubble-filled.chat-bubble-tertiary>div:not(.chat-header):not(.chat-footer) {
+    background-color: #E0F5F5;
+    color: #2B2D42;
+    border: 2px solid #2F9E9E;
 }
 
 .chat-bubble-filled.chat-bubble-info>div:not(.chat-header):not(.chat-footer) {
-    background-color: var(--mud-palette-info);
-    color: var(--mud-palette-info-text);
+    background-color: #E0F7FF;
+    color: #2B2D42;
+    border: 2px solid #3BA8C9;
 }
 
 .chat-bubble-filled.chat-bubble-success>div:not(.chat-header):not(.chat-footer) {
@@ -1378,20 +1388,20 @@ th.comparison-matrix-sticky-column {
     height: 0;
     border-top: 6px solid transparent;
     border-bottom: 6px solid transparent;
-    border-right: 8px solid var(--mud-palette-secondary);
+    border-right: 8px solid #2F9E9E;
 }
 
 /* Right pointer for user/end messages */
 .chat-bubble-end .chat-bubble-content.has-pointer::after {
     content: '';
     position: absolute;
-    right: -8px;
+    right: -10px;
     top: 12px;
     width: 0;
     height: 0;
     border-top: 6px solid transparent;
     border-bottom: 6px solid transparent;
-    border-left: 8px solid var(--mud-palette-primary);
+    border-left: 8px solid #7B2CBF;
 }
 
 /* Pointer color variants */
@@ -1403,9 +1413,19 @@ th.comparison-matrix-sticky-column {
     border-left-color: var(--mud-palette-primary);
 }
 
-/* Highlighted assistant messages use primary color with start position (::before) */
-.chat-bubble-filled.chat-bubble-primary .chat-bubble-content.has-pointer::before {
-    border-right-color: var(--mud-palette-primary);
+/* Highlighted assistant messages use info color with start position (::before) */
+.chat-bubble-filled.chat-bubble-info .chat-bubble-content.has-pointer::before {
+    border-right-color: #3BA8C9;
+}
+
+/* Tertiary assistant messages pointer */
+.chat-bubble-filled.chat-bubble-tertiary .chat-bubble-content.has-pointer::before {
+    border-right-color: #2F9E9E;
+}
+
+/* Primary messages pointer */
+.chat-bubble-filled.chat-bubble-primary .chat-bubble-content.has-pointer::after {
+    border-left-color: #7B2CBF;
 }
 
 .chat-bubble-filled.chat-bubble-error .chat-bubble-content.has-pointer::before {
