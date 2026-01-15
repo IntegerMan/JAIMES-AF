@@ -1406,7 +1406,7 @@ th.comparison-matrix-sticky-column {
 
 /* Pointer color variants */
 .chat-bubble-filled.chat-bubble-info .chat-bubble-content.has-pointer::after {
-    border-left-color: var(--mud-palette-info);
+    border-left-color: #F59E0B;
 }
 
 .chat-bubble-filled.chat-bubble-primary .chat-bubble-content.has-pointer::after {
@@ -1435,6 +1435,15 @@ th.comparison-matrix-sticky-column {
 
 .chat-bubble-filled.chat-bubble-error .chat-bubble-content.has-pointer::before {
     border-right-color: var(--mud-palette-error);
+}
+
+/* Secondary messages pointer */
+.chat-bubble-filled.chat-bubble-secondary .chat-bubble-content.has-pointer::before {
+    border-right-color: #4361EE;
+}
+
+.chat-bubble-filled.chat-bubble-secondary .chat-bubble-content.has-pointer::after {
+    border-left-color: #4361EE;
 }
 
 /* Chat Header */
