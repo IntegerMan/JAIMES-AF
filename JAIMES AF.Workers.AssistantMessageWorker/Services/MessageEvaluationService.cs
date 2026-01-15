@@ -502,24 +502,30 @@ public class MessageEvaluationService(
 
             await context.SaveChangesAsync(cancellationToken);
 
-            // Notify web clients via SignalR
-            // Filter by EvaluatorId to avoid picking up metrics from concurrent evaluators running for the same message
-            int? evaluatorId = evaluatorEntity?.Id;
-            List<MessageEvaluationMetricResponse> metricResponses = context.MessageEvaluationMetrics
-                .Where(m => m.MessageId == message.Id && m.EvaluatedAt >= evaluatedAt &&
-                            m.EvaluatorId == evaluatorId)
-                .Select(m => new MessageEvaluationMetricResponse
+            // Build notification responses directly from saved entities (avoids DateTime precision issues with database)
+            List<MessageEvaluationMetricResponse> metricResponses = [];
+            foreach (var metricPair in result.Metrics)
+            {
+                string metricName = metricPair.Key;
+                if (metricPair.Value is NumericMetric metric && metric.Value != null)
                 {
-                    Id = m.Id,
-                    MessageId = m.MessageId,
-                    MetricName = m.MetricName,
-                    Score = m.Score,
-                    Remarks = m.Remarks,
-                    EvaluatedAt = m.EvaluatedAt,
-                    EvaluatorId = m.EvaluatorId,
-                    EvaluatorName = evaluatorName
-                })
-                .ToList();
+                    // Find the saved entity to get its database-assigned ID
+                    var savedMetric = context.MessageEvaluationMetrics.Local
+                        .FirstOrDefault(m => m.MessageId == message.Id && m.MetricName == metricName);
+
+                    metricResponses.Add(new MessageEvaluationMetricResponse
+                    {
+                        Id = savedMetric?.Id ?? 0,
+                        MessageId = message.Id,
+                        MetricName = metricName,
+                        Score = metric.Value.Value,
+                        Remarks = metric.Reason,
+                        EvaluatedAt = evaluatedAt,
+                        EvaluatorId = evaluatorEntity?.Id,
+                        EvaluatorName = evaluatorName
+                    });
+                }
+            }
 
             // Calculate if all evaluators have run
             var totalEvaluatorCount = await context.Evaluators.CountAsync(cancellationToken);

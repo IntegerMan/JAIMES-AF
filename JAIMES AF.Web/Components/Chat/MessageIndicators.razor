@@ -13,7 +13,7 @@
         @if (IsProcessing && ExpectedMetricCount.GetValueOrDefault() > 0)
         {
             @* Show progress ring while evaluating *@
-            <div style="cursor: pointer;" @onclick="OnMetricsClicked">
+            <div @onclick="OnMetricsClicked" @onclick:stopPropagation="true" style="cursor: pointer;">
                 <EvaluationProgressRing 
                     TotalSegments="@ExpectedMetricCount.GetValueOrDefault()"
                     Metrics="Metrics"
