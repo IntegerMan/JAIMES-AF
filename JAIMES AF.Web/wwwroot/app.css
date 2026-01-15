@@ -1339,9 +1339,9 @@ th.comparison-matrix-sticky-column {
 }
 
 .chat-bubble-filled.chat-bubble-info>div:not(.chat-header):not(.chat-footer) {
-    background-color: #E0F7FF;
+    background-color: #FFF8E1;
     color: #2B2D42;
-    border: 2px solid #3BA8C9;
+    border: 2px solid #F59E0B;
 }
 
 .chat-bubble-filled.chat-bubble-success>div:not(.chat-header):not(.chat-footer) {
@@ -1415,7 +1415,7 @@ th.comparison-matrix-sticky-column {
 
 /* Highlighted assistant messages use info color with start position (::before) */
 .chat-bubble-filled.chat-bubble-info .chat-bubble-content.has-pointer::before {
-    border-right-color: #3BA8C9;
+    border-right-color: #F59E0B;
 }
 
 /* Tertiary assistant messages pointer */
