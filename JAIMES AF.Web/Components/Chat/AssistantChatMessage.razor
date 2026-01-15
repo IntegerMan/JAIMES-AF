@@ -21,7 +21,7 @@
                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                     @if (!string.IsNullOrEmpty(AgentId) && !IsScriptedMessage)
                     {
-                        <MudTooltip Text="@($"{AgentName} v{VersionNumber}")" Placement="Placement.Top">
+                        <MudTooltip Text="@($"{AgentName} {VersionNumber}")" Placement="Placement.Top">
                             <MudIconButton Icon="@Icons.Material.Filled.SmartToy"
                                            Size="Size.Small"
                                            Color="@(IsVersionSwitch ? Color.Primary : Color.Default)"

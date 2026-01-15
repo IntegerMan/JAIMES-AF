@@ -44,14 +44,7 @@
 						</MudLink>
 						<span class="version-badge-separator">•</span>
 						<MudLink Href="@GetVersionLink()" Typo="Typo.caption" Color="Color.Inherit" Class="version-badge-link">
-							@if (_selectedVersionId == null)
-							{
-								<span>Latest</span>
-							}
-							else
-							{
-								<span>v@(GetCurrentVersionNumber())</span>
-							}
+							@(GetCurrentVersionNumber())
 						</MudLink>
 						<MudTooltip Text="Game Settings">
 							<MudIconButton Icon="@Icons.Material.Filled.Settings" 
