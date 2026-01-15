@@ -6,7 +6,7 @@
 
 @if (VersionId.HasValue)
 {
-    string displayValue = !string.IsNullOrEmpty(VersionNumber) ? VersionNumber : $"v{VersionId.Value}";
+    string displayValue = !string.IsNullOrEmpty(VersionNumber) ? VersionNumber : $"{VersionId.Value}";
     
     <MudTooltip Text="View Version Details" Placement="Placement.Top">
         <MudChip T="string"
