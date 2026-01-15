@@ -77,17 +77,13 @@
                 else if (MessageId.HasValue)
                 {
                     @* Editable mode with menu (requires MessageId) *@
-                    <MudMenu AnchorOrigin="Origin.TopCenter" TransformOrigin="Origin.BottomCenter" Dense="true">
-                        <ActivatorContent>
-                            <MudTooltip Text="@GetSentimentTooltipText()" Placement="Placement.Top">
-                                <MudIconButton Icon="@GetSentimentIcon()"
-                                               Color="@GetSentimentColor()"
-                                               Size="Size.Small"
-                                               Variant="Variant.Text"
-                                               Class="pa-0"/>
-                            </MudTooltip>
-                        </ActivatorContent>
-                        <ChildContent>
+                    <MudTooltip Text="@GetSentimentTooltipText()" Placement="Placement.Top">
+                        <MudMenu Icon="@GetSentimentIcon()" 
+                                 Color="@GetSentimentColor()" 
+                                 Size="Size.Small" 
+                                 Dense="true"
+                                 AnchorOrigin="Origin.TopCenter" 
+                                 TransformOrigin="Origin.BottomCenter">
                             <MudMenuItem OnClick="@(() => SetSentimentAsync(1))" Icon="@Icons.Material.Filled.ThumbUp" IconColor="Color.Success">Positive</MudMenuItem>
                             <MudMenuItem OnClick="@(() => SetSentimentAsync(0))" Icon="@Icons.Material.Filled.Balance" IconColor="Color.Default">Neutral</MudMenuItem>
                             <MudMenuItem OnClick="@(() => SetSentimentAsync(-1))" Icon="@Icons.Material.Filled.ThumbDown" IconColor="Color.Error">Negative</MudMenuItem>
@@ -96,8 +92,8 @@
                                 <MudDivider/>
                                 <MudMenuItem OnClick="ViewDetails" Icon="@Icons.Material.Filled.Visibility" IconColor="Color.Primary">View Details</MudMenuItem>
                             }
-                        </ChildContent>
-                    </MudMenu>
+                        </MudMenu>
+                    </MudTooltip>
                 }
                 else
                 {
